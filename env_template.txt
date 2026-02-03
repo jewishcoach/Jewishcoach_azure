@@ -1,0 +1,16 @@
+# Azure OpenAI Configuration
+AZURE_OPENAI_API_KEY=your-api-key-here
+AZURE_OPENAI_ENDPOINT=https://your-resource-name.openai.azure.com/
+AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
+AZURE_OPENAI_API_VERSION=2024-02-15-preview
+
+# Azure AI Search Configuration
+AZURE_SEARCH_SERVICE_ENDPOINT=https://your-search-service.search.windows.net
+AZURE_SEARCH_INDEX_NAME=jewish-coaching-index
+AZURE_SEARCH_ADMIN_KEY=your-search-admin-key-here
+
+# Processing Configuration
+CHUNK_SIZE=3000
+CHUNK_OVERLAP=500
+MAX_RETRIES=3
+

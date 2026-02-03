@@ -1,0 +1,164 @@
+@import "tailwindcss";
+
+@theme {
+  /* Primary Colors - Deep Blue (Wisdom) */
+  --color-primary: #0f172a;
+  --color-primary-light: #1e293b;
+  --color-primary-dark: #020617;
+  
+  /* Accent Colors - Soft Gold (Insight Sparks) */
+  --color-accent: #f59e0b;
+  --color-accent-light: #fbbf24;
+  --color-accent-dark: #d97706;
+  
+  /* Background - Warm Cream */
+  --color-cream: #fafaf9;
+  --color-cream-dark: #f5f5f4;
+  
+  /* Font Families */
+  --font-family-serif: Georgia, Cambria, "Times New Roman", serif;
+  
+  /* Shadows */
+  --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+  --shadow-glow: 0 0 20px rgba(245, 158, 11, 0.3);
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Custom Utility Classes */
+.shadow-glass {
+  box-shadow: var(--shadow-glass);
+}
+
+.shadow-glow {
+  box-shadow: var(--shadow-glow);
+}
+
+.font-serif {
+  font-family: var(--font-family-serif);
+}
+
+.text-primary {
+  color: var(--color-primary);
+}
+
+.text-accent {
+  color: var(--color-accent);
+}
+
+.bg-primary {
+  background-color: var(--color-primary);
+}
+
+.bg-accent {
+  background-color: var(--color-accent);
+}
+
+.bg-cream {
+  background-color: var(--color-cream);
+}
+
+.border-accent {
+  border-color: var(--color-accent);
+}
+
+/* Gradient Utilities */
+.bg-gradient-primary {
+  background: linear-gradient(to bottom right, var(--color-primary), var(--color-primary-light));
+}
+
+.bg-gradient-accent {
+  background: linear-gradient(to right, var(--color-accent), var(--color-accent-dark));
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-accent);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-accent-dark);
+}
+
+/* Coaching Calendar Styling */
+.coaching-calendar .react-calendar {
+  width: 100%;
+  border: none;
+  font-family: inherit;
+  direction: ltr;
+}
+
+.coaching-calendar .react-calendar__tile {
+  padding: 1em 0.5em;
+  background: transparent;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.coaching-calendar .react-calendar__tile:hover {
+  background-color: rgba(245, 158, 11, 0.1);
+}
+
+.coaching-calendar .react-calendar__tile--active {
+  background-color: var(--color-accent) !important;
+  color: white;
+}
+
+.coaching-calendar .react-calendar__tile.has-coaching {
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.coaching-calendar .react-calendar__month-view__days__day--weekend {
+  color: #d97706;
+}
+
+.coaching-calendar .react-calendar__navigation button {
+  font-size: 1.1em;
+  font-weight: 600;
+  color: var(--color-primary);
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.coaching-calendar .react-calendar__navigation button:hover {
+  background-color: rgba(245, 158, 11, 0.1);
+}
+
+.coaching-calendar .react-calendar__navigation button:disabled {
+  background-color: transparent;
+  opacity: 0.5;
+}
+
+.coaching-calendar .react-calendar__month-view__weekdays {
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75em;
+  color: #64748b;
+}
+
+.coaching-calendar .react-calendar__tile--now {
+  background-color: rgba(59, 130, 246, 0.1);
+  border: 2px solid #3b82f6;
+  font-weight: 600;
+}

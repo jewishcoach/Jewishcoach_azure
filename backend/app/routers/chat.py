@@ -1,0 +1,406 @@
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi.responses import StreamingResponse
+from sqlalchemy.orm import Session
+from ..database import get_db
+from ..dependencies import get_current_user
+from ..schemas import MessageCreate, ConversationResponse
+from ..models import Conversation, Message, User, ConversationFlag, BsdSessionState, BsdAuditLog
+from ..bsd.engine import BsdEngine
+from typing import List, Dict
+from datetime import datetime
+from openai import AzureOpenAI
+import json
+import os
+
+router = APIRouter(prefix="/api/chat", tags=["chat"])
+bsd_engine = BsdEngine()
+
+# OpenAI client for title generation
+openai_client = AzureOpenAI(
+    api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+    api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-15-preview"),
+    azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT")
+)
+
+
+def generate_smart_title(content: str, language: str = "he") -> str:
+    """Generate a smart, concise title from conversation content using OpenAI"""
+    try:
+        if language == "he":
+            prompt = f"""צור כותרת קצרה ותמציתית (מקסימום 40 תווים) לשיחת אימון.
+המשתמש אמר: "{content[:300]}"
+
+צור כותרת שמתארת את הנושא המרכזי שהמשתמש רוצה לעבוד עליו.
+השב רק עם הכותרת, שום דבר אחר. ללא מרכאות."""
+        else:
+            prompt = f"""Create a very short, concise title (max 40 characters) for a coaching conversation.
+The user said: "{content[:300]}"
+
+Generate a title that captures the main theme the user wants to work on.
+Reply ONLY with the title, nothing else. No quotes."""
+
+        response = openai_client.chat.completions.create(
+            model=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o"),
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant that creates concise conversation titles. Be specific and capture the essence." if language == "en" else "אתה עוזר שיוצר כותרות תמציתיות לשיחות. היה ספציפי ותפוס את המהות."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.3,  # Lower temperature for more focused titles
+            max_tokens=60
+        )
+        
+        title = response.choices[0].message.content.strip()
+        # Remove quotes if present
+        title = title.strip('"\'„"״\'')
+        # Limit length
+        if len(title) > 50:
+            title = title[:47] + "..."
+        
+        return title
+    except Exception as e:
+        print(f"Error generating title: {e}")
+        # Fallback to simple truncation
+        return (content[:40] + "...") if len(content) > 40 else content
+
+# Background task for quality checking
+async def run_quality_check(
+    conversation_id: int,
+    message_id: int,
+    history: List[Dict],
+    current_stage: str,
+    latest_response: str,
+    db_session: Session
+):
+    """
+    Background task: Run LLM-as-a-Judge quality check.
+    
+    This runs asynchronously after the response is sent to the user,
+    ensuring zero latency impact on user experience.
+    """
+    try:
+        from ..services.auto_evaluator import QualityJudge
+        
+        judge = QualityJudge()
+        flag_data = await judge.evaluate_response(
+            conversation_history=history,
+            current_stage=current_stage,
+            latest_bot_response=latest_response,
+            db=db_session
+        )
+        
+        if flag_data:  # Issue detected
+            flag = ConversationFlag(
+                conversation_id=conversation_id,
+                message_id=message_id,
+                stage=current_stage,
+                issue_type=flag_data["issue_type"],
+                reasoning=flag_data["reasoning"],
+                severity=flag_data["severity"]
+            )
+            db_session.add(flag)
+            db_session.commit()
+            print(f"🚨 Quality Flag Created: {flag_data['issue_type']} (Severity: {flag_data['severity']}) in {current_stage}")
+        
+    except Exception as e:
+        print(f"❌ Background quality check failed: {e}")
+        import traceback
+        traceback.print_exc()
+        # Don't crash on judge errors - just log
+
+@router.post("/conversations", response_model=ConversationResponse)
+def create_conversation(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Create a new conversation for authenticated user"""
+    title = f"New Conversation - {datetime.now().strftime('%b %d')}"
+    
+    conversation = Conversation(
+        user_id=user.id,
+        title=title
+    )
+    db.add(conversation)
+    db.commit()
+    db.refresh(conversation)
+    return conversation
+
+@router.get("/conversations", response_model=List[ConversationResponse])
+def get_conversations(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all conversations for the authenticated user"""
+    conversations = db.query(Conversation)\
+        .filter(Conversation.user_id == user.id)\
+        .order_by(Conversation.created_at.desc())\
+        .all()
+    return conversations
+
+@router.get("/conversations/{conversation_id}", response_model=ConversationResponse)
+def get_conversation(
+    conversation_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get a conversation with ownership verification"""
+    conv = db.query(Conversation).filter(
+        Conversation.id == conversation_id,
+        Conversation.user_id == user.id
+    ).first()
+    
+    if not conv:
+        raise HTTPException(status_code=403, detail="Conversation not found or unauthorized")
+    return conv
+
+@router.get("/conversations/{conversation_id}/insights")
+def get_conversation_insights(
+    conversation_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get accumulated cognitive data (insights) for a conversation.
+    
+    Returns structured data including:
+    - Topic (S1)
+    - Event details (S2)
+    - Emotions (S3)
+    - Thought (S4)
+    - Action (S5)
+    - Gap analysis (S6)
+    - Pattern (S7)
+    - Being desire (S8)
+    - KaMaZ forces (S9)
+    - Commitment (S10)
+    """
+    # Verify conversation ownership
+    conv = db.query(Conversation).filter(
+        Conversation.id == conversation_id,
+        Conversation.user_id == user.id
+    ).first()
+    
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    
+    # Get BSD session state
+    bsd_state = db.query(BsdSessionState).filter(
+        BsdSessionState.conversation_id == conversation_id
+    ).first()
+    
+    if not bsd_state:
+        # No BSD state yet (conversation just started)
+        return {
+            "current_stage": conv.current_phase or "S0",
+            "cognitive_data": {},
+            "metrics": {
+                "loop_count_in_current_stage": 0,
+                "shehiya_depth_score": 0.0
+            }
+        }
+    
+    return {
+        "current_stage": bsd_state.current_stage,
+        "cognitive_data": bsd_state.cognitive_data or {},
+        "metrics": bsd_state.metrics or {},
+        "updated_at": bsd_state.updated_at.isoformat() if bsd_state.updated_at else None
+    }
+
+
+@router.delete("/conversations/{conversation_id}")
+def delete_conversation(
+    conversation_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete a conversation and all associated data"""
+    conv = db.query(Conversation).filter(
+        Conversation.id == conversation_id,
+        Conversation.user_id == user.id
+    ).first()
+
+    if not conv:
+        raise HTTPException(status_code=403, detail="Conversation not found or unauthorized")
+
+    # Remove all related data to avoid FK constraint issues
+    db.query(ConversationFlag).filter(ConversationFlag.conversation_id == conversation_id).delete()
+    db.query(BsdAuditLog).filter(BsdAuditLog.conversation_id == conversation_id).delete()
+    db.query(BsdSessionState).filter(BsdSessionState.conversation_id == conversation_id).delete()
+
+    db.delete(conv)
+    db.commit()
+    return {"status": "deleted"}
+
+@router.post("/conversations/{conversation_id}/messages")
+async def send_message(
+    conversation_id: int,
+    message: MessageCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    background_tasks: BackgroundTasks = BackgroundTasks()
+):
+    """Send message with auto-title generation on first message"""
+    
+    # Get conversation and verify ownership
+    conv = db.query(Conversation).filter(
+        Conversation.id == conversation_id,
+        Conversation.user_id == user.id
+    ).first()
+    
+    if not conv:
+        raise HTTPException(status_code=403, detail="Conversation not found or unauthorized")
+    
+    # Save user message
+    user_msg = Message(
+        conversation_id=conversation_id,
+        role="user",
+        content=message.content
+    )
+    db.add(user_msg)
+    db.commit()
+    
+    # Check if this is the FOURTH user message and generate title
+    # (We wait for more context to generate a more accurate title)
+    user_message_count = db.query(Message)\
+        .filter(Message.conversation_id == conversation_id, Message.role == "user")\
+        .count()
+    
+    if user_message_count == 4 and conv.title == "New Conversation":  # Fourth user message (enough context)
+        # Get all user messages for better context
+        user_messages = db.query(Message)\
+            .filter(Message.conversation_id == conversation_id, Message.role == "user")\
+            .order_by(Message.timestamp)\
+            .all()
+        
+        # Combine user messages for title generation (with context)
+        context = " | ".join([msg.content[:100] for msg in user_messages if msg.content])
+        
+        if context:
+            # Generate smart title using OpenAI with more context
+            conv.title = generate_smart_title(context, message.language or "he")
+            db.commit()
+            print(f"✨ Auto-generated title: {conv.title}")
+    
+    # Cache values BEFORE async operations (avoid DetachedInstanceError)
+    current_phase_cache = conv.current_phase
+    user_msg_timestamp = str(user_msg.timestamp)
+    user_display_name_cache = user.display_name  # Cache user profile data
+    user_gender_cache = user.gender
+    # Cache last 10 messages for quality check (must happen before async generator)
+    history_cache = [
+        {"role": msg.role, "content": msg.content}
+        for msg in conv.messages[-10:]
+    ]
+    
+    # Stream response
+    async def response_generator():
+        nonlocal current_phase_cache  # Access the outer variable
+        full_response = ""
+        bsd_metadata: Dict = {}
+        
+        try:
+            # Auto-detect language from message content (more reliable than frontend i18n)
+            def detect_language(text: str) -> str:
+                """Detect if message is Hebrew or English based on character content"""
+                import re
+                hebrew_chars = re.findall(r'[\u0590-\u05FF]', text)
+                english_chars = re.findall(r'[a-zA-Z]', text)
+                
+                # If more Hebrew than English, it's Hebrew
+                if len(hebrew_chars) > len(english_chars):
+                    return "he"
+                # If more English than Hebrew, it's English
+                elif len(english_chars) > len(hebrew_chars):
+                    return "en"
+                # Default to Hebrew (most common)
+                else:
+                    return message.language or "he"
+            
+            detected_language = detect_language(message.content)
+            
+            coach_text, bsd_metadata = await bsd_engine.run_turn(
+                db=db,
+                conversation_id=conversation_id,
+                user_message=message.content,
+                language=detected_language,
+                user_name=user_display_name_cache,
+                user_gender=user_gender_cache,
+            )
+
+            # Update display phase (NOT the source of truth; BSD state is in bsd_session_states)
+            old_phase = current_phase_cache
+            new_phase = bsd_metadata.get("bsd_stage") or current_phase_cache
+            conv.current_phase = new_phase
+            current_phase_cache = new_phase  # Update cache
+            
+            if old_phase != new_phase:
+                if not conv.phase_history:
+                    conv.phase_history = []
+                conv.phase_history.append(
+                    {"from": old_phase, "to": new_phase, "timestamp": user_msg_timestamp}
+                )
+                db.commit()
+
+            # Stream in small chunks to keep the existing frontend streaming UX
+            chunk_size = 80
+            for i in range(0, len(coach_text), chunk_size):
+                chunk = coach_text[i : i + chunk_size]
+                full_response += chunk
+                yield f"data: {json.dumps({'content': chunk})}\n\n"
+            
+            # Save assistant message with BSD metadata
+            assistant_msg = Message(
+                conversation_id=conversation_id,
+                role="assistant",
+                content=full_response,
+                meta={
+                    "bsd": bsd_metadata,
+                    "phase_at_response": current_phase_cache,
+                }
+            )
+            db.add(assistant_msg)
+            db.commit()
+            
+            # Send completion with phase info
+            final_metadata = {
+                'done': True, 
+                'message_id': assistant_msg.id,
+                'current_phase': current_phase_cache,
+                'phase_changed': bool(bsd_metadata.get("phase_changed", False)),
+            }
+            
+            # Optional: pass tool_call through if/when BSD core emits it
+            if bsd_metadata and "tool_call" in bsd_metadata:
+                final_metadata["tool_call"] = bsd_metadata["tool_call"]
+            
+            yield f"data: {json.dumps(final_metadata)}\n\n"
+            
+            # Trigger async quality check (zero latency impact on user)
+            background_tasks.add_task(
+                run_quality_check,
+                conversation_id=conversation_id,
+                message_id=assistant_msg.id,
+                history=history_cache,
+                current_stage=current_phase_cache,
+                latest_response=full_response,
+                db_session=db
+            )
+            
+        except Exception as e:
+            # Handle any unexpected errors during streaming
+            print(f"❌ ERROR in response_generator: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            # Send error message to frontend
+            error_msg = "מצטער, היתה שגיאה. אנא נסה שוב." if (message.language or "he") == "he" else "Sorry, there was an error. Please try again."
+            yield f"data: {json.dumps({'content': error_msg})}\n\n"
+            
+            # CRITICAL: Send done signal even on error so loading dots disappear
+            yield f"data: {json.dumps({
+                'done': True, 
+                'error': True,
+                'current_phase': current_phase_cache
+            })}\n\n"
+    
+    return StreamingResponse(response_generator(), media_type="text/event-stream")
+
