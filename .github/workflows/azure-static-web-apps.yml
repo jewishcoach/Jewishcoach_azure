@@ -32,6 +32,7 @@ jobs:
           skip_app_build: false
         env:
           VITE_API_URL: https://jewishcoach-api.azurewebsites.net/api
+          VITE_CLERK_PUBLISHABLE_KEY: pk_test_ZnJlZS1tZWVya2F0LTkyLmNsZXJrLmFjY291bnRzLmRldiQ
           CI: false
 
   close_pull_request_job:
