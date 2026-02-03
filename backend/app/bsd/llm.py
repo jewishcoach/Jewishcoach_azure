@@ -2,10 +2,8 @@ from __future__ import annotations
 
 import os
 from functools import lru_cache
-from typing import Union
 
 from langchain_openai import AzureChatOpenAI
-from langchain_google_genai import ChatGoogleGenerativeAI
 
 """
 LLM configuration for BSD coaching system.
@@ -90,80 +88,29 @@ def get_azure_chat_llm(*, purpose: str) -> AzureChatOpenAI:
     )
 
 
-@lru_cache(maxsize=8)
-def get_gemini_chat_llm(*, purpose: str) -> ChatGoogleGenerativeAI:
-    """
-    Get a Google Gemini LLM client configured for a specific purpose.
-    
-    Args:
-        purpose: One of "reasoner", "talker", "judge"
-    
-    Returns:
-        Configured ChatGoogleGenerativeAI instance
-    
-    Raises:
-        RuntimeError: If Gemini API key is missing
-    
-    Environment Variables:
-        Required:
-        - GOOGLE_API_KEY: Google AI API key
-        
-        Optional:
-        - GEMINI_MODEL: Model name (default: gemini-1.5-pro)
-    
-    Temperature Settings:
-        - reasoner: 0.1 (deterministic, logical)
-        - talker: 0.35 (creative, empathetic, varied)
-        - judge: 0.15 (consistent evaluation)
-    """
-    # Load configuration
-    api_key = os.getenv("GOOGLE_API_KEY")
-    model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-    
-    # Validate required config
-    if not api_key:
-        raise RuntimeError(
-            "Missing Google AI configuration. "
-            "Set GOOGLE_API_KEY environment variable."
-        )
-    
-    # Get temperature for this purpose
-    temperature = TEMPERATURE_MAP.get(purpose.lower(), 0.1)
-    
-    return ChatGoogleGenerativeAI(
-        model=model,
-        google_api_key=api_key,
-        temperature=temperature,
-        request_timeout=30,
-        max_retries=2,
-    )
+# Google Gemini support removed - Azure OpenAI only
+# @lru_cache(maxsize=8)
+# def get_gemini_chat_llm(*, purpose: str) -> ChatGoogleGenerativeAI:
+#     ...
 
 
-def get_chat_llm(*, purpose: str) -> Union[AzureChatOpenAI, ChatGoogleGenerativeAI]:
+def get_chat_llm(*, purpose: str) -> AzureChatOpenAI:
     """
     Get an LLM client configured for a specific purpose.
     
-    Automatically selects between Azure OpenAI and Gemini based on:
-    - LLM_PROVIDER environment variable ("azure" or "gemini")
-    - Defaults to Azure if not specified
+    Uses Azure OpenAI only.
     
     Args:
         purpose: One of "reasoner", "talker", "judge"
     
     Returns:
-        Configured LLM instance (Azure or Gemini)
+        Configured Azure OpenAI LLM instance
     
     Examples:
         >>> llm = get_chat_llm(purpose="talker")
-        >>> # Returns Azure or Gemini based on LLM_PROVIDER
     """
-    provider = os.getenv("LLM_PROVIDER", "azure").lower()
-    
-    if provider == "gemini":
-        return get_gemini_chat_llm(purpose=purpose)
-    else:
-        return get_azure_chat_llm(purpose=purpose)
+    return get_azure_chat_llm(purpose=purpose)
 
 
 # Public API
-__all__ = ["get_azure_chat_llm", "get_gemini_chat_llm", "get_chat_llm"]
+__all__ = ["get_azure_chat_llm", "get_chat_llm"]
