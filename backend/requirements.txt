@@ -96,3 +96,4 @@ watchfiles==1.1.1
 websockets==16.0
 xxhash==3.6.0
 zstandard==0.25.0
+gunicorn==23.0.0
