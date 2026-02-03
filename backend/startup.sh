@@ -1,25 +1,21 @@
 #!/bin/bash
 # Azure App Service startup script
 
-set -e  # Exit on error
-
 echo "🚀 Starting Jewish Coach Backend..."
-echo "📍 Current directory: $(pwd)"
-echo "📂 Files: $(ls -la)"
+cd /home/site/wwwroot || exit 1
 
 # Install dependencies
 echo "📦 Installing Python dependencies..."
-python -m pip install --upgrade pip --quiet
-pip install -r requirements.txt --quiet
+python -m pip install --upgrade pip --no-cache-dir
+python -m pip install -r requirements.txt --no-cache-dir
 
-# Set PYTHONPATH
+# Set PYTHONPATH explicitly
 export PYTHONPATH=/home/site/wwwroot:$PYTHONPATH
-echo "✅ PYTHONPATH set to: $PYTHONPATH"
 
-# Create database if needed
+# Create database if needed  
 echo "🗄️ Initializing database..."
-python -c "from app.database import engine, Base; Base.metadata.create_all(bind=engine)" 2>/dev/null || echo "Database init skipped or failed (will retry on first request)"
+python -c "from app.database import engine, Base; Base.metadata.create_all(bind=engine)" 2>/dev/null || true
 
 # Start the application
-echo "✅ Starting FastAPI with Uvicorn on port 8000..."
-exec gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app --bind=0.0.0.0:8000 --timeout=120 --access-logfile=- --error-logfile=-
+echo "✅ Starting FastAPI with Uvicorn..."
+exec python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
