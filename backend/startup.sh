@@ -7,7 +7,15 @@ cd /home/site/wwwroot || exit 1
 # Install dependencies
 echo "📦 Installing Python dependencies..."
 python -m pip install --upgrade pip --no-cache-dir
-python -m pip install -r requirements.txt --no-cache-dir
+
+# Use requirements-azure.txt if it exists, otherwise use requirements.txt
+if [ -f requirements-azure.txt ]; then
+    echo "📦 Installing from requirements-azure.txt..."
+    python -m pip install -r requirements-azure.txt --no-cache-dir
+else
+    echo "📦 Installing from requirements.txt..."
+    python -m pip install -r requirements.txt --no-cache-dir
+fi
 
 # Set PYTHONPATH explicitly
 export PYTHONPATH=/home/site/wwwroot:$PYTHONPATH
