@@ -77,6 +77,8 @@ export const ChatInterface = ({ displayName }: ChatInterfaceProps) => {
       if (!token) {
         console.error('No auth token available');
         isSendingRef.current = false;
+        // Re-focus input for user to try again
+        inputRef.current?.focus();
         return;
       }
       
@@ -86,8 +88,13 @@ export const ChatInterface = ({ displayName }: ChatInterfaceProps) => {
       // Refresh conversations to show updated title
       const convs = await apiClient.getConversations();
       setConversations(convs);
+      
+      // Re-focus input after sending message
+      inputRef.current?.focus();
     } catch (error) {
       console.error('Error sending message:', error);
+      // Re-focus input even on error
+      inputRef.current?.focus();
     } finally {
       // Reset sending flag after a small delay
       setTimeout(() => {

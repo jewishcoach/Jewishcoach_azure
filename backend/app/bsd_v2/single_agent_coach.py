@@ -567,19 +567,50 @@ def count_turns_in_step(state: Dict[str, Any], step: str) -> int:
 
 def check_repeated_question(coach_message: str, history: list, language: str = "he") -> Optional[str]:
     """
-    Check if coach is repeating a question that was already answered.
+    Check if coach is repeating a question that was already answered or sent recently.
     
     Returns:
         Correction message if repeating, None otherwise
     """
+    # Check if coach is sending the EXACT same message again
+    recent_coach_messages = [
+        msg.get("content", "") for msg in history[-4:]  # Last 4 messages
+        if msg.get("sender") in ["coach", "assistant"]
+    ]
+    
+    # If this exact message was sent in the last 2 coach messages, it's a loop
+    if coach_message in recent_coach_messages[-2:]:
+        logger.warning(f"[Safety Net] Detected EXACT repeated message: '{coach_message[:50]}...'")
+        if language == "he":
+            return "אני מבין. בוא נמשיך הלאה - מה הרגשת באותו רגע?"
+        else:
+            return "I understand. Let's move forward - what did you feel in that moment?"
+    
+    # Check for similar generic questions
     if language == "he":
+        generic_patterns = [
+            "ספר לי עוד על הרגע הזה",
+            "מה בדיוק קרה",
+            "ספר לי יותר"
+        ]
+        
+        # Count how many times similar generic questions appear
+        generic_count = sum(
+            1 for msg_content in recent_coach_messages
+            if any(pattern in msg_content for pattern in generic_patterns)
+        )
+        
+        if generic_count >= 2:
+            logger.warning(f"[Safety Net] Detected {generic_count} generic questions in recent history")
+            return "אני מבין. עכשיו אני רוצה להתעמק איתך ברגשות. מה הרגשת באותו רגע?"
+        
         # Check for location questions
         if "איפה" in coach_message and "הייתם" in coach_message:
             # Check if user already mentioned location
             for msg in history:
                 if msg.get("sender") == "user":
                     content = msg.get("content", "").lower()
-                    if "בחדר" in content or "בבית" in content or "במקום" in content or "בסלון" in content:
+                    if "בחדר" in content or "בבית" in content or "במקום" in content or "בסלון" in content or "באוטו" in content or "ברכב" in content:
                         logger.warning(f"[Safety Net] Detected repeated 'איפה?' question")
                         return "מצטער על החזרה. עכשיו אני רוצה להתעמק איתך ברגשות שהיו לך באותו רגע. מה הרגשת?"
         
@@ -616,10 +647,27 @@ def validate_stage_transition(
         s2_turns = count_turns_in_step(state, "S2")
         if s2_turns < 2:
             logger.warning(f"[Safety Net] Blocked S2→S3: only {s2_turns} turns in S2")
+            # Ask for specific NEW details - not the same generic question
             if language == "he":
-                return False, "ספר לי עוד על הרגע הזה. מה בדיוק קרה?"
+                # Vary the question to avoid repetition
+                followup_questions = [
+                    "מי עוד היה שם באותו רגע?",
+                    "מה קרה בדיוק אחרי זה?",
+                    "תאר לי את הרגע הספציפי שבו זה התחיל.",
+                    "מה עשית ברגע הזה?"
+                ]
+                # Pick based on turn count to vary
+                question = followup_questions[min(s2_turns, len(followup_questions) - 1)]
+                return False, question
             else:
-                return False, "Tell me more about that moment. What exactly happened?"
+                followup_questions = [
+                    "Who else was there in that moment?",
+                    "What happened right after that?",
+                    "Describe the specific moment when it started.",
+                    "What did you do in that moment?"
+                ]
+                question = followup_questions[min(s2_turns, len(followup_questions) - 1)]
+                return False, question
     
     # S3→S4: Need in-depth emotions (at least 6 turns in S3)
     if old_step == "S3" and new_step == "S4":
@@ -755,31 +803,63 @@ async def handle_conversation(
     logger.info(f"[BSD V2] Current step: {state['current_step']}, saturation: {state['saturation_score']:.2f}")
     logger.info(f"[BSD V2] Message count in state: {len(state.get('messages', []))}")
     
-    # Check if user is frustrated (saying "אמרתי כבר")
+    # Check if user is frustrated or indicating they already answered
     user_frustrated = False
     if language == "he":
-        frustration_keywords = ["אמרתי כבר", "אמרתי לך", "כבר אמרתי", "חזרת על עצמך"]
+        frustration_keywords = [
+            "אמרתי כבר", "אמרתי לך", "כבר אמרתי", "חזרת על עצמך",
+            "סיפרתי", "כבר סיפרתי", "עניתי", "עניתי לך", "אולי נמשיך"
+        ]
         user_frustrated = any(keyword in user_message for keyword in frustration_keywords)
     else:
-        frustration_keywords = ["i already said", "i told you", "already told you", "you're repeating"]
+        frustration_keywords = [
+            "i already said", "i told you", "already told you", "you're repeating",
+            "i answered", "already answered", "let's move on"
+        ]
         user_frustrated = any(keyword in user_message.lower() for keyword in frustration_keywords)
     
-    if user_frustrated and state['current_step'] == 'S2':
-        logger.warning(f"[Safety Net] User is frustrated - forcing move to S3")
-        # User is frustrated - apologize and move to S3
-        if language == "he":
-            apology_message = "מצטער מאוד על החזרה! אני רואה שיש לנו תמונה מלאה של הסיטואציה. עכשיו אני רוצה להתעמק איתך ברגשות שהיו לך באותו רגע. מה הרגשת?"
-        else:
-            apology_message = "I'm very sorry for repeating! I see we have a complete picture of the situation. Now I want to go deeper into the emotions you had in that moment. What did you feel?"
+    if user_frustrated:
+        logger.warning(f"[Safety Net] User is frustrated ('{user_message}') - forcing progression")
+        current_step = state['current_step']
         
-        # Add user message
+        # Add user message first
         state = add_message(state, "user", user_message)
         
-        # Add coach apology and move to S3
+        # Decide where to go based on current step
+        if current_step in ['S0', 'S1']:
+            # Early stage - ask for specific situation
+            if language == "he":
+                apology_message = "מצטער על החזרה! ספר לי על רגע אחד ספציפי שבו זה קרה - מתי זה היה?"
+            else:
+                apology_message = "Sorry for repeating! Tell me about one specific moment when this happened - when was it?"
+            next_step = "S2"
+        elif current_step == 'S2':
+            # In event details - move to emotions
+            if language == "he":
+                apology_message = "מצטער מאוד על החזרה! אני רואה שיש לנו תמונה של הסיטואציה. עכשיו אני רוצה להתעמק איתך ברגשות. מה הרגשת באותו רגע?"
+            else:
+                apology_message = "I'm very sorry for repeating! I see we have a picture of the situation. Now I want to go deeper into the emotions. What did you feel in that moment?"
+            next_step = "S3"
+        elif current_step == 'S3':
+            # In emotions - move to thoughts
+            if language == "he":
+                apology_message = "אני מבין. עכשיו אני רוצה לשמוע מה עבר לך בראש באותו רגע. מה אמרת לעצמך?"
+            else:
+                apology_message = "I understand. Now I want to hear what went through your mind in that moment. What did you tell yourself?"
+            next_step = "S4"
+        else:
+            # Later stages - just acknowledge and continue
+            if language == "he":
+                apology_message = "מבין. בוא נמשיך הלאה."
+            else:
+                apology_message = "I understand. Let's continue."
+            next_step = current_step
+        
+        # Add coach apology and progress
         internal_state = {
-            "current_step": "S3",
+            "current_step": next_step,
             "saturation_score": 0.3,
-            "reflection": "User frustrated with repeated questions - moving to S3"
+            "reflection": f"User frustrated with repeated questions - moving from {current_step} to {next_step}"
         }
         state = add_message(state, "coach", apology_message, internal_state)
         
