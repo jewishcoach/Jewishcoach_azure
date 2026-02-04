@@ -68,9 +68,75 @@ app.include_router(calendar.router)
 
 @app.get("/")
 def root():
-    return {"message": "Jewish Coaching API", "status": "running"}
+    return {
+        "message": "Jewish Coaching API",
+        "status": "running",
+        "version": "2.0.0",
+        "bsd_version": "v2"
+    }
 
 @app.get("/health")
 def health_check():
-    return {"status": "healthy"}
+    """
+    Health check endpoint for Azure App Service.
+    Returns detailed status of all critical services.
+    """
+    import sys
+    from datetime import datetime
+    
+    health_status = {
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat(),
+        "python_version": sys.version,
+        "checks": {}
+    }
+    
+    # Check database connection
+    try:
+        from .database import engine
+        with engine.connect() as conn:
+            conn.execute("SELECT 1")
+        health_status["checks"]["database"] = "ok"
+    except Exception as e:
+        health_status["checks"]["database"] = f"error: {str(e)}"
+        health_status["status"] = "degraded"
+    
+    # Check Azure OpenAI configuration
+    azure_openai_configured = bool(
+        os.getenv("AZURE_OPENAI_API_KEY") and 
+        os.getenv("AZURE_OPENAI_ENDPOINT")
+    )
+    health_status["checks"]["azure_openai"] = "ok" if azure_openai_configured else "not_configured"
+    
+    # Check Azure Search configuration
+    azure_search_configured = bool(
+        os.getenv("AZURE_SEARCH_ENDPOINT") and 
+        os.getenv("AZURE_SEARCH_KEY")
+    )
+    health_status["checks"]["azure_search"] = "ok" if azure_search_configured else "not_configured"
+    
+    return health_status
+
+@app.get("/api/status")
+def api_status():
+    """
+    Detailed API status endpoint.
+    """
+    return {
+        "api": "Jewish Coaching API",
+        "version": "2.0.0",
+        "bsd_version": "v2 (Single-Agent Conversational Coach)",
+        "features": {
+            "chat_v1": "available",
+            "chat_v2": "available (default)",
+            "speech": "available",
+            "rag": "available",
+            "calendar": "available"
+        },
+        "endpoints": {
+            "health": "/health",
+            "chat_v2": "/api/chat/v2/message",
+            "speech_token": "/api/speech/token"
+        }
+    }
 
