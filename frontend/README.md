@@ -1,6 +1,6 @@
 # React + TypeScript + Vite
 
-Jewish Coaching Application - Frontend
+Jewish Coaching Application - Frontend (BSD v2)
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
