@@ -24,15 +24,23 @@ jobs:
       with:
         python-version: ${{ env.PYTHON_VERSION }}
     
-    - name: Create deployment package
+    - name: Install dependencies in project
       run: |
         cd backend
-        # Create a clean deployment zip with all source files
-        # Oryx will build and install dependencies on Azure
+        python -m pip install --upgrade pip
+        python -m venv antenv
+        source antenv/bin/activate
+        pip install -r requirements.txt
+        deactivate
+    
+    - name: Create deployment package with venv
+      run: |
+        cd backend
+        # Include the virtual environment in the ZIP
+        # This way Azure doesn't need to build
         zip -r ../backend-deploy.zip . \
-          -x "venv/*" \
           -x "*.pyc" \
-          -x "__pycache__/*" \
+          -x "*/__pycache__/*" \
           -x "tests/*" \
           -x "*.db" \
           -x ".env"
