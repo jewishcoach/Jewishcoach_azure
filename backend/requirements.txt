@@ -35,3 +35,6 @@ requests==2.31.0  # For Azure Speech Service
 email-validator==2.1.0
 langgraph==0.2.45
 ics==0.7.2  # For calendar ICS file generation
+google-auth==2.27.0  # Google OAuth
+google-auth-oauthlib==1.2.0  # Google OAuth helpers
+google-api-python-client==2.116.0  # Google Calendar API
