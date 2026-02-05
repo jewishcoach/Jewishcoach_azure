@@ -61,7 +61,7 @@ SYSTEM_PROMPT_HE = """# זהות ותפקיד
    - **S4:** 0.5 (מחשבה כללית) → 0.8 (משפט חלקי) → 1.0 (משפט מילולי מלא)
    - **S5:** 0.4 (מעשה בפועל) → 0.7 (מעשה + רצוי) → 1.0 (מעשה + רצוי + סיכום מצוי)
    - **S6:** 0.5 (שם לפער) → 1.0 (שם + ציון)
-   - **S7:** 0.5 (זיהוי דפוס) → 1.0 (פירוט הדפוס)
+   - **S7:** 0.3 (דוגמה 1) → 0.5 (דוגמה 2) → 0.7 (סיכום מפורש) → 1.0 (אישור מהמשתמש)
    - **S8:** 0.25 (1 רווח) → 0.5 (2 רווחים) → 0.75 (+ 1 הפסד) → 1.0 (2 רווחים + 2 הפסדים)
    - **S9:** 0.25 (1 ערך) → 0.5 (2 ערכים) → 0.75 (+ 1 יכולת) → 1.0 (2 ערכים + 2 יכולות)
    - **S10:** 0.5 (בחירה כללית) → 1.0 (בחירה ברורה)
@@ -136,7 +136,12 @@ SYSTEM_PROMPT_HE = """# זהות ותפקיד
    
    **S7→S8 Gate:**
    אל תעבור ל-S8 אלא אם:
-   ✅ זוהה דפוס חוזר (או שהמשתמש אמר שאין)
+   ✅ יש לפחות 2 דוגמאות של מצבים שונים (או אישור בהחלטיות אחרי דוגמה אחת)
+   ✅ **המאמן סיכם את הדפוס במילים ברורות**
+   ✅ המשתמש **אישר בהחלטיות**: "כן, זה חוזר" / "נכון, אני מגיב כך"
+   
+   🚨 אם המשתמש אומר "אני לא יודע מה הדפוס" → **הישאר ב-S7!** סכם את הדפוס במפורש.
+   
    אם לא - הישאר ב-S7!
    
    **S8→S9 Gate:**
@@ -349,14 +354,64 @@ SYSTEM_PROMPT_HE = """# זהות ותפקיד
   
   📊 Gate Check: יש שם + ציון → עבור ל-S7
 
-- **S7 (דפוס - חזרה!):**
-  🎯 **משימה:** לזהות דפוס חוזר.
+- **S7 (דפוס - הרחבה והעמקה!):**
+  🎯 **משימה:** לאפשר ללקוח לזהות **בעצמו** דפוס שחוזר על עצמו.
   
-  "האם המצב הזה מוכר לך? האם זה קורה גם במקומות אחרים בחיים שלך?"
+  **⚠️ שהייה חשובה!** זה לא רק "איפה עוד?" אלא תהליך של **זיהוי עצמי**.
   
-  אם כן: "איפה עוד זה קורה?"
+  **הגדרת דפוס:** פעולה החוזרת על עצמה בקביעות, כ**תגובה** לאירועים חיצוניים **משתנים**.
+  - המציאות משתנה ← אבל התגובה **זהה**
+  - אין קשר סיבתי בין המצבים ← אבל התגובה **חוזרת**
   
-  📊 Gate Check: זיהוי דפוס → עבור ל-S8
+  **🎯 שאלות מגוונות לשלב S7 (לא רק "איפה עוד?"):**
+  
+  1. **זיהוי ראשוני:** "האם המצב הזה מוכר לך? האם אתה מזהה את התגובה הזו שלך גם במקומות אחרים?"
+  
+  2. **דוגמה ראשונה:** "איפה עוד זה קורה?"
+     → המתן לתשובה מפורטת
+  
+  3. **דוגמה שנייה:** "מאיפה עוד אתה מכיר את התגובה הזו שלך?"
+     → המתן לתשובה מפורטת
+  
+  4. **בדיקת תלות:** "האם זה קורה רק עם [אדם/מצב מסוים]? או שזה קורה במצבים שונים?"
+  
+  5. **בדיקת נסיבות:** "האם זה תלוי בנסיבות מסוימות, או שאתה מזהה שזה קורה בכל מיני מצבים?"
+  
+  6. **דוגמה שלישית:** "תן לי עוד דוגמה - איפה עוד אתה מגיב ככה?"
+  
+  7. **זיהוי הדפוס:** "מה משותף לכל המצבים האלה? מה אתה רואה שחוזר?"
+  
+  8. **אימות:** "אז אתה מזהה שהמציאות משתנה, אבל התגובה שלך חוזרת על עצמה?"
+  
+  **🛑 סיכום זיהוי הדפוס (חובה!):**
+  
+  **אחרי איסוף דוגמאות, המאמן חייב לסכם את הדפוס במפורש:**
+  
+  "אז אם אני מבין נכון, הדפוס הוא: 
+   [תאר את התגובה החוזרת בדיוק] - 
+   זה קורה כש[דוגמה 1], וגם כש[דוגמה 2], [וגם כש[דוגמה 3]].
+   המצבים שונים, אבל **אתה מגיב באותה דרך**.
+   האם אתה מזהה את הדפוס הזה?"
+  
+  **חכה לאישור המשתמש:**
+  המשתמש צריך לזהות ולאשר בהחלטיות:
+  - "נכון, אני באמת מגיב כך"
+  - "כן, זה חוזר על עצמו"
+  - "זה קורה שוב ושוב"
+  
+  **🚨 אם המשתמש אומר "אני לא יודע מה הדפוס":**
+  → זה אומר שהמאמן **לא סיכם** את הדפוס בצורה ברורה!
+  → **חזור וסכם במפורש:** "הדפוס הוא שאתה [תאר את התגובה]. זה קורה ב[מצבים שונים]. האם אתה מזהה את זה?"
+  
+  📊 Gate Check: 
+  ✅ יש **לפחות 2-3 דוגמאות** של מצבים שונים (אלא אם המשתמש מאשר בהחלטיות לפני כן!)
+  ✅ **המאמן סיכם את הדפוס במילים ברורות**
+  ✅ המשתמש **זיהה ואישר בהחלטיות**: "כן, זה באמת הדפוס שלי"
+  
+  **⚠️ חשוב:** אם המשתמש **מאשר בהחלטיות** אחרי דוגמה אחת או שתיים - זה מספיק!
+  לא חייבים 3 דוגמאות אם יש אישור ברור.
+  
+  רק אחרי אישור מפורש → עבור ל-S8
 
 - **S8 (עמדה - רווח והפסד!):**
   🎯 **משימה:** לזהות מה המשתמש **מרוויח** ומה **מפסיד** מהעמדה/דפוס הנוכחי.
@@ -594,7 +649,49 @@ def count_turns_in_step(state: Dict[str, Any], step: str) -> int:
     return count
 
 
-def check_repeated_question(coach_message: str, history: list, language: str = "he") -> Optional[str]:
+def get_next_step_question(current_step: str, language: str = "he") -> str:
+    """
+    Get appropriate next question based on current step (for loop prevention).
+    
+    Instead of always jumping to S4, this returns the right question for progression.
+    """
+    if language == "he":
+        step_questions = {
+            "S0": "על מה תרצה להתאמן?",
+            "S1": "על מה תרצה להתאמן?",
+            "S2": "ספר לי על רגע אחד ספציפי שבו זה קרה - מתי זה היה?",
+            "S3": "אני מבין. עכשיו אני רוצה לשמוע - מה עבר לך בראש באותו רגע?",
+            "S4": "מה עשית באותו רגע?",
+            "S5": "איך היית רוצה לפעול באותו רגע?",
+            "S6": "איך תקרא לפער הזה? תן לו שם משלך.",
+            "S7": "איפה עוד זה קורה?",
+            "S8": "מה אתה מרוויח מהדפוס הזה?",
+            "S9": "מה חשוב לך בחיים? איזה ערך?",
+            "S10": "איזו עמדה חדשה אתה בוחר?",
+            "S11": "איפה הבחירה הזו מובילה אותך?",
+            "S12": "מה תעשה בפעם הבאה?"
+        }
+    else:
+        step_questions = {
+            "S0": "What would you like to work on?",
+            "S1": "What would you like to work on?",
+            "S2": "Tell me about one specific moment when this happened - when was it?",
+            "S3": "I understand. Now I want to hear - what went through your mind in that moment?",
+            "S4": "What did you do in that moment?",
+            "S5": "How would you have wanted to act in that moment?",
+            "S6": "What would you call this gap? Give it a name.",
+            "S7": "Where else does this happen?",
+            "S8": "What do you gain from this pattern?",
+            "S9": "What's important to you in life? What value?",
+            "S10": "What new stance do you choose?",
+            "S11": "Where does this choice lead you?",
+            "S12": "What will you do next time?"
+        }
+    
+    return step_questions.get(current_step, "בוא נמשיך הלאה." if language == "he" else "Let's continue.")
+
+
+def check_repeated_question(coach_message: str, history: list, current_step: str, language: str = "he") -> Optional[str]:
     """
     Check if coach is repeating a question that was already answered or sent recently.
     
@@ -640,17 +737,17 @@ def check_repeated_question(coach_message: str, history: list, language: str = "
         # If user said done + coach asking "what else?" again = LOOP!
         if user_said_done and asking_what_else:
             logger.warning(f"[Safety Net] User said done, but coach asking 'מה עוד?' - BLOCKING")
-            return "אני מבין. בוא נמשיך הלאה. מה עבר לך בראש באותו רגע?"
+            return get_next_step_question(current_step, language)
         
         # If "מה עוד?" asked 3+ times = LOOP!
         if what_else_count >= 3:
             logger.warning(f"[Safety Net] 'מה עוד?' asked {what_else_count} times - BLOCKING")
-            return "אני מבין שיש לנו תמונה טובה של הרגשות. עכשיו אני רוצה לשמוע - מה עבר לך בראש באותו רגע?"
+            return get_next_step_question(current_step, language)
         
         # === Check if coach is sending the EXACT same message again ===
         if coach_message in recent_coach_messages[-2:]:
             logger.warning(f"[Safety Net] Detected EXACT repeated message")
-            return "מצטער על החזרה. בוא נמשיך הלאה - מה עבר לך בראש?"
+            return get_next_step_question(current_step, language)
         
         # === Generic patterns (less critical) ===
         generic_patterns = [
@@ -692,15 +789,15 @@ def check_repeated_question(coach_message: str, history: list, language: str = "
         
         if user_said_done and asking_what_else:
             logger.warning(f"[Safety Net] User said done, but coach asking 'what else?' - BLOCKING")
-            return "I understand. Let's move forward. What went through your mind in that moment?"
+            return get_next_step_question(current_step, language)
         
         if what_else_count >= 3:
             logger.warning(f"[Safety Net] 'What else?' asked {what_else_count} times - BLOCKING")
-            return "I understand we have a good picture of the emotions. Now I want to hear - what went through your mind in that moment?"
+            return get_next_step_question(current_step, language)
         
         if coach_message in recent_coach_messages[-2:]:
             logger.warning(f"[Safety Net] Detected EXACT repeated message")
-            return "Sorry for repeating. Let's move forward - what went through your mind?"
+            return get_next_step_question(current_step, language)
     
     return None
 
@@ -780,6 +877,36 @@ def validate_stage_transition(
                 return False, "מה עוד הרגשת באותו רגע?"
             else:
                 return False, "What else did you feel in that moment?"
+    
+    # S7→S8: Need pattern confirmation
+    if old_step == "S7" and new_step == "S8":
+        # Check if user explicitly said they don't understand the pattern
+        if language == "he":
+            confusion_keywords = ["לא יודע מה הדפוס", "לא מבין מה הדפוס", "מה הדפוס", "איזה דפוס"]
+        else:
+            confusion_keywords = ["don't know the pattern", "what pattern", "which pattern", "what is the pattern"]
+        
+        user_confused = any(
+            keyword in msg for msg in recent_user_messages
+            for keyword in confusion_keywords
+        )
+        
+        if user_confused:
+            logger.warning(f"[Safety Net] Blocked S7→S8: user doesn't understand the pattern yet")
+            if language == "he":
+                # Need to explicitly summarize the pattern
+                return False, "אני מבין. בוא נסכם: הדפוס הוא שאתה מגיב בדרך מסוימת במצבים שונים. מה התגובה שלך שחוזרת? מה משותף בין המצבים שתיארת?"
+            else:
+                return False, "I understand. Let's summarize: the pattern is that you respond in a certain way in different situations. What's your response that repeats? What's common between the situations you described?"
+        
+        # Check if we have at least 2 turns in S7 (to gather examples and confirm)
+        s7_turns = count_turns_in_step(state, "S7")
+        if s7_turns < 2:
+            logger.warning(f"[Safety Net] Blocked S7→S8: only {s7_turns} turns in S7")
+            if language == "he":
+                return False, "איפה עוד אתה מזהה את התגובה הזו שלך?"
+            else:
+                return False, "Where else do you recognize this response of yours?"
     
     # All other transitions: trust the LLM
     return True, None
@@ -929,35 +1056,19 @@ async def handle_conversation(
         # Add user message first
         state = add_message(state, "user", user_message)
         
-        # Decide where to go based on current step
-        if current_step in ['S0', 'S1']:
-            # Early stage - ask for specific situation
-            if language == "he":
-                apology_message = "מצטער על החזרה! ספר לי על רגע אחד ספציפי שבו זה קרה - מתי זה היה?"
-            else:
-                apology_message = "Sorry for repeating! Tell me about one specific moment when this happened - when was it?"
-            next_step = "S2"
-        elif current_step == 'S2':
-            # In event details - move to emotions
-            if language == "he":
-                apology_message = "מצטער מאוד על החזרה! אני רואה שיש לנו תמונה של הסיטואציה. עכשיו אני רוצה להתעמק איתך ברגשות. מה הרגשת באותו רגע?"
-            else:
-                apology_message = "I'm very sorry for repeating! I see we have a picture of the situation. Now I want to go deeper into the emotions. What did you feel in that moment?"
-            next_step = "S3"
-        elif current_step == 'S3':
-            # In emotions - move to thoughts
-            if language == "he":
-                apology_message = "אני מבין. עכשיו אני רוצה לשמוע מה עבר לך בראש באותו רגע. מה אמרת לעצמך?"
-            else:
-                apology_message = "I understand. Now I want to hear what went through your mind in that moment. What did you tell yourself?"
-            next_step = "S4"
+        # Use get_next_step_question for dynamic progression
+        if language == "he":
+            apology_message = f"מצטער על החזרה! {get_next_step_question(current_step, language)}"
         else:
-            # Later stages - just acknowledge and continue
-            if language == "he":
-                apology_message = "מבין. בוא נמשיך הלאה."
-            else:
-                apology_message = "I understand. Let's continue."
-            next_step = current_step
+            apology_message = f"Sorry for repeating! {get_next_step_question(current_step, language)}"
+        
+        # Determine next step based on current stage
+        step_progression = {
+            "S0": "S1", "S1": "S2", "S2": "S3", "S3": "S4",
+            "S4": "S5", "S5": "S6", "S6": "S7", "S7": "S8",
+            "S8": "S9", "S9": "S10", "S10": "S11", "S11": "S12"
+        }
+        next_step = step_progression.get(current_step, current_step)
         
         # Add coach apology and progress
         internal_state = {
@@ -1021,7 +1132,7 @@ async def handle_conversation(
         
         # 5. Safety Net: Check for repeated questions
         history_for_check = get_conversation_history(state, last_n=10)
-        repeated_check = check_repeated_question(coach_message, history_for_check, language)
+        repeated_check = check_repeated_question(coach_message, history_for_check, state['current_step'], language)
         
         if repeated_check:
             logger.warning(f"[Safety Net] Overriding repeated question")
