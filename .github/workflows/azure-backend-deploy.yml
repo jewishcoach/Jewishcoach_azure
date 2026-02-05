@@ -24,21 +24,18 @@ jobs:
       with:
         python-version: ${{ env.PYTHON_VERSION }}
     
-    - name: Install dependencies
-      run: |
-        cd backend
-        python -m pip install --upgrade pip
-        pip install -r requirements-azure.txt
-    
-    - name: Run tests (if any)
-      run: |
-        cd backend
-        # python -m pytest tests/ || echo "No tests yet"
-    
     - name: Create deployment package
       run: |
         cd backend
-        zip -r ../backend-deploy.zip . -x "venv/*" "*.pyc" "__pycache__/*" "tests/*" "*.db"
+        # Create a clean deployment zip with all source files
+        # Oryx will build and install dependencies on Azure
+        zip -r ../backend-deploy.zip . \
+          -x "venv/*" \
+          -x "*.pyc" \
+          -x "__pycache__/*" \
+          -x "tests/*" \
+          -x "*.db" \
+          -x ".env"
     
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v3
