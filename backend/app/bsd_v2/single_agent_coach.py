@@ -572,56 +572,106 @@ def check_repeated_question(coach_message: str, history: list, language: str = "
     Returns:
         Correction message if repeating, None otherwise
     """
-    # Check if coach is sending the EXACT same message again
+    # Get recent messages
     recent_coach_messages = [
-        msg.get("content", "") for msg in history[-4:]  # Last 4 messages
+        msg.get("content", "") for msg in history[-6:]
         if msg.get("sender") in ["coach", "assistant"]
     ]
     
-    # If this exact message was sent in the last 2 coach messages, it's a loop
-    if coach_message in recent_coach_messages[-2:]:
-        logger.warning(f"[Safety Net] Detected EXACT repeated message: '{coach_message[:50]}...'")
-        if language == "he":
-            return "אני מבין. בוא נמשיך הלאה - מה הרגשת באותו רגע?"
-        else:
-            return "I understand. Let's move forward - what did you feel in that moment?"
+    recent_user_messages = [
+        msg.get("content", "").lower() for msg in history[-4:]
+        if msg.get("sender") == "user"
+    ]
     
-    # Check for similar generic questions
     if language == "he":
+        # === CRITICAL: Check if user said they're done ===
+        completion_keywords = [
+            "מסכם", "זה הכל", "כל הרגשות", "זה כל הרגשות",
+            "די", "די לי", "כבר כתבתי", "אמרתי את כל",
+            "זה מספיק", "סיימתי", "זה מה שיש"
+        ]
+        
+        user_said_done = any(
+            keyword in msg for msg in recent_user_messages
+            for keyword in completion_keywords
+        )
+        
+        # === Check for "מה עוד?" variants (most common loop) ===
+        asking_what_else = any(
+            pattern in coach_message.lower()
+            for pattern in ["מה עוד", "עוד משהו", "מה נוסף"]
+        )
+        
+        # Count how many "מה עוד?" questions in recent history
+        what_else_count = sum(
+            1 for msg in recent_coach_messages
+            if any(pattern in msg for pattern in ["מה עוד", "עוד משהו"])
+        )
+        
+        # If user said done + coach asking "what else?" again = LOOP!
+        if user_said_done and asking_what_else:
+            logger.warning(f"[Safety Net] User said done, but coach asking 'מה עוד?' - BLOCKING")
+            return "אני מבין. בוא נמשיך הלאה. מה עבר לך בראש באותו רגע?"
+        
+        # If "מה עוד?" asked 3+ times = LOOP!
+        if what_else_count >= 3:
+            logger.warning(f"[Safety Net] 'מה עוד?' asked {what_else_count} times - BLOCKING")
+            return "אני מבין שיש לנו תמונה טובה של הרגשות. עכשיו אני רוצה לשמוע - מה עבר לך בראש באותו רגע?"
+        
+        # === Check if coach is sending the EXACT same message again ===
+        if coach_message in recent_coach_messages[-2:]:
+            logger.warning(f"[Safety Net] Detected EXACT repeated message")
+            return "מצטער על החזרה. בוא נמשיך הלאה - מה עבר לך בראש?"
+        
+        # === Generic patterns (less critical) ===
         generic_patterns = [
             "ספר לי עוד על הרגע הזה",
             "מה בדיוק קרה",
-            "ספר לי יותר"
+            "ספר לי יותר על"
         ]
         
-        # Count how many times similar generic questions appear
         generic_count = sum(
             1 for msg_content in recent_coach_messages
             if any(pattern in msg_content for pattern in generic_patterns)
         )
         
-        if generic_count >= 2:
-            logger.warning(f"[Safety Net] Detected {generic_count} generic questions in recent history")
-            return "אני מבין. עכשיו אני רוצה להתעמק איתך ברגשות. מה הרגשת באותו רגע?"
+        if generic_count >= 3:
+            logger.warning(f"[Safety Net] Too many generic questions ({generic_count})")
+            return "אני מבין. עכשיו אני רוצה להתעמק ברגשות. מה הרגשת באותו רגע?"
+    
+    else:  # English
+        # Check if user said they're done
+        completion_keywords = [
+            "that's all", "that's it", "all the", "i'm done",
+            "that's everything", "nothing else", "no more"
+        ]
         
-        # Check for location questions
-        if "איפה" in coach_message and "הייתם" in coach_message:
-            # Check if user already mentioned location
-            for msg in history:
-                if msg.get("sender") == "user":
-                    content = msg.get("content", "").lower()
-                    if "בחדר" in content or "בבית" in content or "במקום" in content or "בסלון" in content or "באוטו" in content or "ברכב" in content:
-                        logger.warning(f"[Safety Net] Detected repeated 'איפה?' question")
-                        return "מצטער על החזרה. עכשיו אני רוצה להתעמק איתך ברגשות שהיו לך באותו רגע. מה הרגשת?"
+        user_said_done = any(
+            keyword in msg for msg in recent_user_messages
+            for keyword in completion_keywords
+        )
         
-        # Check for time questions
-        if "מתי" in coach_message:
-            for msg in history:
-                if msg.get("sender") == "user":
-                    content = msg.get("content", "").lower()
-                    if any(word in content for word in ["אתמול", "שבוע", "חודש", "שישי", "שבת", "יום"]):
-                        logger.warning(f"[Safety Net] Detected repeated 'מתי?' question")
-                        return "מצטער על החזרה. עכשיו אני רוצה להתעמק ברגשות. מה הרגשת באותו רגע?"
+        asking_what_else = any(
+            pattern in coach_message.lower()
+            for pattern in ["what else", "anything else", "what more"]
+        )
+        
+        what_else_count = sum(
+            1 for msg in recent_coach_messages
+            if "what else" in msg.lower() or "anything else" in msg.lower()
+        )
+        
+        if user_said_done and asking_what_else:
+            logger.warning(f"[Safety Net] User said done, but coach asking 'what else?' - BLOCKING")
+            return "I understand. Let's move forward. What went through your mind in that moment?"
+        
+        if what_else_count >= 3:
+            logger.warning(f"[Safety Net] 'What else?' asked {what_else_count} times - BLOCKING")
+            return "I understand we have a good picture of the emotions. Now I want to hear - what went through your mind in that moment?"
+        
+        if coach_message in recent_coach_messages[-2:]:
+            logger.warning(f"[Safety Net] Detected EXACT repeated message")
+            return "Sorry for repeating. Let's move forward - what went through your mind?"
     
     return None
 
@@ -640,39 +690,62 @@ def validate_stage_transition(
         - If is_valid=True, allow the transition
         - If is_valid=False, return correction message to override LLM response
     """
-    # Only check specific critical transitions
+    # GENERIC SOLUTION: Check if user wants to move on
+    recent_user_messages = [
+        msg.get("content", "").lower() for msg in state.get("messages", [])[-3:]
+        if msg.get("sender") == "user"
+    ]
+    
+    if language == "he":
+        move_on_keywords = [
+            "מסכם", "זה הכל", "נתקדם", "הלאה", "די", "די לי",
+            "כל הרגשות", "כבר כתבתי", "בוא נתקדם", "מה הלאה",
+            "אמרתי כבר", "כבר אמרתי", "עניתי", "זה מספיק"
+        ]
+    else:
+        move_on_keywords = [
+            "that's all", "let's move", "move on", "enough", "that's it",
+            "i already said", "already told", "move forward", "what's next"
+        ]
+    
+    user_wants_to_move_on = any(
+        keyword in msg for msg in recent_user_messages
+        for keyword in move_on_keywords
+    )
+    
+    # If user explicitly wants to move on, ALWAYS allow transition
+    if user_wants_to_move_on:
+        logger.info(f"[Safety Net] User wants to move on - allowing {old_step}→{new_step}")
+        return True, None
+    
+    # Otherwise, check minimum turns for critical transitions
     
     # S2→S3: Need detailed event (at least 2 turns in S2)
     if old_step == "S2" and new_step == "S3":
         s2_turns = count_turns_in_step(state, "S2")
         if s2_turns < 2:
             logger.warning(f"[Safety Net] Blocked S2→S3: only {s2_turns} turns in S2")
-            # Ask for specific NEW details - not the same generic question
             if language == "he":
-                # Vary the question to avoid repetition
                 followup_questions = [
                     "מי עוד היה שם באותו רגע?",
                     "מה קרה בדיוק אחרי זה?",
-                    "תאר לי את הרגע הספציפי שבו זה התחיל.",
-                    "מה עשית ברגע הזה?"
+                    "תאר לי את הרגע הספציפי שבו זה התחיל."
                 ]
-                # Pick based on turn count to vary
                 question = followup_questions[min(s2_turns, len(followup_questions) - 1)]
                 return False, question
             else:
                 followup_questions = [
                     "Who else was there in that moment?",
                     "What happened right after that?",
-                    "Describe the specific moment when it started.",
-                    "What did you do in that moment?"
+                    "Describe the specific moment when it started."
                 ]
                 question = followup_questions[min(s2_turns, len(followup_questions) - 1)]
                 return False, question
     
-    # S3→S4: Need in-depth emotions (at least 6 turns in S3)
+    # S3→S4: Need emotions (at least 3 turns in S3)
     if old_step == "S3" and new_step == "S4":
         s3_turns = count_turns_in_step(state, "S3")
-        if s3_turns < 6:
+        if s3_turns < 3:
             logger.warning(f"[Safety Net] Blocked S3→S4: only {s3_turns} turns in S3")
             if language == "he":
                 return False, "מה עוד הרגשת באותו רגע?"
@@ -808,9 +881,11 @@ async def handle_conversation(
     if language == "he":
         frustration_keywords = [
             "אמרתי כבר", "אמרתי לך", "כבר אמרתי", "חזרת על עצמך",
-            "סיפרתי", "כבר סיפרתי", "עניתי", "עניתי לך", "אולי נמשיך"
+            "סיפרתי", "כבר סיפרתי", "עניתי", "עניתי לך", "אולי נמשיך",
+            "זה מסכם", "זה הכל", "נתקדם", "בוא נתקדם", "מה הלאה",
+            "די", "די לי", "כל הרגשות", "כבר כתבתי"
         ]
-        user_frustrated = any(keyword in user_message for keyword in frustration_keywords)
+        user_frustrated = any(keyword in user_message.lower() for keyword in frustration_keywords)
     else:
         frustration_keywords = [
             "i already said", "i told you", "already told you", "you're repeating",
