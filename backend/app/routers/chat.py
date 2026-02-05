@@ -396,11 +396,12 @@ async def send_message(
             yield f"data: {json.dumps({'content': error_msg})}\n\n"
             
             # CRITICAL: Send done signal even on error so loading dots disappear
-            yield f"data: {json.dumps({
-                'done': True, 
-                'error': True,
-                'current_phase': current_phase_cache
-            })}\n\n"
+            done_data = {
+                "done": True, 
+                "error": True,
+                "current_phase": current_phase_cache
+            }
+            yield f"data: {json.dumps(done_data)}\n\n"
     
     return StreamingResponse(response_generator(), media_type="text/event-stream")
 
