@@ -155,6 +155,118 @@ def get_conversation(
         raise HTTPException(status_code=403, detail="Conversation not found or unauthorized")
     return conv
 
+@router.get("/conversations/{conversation_id}/insights/safe")
+def get_conversation_insights_safe(
+    conversation_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get insights for a conversation, but return empty data instead of 404 if not found.
+    
+    This is useful for frontend components that poll insights but should handle
+    deleted or non-existent conversations gracefully.
+    """
+    conv = db.query(Conversation).filter(
+        Conversation.id == conversation_id,
+        Conversation.user_id == user.id
+    ).first()
+    
+    if not conv:
+        # Return empty structure instead of 404
+        return {
+            "exists": False,
+            "current_stage": "S0",
+            "saturation_score": 0.0,
+            "cognitive_data": {},
+            "metrics": {},
+            "message": "Conversation not found"
+        }
+    
+    # If conversation exists, return normal insights
+    # (Use the same logic as get_conversation_insights)
+    if conv.v2_state and isinstance(conv.v2_state, dict):
+        try:
+            state = conv.v2_state
+            current_stage = state.get("current_step", "S0")
+            saturation_score = state.get("saturation_score", 0.0)
+            collected_data = state.get("collected_data", {})
+            messages = state.get("messages", [])
+            
+            turns_in_current_stage = 0
+            try:
+                turns_in_current_stage = sum(
+                    1 for msg in messages 
+                    if isinstance(msg, dict) and 
+                    msg.get("role") == "user" and 
+                    msg.get("metadata", {}).get("step") == current_stage
+                )
+            except Exception as e:
+                logger.warning(f"Could not count turns: {e}")
+            
+            return {
+                "exists": True,
+                "current_stage": current_stage,
+                "saturation_score": saturation_score,
+                "cognitive_data": collected_data,
+                "metrics": {
+                    "message_count": len(messages),
+                    "turns_in_current_stage": turns_in_current_stage
+                },
+                "updated_at": conv.updated_at.isoformat() if conv.updated_at else None
+            }
+        except Exception as e:
+            logger.error(f"Error extracting V2 insights: {e}")
+    
+    # V1 fallback
+    bsd_state = db.query(BsdSessionState).filter(
+        BsdSessionState.conversation_id == conversation_id
+    ).first()
+    
+    if not bsd_state:
+        return {
+            "exists": True,
+            "current_stage": conv.current_phase or "S0",
+            "saturation_score": 0.0,
+            "cognitive_data": {},
+            "metrics": {
+                "loop_count_in_current_stage": 0,
+                "shehiya_depth_score": 0.0
+            }
+        }
+    
+    return {
+        "exists": True,
+        "current_stage": bsd_state.current_stage,
+        "saturation_score": 0.0,
+        "cognitive_data": bsd_state.cognitive_data or {},
+        "metrics": bsd_state.metrics or {},
+        "updated_at": bsd_state.updated_at.isoformat() if bsd_state.updated_at else None
+    }
+
+
+@router.get("/conversations/{conversation_id}/exists")
+def check_conversation_exists(
+    conversation_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Check if a conversation exists and belongs to the current user.
+    
+    This is a lightweight endpoint for frontend validation.
+    """
+    conv = db.query(Conversation).filter(
+        Conversation.id == conversation_id,
+        Conversation.user_id == user.id
+    ).first()
+    
+    return {
+        "exists": conv is not None,
+        "conversation_id": conversation_id
+    }
+
+
 @router.get("/conversations/{conversation_id}/insights")
 def get_conversation_insights(
     conversation_id: int,
@@ -177,6 +289,9 @@ def get_conversation_insights(
     - Being desire (S8)
     - KaMaZ forces (S9)
     - Commitment (S10)
+    
+    Returns 404 if conversation doesn't exist or user doesn't have access.
+    Frontend should handle this gracefully by stopping insights polling.
     """
     # Verify conversation ownership
     conv = db.query(Conversation).filter(
@@ -185,7 +300,18 @@ def get_conversation_insights(
     ).first()
     
     if not conv:
-        raise HTTPException(status_code=404, detail="Conversation not found")
+        logger.warning(
+            f"Insights request for non-existent conversation: "
+            f"conversation_id={conversation_id}, user_id={user.id}"
+        )
+        raise HTTPException(
+            status_code=404, 
+            detail={
+                "error": "conversation_not_found",
+                "message": "Conversation not found or you don't have access to it",
+                "conversation_id": conversation_id
+            }
+        )
     
     # Check if this is a V2 conversation (has v2_state)
     if conv.v2_state and isinstance(conv.v2_state, dict):
