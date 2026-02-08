@@ -56,7 +56,7 @@ SYSTEM_PROMPT_HE = """# זהות ותפקיד
    
    **חישוב Saturation Score (0.0 - 1.0):**
    - **S1:** 0.1 (נושא כללי) → 0.3 (נושא + הרחבה) → 0.5 (נושא ספציפי) → 0.7 (מוכן ל-S2)
-   - **S2:** 0.6 (אירוע כללי) → 0.8 (אירוע עם פרטים) → 1.0 (אירוע ספציפי מלא)
+   - **S2:** 0.3 (אירוע ראשוני) → 0.5 (פרטים חלקיים) → 0.7 (מי+מה+מתי) → 0.9 (תיאור מלא) → 1.0 (כל הפרטים + תגובות)
    - **S3:** 0.25 (1 רגש) → 0.5 (2 רגשות) → 0.75 (3 רגשות) → 1.0 (4+ רגשות)
    - **S4:** 0.5 (מחשבה כללית) → 0.8 (משפט חלקי) → 1.0 (משפט מילולי מלא)
    - **S5:** 0.4 (מעשה בפועל) → 0.7 (מעשה + רצוי) → 1.0 (מעשה + רצוי + סיכום מצוי)
@@ -75,23 +75,24 @@ SYSTEM_PROMPT_HE = """# זהות ותפקיד
 
 3. **🛑 CRITICAL - Gate Checks (עוצרים לפני מעבר בין שלבים):**
    
-  **S1→S2 Gate:**
-  אל תעבור ל-S2 אלא אם:
-  ✅ המשתמש אמר במפורש על מה הוא רוצה להתאמן
-  ✅ הנושא ברור וספציפי (לא רק "זוגיות" אלא "היכולת שלי להיות רומנטי")
-  ✅ **שאלת לפחות 2-3 שאלות מיקוד ב-S1**
-  
-  **⚠️ סימנים שאפשר לעבור ל-S2:**
-  - המשתמש אמר משהו כמו "על X שלי", "היכולת שלי ל-Y", "אני רוצה להשתפר ב-Z"
-  - הנושא כבר לא כללי ("זוגיות") אלא ספציפי ("רומנטיקה", "חיבור")
-  - המשתמש מתחיל לתאר בעיה או מצב
-  
-  **🚀 כשעוברים ל-S2 - חובה:**
-  1. תן הסבר קצר (2-3 משפטים) למה אתה רוצה לקחת רגע ספציפי
-  2. בקש אירוע אחד ספציפי
-  3. אל תקפוץ לשאלות על רגשות!
-  
-  אם לא - הישאר ב-S1!
+ **S1→S2 Gate:**
+ 🛑 אל תעבור ל-S2 אלא אם **כל התנאים** מתקיימים:
+ 
+ ✅ המשתמש אמר במפורש על מה הוא רוצה להתאמן
+ ✅ הנושא ברור וספציפי (לא רק "זוגיות" אלא "היכולת שלי להיות רומנטי")
+ ✅ **שאלת לפחות 3-4 שאלות מיקוד ב-S1**
+ 
+ **⚠️ סימנים שאפשר לעבור ל-S2:**
+ - המשתמש אמר משהו כמו "על X שלי", "היכולת שלי ל-Y", "אני רוצה להשתפר ב-Z"
+ - הנושא כבר לא כללי ("זוגיות") אלא ספציפי ("רומנטיקה", "חיבור")
+ - המשתמש מתחיל לתאר בעיה או מצב **ונתן פרטים מספיקים**
+ 
+ **🚀 כשעוברים ל-S2 - חובה:**
+ 1. תן הסבר קצר (2-3 משפטים) למה אתה רוצה לקחת רגע ספציפי
+ 2. בקש אירוע אחד ספציפי **עם אנשים אחרים**
+ 3. אל תקפוץ לשאלות על רגשות!
+ 
+ אם לא - הישאר ב-S1!
    
    **S2→S3 Gate:**
    אל תעבור ל-S3 אלא אם:
@@ -100,17 +101,20 @@ SYSTEM_PROMPT_HE = """# זהות ותפקיד
    אם לא - הישאר ב-S2!
    
    **S3→S4 Gate (קריטי!):**
-   🛑 אל תעבור ל-S4 אלא אם:
+   🛑 אל תעבור ל-S4 אלא אם **כל התנאים** מתקיימים:
+   
    ✅ יש **בדיוק 4 רגשות או יותר** ב-collected_data.emotions
    ✅ הרגשות נאספו אחד אחד (לא כרשימה)
-   ✅ שאלת "מה עוד?" לפחות 3 פעמים
+   ✅ שאלת "מה עוד?" לפחות 4 פעמים
+   ✅ **יש לפחות 4-6 תורות ב-S3**
    
    **⚠️ חשוב מאוד:**
-   - אם יש 1-2 רגשות: שאל "מה עוד?"
+   - אם יש 1-2 רגשות: שאל "מה עוד?" ואל תעבור!
    - אם יש 3 רגשות: שאל "מה עוד?" פעם אחת נוספת
-   - **אם יש 4+ רגשות → עבור מיד ל-S4!**
+   - אם יש 4+ רגשות **אבל** פחות מ-4 תורות: שאל "ספר לי עוד..."
+   - **אם יש 4+ רגשות ו-4+ תורות → עבור ל-S4!**
    
-   **כשעוברים ל-S4 (4 רגשות ✅):**
+   **כשעוברים ל-S4 (4 רגשות ✅ + 4 תורות ✅):**
    אל תסכם! אל תגיד "תודה"! **שאל ישר על המחשבה:**
    - "מה עבר לך בראש באותו רגע?"
    - "מה אמרת לעצמך שם?"
@@ -134,13 +138,18 @@ SYSTEM_PROMPT_HE = """# זהות ותפקיד
    ✅ יש ציון (1-10)
    אם לא - הישאר ב-S6!
    
-   **S7→S8 Gate:**
-   אל תעבור ל-S8 אלא אם:
-   ✅ יש לפחות 2 דוגמאות של מצבים שונים (או אישור בהחלטיות אחרי דוגמה אחת)
-   ✅ **המאמן סיכם את הדפוס במילים ברורות**
-   ✅ המשתמש **אישר בהחלטיות**: "כן, זה חוזר" / "נכון, אני מגיב כך"
+   **S7→S8 Gate (קריטי!):**
+   🛑 אל תעבור ל-S8 אלא אם **כל התנאים** מתקיימים:
    
-   🚨 אם המשתמש אומר "אני לא יודע מה הדפוס" → **הישאר ב-S7!** סכם את הדפוס במפורש.
+   ✅ יש לפחות **3 תורות** ב-S7 (למעט אם המשתמש מאשר בהחלטיות מוקדם יותר)
+   ✅ יש **לפחות 2-3 דוגמאות** של מצבים שונים שבהם התגובה חוזרת
+   ✅ **המאמן סיכם את הדפוס במילים ברורות**: "הדפוס הוא ש[תגובה] - זה קורה כש[מצב 1] וגם כש[מצב 2]"
+   ✅ המשתמש **זיהה ואישר בהחלטיות**: "כן, זה חוזר" / "נכון, אני מגיב כך" / "זה באמת הדפוס שלי"
+   
+   🚨 **סימנים שאסור לעבור:**
+   - "אני לא יודע מה הדפוס" → **הישאר ב-S7!** סכם את הדפוס במפורש
+   - "איפה זה קורה?" → **הישאר ב-S7!** המשתמש שואל, לא מזהה
+   - תשובה כללית → **הישאר ב-S7!** דרוש זיהוי ברור
    
    אם לא - הישאר ב-S7!
    
@@ -711,15 +720,22 @@ def check_repeated_question(coach_message: str, history: list, current_step: str
     
     if language == "he":
         # === CRITICAL: Check if user said they're done ===
-        completion_keywords = [
-            "מסכם", "זה הכל", "כל הרגשות", "זה כל הרגשות",
-            "די", "די לי", "כבר כתבתי", "אמרתי את כל",
-            "זה מספיק", "סיימתי", "זה מה שיש"
+        import re
+        
+        # Phrases (can appear anywhere)
+        completion_phrases = [
+            "זה מסכם", "זה הכל", "כל הרגשות", "זה כל הרגשות",
+            "די לי", "כבר כתבתי", "אמרתי את כל", "זה מספיק", 
+            "סיימתי", "זה מה שיש", "אין יותר", "אין עוד"
         ]
         
+        # Short words (need word boundaries)
+        completion_words = ["זהו", "די", "מספיק", "הכל"]
+        
         user_said_done = any(
-            keyword in msg for msg in recent_user_messages
-            for keyword in completion_keywords
+            any(phrase in msg for phrase in completion_phrases) or
+            any(re.search(rf'\b{word}\b', msg) for word in completion_words)
+            for msg in recent_user_messages
         )
         
         # === Check for "מה עוד?" variants (most common loop) ===
@@ -846,24 +862,27 @@ def validate_stage_transition(
     
     # Otherwise, check minimum turns for critical transitions
     
-    # S2→S3: Need detailed event (at least 2 turns in S2)
+    # S2→S3: Need detailed event (at least 3 turns in S2)
     if old_step == "S2" and new_step == "S3":
         s2_turns = count_turns_in_step(state, "S2")
-        if s2_turns < 2:
-            logger.warning(f"[Safety Net] Blocked S2→S3: only {s2_turns} turns in S2")
+        if s2_turns < 3:
+            logger.warning(f"[Safety Net] Blocked S2→S3: only {s2_turns} turns in S2, need 3+")
             if language == "he":
+                # GENERIC: Varied questions to explore the event in depth
                 followup_questions = [
-                    "מי עוד היה שם באותו רגע?",
-                    "מה קרה בדיוק אחרי זה?",
-                    "תאר לי את הרגע הספציפי שבו זה התחיל."
+                    "מה **בדיוק** נאמר שם? מה המילים שנאמרו?",
+                    "איך **האדם השני** הגיב? מה הוא עשה?",
+                    "מה קרה **אחרי** זה?",
+                    "ספר לי יותר על הרגע הזה - מה עוד קרה?"
                 ]
                 question = followup_questions[min(s2_turns, len(followup_questions) - 1)]
                 return False, question
             else:
                 followup_questions = [
-                    "Who else was there in that moment?",
-                    "What happened right after that?",
-                    "Describe the specific moment when it started."
+                    "What **exactly** was said? What were the words?",
+                    "How did **the other person** react? What did they do?",
+                    "What happened **after** that?",
+                    "Tell me more about that moment - what else happened?"
                 ]
                 question = followup_questions[min(s2_turns, len(followup_questions) - 1)]
                 return False, question
@@ -899,14 +918,27 @@ def validate_stage_transition(
             else:
                 return False, "I understand. Let's summarize: the pattern is that you respond in a certain way in different situations. What's your response that repeats? What's common between the situations you described?"
         
-        # Check if we have at least 2 turns in S7 (to gather examples and confirm)
+        # Check if we have at least 3 turns in S7 (to gather examples and confirm pattern)
         s7_turns = count_turns_in_step(state, "S7")
-        if s7_turns < 2:
-            logger.warning(f"[Safety Net] Blocked S7→S8: only {s7_turns} turns in S7")
+        if s7_turns < 3:
+            logger.warning(f"[Safety Net] Blocked S7→S8: only {s7_turns} turns in S7, need 3+")
             if language == "he":
-                return False, "איפה עוד אתה מזהה את התגובה הזו שלך?"
+                # GENERIC: Varied questions to explore pattern depth
+                pattern_questions = [
+                    "איפה עוד אתה מזהה את התגובה הזו שלך?",
+                    "האם זה קורה רק במצבים מסוימים, או גם במקומות אחרים?",
+                    "מה משותף לכל המצבים שתיארת? מה **אתה** עושה שחוזר?"
+                ]
+                question = pattern_questions[min(s7_turns, len(pattern_questions) - 1)]
+                return False, question
             else:
-                return False, "Where else do you recognize this response of yours?"
+                pattern_questions = [
+                    "Where else do you recognize this response of yours?",
+                    "Does this happen only in certain situations, or in other places too?",
+                    "What's common to all the situations you described? What do **you** do that repeats?"
+                ]
+                question = pattern_questions[min(s7_turns, len(pattern_questions) - 1)]
+                return False, question
     
     # All other transitions: trust the LLM
     return True, None
@@ -1035,13 +1067,25 @@ async def handle_conversation(
     # Check if user is frustrated or indicating they already answered
     user_frustrated = False
     if language == "he":
-        frustration_keywords = [
+        # Use whole words only (with word boundaries) to avoid false positives
+        import re
+        user_msg_lower = user_message.lower()
+        
+        # Phrases that can appear anywhere
+        frustration_phrases = [
             "אמרתי כבר", "אמרתי לך", "כבר אמרתי", "חזרת על עצמך",
             "סיפרתי", "כבר סיפרתי", "עניתי", "עניתי לך", "אולי נמשיך",
             "זה מסכם", "זה הכל", "נתקדם", "בוא נתקדם", "מה הלאה",
-            "די", "די לי", "כל הרגשות", "כבר כתבתי"
+            "די לי", "כל הרגשות", "כבר כתבתי"
         ]
-        user_frustrated = any(keyword in user_message.lower() for keyword in frustration_keywords)
+        
+        # Short words that need word boundaries (to avoid "שידרה" containing "די")
+        frustration_words = ["די", "זהו", "מספיק", "הלאה"]
+        
+        user_frustrated = (
+            any(phrase in user_msg_lower for phrase in frustration_phrases) or
+            any(re.search(rf'\b{word}\b', user_msg_lower) for word in frustration_words)
+        )
     else:
         frustration_keywords = [
             "i already said", "i told you", "already told you", "you're repeating",
