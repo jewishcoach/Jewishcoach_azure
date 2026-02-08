@@ -184,6 +184,9 @@ async def send_message_v2(
         
         return response
         
+    except HTTPException:
+        # Re-raise HTTPException (404, 401, etc.) without wrapping in 500
+        raise
     except Exception as e:
         logger.error(f"[BSD V2 API] Error: {e}")
         import traceback
