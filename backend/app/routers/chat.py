@@ -11,6 +11,9 @@ from datetime import datetime
 from openai import AzureOpenAI
 import json
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 bsd_engine = BsdEngine()
@@ -186,29 +189,41 @@ def get_conversation_insights(
     
     # Check if this is a V2 conversation (has v2_state)
     if conv.v2_state and isinstance(conv.v2_state, dict):
-        # V2 conversation - extract insights from v2_state
-        state = conv.v2_state
-        current_stage = state.get("current_step", "S0")
-        saturation_score = state.get("saturation_score", 0.0)
-        collected_data = state.get("collected_data", {})
-        messages = state.get("messages", [])
-        
-        # Count turns in current stage
-        turns_in_current_stage = sum(
-            1 for msg in messages 
-            if msg.get("role") == "user" and msg.get("metadata", {}).get("step") == current_stage
-        )
-        
-        return {
-            "current_stage": current_stage,
-            "saturation_score": saturation_score,
-            "cognitive_data": collected_data,
-            "metrics": {
-                "message_count": len(messages),
-                "turns_in_current_stage": turns_in_current_stage
-            },
-            "updated_at": conv.updated_at.isoformat() if conv.updated_at else None
-        }
+        try:
+            # V2 conversation - extract insights from v2_state
+            state = conv.v2_state
+            current_stage = state.get("current_step", "S0")
+            saturation_score = state.get("saturation_score", 0.0)
+            collected_data = state.get("collected_data", {})
+            messages = state.get("messages", [])
+            
+            # Count turns in current stage (safely handle different message structures)
+            turns_in_current_stage = 0
+            try:
+                turns_in_current_stage = sum(
+                    1 for msg in messages 
+                    if isinstance(msg, dict) and 
+                    msg.get("role") == "user" and 
+                    msg.get("metadata", {}).get("step") == current_stage
+                )
+            except Exception as e:
+                logger.warning(f"Could not count turns: {e}")
+                turns_in_current_stage = 0
+            
+            return {
+                "current_stage": current_stage,
+                "saturation_score": saturation_score,
+                "cognitive_data": collected_data,
+                "metrics": {
+                    "message_count": len(messages),
+                    "turns_in_current_stage": turns_in_current_stage
+                },
+                "updated_at": conv.updated_at.isoformat() if conv.updated_at else None
+            }
+        except Exception as e:
+            logger.error(f"Error extracting V2 insights: {e}")
+            # Fall through to V1 logic or return minimal data
+            pass
     
     # V1 conversation - get BSD session state
     bsd_state = db.query(BsdSessionState).filter(
