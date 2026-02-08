@@ -161,6 +161,8 @@ def get_conversation_insights(
     """
     Get accumulated cognitive data (insights) for a conversation.
     
+    Supports both V1 (BsdSessionState) and V2 (v2_state) conversations.
+    
     Returns structured data including:
     - Topic (S1)
     - Event details (S2)
@@ -182,7 +184,33 @@ def get_conversation_insights(
     if not conv:
         raise HTTPException(status_code=404, detail="Conversation not found")
     
-    # Get BSD session state
+    # Check if this is a V2 conversation (has v2_state)
+    if conv.v2_state and isinstance(conv.v2_state, dict):
+        # V2 conversation - extract insights from v2_state
+        state = conv.v2_state
+        current_stage = state.get("current_step", "S0")
+        saturation_score = state.get("saturation_score", 0.0)
+        collected_data = state.get("collected_data", {})
+        messages = state.get("messages", [])
+        
+        # Count turns in current stage
+        turns_in_current_stage = sum(
+            1 for msg in messages 
+            if msg.get("role") == "user" and msg.get("metadata", {}).get("step") == current_stage
+        )
+        
+        return {
+            "current_stage": current_stage,
+            "saturation_score": saturation_score,
+            "cognitive_data": collected_data,
+            "metrics": {
+                "message_count": len(messages),
+                "turns_in_current_stage": turns_in_current_stage
+            },
+            "updated_at": conv.updated_at.isoformat() if conv.updated_at else None
+        }
+    
+    # V1 conversation - get BSD session state
     bsd_state = db.query(BsdSessionState).filter(
         BsdSessionState.conversation_id == conversation_id
     ).first()
