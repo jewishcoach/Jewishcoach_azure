@@ -129,7 +129,13 @@ SYSTEM_PROMPT_HE = """# זהות ותפקיד
    אל תעבור ל-S6 אלא אם:
    ✅ יש מעשה בפועל
    ✅ יש מעשה רצוי
-   ✅ סיכמת את המצוי המלא
+   ✅ יש ניגוד ברור בין המצוי לרצוי
+   
+   **🚀 כשעוברים ל-S6 - אל תסכם הכל!**
+   במקום לתת סיכום ארוך של כל השיחה, **שאל ישר:**
+   - "איך תקרא לפער הזה בין מה שעשית למה שרצית לעשות?"
+   - "תן שם לפער הזה - איך היית קורא לו?"
+   
    אם לא - הישאר ב-S5!
    
    **S6→S7 Gate:**
@@ -862,27 +868,35 @@ def validate_stage_transition(
     
     # Otherwise, check minimum turns for critical transitions
     
+    # 🚨 CRITICAL: Block S2→S4 (can't skip S3 emotions!)
+    if old_step == "S2" and new_step == "S4":
+        logger.error(f"[Safety Net] 🚫 BLOCKED S2→S4: Cannot skip S3 (emotions)!")
+        if language == "he":
+            return False, "רגע, לפני שנדבר על מחשבות - ספר לי קודם **מה הרגשת** באותו רגע?"
+        else:
+            return False, "Wait, before we talk about thoughts - tell me first **what did you feel** in that moment?"
+    
     # S2→S3: Need detailed event (at least 3 turns in S2)
     if old_step == "S2" and new_step == "S3":
         s2_turns = count_turns_in_step(state, "S2")
         if s2_turns < 3:
             logger.warning(f"[Safety Net] Blocked S2→S3: only {s2_turns} turns in S2, need 3+")
             if language == "he":
-                # GENERIC: Varied questions to explore the event in depth
+                # GENERIC: Start with general questions, then specific (not dialogue-first)
                 followup_questions = [
-                    "מה **בדיוק** נאמר שם? מה המילים שנאמרו?",
-                    "איך **האדם השני** הגיב? מה הוא עשה?",
-                    "מה קרה **אחרי** זה?",
-                    "ספר לי יותר על הרגע הזה - מה עוד קרה?"
+                    "מה עוד קרה באותו רגע? ספר לי יותר פרטים.",
+                    "איך זה התפתח? מה קרה **אחרי** זה?",
+                    "מי עוד היה שם? איך **הם** הגיבו?",
+                    "אם היה דיאלוג, מה **בדיוק** נאמר?"
                 ]
                 question = followup_questions[min(s2_turns, len(followup_questions) - 1)]
                 return False, question
             else:
                 followup_questions = [
-                    "What **exactly** was said? What were the words?",
-                    "How did **the other person** react? What did they do?",
-                    "What happened **after** that?",
-                    "Tell me more about that moment - what else happened?"
+                    "What else happened in that moment? Tell me more details.",
+                    "How did it develop? What happened **after** that?",
+                    "Who else was there? How did **they** react?",
+                    "If there was dialogue, what **exactly** was said?"
                 ]
                 question = followup_questions[min(s2_turns, len(followup_questions) - 1)]
                 return False, question
