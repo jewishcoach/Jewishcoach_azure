@@ -21,112 +21,6 @@ logger = logging.getLogger(__name__)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# LLM-BASED FRUSTRATION DETECTION (Fixed version - no temperature param)
-# ══════════════════════════════════════════════════════════════════════════════
-
-async def detect_user_frustration_with_llm(
-    user_message: str,
-    coach_message: str,
-    language: str
-) -> bool:
-    """
-    Use LLM to intelligently detect if user is frustrated.
-    
-    This replaces keyword-based detection which has too many false positives:
-    - ❌ "לא חש מספיק טוב" (describing feelings) → NOT frustration
-    - ✅ "מספיק! בוא נמשיך" (impatience) → IS frustration
-    
-    Args:
-        user_message: The user's latest message
-        coach_message: The coach's previous message
-        language: "he" or "en"
-    
-    Returns:
-        True if user is frustrated/impatient, False otherwise
-    """
-    
-    if language == "he":
-        detection_prompt = f"""אתה מומחה לזיהוי תסכול ורגשות במשתמשים.
-
-המאמן אמר: "{coach_message}"
-המשתמש ענה: "{user_message}"
-
-**משימתך:** קבע האם המשתמש מבטא תסכול או חוסר סבלנות כלפי המאמן.
-
-**תסכול = המשתמש:**
-- מרגיש שהמאמן חוזר על עצמו
-- רוצה להתקדם הלאה במפורש
-- מרגיש שכבר ענה על השאלה
-- מבטא חוסר סבלנות
-
-**לא תסכול = המשתמש:**
-- מתאר רגש או מצב ("לא מרגיש מספיק טוב")
-- משתמש במילה "מספיק" כתיאור (לא כביטוי תסכול)
-- נותן תשובה תוכן רגילה
-- משתף מידע
-
-**דוגמאות:**
-- "מספיק! בוא נמשיך" → YES (תסכול)
-- "לא חש מספיק טוב" → NO (תיאור רגש)
-- "די, כבר אמרתי" → YES (תסכול)
-- "איזה עמוד שידרה פנימי" → NO (תיאור)
-
-**תשובה:**
-ענה **רק** במילה אחת: YES או NO"""
-    else:
-        detection_prompt = f"""You are an expert at detecting user frustration and impatience.
-
-The coach said: "{coach_message}"
-The user responded: "{user_message}"
-
-**Your task:** Determine if the user is expressing frustration or impatience with the coach.
-
-**Frustration = User is:**
-- Feeling the coach is repeating themselves
-- Wanting to explicitly move forward
-- Feeling they already answered the question
-- Expressing impatience
-
-**Not Frustration = User is:**
-- Describing a feeling or state ("not feeling good enough")
-- Using "enough" as description (not frustration)
-- Giving regular content answer
-- Sharing information
-
-**Examples:**
-- "Enough! Let's move on" → YES (frustration)
-- "I don't feel good enough" → NO (describing feeling)
-- "I already told you" → YES (frustration)
-- "I have a strong inner core" → NO (description)
-
-**Response:**
-Answer with **only one word**: YES or NO"""
-    
-    try:
-        # Use reasoner (cold temp=0.1) for deterministic classification
-        # NOTE: DO NOT pass temperature - the function sets it automatically
-        llm = get_azure_chat_llm(purpose="reasoner")
-        
-        messages = [
-            SystemMessage(content=detection_prompt)
-        ]
-        
-        response = await llm.ainvoke(messages)
-        answer = response.content.strip().upper()
-        
-        is_frustrated = answer == "YES"
-        
-        logger.info(f"[Frustration Detection] User: '{user_message[:50]}...' → {answer} (frustrated={is_frustrated})")
-        
-        return is_frustrated
-        
-    except Exception as e:
-        logger.error(f"[Frustration Detection] Error: {e}")
-        # On error, default to False (don't trigger frustration handler)
-        return False
-
-
-# ══════════════════════════════════════════════════════════════════════════════
 # SYSTEM PROMPT - Based on user's detailed instructions
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -1170,25 +1064,28 @@ async def handle_conversation(
     logger.info(f"[BSD V2] Current step: {state['current_step']}, saturation: {state['saturation_score']:.2f}")
     logger.info(f"[BSD V2] Message count in state: {len(state.get('messages', []))}")
     
-    # Check if user is frustrated - Use LLM for intelligent context-aware detection
-    # This replaces keyword matching which had false positives like "לא חש מספיק טוב"
+    # Check if user is frustrated - Use EXPLICIT phrases only (no single words)
+    # This avoids false positives like "לא חש מספיק טוב" while catching real frustration
     
-    # Get the coach's last message for context
-    coach_last_message = ""
-    if state.get('messages'):
-        for msg in reversed(state['messages']):
-            # Check both 'role' field (new format) and 'sender' field (old format)
-            msg_role = msg.get('role') or msg.get('sender', '')
-            if msg_role in ['assistant', 'coach']:
-                coach_last_message = msg.get('content', '')
-                break
-    
-    # Use LLM to intelligently detect frustration
-    user_frustrated = await detect_user_frustration_with_llm(
-        user_message=user_message,
-        coach_message=coach_last_message,
-        language=language
-    )
+    user_frustrated = False
+    if language == "he":
+        user_msg_lower = user_message.lower()
+        
+        # ONLY very explicit frustration phrases (2+ words)
+        # Do NOT use single words like "די", "מספיק", "זהו" alone
+        explicit_frustration_phrases = [
+            "אמרתי כבר", "אמרתי לך", "כבר אמרתי", "כבר סיפרתי",
+            "חזרת על עצמך", "אתה חוזר", "עניתי כבר", "עניתי לך",
+            "די כבר", "די די", "מספיק כבר", "די לי כבר"
+        ]
+        
+        user_frustrated = any(phrase in user_msg_lower for phrase in explicit_frustration_phrases)
+    else:
+        explicit_frustration_phrases = [
+            "i already said", "i told you", "already told you", 
+            "you're repeating", "i already answered", "stop repeating"
+        ]
+        user_frustrated = any(phrase in user_message.lower() for phrase in explicit_frustration_phrases)
     
     if user_frustrated:
         logger.warning(f"[Safety Net] User is frustrated ('{user_message}') - forcing progression")
