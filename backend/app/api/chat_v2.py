@@ -189,3 +189,88 @@ async def send_message_v2(
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# INSIGHTS ENDPOINT
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/conversations/{conversation_id}/insights")
+async def get_conversation_insights_v2(
+    conversation_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get accumulated cognitive data (insights) for a V2 conversation.
+    
+    Returns structured data including:
+    - Current stage
+    - Collected data (from collected_data in state)
+    - Saturation score
+    - Message count
+    
+    Usage:
+        GET /api/chat/v2/conversations/123/insights
+    
+    Returns:
+        {
+            "current_stage": "S3",
+            "saturation_score": 0.75,
+            "cognitive_data": {
+                "topic": "...",
+                "event": "...",
+                "emotions": [...],
+                ...
+            },
+            "metrics": {
+                "message_count": 15,
+                "turns_in_current_stage": 5
+            }
+        }
+    """
+    try:
+        logger.info(f"[BSD V2 API] Getting insights for conversation {conversation_id}")
+        
+        # Verify conversation ownership
+        conv = db.query(ConversationModel).filter(
+            ConversationModel.id == conversation_id,
+            ConversationModel.user_id == current_user.id
+        ).first()
+        
+        if not conv:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        
+        # Load V2 state
+        state = load_v2_state(conversation_id, db)
+        
+        # Extract insights from state
+        current_stage = state.get("current_step", "S0")
+        saturation_score = state.get("saturation_score", 0.0)
+        collected_data = state.get("collected_data", {})
+        messages = state.get("messages", [])
+        
+        # Count turns in current stage
+        turns_in_current_stage = sum(
+            1 for msg in messages 
+            if msg.get("role") == "user" and msg.get("metadata", {}).get("step") == current_stage
+        )
+        
+        return {
+            "current_stage": current_stage,
+            "saturation_score": saturation_score,
+            "cognitive_data": collected_data,
+            "metrics": {
+                "message_count": len(messages),
+                "turns_in_current_stage": turns_in_current_stage
+            },
+            "updated_at": conv.updated_at.isoformat() if conv.updated_at else None
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[BSD V2 API] Error getting insights: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
