@@ -864,10 +864,18 @@ def validate_stage_transition(
     old_step: str,
     new_step: str,
     state: Dict[str, Any],
-    language: str
+    language: str,
+    coach_message: str = ""
 ) -> Tuple[bool, Optional[str]]:
     """
     Safety net: validate if stage transition is premature.
+    
+    Args:
+        old_step: Current step before transition
+        new_step: Proposed new step
+        state: Current conversation state
+        language: "he" or "en"
+        coach_message: The LLM's proposed message (to check if already in new stage)
     
     Returns:
         (is_valid, correction_message)
@@ -915,6 +923,22 @@ def validate_stage_transition(
     # S2→S3: Need detailed event (at least 3 turns in S2)
     if old_step == "S2" and new_step == "S3":
         s2_turns = count_turns_in_step(state, "S2")
+        
+        # 🎯 NEW: Check if LLM already asked an S3 question (emotions)
+        # If yes, allow the transition even if s2_turns < 3
+        # This prevents overriding good LLM responses
+        if language == "he":
+            s3_indicators = ["מה הרגשת", "איזה רגש", "מה עבר בך", "מה נגע בך", "התעמק ברגשות"]
+        else:
+            s3_indicators = ["what did you feel", "what emotion", "how did you feel", "feelings", "emotions"]
+        
+        llm_already_in_s3 = any(indicator in coach_message.lower() for indicator in s3_indicators)
+        
+        if llm_already_in_s3:
+            logger.info(f"[Safety Net] LLM already asked S3 question, allowing transition despite {s2_turns} turns")
+            return True, None  # Allow transition
+        
+        # If LLM hasn't moved to S3 yet, check turns count
         if s2_turns < 3:
             logger.warning(f"[Safety Net] Blocked S2→S3: only {s2_turns} turns in S2, need 3+")
             if language == "he":
@@ -940,6 +964,21 @@ def validate_stage_transition(
     # S3→S4: Need emotions (at least 3 turns in S3)
     if old_step == "S3" and new_step == "S4":
         s3_turns = count_turns_in_step(state, "S3")
+        
+        # 🎯 NEW: Check if LLM already asked an S4 question (thoughts)
+        # If yes, allow the transition even if s3_turns < 3
+        if language == "he":
+            s4_indicators = ["מה עבר לך בראש", "מה חשבת", "מה אמרת לעצמך", "איזה משפט", "מחשב"]
+        else:
+            s4_indicators = ["what went through your mind", "what did you think", "what did you tell yourself", "thought"]
+        
+        llm_already_in_s4 = any(indicator in coach_message.lower() for indicator in s4_indicators)
+        
+        if llm_already_in_s4:
+            logger.info(f"[Safety Net] LLM already asked S4 question, allowing transition despite {s3_turns} turns")
+            return True, None  # Allow transition
+        
+        # If LLM hasn't moved to S4 yet, check turns count
         if s3_turns < 3:
             logger.warning(f"[Safety Net] Blocked S3→S4: only {s3_turns} turns in S3")
             if language == "he":
@@ -1233,7 +1272,7 @@ async def handle_conversation(
         old_step = state["current_step"]
         new_step = internal_state.get("current_step", old_step)
         
-        is_valid, correction = validate_stage_transition(old_step, new_step, state, language)
+        is_valid, correction = validate_stage_transition(old_step, new_step, state, language, coach_message)
         
         if not is_valid and correction:
             # Override LLM response with correction
