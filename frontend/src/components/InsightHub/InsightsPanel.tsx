@@ -41,12 +41,28 @@ export const InsightsPanel = ({ conversationId, currentPhase }: InsightsPanelPro
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    
     const fetchInsights = async () => {
       try {
         const data = await apiClient.getConversationInsights(conversationId);
+        
+        // Check if conversation exists
+        if (data.exists === false) {
+          console.warn(`[InsightsPanel] Conversation ${conversationId} doesn't exist, stopping polling`);
+          if (interval) {
+            clearInterval(interval);
+            interval = null;
+          }
+          setInsights(null);
+          setLoading(false);
+          return;
+        }
+        
         setInsights(data.cognitive_data || {});
       } catch (error) {
         console.error('Error fetching insights:', error);
+        // Don't stop polling on transient errors, but show empty state
       } finally {
         setLoading(false);
       }
@@ -54,8 +70,13 @@ export const InsightsPanel = ({ conversationId, currentPhase }: InsightsPanelPro
 
     fetchInsights();
     // Refresh every 3 seconds while conversation is active
-    const interval = setInterval(fetchInsights, 3000);
-    return () => clearInterval(interval);
+    interval = setInterval(fetchInsights, 3000);
+    
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
   }, [conversationId]);
 
   if (loading) {

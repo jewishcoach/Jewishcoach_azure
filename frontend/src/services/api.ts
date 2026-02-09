@@ -58,8 +58,35 @@ class ApiClient {
 
   // Insights (cognitive data)
   async getConversationInsights(conversationId: number) {
-    const response = await this.client.get(`/chat/conversations/${conversationId}/insights`);
-    return response.data;
+    try {
+      // Use /insights/safe endpoint - never throws 404, returns empty data instead
+      const response = await this.client.get(`/chat/conversations/${conversationId}/insights/safe`);
+      
+      // Check if conversation exists
+      if (!response.data.exists) {
+        console.warn(`[API] Conversation ${conversationId} not found, returning empty insights`);
+        return {
+          current_stage: 'S0',
+          saturation_score: 0.0,
+          cognitive_data: {},
+          metrics: {},
+          exists: false
+        };
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error('[API] Error fetching insights:', error);
+      // Return empty structure on error to prevent UI crashes
+      return {
+        current_stage: 'S0',
+        saturation_score: 0.0,
+        cognitive_data: {},
+        metrics: {},
+        exists: false,
+        error: true
+      };
+    }
   }
 
   // Messages (streaming handled separately in useChat)
