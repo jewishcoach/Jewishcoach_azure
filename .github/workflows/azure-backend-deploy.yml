@@ -29,15 +29,11 @@ jobs:
         cd backend
         python -m pip install --upgrade pip
         python -m venv antenv
-        source antenv/bin/activate
-        pip install -r requirements.txt
-        deactivate
+        ./antenv/bin/pip install -r requirements.txt
     
     - name: Create deployment package with venv
       run: |
         cd backend
-        # Include the virtual environment in the ZIP
-        # This way Azure doesn't need to build
         zip -r ../backend-deploy.zip . \
           -x "*.pyc" \
           -x "*/__pycache__/*" \
