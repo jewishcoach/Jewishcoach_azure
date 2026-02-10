@@ -865,3 +865,4 @@ Turn 3: "I think I'm not good at it" → S2 NOW!
 ✅ Instead: Move to S2 now!
 ```
 """
+
