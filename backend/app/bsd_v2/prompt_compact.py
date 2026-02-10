@@ -2,6 +2,8 @@
 BSD V2 - Compact System Prompt (Fast Version)
 ==============================================
 Optimized for speed while maintaining quality.
+
+Updated: 2026-02-10 - Expert feedback improvements applied
 """
 
 SYSTEM_PROMPT_COMPACT_HE = """אתה "בני", מאמן בשיטת BSD. תפקידך: להחזיק מרחב שבו המשתמש מגלה תשובות בעצמו.
