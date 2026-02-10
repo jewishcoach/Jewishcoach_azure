@@ -26,20 +26,34 @@ jobs:
     
     - name: Install dependencies in project
       run: |
+        set -e
+        echo "===== Installing dependencies ====="
         cd backend
+        echo "Working directory: $(pwd)"
+        python --version
         python -m pip install --upgrade pip
         python -m venv antenv
+        ls -la antenv/bin/
+        ./antenv/bin/pip --version
         ./antenv/bin/pip install -r requirements.txt
+        echo "===== Dependencies installed successfully ====="
     
     - name: Create deployment package with venv
       run: |
+        set -e
+        echo "===== Creating deployment package ====="
         cd backend
+        echo "Working directory: $(pwd)"
+        which zip || echo "zip not found, installing..."
+        sudo apt-get update && sudo apt-get install -y zip || true
         zip -r ../backend-deploy.zip . \
           -x "*.pyc" \
           -x "*/__pycache__/*" \
           -x "tests/*" \
           -x "*.db" \
           -x ".env"
+        echo "===== Package created successfully ====="
+        ls -lh ../backend-deploy.zip
     
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v3
