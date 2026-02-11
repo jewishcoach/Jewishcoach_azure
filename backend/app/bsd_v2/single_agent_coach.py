@@ -805,7 +805,11 @@ def check_repeated_question(coach_message: str, history: list, current_step: str
         completion_phrases = [
             "זה מסכם", "זה הכל", "כל הרגשות", "זה כל הרגשות",
             "די לי", "כבר כתבתי", "אמרתי את כל", "זה מספיק", 
-            "סיימתי", "זה מה שיש", "אין יותר", "אין עוד"
+            "סיימתי", "זה מה שיש", "אין יותר", "אין עוד",
+            # NEW: From infinite loop bug analysis
+            "לא קרה כלום", "לא קרה שום דבר", "לא היה כלום",
+            "כתבתי לך", "אמרתי לך", "עניתי כבר", "עניתי על זה",
+            "מה עכשיו", "אולי נמשיך", "בוא נמשיך"
         ]
         
         # Short words (need word boundaries)
@@ -864,7 +868,11 @@ def check_repeated_question(coach_message: str, history: list, current_step: str
         # Check if user said they're done
         completion_keywords = [
             "that's all", "that's it", "all the", "i'm done",
-            "that's everything", "nothing else", "no more"
+            "that's everything", "nothing else", "no more",
+            # NEW: From infinite loop bug analysis
+            "nothing happened", "nothing else happened",
+            "i told you", "already told", "already answered",
+            "what now", "let's continue", "let's move on"
         ]
         
         user_said_done = any(
@@ -895,6 +903,173 @@ def check_repeated_question(coach_message: str, history: list, current_step: str
             return get_next_step_question(current_step, language)
     
     return None
+
+
+def user_already_gave_emotions(state: Dict[str, Any], last_turns: int = 3) -> bool:
+    """
+    Check if user already gave emotions in recent messages.
+    Prevents asking "what did you feel?" when user already answered.
+    """
+    emotion_keywords_he = [
+        "קנאה", "כעס", "עצב", "שמחה", "פחד", "תסכול", "אכזבה",
+        "גאווה", "בושה", "אשם", "מבוכה", "עלבון", "ניצול"
+    ]
+    emotion_keywords_en = [
+        "jealous", "anger", "sad", "happy", "fear", "frustrat",
+        "disappoint", "proud", "shame", "guilt", "embarrass"
+    ]
+    
+    messages = state.get("messages", [])
+    recent_user_messages = [
+        msg["content"].lower() 
+        for msg in messages[-last_turns * 2:] 
+        if msg.get("sender") == "user"
+    ]
+    
+    for msg in recent_user_messages:
+        # Check Hebrew
+        if any(emotion in msg for emotion in emotion_keywords_he):
+            return True
+        # Check English
+        if any(emotion in msg for emotion in emotion_keywords_en):
+            return True
+    
+    return False
+
+
+def detect_stuck_loop(state: Dict[str, Any], last_n: int = 4) -> bool:
+    """
+    Detect if coach is stuck repeating the same question.
+    """
+    messages = state.get("messages", [])
+    recent_coach = [
+        msg["content"]
+        for msg in messages[-last_n:]
+        if msg.get("sender") == "coach"
+    ]
+    
+    if len(recent_coach) < 2:
+        return False
+    
+    # Check exact repetition
+    if recent_coach[-1] == recent_coach[-2]:
+        logger.warning(f"[Loop Detection] Exact repetition detected!")
+        return True
+    
+    # Check similar questions
+    key_phrases = ["מה עוד קרה", "מה הרגשת", "what else happened", "what did you feel"]
+    for phrase in key_phrases:
+        count = sum(1 for msg in recent_coach if phrase in msg)
+        if count >= 2:
+            logger.warning(f"[Loop Detection] Repeated question detected: '{phrase}' x{count}")
+            return True
+    
+    return False
+
+
+def user_wants_to_continue(user_message: str) -> bool:
+    """
+    Check if user is signaling they want to move forward.
+    Indicators: "already told you", "let's continue", "nothing happened"
+    
+    NOTE: This is just an INDICATOR. Don't automatically allow transition!
+    Check if we have sufficient info first, then explain if not.
+    """
+    continue_signals = [
+        # Hebrew
+        "כתבתי לך", "אמרתי לך", "עניתי", "כבר אמרתי",
+        "לא קרה כלום", "לא קרה שום דבר", "לא היה",
+        "אולי נמשיך", "בוא נמשיך", "מה עכשיו",
+        "זהו", "די", "אין עוד",
+        
+        # English
+        "i told you", "already said", "already answered",
+        "nothing happened", "nothing else",
+        "let's continue", "let's move on", "what now"
+    ]
+    
+    msg_lower = user_message.lower()
+    return any(signal in msg_lower for signal in continue_signals)
+
+
+def has_sufficient_event_details(state: Dict[str, Any]) -> Tuple[bool, str]:
+    """
+    Check if we have enough event details in S2 to move to S3 (emotions).
+    
+    Returns:
+        (has_sufficient, reason_if_not)
+    """
+    messages = state.get("messages", [])
+    
+    # Get user messages in current stage (rough approximation)
+    recent_user_messages = [
+        msg["content"]
+        for msg in messages[-10:]  # Look at last 10 messages
+        if msg.get("sender") == "user"
+    ]
+    
+    if len(recent_user_messages) < 2:
+        return False, "need_more_responses"
+    
+    # Check total length (not just "כן" / "לא")
+    total_length = sum(len(msg) for msg in recent_user_messages)
+    if total_length < 40:
+        return False, "responses_too_short"
+    
+    # Check for detail indicators
+    detail_words_he = ["מי", "איפה", "אמר", "עשה", "הגיב", "קרה", "היה"]
+    detail_words_en = ["who", "where", "said", "did", "happened", "was", "were"]
+    
+    all_text = " ".join(recent_user_messages).lower()
+    has_he_details = any(word in all_text for word in detail_words_he)
+    has_en_details = any(word in all_text for word in detail_words_en)
+    
+    if not (has_he_details or has_en_details):
+        return False, "missing_details"
+    
+    return True, ""
+
+
+def get_explanatory_response_for_missing_details(reason: str, language: str) -> str:
+    """
+    Generate an explanatory response when user is frustrated but we need more info.
+    """
+    if language == "he":
+        explanations = {
+            "need_more_responses": (
+                "אני מבין שאתה רוצה להמשיך. "
+                "כדי שנוכל לזהות את הדפוס שלך בצורה מדויקת, אני צריך עוד קצת פרטים על האירוע הספציפי. "
+                "ספר לי - מה בדיוק קרה שם?"
+            ),
+            "responses_too_short": (
+                "אני שומע שאתה רוצה להמשיך. "
+                "הסיבה שאני שואל על פרטים היא שכדי לזהות את הדפוס שלך, אני צריך להבין את המצב המלא. "
+                "תוכל לספר לי עוד קצת על מה שקרה? מי היה שם? מה בדיוק נאמר?"
+            ),
+            "missing_details": (
+                "אני מבין. הסיבה שאני צריך פרטים נוספים היא שהדפוס שלך מתגלה דרך המצבים הספציפיים. "
+                "ספר לי בבקשה - מי עוד היה במצב הזה? מה בדיוק נאמר או קרה?"
+            )
+        }
+        return explanations.get(reason, explanations["missing_details"])
+    else:
+        explanations = {
+            "need_more_responses": (
+                "I understand you want to continue. "
+                "To accurately identify your pattern, I need a few more details about the specific event. "
+                "Tell me - what exactly happened there?"
+            ),
+            "responses_too_short": (
+                "I hear you want to move forward. "
+                "The reason I'm asking for details is that to identify your pattern, I need to understand the full situation. "
+                "Can you tell me more about what happened? Who was there? What exactly was said?"
+            ),
+            "missing_details": (
+                "I understand. The reason I need more details is that your pattern reveals itself through specific situations. "
+                "Please tell me - who else was in this situation? What exactly was said or happened?"
+            )
+        }
+        return explanations.get(reason, explanations["missing_details"])
 
 
 def validate_stage_transition(
@@ -957,11 +1132,55 @@ def validate_stage_transition(
         else:
             return False, "Wait, before we talk about thoughts - tell me first **what did you feel** in that moment?"
     
+    # 🚨 CRITICAL: Block backwards transitions (can't go backwards!)
+    stage_order = ["S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12"]
+    try:
+        old_idx = stage_order.index(old_step) if old_step in stage_order else -1
+        new_idx = stage_order.index(new_step) if new_step in stage_order else -1
+        
+        # Don't allow going backwards (except to S0/S1 which are resets)
+        if old_idx >= 2 and new_idx >= 2 and new_idx < old_idx:
+            logger.error(f"[Safety Net] 🚫 BLOCKED backwards transition {old_step}→{new_step}")
+            if language == "he":
+                return False, "בוא נמשיך הלאה במקום לחזור אחורה."
+            else:
+                return False, "Let's move forward instead of going backwards."
+    except (ValueError, AttributeError):
+        pass  # Stage not in list, continue
+    
     # S2→S3: Need detailed event (at least 3 turns in S2)
     if old_step == "S2" and new_step == "S3":
         s2_turns = count_turns_in_step(state, "S2")
         
-        # 🎯 NEW: Check if LLM already asked an S3 question (emotions)
+        # 🚨 CRITICAL: Check if stuck in loop
+        if detect_stuck_loop(state):
+            logger.error(f"[Safety Net] 🔄 LOOP DETECTED! Forcing progression to S3")
+            return True, None  # Force progression!
+        
+        # 🚨 CRITICAL: Check if user already gave emotions (wrong stage!)
+        if user_already_gave_emotions(state):
+            logger.info(f"[Safety Net] ✅ User already gave emotions, allowing S2→S3 transition")
+            return True, None  # Allow transition
+        
+        # 🚨 NEW LOGIC: Check if user is frustrated
+        user_msg = state.get("messages", [])[-1].get("content", "") if state.get("messages") else ""
+        if user_wants_to_continue(user_msg):
+            logger.warning(f"[Safety Net] 🤔 User frustrated - checking if we have sufficient info...")
+            
+            # Check if we actually have enough event details
+            has_info, reason = has_sufficient_event_details(state)
+            
+            if has_info:
+                # Good to go - user is frustrated but we have enough info
+                logger.info(f"[Safety Net] ✅ User frustrated BUT has sufficient details → allowing S2→S3")
+                return True, None
+            else:
+                # Need more info - EXPLAIN why instead of just asking again
+                logger.warning(f"[Safety Net] ⚠️ User frustrated BUT missing details ({reason}) → explaining")
+                explanation = get_explanatory_response_for_missing_details(reason, language)
+                return False, explanation
+        
+        # 🎯 Check if LLM already asked an S3 question (emotions)
         # If yes, allow the transition even if s2_turns < 3
         # This prevents overriding good LLM responses
         if language == "he":
@@ -1002,7 +1221,41 @@ def validate_stage_transition(
     if old_step == "S3" and new_step == "S4":
         s3_turns = count_turns_in_step(state, "S3")
         
-        # 🎯 NEW: Check if LLM already asked an S4 question (thoughts)
+        # 🚨 CRITICAL: Check if stuck in loop
+        if detect_stuck_loop(state):
+            logger.error(f"[Safety Net] 🔄 LOOP DETECTED! Forcing progression to S4")
+            return True, None  # Force progression!
+        
+        # 🚨 NEW LOGIC: Check if user is frustrated
+        user_msg = state.get("messages", [])[-1].get("content", "") if state.get("messages") else ""
+        if user_wants_to_continue(user_msg):
+            logger.warning(f"[Safety Net] 🤔 User frustrated in S3 - checking if we have sufficient emotions...")
+            
+            # For S3, if user already gave emotions, that's usually enough
+            # Check if we have at least some emotion words
+            if user_already_gave_emotions(state):
+                logger.info(f"[Safety Net] ✅ User frustrated BUT has emotions → allowing S3→S4")
+                return True, None
+            else:
+                # Missing emotions - explain why we need them
+                logger.warning(f"[Safety Net] ⚠️ User frustrated BUT no emotions yet → explaining")
+                if language == "he":
+                    explanation = (
+                        "אני מבין שאתה רוצה להמשיך. "
+                        "הסיבה שאני צריך לשמוע על הרגשות שלך היא שהן חלק מרכזי בדפוס - "
+                        "הדפוס הוא השילוב של המצב, הרגש והמחשבה שחוזרים. "
+                        "מה הרגשת באותו רגע?"
+                    )
+                else:
+                    explanation = (
+                        "I understand you want to continue. "
+                        "The reason I need to hear about your emotions is that they're a central part of the pattern - "
+                        "the pattern is the combination of situation, emotion, and thought that repeats. "
+                        "What did you feel in that moment?"
+                    )
+                return False, explanation
+        
+        # 🎯 Check if LLM already asked an S4 question (thoughts)
         # If yes, allow the transition even if s3_turns < 3
         if language == "he":
             s4_indicators = ["מה עבר לך בראש", "מה חשבת", "מה אמרת לעצמך", "איזה משפט", "מחשב"]
