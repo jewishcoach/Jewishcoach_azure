@@ -737,6 +737,98 @@ def count_turns_in_step(state: Dict[str, Any], step: str) -> int:
     return count
 
 
+def has_clear_topic_for_s2(state: Dict[str, Any]) -> Tuple[bool, str]:
+    """
+    Check if we have a clear enough topic in S1 to move to S2.
+    
+    Returns:
+        (has_clear_topic, reason_if_not)
+    """
+    messages = state.get("messages", [])
+    
+    # Get user messages in S1 (approximate - look at recent messages)
+    recent_user_msgs = [
+        msg["content"]
+        for msg in messages[-8:]  # Look at last 8 messages
+        if msg.get("sender") == "user"
+    ]
+    
+    if len(recent_user_msgs) < 2:
+        return False, "need_more_clarification"
+    
+    # Check total length (not just "על שמחה")
+    total_length = sum(len(msg) for msg in recent_user_msgs)
+    if total_length < 25:
+        return False, "too_vague"
+    
+    # Check for context/detail words
+    detail_words_he = [
+        "רוצה ל", "להתאמן על", "כדי ש", "שאוכל", "שאדע",
+        "עם", "כש", "במצבים", "בזמן", "לפני", "אחרי", "כל"
+    ]
+    detail_words_en = [
+        "want to", "work on", "so that", "able to", "know how",
+        "with", "when", "in situations", "during", "before", "after", "every"
+    ]
+    
+    all_text = " ".join(recent_user_msgs)
+    has_context = (
+        any(word in all_text for word in detail_words_he) or
+        any(word in all_text for word in detail_words_en)
+    )
+    
+    if not has_context:
+        return False, "missing_context"
+    
+    return True, ""
+
+
+def get_s1_explanation_for_missing_info(reason: str, language: str) -> str:
+    """
+    Generate explanatory response when user is frustrated in S1 but topic is not clear enough.
+    """
+    if language == "he":
+        explanations = {
+            "need_more_clarification": (
+                "אני מבין שאת רוצה להמשיך. "
+                "הסיבה שאני מבקש עוד הבהרה היא שכדי לזהות את הדפוס שלך, "
+                "אני צריך להבין בדיוק על מה את רוצה להתאמן. "
+                "ספרי לי - מה בדיוק מעסיק אותך בנושא הזה?"
+            ),
+            "too_vague": (
+                "אני מבין. "
+                "כדי שאוכל לעזור לך באמת, אני צריך להבין יותר לעומק - "
+                "באיזה מצב או הקשר הדבר הזה מעסיק אותך?"
+            ),
+            "missing_context": (
+                "אני שומע. "
+                "כדי שנוכל לזהות את הדפוס שלך, חשוב שאבין - "
+                "באיזה סיטואציות או עם מי זה מעסיק אותך במיוחד?"
+            )
+        }
+        return explanations.get(reason, explanations["missing_context"])
+    else:
+        explanations = {
+            "need_more_clarification": (
+                "I understand you want to continue. "
+                "The reason I'm asking for more clarification is that to identify your pattern, "
+                "I need to understand exactly what you want to work on. "
+                "Tell me - what specifically concerns you about this topic?"
+            ),
+            "too_vague": (
+                "I understand. "
+                "To really help you, I need to understand more deeply - "
+                "in what situation or context does this concern you?"
+            ),
+            "missing_context": (
+                "I hear you. "
+                "To identify your pattern, it's important I understand - "
+                "in what situations or with whom does this particularly concern you?"
+            )
+        }
+        return explanations.get(reason, explanations["missing_context"])
+
+
 def get_next_step_question(current_step: str, language: str = "he") -> str:
     """
     Get appropriate next question based on current step (for loop prevention).
@@ -746,7 +838,7 @@ def get_next_step_question(current_step: str, language: str = "he") -> str:
     if language == "he":
         step_questions = {
             "S0": "על מה תרצה להתאמן?",
-            "S1": "על מה תרצה להתאמן?",
+            "S1": "ספר לי על פעם אחת ספציפית שבו זה קרה - מתי זה היה?",  # Move to S2!
             "S2": "ספר לי על רגע אחד ספציפי שבו זה קרה - מתי זה היה?",
             "S3": "אני מבין. עכשיו אני רוצה לשמוע - מה עבר לך בראש באותו רגע?",
             "S4": "מה עשית באותו רגע?",
@@ -762,7 +854,7 @@ def get_next_step_question(current_step: str, language: str = "he") -> str:
     else:
         step_questions = {
             "S0": "What would you like to work on?",
-            "S1": "What would you like to work on?",
+            "S1": "Tell me about one specific time when this happened - when was it?",  # Move to S2!
             "S2": "Tell me about one specific moment when this happened - when was it?",
             "S3": "I understand. Now I want to hear - what went through your mind in that moment?",
             "S4": "What did you do in that moment?",
@@ -1467,31 +1559,50 @@ async def handle_conversation(
         user_frustrated = any(phrase in user_message.lower() for phrase in explicit_frustration_phrases)
     
     if user_frustrated:
-        logger.warning(f"[Safety Net] User is frustrated ('{user_message}') - forcing progression")
+        logger.warning(f"[Safety Net] User is frustrated ('{user_message}') - checking if can progress")
         current_step = state['current_step']
         
         # Add user message first
         state = add_message(state, "user", user_message)
         
-        # Use get_next_step_question for dynamic progression
-        if language == "he":
-            apology_message = f"מצטער על החזרה! {get_next_step_question(current_step, language)}"
+        # 🎯 SPECIAL HANDLING FOR S1 - check if topic is clear before progressing
+        if current_step == "S1":
+            has_topic, reason = has_clear_topic_for_s2(state)
+            
+            if has_topic:
+                # ✅ Topic is clear - can progress to S2
+                logger.info(f"[Safety Net] User frustrated in S1, but topic is clear → moving to S2")
+                if language == "he":
+                    apology_message = f"אני מבין. {get_next_step_question(current_step, language)}"
+                else:
+                    apology_message = f"I understand. {get_next_step_question(current_step, language)}"
+                
+                next_step = "S2"
+            else:
+                # ⚠️ Topic not clear - EXPLAIN why we need more info
+                logger.warning(f"[Safety Net] User frustrated in S1, but topic not clear ({reason}) → explaining")
+                apology_message = get_s1_explanation_for_missing_info(reason, language)
+                next_step = "S1"  # Stay in S1 but with explanation
         else:
-            apology_message = f"Sorry for repeating! {get_next_step_question(current_step, language)}"
+            # For other stages, use standard progression
+            if language == "he":
+                apology_message = f"מצטער על החזרה! {get_next_step_question(current_step, language)}"
+            else:
+                apology_message = f"Sorry for repeating! {get_next_step_question(current_step, language)}"
+            
+            # Determine next step
+            step_progression = {
+                "S0": "S1", "S1": "S2", "S2": "S3", "S3": "S4",
+                "S4": "S5", "S5": "S6", "S6": "S7", "S7": "S8",
+                "S8": "S9", "S9": "S10", "S10": "S11", "S11": "S12"
+            }
+            next_step = step_progression.get(current_step, current_step)
         
-        # Determine next step based on current stage
-        step_progression = {
-            "S0": "S1", "S1": "S2", "S2": "S3", "S3": "S4",
-            "S4": "S5", "S5": "S6", "S6": "S7", "S7": "S8",
-            "S8": "S9", "S9": "S10", "S10": "S11", "S11": "S12"
-        }
-        next_step = step_progression.get(current_step, current_step)
-        
-        # Add coach apology and progress
+        # Add coach response
         internal_state = {
             "current_step": next_step,
             "saturation_score": 0.3,
-            "reflection": f"User frustrated with repeated questions - moving from {current_step} to {next_step}"
+            "reflection": f"User frustrated - moving from {current_step} to {next_step}"
         }
         state = add_message(state, "coach", apology_message, internal_state)
         
