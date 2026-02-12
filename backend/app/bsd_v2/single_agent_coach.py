@@ -807,23 +807,36 @@ def has_clear_topic_for_s2(state: Dict[str, Any]) -> Tuple[bool, str]:
     if total_length < 25:
         return False, "too_vague"
     
-    # Check for context/detail words
-    detail_words_he = [
-        "רוצה ל", "להתאמן על", "כדי ש", "שאוכל", "שאדע",
-        "עם", "כש", "במצבים", "בזמן", "לפני", "אחרי", "כל"
+    # Check for specific topic indicators
+    topic_indicators_he = [
+        # Goal/desire words
+        "רוצה ל", "להתאמן על", "כדי ש", "שאוכל", "שאדע", "להיות",
+        # Problem/challenge words
+        "פחד", "קושי", "בעיה", "לא מצליח", "מתקשה", "נאבק",
+        # Ability/skill words
+        "יכולת", "כישור", "לדבר", "להגיד", "לבטא", "לעשות",
+        # Context words
+        "עם", "כש", "במצבים", "בזמן", "לפני", "אחרי", "כל", "מול"
     ]
-    detail_words_en = [
-        "want to", "work on", "so that", "able to", "know how",
-        "with", "when", "in situations", "during", "before", "after", "every"
+    topic_indicators_en = [
+        # Goal/desire words
+        "want to", "work on", "so that", "able to", "know how", "to be",
+        # Problem/challenge words
+        "fear", "difficulty", "problem", "can't", "struggling", "hard to",
+        # Ability/skill words
+        "ability", "skill", "to speak", "to say", "to express", "to do",
+        # Context words
+        "with", "when", "in situations", "during", "before", "after", "every", "in front"
     ]
     
     all_text = " ".join(recent_user_msgs)
-    has_context = (
-        any(word in all_text for word in detail_words_he) or
-        any(word in all_text for word in detail_words_en)
-    )
     
-    if not has_context:
+    # Count how many indicators present
+    indicator_count = sum(1 for word in topic_indicators_he if word in all_text)
+    indicator_count += sum(1 for word in topic_indicators_en if word in all_text.lower())
+    
+    # Need at least 2 indicators for a clear topic
+    if indicator_count < 2:
         return False, "missing_context"
     
     return True, ""
@@ -832,24 +845,25 @@ def has_clear_topic_for_s2(state: Dict[str, Any]) -> Tuple[bool, str]:
 def get_s1_explanation_for_missing_info(reason: str, language: str) -> str:
     """
     Generate explanatory response when user is frustrated in S1 but topic is not clear enough.
+    
+    User asked "what's missing?" - explain WHY we need more clarity.
     """
     if language == "he":
         explanations = {
             "need_more_clarification": (
-                "אני מבין שאת רוצה להמשיך. "
-                "הסיבה שאני מבקש עוד הבהרה היא שכדי לזהות את הדפוס שלך, "
-                "אני צריך להבין בדיוק על מה את רוצה להתאמן. "
-                "ספרי לי - מה בדיוק מעסיק אותך בנושא הזה?"
+                "אני מבין את השאלה. אני שואל עוד כי **צריך שהנושא יהיה מוגדר היטב** לפני שנמשיך. "
+                "כדי לזהות את הדפוס שלך, אני צריך להבין במדויק על מה אתה רוצה להתאמן. "
+                "מה **בדיוק** בנושא הזה מעסיק אותך? במה אתה מרגיש תקוע?"
             ),
             "too_vague": (
-                "אני מבין. "
-                "כדי שאוכל לעזור לך באמת, אני צריך להבין יותר לעומק - "
-                "באיזה מצב או הקשר הדבר הזה מעסיק אותך?"
+                "אני מבין שאתה רוצה להמשיך. אני שואל עוד כי **הנושא עדיין כללי מדי**. "
+                "כדי לעזור לך באמת, אני צריך להבין - באיזה **מצבים ספציפיים** או **הקשרים** "
+                "הדבר הזה מעסיק אותך במיוחד?"
             ),
             "missing_context": (
-                "אני שומע. "
+                "אני שומע אותך. אני מבקש עוד הבהרה כי **חסר לי הקשר**. "
                 "כדי שנוכל לזהות את הדפוס שלך, חשוב שאבין - "
-                "באיזה סיטואציות או עם מי זה מעסיק אותך במיוחד?"
+                "**עם מי** או **באיזה סיטואציות** זה מעסיק אותך במיוחד?"
             )
         }
         return explanations.get(reason, explanations["missing_context"])
@@ -1514,6 +1528,33 @@ def validate_stage_transition(
         return True, None
     
     # Otherwise, check minimum turns for critical transitions
+    
+    # 🚨 CRITICAL: S1→S2 - Must have clear topic!
+    if old_step == "S1" and new_step == "S2":
+        has_topic, reason = has_clear_topic_for_s2(state)
+        
+        if not has_topic:
+            logger.warning(f"[Safety Net] Blocking S1→S2: topic not clear ({reason})")
+            if language == "he":
+                return False, "אני מבין שאתה רוצה להמשיך. אבל **לפני שניקח אירוע ספציפי, אני צריך להבין בדיוק על מה אתה רוצה להתאמן**. ספר לי - מה מעסיק אותך?"
+            else:
+                return False, "I understand you want to continue. But **before we take a specific event, I need to understand exactly what you want to work on**. Tell me - what's on your mind?"
+    
+    # 🚨 CRITICAL: Block S1→S3 (can't skip S2 event!)
+    if old_step == "S1" and new_step == "S3":
+        logger.error(f"[Safety Net] 🚫 BLOCKED S1→S3: Cannot skip S2 (event)!")
+        if language == "he":
+            return False, "רגע, לפני שנדבר על רגשות - בוא ניקח **אירוע ספציפי אחד** שקרה לאחרונה. ספר לי על פעם אחת ש[נושא] - מתי זה היה? עם מי?"
+        else:
+            return False, "Wait, before we talk about emotions - let's take **one specific event** that happened recently. Tell me about one time when [topic] - when was it? Who was there?"
+    
+    # 🚨 CRITICAL: Block S1→S4, S1→S5, etc. (can't skip multiple stages!)
+    if old_step == "S1" and new_idx > 2:
+        logger.error(f"[Safety Net] 🚫 BLOCKED S1→{new_step}: Cannot skip S2!")
+        if language == "he":
+            return False, "רגע, בוא קודם ניקח אירוע ספציפי אחד. ספר לי על פעם אחת לאחרונה - מתי זה היה?"
+        else:
+            return False, "Wait, let's first take one specific event. Tell me about one time recently - when was it?"
     
     # 🚨 CRITICAL: Block S2→S4 (can't skip S3 emotions!)
     if old_step == "S2" and new_step == "S4":
