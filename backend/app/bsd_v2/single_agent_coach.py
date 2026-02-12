@@ -737,6 +737,52 @@ def count_turns_in_step(state: Dict[str, Any], step: str) -> int:
     return count
 
 
+def detect_stage_question_mismatch(coach_message: str, current_step: str, language: str = "he") -> Optional[str]:
+    """
+    Detect if coach asked a question from a different stage than current_step.
+    This happens when LLM moves forward in content but forgets to update current_step in JSON.
+    
+    Returns:
+        The correct stage if mismatch detected, None otherwise
+    """
+    if language == "he":
+        stage_indicators = {
+            "S2": ["מה קרה", "מתי זה היה", "מי היה שם", "מי עוד היה"],
+            "S3": ["מה הרגשת", "איזה רגש", "איפה הרגשת", "מה עבר בך"],
+            "S4": ["מה עבר לך בראש", "מה חשבת", "מה אמרת לעצמך"],
+            "S5": ["מה עשית", "מה היית רוצה לעשות"],
+            "S6": ["איך תקרא לפער", "בסולם", "כמה חזק הפער"],
+            "S7": ["איפה עוד", "מאיפה עוד", "האם אתה מזהה", "האם זה קורה"],
+            "S8": ["מה אתה מרוויח", "מה אתה מפסיד", "מה ההפסד", "מה הרווח"],
+            "S9": ["איזה ערך", "איזו יכולת", "מה חשוב לך"],
+            "S10": ["איזו עמדה", "מה אתה בוחר", "איזו בחירה"]
+        }
+    else:
+        stage_indicators = {
+            "S2": ["what happened", "when was", "who was there"],
+            "S3": ["what did you feel", "what emotion", "where did you feel"],
+            "S4": ["what went through", "what did you think", "what did you tell yourself"],
+            "S5": ["what did you do", "what would you want to do"],
+            "S6": ["what would you call", "on a scale", "how strong"],
+            "S7": ["where else", "do you recognize", "does this happen"],
+            "S8": ["what do you gain", "what do you lose"],
+            "S9": ["what value", "what ability", "what's important"],
+            "S10": ["what stance", "what do you choose"]
+        }
+    
+    coach_lower = coach_message.lower()
+    
+    # Check each stage's indicators
+    for stage, indicators in stage_indicators.items():
+        if any(ind in coach_lower for ind in indicators):
+            if stage != current_step:
+                logger.error(f"[Stage Mismatch!] Coach asked {stage} question but current_step={current_step}")
+                logger.error(f"[Stage Mismatch!] Question: {coach_message[:100]}")
+                return stage  # Return the correct stage
+    
+    return None  # No mismatch detected
+
+
 def has_clear_topic_for_s2(state: Dict[str, Any]) -> Tuple[bool, str]:
     """
     Check if we have a clear enough topic in S1 to move to S2.
@@ -997,18 +1043,77 @@ def check_repeated_question(coach_message: str, history: list, current_step: str
     return None
 
 
-def user_already_gave_emotions(state: Dict[str, Any], last_turns: int = 3) -> bool:
+async def user_already_gave_emotions_llm(state: Dict[str, Any], llm, language: str = "he") -> bool:
     """
-    Check if user already gave emotions in recent messages.
-    Prevents asking "what did you feel?" when user already answered.
+    Use LLM to detect if user already shared emotions (smart detection).
+    More accurate than keyword list - detects "רע", "חנוק", "לא טבעי", etc.
+    """
+    messages = state.get("messages", [])
+    recent_user_messages = [
+        msg["content"]
+        for msg in messages[-6:]
+        if msg.get("sender") == "user"
+    ]
+    
+    if not recent_user_messages:
+        return False
+    
+    if language == "he":
+        prompt = f"""האם במסרים הבאים המשתמש שיתף רגשות?
+
+רגשות = כעס, עצב, שמחה, פחד, קנאה, תסכול, רע, טוב, חנוק, נזהר, חסום, וכו'
+
+מסרים:
+{chr(10).join(f"- {msg}" for msg in recent_user_messages)}
+
+ענה רק: כן או לא"""
+    else:
+        prompt = f"""Did the user share emotions in the following messages?
+
+Emotions = anger, sadness, joy, fear, jealousy, frustration, bad, good, stuck, scared, etc.
+
+Messages:
+{chr(10).join(f"- {msg}" for msg in recent_user_messages)}
+
+Answer only: yes or no"""
+    
+    try:
+        detection_messages = [
+            SystemMessage(content="You detect emotions in text." if language == "en" else "אתה מזהה רגשות בטקסט."),
+            HumanMessage(content=prompt)
+        ]
+        
+        response = await llm.ainvoke(detection_messages)
+        answer = response.content.strip().lower()
+        
+        has_emotions = "כן" in answer or "yes" in answer
+        logger.info(f"[Emotion Detection] LLM detected emotions: {has_emotions}")
+        return has_emotions
+        
+    except Exception as e:
+        logger.error(f"[Emotion Detection] LLM call failed: {e}")
+        # Fallback to simple keyword check
+        return user_already_gave_emotions_simple(state)
+
+
+def user_already_gave_emotions_simple(state: Dict[str, Any], last_turns: int = 3) -> bool:
+    """
+    Fallback: Simple keyword-based emotion detection.
+    Used if LLM detection fails.
     """
     emotion_keywords_he = [
         "קנאה", "כעס", "עצב", "שמחה", "פחד", "תסכול", "אכזבה",
-        "גאווה", "בושה", "אשם", "מבוכה", "עלבון", "ניצול"
+        "גאווה", "בושה", "אשם", "מבוכה", "עלבון", "ניצול",
+        # Extended list
+        "רע", "טוב", "חנוק", "נזהר", "לא טבעי", "מתוח", "לחוץ",
+        "מבולבל", "מופתע", "נעלב", "מוטרד", "דאוג",
+        "הרגשתי", "מרגיש"
     ]
     emotion_keywords_en = [
         "jealous", "anger", "sad", "happy", "fear", "frustrat",
-        "disappoint", "proud", "shame", "guilt", "embarrass"
+        "disappoint", "proud", "shame", "guilt", "embarrass",
+        "bad", "good", "stuck", "scared", "nervous", "worried",
+        "felt", "feeling"
     ]
     
     messages = state.get("messages", [])
@@ -1019,14 +1124,22 @@ def user_already_gave_emotions(state: Dict[str, Any], last_turns: int = 3) -> bo
     ]
     
     for msg in recent_user_messages:
-        # Check Hebrew
         if any(emotion in msg for emotion in emotion_keywords_he):
             return True
-        # Check English
         if any(emotion in msg for emotion in emotion_keywords_en):
             return True
     
     return False
+
+
+def user_already_gave_emotions(state: Dict[str, Any], last_turns: int = 3) -> bool:
+    """
+    Synchronous wrapper for backwards compatibility.
+    Uses simple keyword detection.
+    
+    For better detection, use user_already_gave_emotions_llm() in async context.
+    """
+    return user_already_gave_emotions_simple(state, last_turns)
 
 
 def detect_stuck_loop(state: Dict[str, Any], last_n: int = 4) -> bool:
@@ -1057,6 +1170,71 @@ def detect_stuck_loop(state: Dict[str, Any], last_n: int = 4) -> bool:
             return True
     
     return False
+
+
+def count_pattern_examples_in_s7(state: Dict[str, Any]) -> int:
+    """
+    Count how many pattern examples user gave in S7 (by content, not just turns).
+    """
+    messages = state.get("messages", [])
+    
+    # Get user messages (approximate S7 by looking at recent messages)
+    user_msgs = [
+        msg["content"]
+        for msg in messages[-12:]
+        if msg.get("sender") == "user"
+    ]
+    
+    if not user_msgs:
+        return 0
+    
+    all_text = " ".join(user_msgs)
+    example_count = 0
+    
+    # Method 1: Count explicit example markers
+    example_count += all_text.count("למשל")
+    example_count += all_text.count("גם")
+    example_count += all_text.count("וגם")
+    
+    # Method 2: Count location/context indicators
+    # "עם חברים", "בעבודה", "עם בן הזוג"
+    context_patterns = [
+        "עם חברים", "עם משפחה", "עם בן הזוג", "עם אישתי", "עם בעלי",
+        "בעבודה", "בבית", "במשרד", "בפגישה",
+        "with friends", "with family", "at work", "at home"
+    ]
+    
+    for pattern in context_patterns:
+        if pattern in all_text:
+            example_count += 1
+    
+    # Method 3: Check if user explicitly said multiple places
+    multiple_indicators = [
+        "בהרבה מקומות", "בכל מקום", "בהמון", "בכמה",
+        "in many places", "everywhere", "in multiple"
+    ]
+    
+    if any(ind in all_text for ind in multiple_indicators):
+        example_count += 2  # "many places" = at least 2 examples
+    
+    logger.info(f"[Pattern Examples] Counted {example_count} examples in S7")
+    return example_count
+
+
+def user_said_already_gave_examples(user_message: str) -> bool:
+    """Check if user explicitly said they already gave examples"""
+    phrases_he = [
+        "אמרתי כבר", "כבר אמרתי", "כבר נתתי",
+        "זה מופיע ב", "זה קורה ב",
+        "אמרתי לך"
+    ]
+    phrases_en = [
+        "i already said", "already told", "already gave",
+        "it happens in", "it occurs in"
+    ]
+    
+    msg_lower = user_message.lower()
+    return any(p in msg_lower for p in phrases_he + phrases_en)
 
 
 def user_wants_to_continue(user_message: str) -> bool:
@@ -1389,10 +1567,29 @@ def validate_stage_transition(
             else:
                 return False, "I understand. Let's summarize: the pattern is that you respond in a certain way in different situations. What's your response that repeats? What's common between the situations you described?"
         
-        # Check if we have at least 3 turns in S7 (to gather examples and confirm pattern)
+        # 🚨 NEW: Check if user already gave examples and said so
+        user_msg = state.get("messages", [])[-1].get("content", "") if state.get("messages") else ""
+        example_count = count_pattern_examples_in_s7(state)
+        
+        if example_count >= 2 and user_said_already_gave_examples(user_msg):
+            logger.info(f"[Safety Net] User gave {example_count} examples + said 'already told' → allowing S7→S8")
+            return True, None
+        
+        # 🚨 NEW: Check if stuck in loop asking "where else?"
+        if detect_stuck_loop(state) and example_count >= 2:
+            logger.error(f"[Safety Net] LOOP in S7 with {example_count} examples → forcing S8")
+            return True, None
+        
+        # Check if we have sufficient examples (content-based, not just turns)
         s7_turns = count_turns_in_step(state, "S7")
+        
+        if example_count >= 2 and s7_turns >= 3:
+            # Has enough examples and turns → allow transition
+            logger.info(f"[Safety Net] S7 has {example_count} examples + {s7_turns} turns → allowing S7→S8")
+            return True, None
+        
         if s7_turns < 3:
-            logger.warning(f"[Safety Net] Blocked S7→S8: only {s7_turns} turns in S7, need 3+")
+            logger.warning(f"[Safety Net] Blocked S7→S8: only {s7_turns} turns and {example_count} examples")
             if language == "he":
                 # GENERIC: Varied questions to explore pattern depth
                 pattern_questions = [
@@ -1669,7 +1866,14 @@ async def handle_conversation(
             internal_state["current_step"] = "S3"
             internal_state["saturation_score"] = 0.3
         
-        # 6. Safety Net: Validate stage transition
+        # 6. Safety Net: Check for stage/question mismatch
+        # This fixes the bug where LLM asks S8 question but doesn't update current_step
+        mismatch_stage = detect_stage_question_mismatch(coach_message, state["current_step"], language)
+        if mismatch_stage:
+            logger.warning(f"[Safety Net] Auto-correcting stage mismatch: {state['current_step']} → {mismatch_stage}")
+            internal_state["current_step"] = mismatch_stage
+        
+        # 7. Safety Net: Validate stage transition
         old_step = state["current_step"]
         new_step = internal_state.get("current_step", old_step)
         
