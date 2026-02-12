@@ -1237,6 +1237,127 @@ def user_said_already_gave_examples(user_message: str) -> bool:
     return any(p in msg_lower for p in phrases_he + phrases_en)
 
 
+async def validate_situation_quality(state: Dict[str, Any], llm, language: str = "he") -> tuple[bool, str | None]:
+    """
+    Validate that the situation (S2) meets all 4 required criteria:
+    1. Time frame: 2 weeks to 2 months ago
+    2. Personal involvement: User acted/reacted (not passive observer)
+    3. Emotional signature: Event caused turmoil/storm
+    4. Interpersonal arena: Other people were involved
+    
+    Returns:
+        (is_valid, guidance_message_if_invalid)
+    """
+    messages = state.get("messages", [])
+    
+    # Get user messages from S2
+    user_msgs_s2 = [
+        msg["content"]
+        for msg in messages[-20:]
+        if msg.get("sender") == "user"
+    ]
+    
+    if len(user_msgs_s2) < 2:
+        # Not enough data yet
+        return True, None
+    
+    situation_text = "\n".join(user_msgs_s2[-5:])  # Last 5 user messages
+    
+    if language == "he":
+        validation_prompt = f"""בדוק האם הסיטואציה הבאה עומדת בכל 4 התנאים. ענה בפורמט JSON.
+
+סיטואציה:
+{situation_text}
+
+תנאים לבדיקה:
+1. מסגרת זמן: האירוע קרה בעבר הקרוב (שבועיים-חודשיים אחורה)?
+2. מעורבות אישית: המשתמש פעל/הגיב באירוע (לא רק צפה)?
+3. חתימה רגשית: האירוע גרם לטלטלה/סערה רגשית?
+4. זירה בין-אישית: היו מעורבים אנשים נוספים?
+
+החזר JSON:
+{{
+  "time_frame_ok": true/false,
+  "personal_involvement_ok": true/false,
+  "emotional_signature_ok": true/false,
+  "interpersonal_arena_ok": true/false
+}}"""
+    else:
+        validation_prompt = f"""Check if the following situation meets all 4 criteria. Answer in JSON format.
+
+Situation:
+{situation_text}
+
+Criteria:
+1. Time frame: Event happened recently (2 weeks to 2 months ago)?
+2. Personal involvement: User acted/reacted (not just observed)?
+3. Emotional signature: Event caused turmoil/emotional storm?
+4. Interpersonal arena: Other people were involved?
+
+Return JSON:
+{{
+  "time_frame_ok": true/false,
+  "personal_involvement_ok": true/false,
+  "emotional_signature_ok": true/false,
+  "interpersonal_arena_ok": true/false
+}}"""
+    
+    try:
+        validation_messages = [
+            SystemMessage(content="You validate coaching situations." if language == "en" else "אתה מאמת סיטואציות אימון."),
+            HumanMessage(content=validation_prompt)
+        ]
+        
+        response = await llm.ainvoke(validation_messages)
+        result_text = response.content.strip()
+        
+        # Try to parse JSON
+        import json
+        import re
+        json_match = re.search(r'\{[^}]+\}', result_text)
+        if json_match:
+            result = json.loads(json_match.group())
+        else:
+            # Fallback: assume valid
+            return True, None
+        
+        # Check each criterion
+        if not result.get("time_frame_ok", True):
+            if language == "he":
+                return False, """כדי שנוכל לעבוד בצורה מדויקת, חשוב שניקח אירוע שהזיכרון שלו עדיין טרי, אבל הספקת מעט להתרחק ממנו. תוכל להביא סיטואציה שקרתה בטווח של השבועיים עד החודשיים האחרונים?
+
+חשוב לי להדגיש: הסיטואציה לא חייבת להיות קשורה לנושא האימון. הדפוס שלנו הולך איתנו לכל מקום, ולפעמים דווקא באירוע מתחום אחר לגמרי (בבית, בעבודה, עם חברים) הוא מתגלה בצורה הכי נקייה וברורה."""
+            else:
+                return False, "To work accurately, it's important to take an event where the memory is still fresh, but you've had some distance. Can you bring a situation that happened within the last 2 weeks to 2 months?"
+        
+        if not result.get("personal_involvement_ok", True):
+            if language == "he":
+                return False, "אני מבין את הסיטואציה שתיארת. בשלב זה אנחנו מחפשים אירוע שבו אתה הגבת ופעלת. תוכל לחשוב על אירוע כזה?"
+            else:
+                return False, "I understand the situation you described. At this stage we're looking for an event where you responded and acted. Can you think of such an event?"
+        
+        if not result.get("emotional_signature_ok", True):
+            if language == "he":
+                return False, "תיארת את השתלשלות העניינים, אבל כדי לזהות דפוס אנחנו מחפשים אירוע שבו זה פגש אותך באופן שגרם לך לטלטלה, לסערה. תוכל לתת לי אירוע שבו ההתרחשות כל כך נגעה בך עד שהיית נסער?"
+            else:
+                return False, "You described the sequence of events, but to identify a pattern we're looking for an event that hit you in a way that caused turmoil, storm. Can you give me an event where what happened touched you so much that you were upset?"
+        
+        if not result.get("interpersonal_arena_ok", True):
+            if language == "he":
+                return False, "אני מבין את החוויה שתיארת, אבל כדי לזהות דפוס אנחנו מחפשים אירוע שהיו מעורבים בו אנשים נוספים מלבדיך. תוכל לחשוב על אירוע כזה, שבו הייתה התרחשות או אינטראקציה בינך לבין אחרים?"
+            else:
+                return False, "I understand the experience you described, but to identify a pattern we're looking for an event where other people were involved besides you. Can you think of such an event, where there was an occurrence or interaction between you and others?"
+        
+        # All criteria met!
+        logger.info(f"[Situation Validation] All 4 criteria met ✓")
+        return True, None
+        
+    except Exception as e:
+        logger.error(f"[Situation Validation] LLM call failed: {e}")
+        # Fallback: allow progression (don't block on validation errors)
+        return True, None
+
+
 def user_wants_to_continue(user_message: str) -> bool:
     """
     Check if user is signaling they want to move forward.
@@ -1873,10 +1994,19 @@ async def handle_conversation(
             logger.warning(f"[Safety Net] Auto-correcting stage mismatch: {state['current_step']} → {mismatch_stage}")
             internal_state["current_step"] = mismatch_stage
         
-        # 7. Safety Net: Validate stage transition
+        # 6.5. Safety Net: Validate situation quality (S2→S3 only)
         old_step = state["current_step"]
         new_step = internal_state.get("current_step", old_step)
         
+        if old_step == "S2" and new_step == "S3":
+            # Check if situation meets all 4 criteria
+            situation_valid, guidance = await validate_situation_quality(state, llm, language)
+            if not situation_valid and guidance:
+                logger.warning(f"[Safety Net] Situation doesn't meet criteria, blocking S2→S3")
+                coach_message = guidance
+                internal_state["current_step"] = "S2"  # Stay in S2
+        
+        # 7. Safety Net: Validate stage transition
         is_valid, correction = validate_stage_transition(old_step, new_step, state, language, coach_message)
         
         if not is_valid and correction:
