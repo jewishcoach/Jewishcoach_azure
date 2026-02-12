@@ -10,16 +10,17 @@ interface Phase {
   descriptionEn: string;
 }
 
-// Map backend stages (S0-S10) to UI display phases
+// Map backend stages (S0-S12) to UI display phases
 // Multiple backend stages can map to the same UI phase
 const PHASE_MAPPING: Record<string, number> = {
   'S0': 0,  // רשות
-  'S1': 1, 'S2': 1, 'S3': 1, 'S4': 1, 'S5': 1,  // המצוי (includes topic, event, emotions, thought, action)
-  'S6': 2,  // הפער
-  'S7': 3,  // דפוס ופרדיגמה
-  'S8': 4,  // עמדה/רצון
-  'S9': 5,  // כמ"ז
-  'S10': 6, // בחירה חדשה ומחויבות
+  'S1': 1, 'S2': 1, 'S3': 1, 'S4': 1,  // המצוי (topic, event, emotions, thought, action-actual)
+  'S5': 2,  // רצוי (action-desired, emotion-desired, thought-desired)
+  'S6': 3,  // הפער
+  'S7': 4,  // דפוס ופרדיגמה
+  'S8': 5,  // עמדה/רצון
+  'S9': 6,  // כמ"ז
+  'S10': 7, 'S11': 7, 'S12': 7, // בחירה חדשה ומחויבות
 };
 
 const PHASES: Phase[] = [
@@ -33,16 +34,23 @@ const PHASES: Phase[] = [
   { 
     id: 'situation', 
     nameHe: 'המצוי', 
-    nameEn: 'Situation',
-    descriptionHe: 'תיאור המצב הנוכחי - אירוע, רגשות, מחשבות ומעשים',
-    descriptionEn: 'Current situation - event, emotions, thoughts and actions'
+    nameEn: 'Actual',
+    descriptionHe: 'תיאור המצב הנוכחי - אירוע, רגשות, מחשבות ופעולה',
+    descriptionEn: 'Current situation - event, emotions, thoughts and action'
+  },
+  { 
+    id: 'desired', 
+    nameHe: 'רצוי', 
+    nameEn: 'Desired',
+    descriptionHe: 'איך היית רוצה - פעולה, רגש ומחשבה רצויים',
+    descriptionEn: 'How you want it - desired action, emotion and thought'
   },
   { 
     id: 'gap', 
     nameHe: 'הפער', 
     nameEn: 'Gap',
     descriptionHe: 'זיהוי הפער בין המצוי לרצוי',
-    descriptionEn: 'Identifying the gap between current and desired state'
+    descriptionEn: 'Identifying the gap between actual and desired'
   },
   { 
     id: 'pattern', 
