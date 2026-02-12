@@ -31,24 +31,37 @@ def create_initial_state(
         "collected_data": {
             "topic": None,
             "event_description": None,
+            # S3: Emotions (actual)
             "emotions": [],
+            # S4: Thought (actual)
             "thought": None,
+            # S5: Action (actual + desired)
             "action_actual": None,
             "action_desired": None,
+            # S5: Emotion & Thought (desired - optional)
+            "emotion_desired": None,  # ✨ NEW: איך רצה להרגיש
+            "thought_desired": None,  # ✨ NEW: מה רצה לחשוב
+            # S6: Gap
             "gap_name": None,
             "gap_score": None,
-            "pattern": None,  # S7: דפוס חוזר
-            "stance": {  # S8: עמדה - רווח והפסד
+            # S7: Pattern
+            "pattern": None,  # דפוס חוזר
+            # S8: Stance (gains + losses)
+            "stance": {
                 "gains": [],  # מה מרוויח
                 "losses": []  # מה מפסיד
             },
-            "forces": {  # S9: כוחות
+            # S9: Forces
+            "forces": {
                 "source": [],  # מקור - ערכים
                 "nature": []  # טבע - יכולות
             },
-            "renewal": None,  # S10: בחירה/עמדה חדשה
-            "vision": None,  # S11: חזון
-            "commitment": None,  # S12: מחויבות קונקרטית
+            # S10: Renewal
+            "renewal": None,  # בחירה/עמדה חדשה
+            # S11: Vision
+            "vision": None,
+            # S12: Commitment
+            "commitment": None,  # מחויבות קונקרטית
         },
         
         # Conversation history (for context)

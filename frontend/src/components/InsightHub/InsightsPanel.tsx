@@ -5,6 +5,17 @@ import { apiClient } from '../../services/api';
 
 interface CognitiveData {
   topic?: string;
+  // V2 fields
+  emotions?: string[];
+  thought?: string;
+  action_actual?: string;
+  action_desired?: string;
+  emotion_desired?: string;  // ✨ NEW
+  thought_desired?: string;  // ✨ NEW
+  gap_name?: string;
+  gap_score?: number;
+  pattern?: string;
+  // V1 fields (backwards compatibility)
   event_actual?: {
     emotions_list?: string[];
     thought_content?: string;
@@ -149,6 +160,52 @@ export const InsightsPanel = ({ conversationId, currentPhase }: InsightsPanelPro
           icon={<Zap size={16} />}
           title="פעולה"
           content={insights.event_actual.action_content}
+          stage="S5"
+          currentStage={currentPhase}
+        />
+      )}
+      
+      {/* Action Actual (S5) - V2 */}
+      {insights.action_actual && (
+        <InsightCard
+          icon={<Zap size={16} />}
+          title="פעולה (מצוי)"
+          content={insights.action_actual}
+          stage="S5"
+          currentStage={currentPhase}
+        />
+      )}
+      
+      {/* === רצוי (Desired) === */}
+      
+      {/* Action Desired (S5) */}
+      {insights.action_desired && (
+        <InsightCard
+          icon={<Zap size={16} className="text-green-600" />}
+          title="פעולה רצויה"
+          content={insights.action_desired}
+          stage="S5"
+          currentStage={currentPhase}
+        />
+      )}
+      
+      {/* Emotion Desired (S5) */}
+      {insights.emotion_desired && (
+        <InsightCard
+          icon={<Heart size={16} className="text-green-600" />}
+          title="רגש רצוי"
+          content={insights.emotion_desired}
+          stage="S5"
+          currentStage={currentPhase}
+        />
+      )}
+      
+      {/* Thought Desired (S5) */}
+      {insights.thought_desired && (
+        <InsightCard
+          icon={<MessageSquare size={16} className="text-green-600" />}
+          title="מחשבה רצויה"
+          content={`"${insights.thought_desired}"`}
           stage="S5"
           currentStage={currentPhase}
         />

@@ -555,11 +555,26 @@ Turn 2:
   "internal_state": {
     "current_step": "S1",
     "saturation_score": 0.5,
-    "collected_data": {...},
+    "collected_data": {
+      "topic": "הנושא" (S1),
+      "emotions": ["רגש1", "רגש2"...] (S3),
+      "thought": "המחשבה" (S4),
+      "action_actual": "מה עשה" (S5),
+      "action_desired": "מה רצה לעשות" (S5),
+      "emotion_desired": "איך רצה להרגיש" (S5 - אופציונלי),
+      "thought_desired": "מה רצה לחשוב" (S5 - אופציונלי),
+      "gap_name": "שם הפער" (S6),
+      "gap_score": 7 (S6),
+      "pattern": "תיאור הדפוס" (S7),
+      "stance": {"gains": [...], "losses": [...]  } (S8),
+      "forces": {"source": [...], "nature": [...]} (S9)
+    },
     "reflection": "מחשבה פנימית"
   }
 }
 ```
+
+**חשוב!** עדכן את `collected_data` עם הנתונים החדשים שהמשתמש נתן בכל תור.
 
 **Saturation Score:**
 - 0.0-0.3: התחלת שלב
@@ -853,11 +868,26 @@ Always return:
   "internal_state": {
     "current_step": "S1",
     "saturation_score": 0.5,
-    "collected_data": {...},
+    "collected_data": {
+      "topic": "the topic" (S1),
+      "emotions": ["emotion1", "emotion2"...] (S3),
+      "thought": "the thought" (S4),
+      "action_actual": "what they did" (S5),
+      "action_desired": "what they wanted to do" (S5),
+      "emotion_desired": "how they wanted to feel" (S5 - optional),
+      "thought_desired": "what they wanted to think" (S5 - optional),
+      "gap_name": "gap name" (S6),
+      "gap_score": 7 (S6),
+      "pattern": "pattern description" (S7),
+      "stance": {"gains": [...], "losses": [...]} (S8),
+      "forces": {"source": [...], "nature": [...]} (S9)
+    },
     "reflection": "Internal thought"
   }
 }
 ```
+
+**Important!** Update `collected_data` with new information the user provided in each turn.
 
 **Saturation Score:**
 - 0.0-0.3: Starting stage
