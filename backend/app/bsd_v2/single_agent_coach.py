@@ -1346,21 +1346,27 @@ Return JSON:
         
         if not result.get("personal_involvement_ok", True):
             if language == "he":
-                return False, "אני מבין את הסיטואציה שתיארת. בשלב זה אנחנו מחפשים אירוע שבו אתה הגבת ופעלת. תוכל לחשוב על אירוע כזה?"
+                return False, """אני מבין את הסיטואציה שתיארת. בשלב זה אנחנו מחפשים אירוע שבו אתה הגבת ופעלת. תוכל לחשוב על אירוע כזה?
+
+חשוב: הסיטואציה לא חייבת להיות קשורה לנושא האימון - הדפוס שלך מתגלה בכל תחומי החיים."""
             else:
-                return False, "I understand the situation you described. At this stage we're looking for an event where you responded and acted. Can you think of such an event?"
+                return False, "I understand the situation you described. At this stage we're looking for an event where you responded and acted. Can you think of such an event? Important: The situation doesn't have to be related to the coaching topic - your pattern shows up in all areas of life."
         
         if not result.get("emotional_signature_ok", True):
             if language == "he":
-                return False, "תיארת את השתלשלות העניינים, אבל כדי לזהות דפוס אנחנו מחפשים אירוע שבו זה פגש אותך באופן שגרם לך לטלטלה, לסערה. תוכל לתת לי אירוע שבו ההתרחשות כל כך נגעה בך עד שהיית נסער?"
+                return False, """תיארת את השתלשלות העניינים, אבל כדי לזהות דפוס אנחנו מחפשים אירוע שבו זה פגש אותך באופן שגרם לך לטלטלה, לסערה. תוכל לתת לי אירוע שבו ההתרחשות כל כך נגעה בך עד שהיית נסער?
+
+זה יכול להיות אירוע מכל תחום - לא חייב להיות קשור לנושא האימון."""
             else:
-                return False, "You described the sequence of events, but to identify a pattern we're looking for an event that hit you in a way that caused turmoil, storm. Can you give me an event where what happened touched you so much that you were upset?"
+                return False, "You described the sequence of events, but to identify a pattern we're looking for an event that hit you in a way that caused turmoil, storm. Can you give me an event where what happened touched you so much that you were upset? It can be from any area - doesn't have to be related to the coaching topic."
         
         if not result.get("interpersonal_arena_ok", True):
             if language == "he":
-                return False, "אני מבין את החוויה שתיארת, אבל כדי לזהות דפוס אנחנו מחפשים אירוע שהיו מעורבים בו אנשים נוספים מלבדיך. תוכל לחשוב על אירוע כזה, שבו הייתה התרחשות או אינטראקציה בינך לבין אחרים?"
+                return False, """אני מבין את החוויה שתיארת, אבל כדי לזהות דפוס אנחנו מחפשים אירוע שהיו מעורבים בו אנשים נוספים מלבדיך. תוכל לחשוב על אירוע כזה, שבו הייתה התרחשות או אינטראקציה בינך לבין אחרים?
+
+האירוע לא חייב להיות קשור לנושא האימון - הדפוס שלך חוזר בכל המקומות."""
             else:
-                return False, "I understand the experience you described, but to identify a pattern we're looking for an event where other people were involved besides you. Can you think of such an event, where there was an occurrence or interaction between you and others?"
+                return False, "I understand the experience you described, but to identify a pattern we're looking for an event where other people were involved besides you. Can you think of such an event, where there was an occurrence or interaction between you and others? The event doesn't have to be related to the coaching topic - your pattern repeats everywhere."
         
         # All criteria met!
         logger.info(f"[Situation Validation] All 4 criteria met ✓")
@@ -1370,6 +1376,25 @@ Return JSON:
         logger.error(f"[Situation Validation] LLM call failed: {e}")
         # Fallback: allow progression (don't block on validation errors)
         return True, None
+
+
+def user_questions_unrelated_event(user_message: str) -> bool:
+    """
+    Check if user is asking why the event doesn't have to be related to coaching topic.
+    """
+    questions_he = [
+        "למה לא", "למה אירוע", "למה סיטואציה", "למה דווקא",
+        "מה הקשר", "צריך להיות קשור", "לא קשור",
+        "אירוע אחר", "אירוע שלא", "למה לא קשור"
+    ]
+    questions_en = [
+        "why not", "why event", "why situation",
+        "what's the connection", "needs to be related", "not related",
+        "different event", "unrelated event"
+    ]
+    
+    msg_lower = user_message.lower()
+    return any(q in msg_lower for q in questions_he + questions_en)
 
 
 def user_wants_to_continue(user_message: str) -> bool:
@@ -1893,6 +1918,36 @@ async def handle_conversation(
     logger.info(f"[BSD V2] Handling message: '{user_message[:50]}...'")
     logger.info(f"[BSD V2] Current step: {state['current_step']}, saturation: {state['saturation_score']:.2f}")
     logger.info(f"[BSD V2] Message count in state: {len(state.get('messages', []))}")
+    
+    # 🚨 CRITICAL: Check if user is asking about unrelated event
+    if state["current_step"] == "S2" and user_questions_unrelated_event(user_message):
+        logger.info(f"[Safety Net] User asking about unrelated event - explaining directly")
+        if language == "he":
+            explanation = """שאלה מעולה! הסיטואציה **לא חייבת** להיות קשורה לנושא האימון.
+
+למה? כי **הדפוס שלך הולך איתך לכל מקום** - לבית, לעבודה, לחברים, לכל תחום בחיים.
+
+לפעמים דווקא באירוע מתחום **אחר לגמרי** (למשל: שיחה עם חבר, מצב בעבודה, אינטראקציה עם בן משפחה) הדפוס מתגלה בצורה הכי **נקייה וברורה** - בלי הרבה "רעש" סביב.
+
+אז תרגיש חופשי לשתף אירוע מכל תחום שבו היית באינטראקציה עם אנשים והרגשת סערה רגשית. מה עולה לך?"""
+        else:
+            explanation = """Great question! The situation **doesn't have to** be related to the coaching topic.
+
+Why? Because **your pattern goes with you everywhere** - home, work, friends, every area of life.
+
+Sometimes a situation from a **completely different area** (e.g., conversation with a friend, situation at work, interaction with family) reveals the pattern most **clearly** - without a lot of "noise" around it.
+
+So feel free to share an event from any area where you interacted with people and felt emotional turmoil. What comes to mind?"""
+        
+        # Add this as a coach response directly, no need for LLM
+        internal_state = {
+            "current_step": state["current_step"],  # Stay in same stage
+            "saturation_score": state.get("saturation_score", 0.3),
+            "reflection": "Explained why event doesn't need to be related to topic"
+        }
+        state = add_message(state, "user", user_message)
+        state = add_message(state, "coach", explanation, internal_state)
+        return explanation, state
     
     # Check if user is frustrated - Use EXPLICIT phrases only (no single words)
     # This avoids false positives like "לא חש מספיק טוב" while catching real frustration
