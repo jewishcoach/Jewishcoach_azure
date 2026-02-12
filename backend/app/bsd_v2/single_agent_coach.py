@@ -1346,11 +1346,11 @@ Return JSON:
         
         if not result.get("personal_involvement_ok", True):
             if language == "he":
-                return False, """אני מבין את הסיטואציה שתיארת. בשלב זה אנחנו מחפשים אירוע שבו אתה הגבת ופעלת. תוכל לחשוב על אירוע כזה?
+                return False, """אני מבין את הסיטואציה שתיארת. בשלב זה אנחנו מחפשים אירוע שבו אתה הגבת ופעלת. 
 
-חשוב: הסיטואציה לא חייבת להיות קשורה לנושא האימון - הדפוס שלך מתגלה בכל תחומי החיים."""
+בוא ננסה אירוע אחר - יכול להיות מהעבודה, עם חברים, או עם משפחה (לא חייב להיות קשור לנושא האימון). ספר לי על מצב שבו פעלת והגבת."""
             else:
-                return False, "I understand the situation you described. At this stage we're looking for an event where you responded and acted. Can you think of such an event? Important: The situation doesn't have to be related to the coaching topic - your pattern shows up in all areas of life."
+                return False, "I understand the situation you described. At this stage we're looking for an event where you responded and acted. Let's try a different event - can be from work, with friends, or family (doesn't have to be related to coaching topic). Tell me about a situation where you acted and responded."
         
         if not result.get("emotional_signature_ok", True):
             if language == "he":
@@ -1362,11 +1362,13 @@ Return JSON:
         
         if not result.get("interpersonal_arena_ok", True):
             if language == "he":
-                return False, """אני מבין את החוויה שתיארת, אבל כדי לזהות דפוס אנחנו מחפשים אירוע שהיו מעורבים בו אנשים נוספים מלבדיך. תוכל לחשוב על אירוע כזה, שבו הייתה התרחשות או אינטראקציה בינך לבין אחרים?
+                return False, """אני מבין את החוויה שתיארת. כדי לזהות דפוס אנחנו מחפשים אירוע שהיו מעורבים בו אנשים נוספים מלבדיך.
 
-האירוע לא חייב להיות קשור לנושא האימון - הדפוס שלך חוזר בכל המקומות."""
+בוא ננסה משהו אחר - ספר לי על **אירוע מהחיים שלך** (יכול להיות מהעבודה, עם חברים, עם משפחה, בכל מצב) שבו היו אנשים אחרים וחווית סערה רגשית.
+
+**חשוב:** האירוע לא חייב להיות קשור לנושא האימון - הדפוס שלך מתגלה בכל תחומי החיים, ולפעמים דווקא באירוע מתחום אחר לגמרי."""
             else:
-                return False, "I understand the experience you described, but to identify a pattern we're looking for an event where other people were involved besides you. Can you think of such an event, where there was an occurrence or interaction between you and others? The event doesn't have to be related to the coaching topic - your pattern repeats everywhere."
+                return False, "I understand the experience you described. To identify a pattern we're looking for an event where other people were involved besides you. Let's try something else - tell me about **an event from your life** (can be from work, with friends, with family, any situation) where other people were present and you experienced emotional turmoil. **Important:** The event doesn't have to be related to the coaching topic - your pattern shows up in all areas of life, sometimes most clearly in a completely different area."
         
         # All criteria met!
         logger.info(f"[Situation Validation] All 4 criteria met ✓")
