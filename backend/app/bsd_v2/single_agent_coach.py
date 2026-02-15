@@ -17,7 +17,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 
 from ..bsd.llm import get_azure_chat_llm
 from .state_schema_v2 import add_message, get_conversation_history
-from .prompts_embedded import get_stage_prompt, get_prompt_size
+from .prompts.prompt_manager import assemble_system_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -1961,12 +1961,12 @@ So feel free to share an event from any area where you interacted with people an
         t2 = time.time()
         logger.info(f"[PERF] Build context: {(t2-t1)*1000:.0f}ms ({len(context)} chars)")
         
-        # 2. Prepare messages (use OPTIMIZED embedded prompts - 96% smaller!)
+        # 2. Prepare messages (use DYNAMIC assembly for speed!)
+        # Assemble only the relevant prompt for current stage
         current_stage = state.get("current_step", "S1")
-        system_prompt = get_stage_prompt(current_stage)
-        estimated_tokens = get_prompt_size(current_stage)
+        system_prompt = assemble_system_prompt(current_stage)
         
-        logger.info(f"[PERF] Stage prompt ({current_stage}): {len(system_prompt)} chars, ~{estimated_tokens} tokens")
+        logger.info(f"[PERF] Assembled prompt for {current_stage}: ~{len(system_prompt)} chars")
         
         messages = [
             SystemMessage(content=system_prompt),
