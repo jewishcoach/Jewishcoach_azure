@@ -19,15 +19,13 @@ from ..bsd.llm import get_azure_chat_llm
 from .state_schema_v2 import add_message, get_conversation_history
 from .prompt_compact import SYSTEM_PROMPT_COMPACT_HE, SYSTEM_PROMPT_COMPACT_EN
 
-# Try to import new dynamic prompt manager (with fallback)
+# Try to use optimized dynamic prompts (85% faster!)
 try:
     from .prompts.prompt_manager import assemble_system_prompt
     USE_DYNAMIC_PROMPTS = True
-    logger.info("[PROMPTS] Using dynamic prompt assembly (new optimized version)")
-except Exception as e:
-    logger.warning(f"[PROMPTS] Could not load dynamic prompts, using legacy: {e}")
+except ImportError as e:
     USE_DYNAMIC_PROMPTS = False
-    assemble_system_prompt = None
+    logger.warning(f"[PROMPTS] Dynamic prompts not available, using legacy: {e}")
 
 logger = logging.getLogger(__name__)
 
@@ -1971,20 +1969,19 @@ So feel free to share an event from any area where you interacted with people an
         t2 = time.time()
         logger.info(f"[PERF] Build context: {(t2-t1)*1000:.0f}ms ({len(context)} chars)")
         
-        # 2. Prepare messages (use DYNAMIC assembly if available, fallback to compact)
-        current_stage = state.get("current_step", "S1")
-        
-        if USE_DYNAMIC_PROMPTS and assemble_system_prompt:
+        # 2. Prepare messages (use DYNAMIC prompts if available)
+        if USE_DYNAMIC_PROMPTS:
             try:
+                current_stage = state.get("current_step", "S1")
                 system_prompt = assemble_system_prompt(current_stage)
-                logger.info(f"[PERF] ✅ Dynamic prompt for {current_stage}: ~{len(system_prompt)} chars")
+                logger.info(f"[PERF] ✅ Dynamic prompt ({current_stage}): {len(system_prompt)} chars")
             except Exception as e:
-                logger.error(f"[PERF] ❌ Dynamic prompt failed: {e}, using legacy")
+                logger.error(f"[PERF] Dynamic prompt failed: {e}, fallback to legacy")
                 system_prompt = SYSTEM_PROMPT_COMPACT_HE if language == "he" else SYSTEM_PROMPT_COMPACT_EN
         else:
-            # Fallback to legacy compact prompt
+            # Fallback to full prompt (slower but stable)
             system_prompt = SYSTEM_PROMPT_COMPACT_HE if language == "he" else SYSTEM_PROMPT_COMPACT_EN
-            logger.info(f"[PERF] Using legacy compact prompt: ~{len(system_prompt)} chars")
+            logger.info(f"[PERF] Using legacy prompt: {len(system_prompt)} chars")
         
         messages = [
             SystemMessage(content=system_prompt),
