@@ -17,7 +17,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 
 from ..bsd.llm import get_azure_chat_llm
 from .state_schema_v2 import add_message, get_conversation_history
-from .prompts.prompt_manager import assemble_system_prompt
+from .prompts_loader import get_focused_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -1964,7 +1964,7 @@ So feel free to share an event from any area where you interacted with people an
         # 2. Prepare messages (use DYNAMIC assembly for speed!)
         # Assemble only the relevant prompt for current stage
         current_stage = state.get("current_step", "S1")
-        system_prompt = assemble_system_prompt(current_stage)
+        system_prompt = get_focused_prompt(current_stage)
         
         logger.info(f"[PERF] Assembled prompt for {current_stage}: ~{len(system_prompt)} chars")
         

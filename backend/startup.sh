@@ -22,6 +22,12 @@ echo "✅ Dependencies installed"
 export PYTHONPATH=/home/site/wwwroot:$PYTHONPATH
 echo "✅ PYTHONPATH set to: $PYTHONPATH"
 
+# Set UTF-8 encoding for Hebrew text support
+export PYTHONUTF8=1
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+echo "✅ UTF-8 encoding configured"
+
 # Check critical environment variables
 echo "🔍 Checking environment variables..."
 if [ -z "$AZURE_OPENAI_API_KEY" ]; then
@@ -46,17 +52,27 @@ PORT="${PORT:-8000}"
 echo "🌐 Using port: $PORT"
 
 # Start gunicorn with uvicorn workers
-echo "🚀 Starting Gunicorn with Uvicorn workers..."
-echo "   Workers: 2"
-echo "   Bind: 0.0.0.0:$PORT"
-echo "   Timeout: 120s"
+echo "🚀 Starting Gunicorn with config file..."
 
-exec gunicorn \
-    -w 2 \
-    -k uvicorn.workers.UvicornWorker \
-    app.main:app \
-    --bind 0.0.0.0:$PORT \
-    --timeout 120 \
-    --access-logfile - \
-    --error-logfile - \
-    --log-level info
+# Use gunicorn config file if exists, otherwise use CLI args
+if [ -f "gunicorn_conf.py" ]; then
+    echo "✅ Using gunicorn_conf.py (timeout: 600s)"
+    exec gunicorn \
+        -c gunicorn_conf.py \
+        app.main:app
+else
+    echo "⚠️  gunicorn_conf.py not found, using CLI args"
+    echo "   Workers: 2"
+    echo "   Bind: 0.0.0.0:$PORT"
+    echo "   Timeout: 600s"
+    
+    exec gunicorn \
+        -w 2 \
+        -k uvicorn.workers.UvicornWorker \
+        app.main:app \
+        --bind 0.0.0.0:$PORT \
+        --timeout 600 \
+        --access-logfile - \
+        --error-logfile - \
+        --log-level info
+fi
