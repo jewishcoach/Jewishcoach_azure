@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .database import engine, Base
 from .routers import chat, speech, feedback, users, journal, tools, admin, billing, profile, calendar
-from .api import chat_v2  # BSD V2 - Single-agent conversational coach
+from .api import chat_v2, debug_health  # BSD V2 + Debug
 import os
 from dotenv import load_dotenv
 
@@ -56,6 +56,7 @@ else:
 # Include routers
 app.include_router(chat.router)  # V1 - Multi-layer architecture
 app.include_router(chat_v2.router)  # V2 - Single-agent conversational coach
+app.include_router(debug_health.router)  # Debug endpoints
 app.include_router(speech.router)
 app.include_router(feedback.router)
 app.include_router(users.router)
