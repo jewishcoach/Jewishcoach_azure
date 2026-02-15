@@ -17,15 +17,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 
 from ..bsd.llm import get_azure_chat_llm
 from .state_schema_v2 import add_message, get_conversation_history
-from .prompt_compact import SYSTEM_PROMPT_COMPACT_HE, SYSTEM_PROMPT_COMPACT_EN
-
-# Try to use optimized dynamic prompts (85% faster!)
-try:
-    from .prompts.prompt_manager import assemble_system_prompt
-    USE_DYNAMIC_PROMPTS = True
-except ImportError as e:
-    USE_DYNAMIC_PROMPTS = False
-    logger.warning(f"[PROMPTS] Dynamic prompts not available, using legacy: {e}")
+from .prompts_embedded import get_stage_prompt, get_prompt_size
 
 logger = logging.getLogger(__name__)
 
@@ -1969,19 +1961,12 @@ So feel free to share an event from any area where you interacted with people an
         t2 = time.time()
         logger.info(f"[PERF] Build context: {(t2-t1)*1000:.0f}ms ({len(context)} chars)")
         
-        # 2. Prepare messages (use DYNAMIC prompts if available)
-        if USE_DYNAMIC_PROMPTS:
-            try:
-                current_stage = state.get("current_step", "S1")
-                system_prompt = assemble_system_prompt(current_stage)
-                logger.info(f"[PERF] ✅ Dynamic prompt ({current_stage}): {len(system_prompt)} chars")
-            except Exception as e:
-                logger.error(f"[PERF] Dynamic prompt failed: {e}, fallback to legacy")
-                system_prompt = SYSTEM_PROMPT_COMPACT_HE if language == "he" else SYSTEM_PROMPT_COMPACT_EN
-        else:
-            # Fallback to full prompt (slower but stable)
-            system_prompt = SYSTEM_PROMPT_COMPACT_HE if language == "he" else SYSTEM_PROMPT_COMPACT_EN
-            logger.info(f"[PERF] Using legacy prompt: {len(system_prompt)} chars")
+        # 2. Prepare messages (use OPTIMIZED embedded prompts - 96% smaller!)
+        current_stage = state.get("current_step", "S1")
+        system_prompt = get_stage_prompt(current_stage)
+        estimated_tokens = get_prompt_size(current_stage)
+        
+        logger.info(f"[PERF] Stage prompt ({current_stage}): {len(system_prompt)} chars, ~{estimated_tokens} tokens")
         
         messages = [
             SystemMessage(content=system_prompt),
