@@ -83,7 +83,7 @@ def get_azure_chat_llm(*, purpose: str) -> AzureChatOpenAI:
         api_version=api_version,
         azure_deployment=deployment,
         temperature=temperature,
-        request_timeout=30,  # 30 seconds (enterprise: don't wait forever)
+        request_timeout=60,  # 60 seconds (increased for complex prompts)
         max_retries=2,       # Retry on transient failures
     )
 
