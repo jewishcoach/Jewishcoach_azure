@@ -795,9 +795,9 @@ def has_clear_topic_for_s2(state: Dict[str, Any]) -> Tuple[bool, str]:
     
     # Get user messages in S1 (approximate - look at recent messages)
     recent_user_msgs = [
-        msg["content"]
+        msg.get("content", "")
         for msg in messages[-8:]  # Look at last 8 messages
-        if msg.get("sender") == "user"
+        if msg.get("sender") == "user" and msg.get("content")
     ]
     
     if len(recent_user_msgs) < 2:
@@ -1065,9 +1065,9 @@ async def user_already_gave_emotions_llm(state: Dict[str, Any], llm, language: s
     """
     messages = state.get("messages", [])
     recent_user_messages = [
-        msg["content"]
+        msg.get("content", "")
         for msg in messages[-6:]
-        if msg.get("sender") == "user"
+        if msg.get("sender") == "user" and msg.get("content")
     ]
     
     if not recent_user_messages:
@@ -1133,9 +1133,9 @@ def user_already_gave_emotions_simple(state: Dict[str, Any], last_turns: int = 3
     
     messages = state.get("messages", [])
     recent_user_messages = [
-        msg["content"].lower() 
+        msg.get("content", "").lower() 
         for msg in messages[-last_turns * 2:] 
-        if msg.get("sender") == "user"
+        if msg.get("sender") == "user" and msg.get("content")
     ]
     
     for msg in recent_user_messages:
@@ -1163,9 +1163,9 @@ def detect_stuck_loop(state: Dict[str, Any], last_n: int = 4) -> bool:
     """
     messages = state.get("messages", [])
     recent_coach = [
-        msg["content"]
+        msg.get("content", "")
         for msg in messages[-last_n:]
-        if msg.get("sender") == "coach"
+        if msg.get("sender") == "coach" and msg.get("content")
     ]
     
     if len(recent_coach) < 2:
@@ -1195,9 +1195,9 @@ def count_pattern_examples_in_s7(state: Dict[str, Any]) -> int:
     
     # Get user messages (approximate S7 by looking at recent messages)
     user_msgs = [
-        msg["content"]
+        msg.get("content", "")
         for msg in messages[-12:]
-        if msg.get("sender") == "user"
+        if msg.get("sender") == "user" and msg.get("content")
     ]
     
     if not user_msgs:
@@ -1266,9 +1266,9 @@ async def validate_situation_quality(state: Dict[str, Any], llm, language: str =
     
     # Get user messages from S2
     user_msgs_s2 = [
-        msg["content"]
+        msg.get("content", "")
         for msg in messages[-20:]
-        if msg.get("sender") == "user"
+        if msg.get("sender") == "user" and msg.get("content")
     ]
     
     if len(user_msgs_s2) < 2:
@@ -1358,9 +1358,9 @@ def has_sufficient_event_details(state: Dict[str, Any]) -> Tuple[bool, str]:
     
     # Get user messages in current stage (rough approximation)
     recent_user_messages = [
-        msg["content"]
+        msg.get("content", "")
         for msg in messages[-10:]  # Look at last 10 messages
-        if msg.get("sender") == "user"
+        if msg.get("sender") == "user" and msg.get("content")
     ]
     
     if len(recent_user_messages) < 2:
@@ -1800,10 +1800,14 @@ def build_conversation_context(
             context_parts.append("🚨 Important: Don't ask questions the user already answered in the history!")
         
         for msg in history:
-            sender = "משתמש" if msg["sender"] == "user" else "מאמן"
+            sender_value = msg.get("sender", "unknown")
+            content_value = msg.get("content", "")
+            if not content_value:  # Skip empty messages
+                continue
+            sender = "משתמש" if sender_value == "user" else "מאמן"
             if language == "en":
-                sender = "User" if msg["sender"] == "user" else "Coach"
-            context_parts.append(f"{sender}: {msg['content']}")
+                sender = "User" if sender_value == "user" else "Coach"
+            context_parts.append(f"{sender}: {content_value}")
     
     # New message
     context_parts.append("\n# הודעה חדשה" if language == "he" else "\n# New Message")
