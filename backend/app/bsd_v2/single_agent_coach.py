@@ -1254,11 +1254,10 @@ def user_said_already_gave_examples(user_message: str) -> bool:
 
 async def validate_situation_quality(state: Dict[str, Any], llm, language: str = "he") -> Tuple[bool, Optional[str]]:
     """
-    Validate that the situation (S2) meets all 4 required criteria:
-    1. Time frame: 2 weeks to 2 months ago
-    2. Personal involvement: User acted/reacted (not passive observer)
-    3. Emotional signature: Event caused turmoil/storm
-    4. Interpersonal arena: Other people were involved
+    Validate that the situation (S2) meets basic criteria using FAST rule-based checks.
+    We rely on the LLM's prompt instructions for detailed validation to avoid double LLM calls.
+    
+    This function only performs lightweight checks to catch obvious issues.
     
     Returns:
         (is_valid, guidance_message_if_invalid)
@@ -1277,118 +1276,31 @@ async def validate_situation_quality(state: Dict[str, Any], llm, language: str =
         return True, None
     
     situation_text = "\n".join(user_msgs_s2[-5:])  # Last 5 user messages
+    situation_lower = situation_text.lower()
     
-    if language == "he":
-        validation_prompt = f"""בדוק האם הסיטואציה הבאה עומדת בכל 4 התנאים. ענה בפורמט JSON.
-
-סיטואציה:
-{situation_text}
-
-תנאים לבדיקה:
-1. מסגרת זמן: האירוע קרה בעבר הקרוב (שבועיים-חודשיים אחורה)?
-2. מעורבות אישית: המשתמש פעל/הגיב באירוע (לא רק צפה)?
-3. חתימה רגשית: האירוע גרם לטלטלה/סערה רגשית?
-4. זירה בין-אישית: היו מעורבים אנשים נוספים?
-
-החזר JSON:
-{{
-  "time_frame_ok": true/false,
-  "personal_involvement_ok": true/false,
-  "emotional_signature_ok": true/false,
-  "interpersonal_arena_ok": true/false
-}}"""
-    else:
-        validation_prompt = f"""Check if the following situation meets all 4 criteria. Answer in JSON format.
-
-Situation:
-{situation_text}
-
-Criteria:
-1. Time frame: Event happened recently (2 weeks to 2 months ago)?
-2. Personal involvement: User acted/reacted (not just observed)?
-3. Emotional signature: Event caused turmoil/emotional storm?
-4. Interpersonal arena: Other people were involved?
-
-Return JSON:
-{{
-  "time_frame_ok": true/false,
-  "personal_involvement_ok": true/false,
-  "emotional_signature_ok": true/false,
-  "interpersonal_arena_ok": true/false
-}}"""
+    # FAST rule-based checks (no LLM call!)
     
-    try:
-        validation_messages = [
-            SystemMessage(content="You validate coaching situations." if language == "en" else "אתה מאמת סיטואציות אימון."),
-            HumanMessage(content=validation_prompt)
-        ]
-        
-        logger.info(f"[Situation Validation] Starting LLM validation call...")
-        # Add timeout to prevent hanging
-        response = await asyncio.wait_for(llm.ainvoke(validation_messages), timeout=15.0)
-        result_text = response.content.strip()
-        logger.info(f"[Situation Validation] LLM responded: {result_text[:200]}...")
-        
-        # Try to parse JSON
-        import json
-        import re
-        json_match = re.search(r'\{[^}]+\}', result_text)
-        if json_match:
-            result = json.loads(json_match.group())
-        else:
-            # Fallback: assume valid
-            return True, None
-        
-        # Check each criterion
-        if not result.get("time_frame_ok", True):
-            if language == "he":
-                return False, """כדי שנוכל לעבוד בצורה מדויקת, חשוב שניקח אירוע שהזיכרון שלו עדיין טרי, אבל הספקת מעט להתרחק ממנו. תוכל להביא סיטואציה שקרתה בטווח של השבועיים עד החודשיים האחרונים?
-
-חשוב לי להדגיש: הסיטואציה לא חייבת להיות קשורה לנושא האימון. הדפוס שלנו הולך איתנו לכל מקום, ולפעמים דווקא באירוע מתחום אחר לגמרי (בבית, בעבודה, עם חברים) הוא מתגלה בצורה הכי נקייה וברורה."""
-            else:
-                return False, "To work accurately, it's important to take an event where the memory is still fresh, but you've had some distance. Can you bring a situation that happened within the last 2 weeks to 2 months?"
-        
-        if not result.get("personal_involvement_ok", True):
-            if language == "he":
-                return False, """אני מבין את הסיטואציה שתיארת. בשלב זה אנחנו מחפשים אירוע שבו אתה הגבת ופעלת. 
-
-בוא ננסה אירוע אחר - יכול להיות מהעבודה, עם חברים, או עם משפחה (לא חייב להיות קשור לנושא האימון). ספר לי על מצב שבו פעלת והגבת."""
-            else:
-                return False, "I understand the situation you described. At this stage we're looking for an event where you responded and acted. Let's try a different event - can be from work, with friends, or family (doesn't have to be related to coaching topic). Tell me about a situation where you acted and responded."
-        
-        if not result.get("emotional_signature_ok", True):
-            if language == "he":
-                return False, """תיארת את השתלשלות העניינים, אבל כדי לזהות דפוס אנחנו מחפשים אירוע שבו זה פגש אותך באופן שגרם לך לטלטלה, לסערה. תוכל לתת לי אירוע שבו ההתרחשות כל כך נגעה בך עד שהיית נסער?
-
-זה יכול להיות אירוע מכל תחום - לא חייב להיות קשור לנושא האימון."""
-            else:
-                return False, "You described the sequence of events, but to identify a pattern we're looking for an event that hit you in a way that caused turmoil, storm. Can you give me an event where what happened touched you so much that you were upset? It can be from any area - doesn't have to be related to the coaching topic."
-        
-        if not result.get("interpersonal_arena_ok", True):
-            if language == "he":
-                return False, """אני מבין את החוויה שתיארת. כדי לזהות דפוס אנחנו מחפשים אירוע שהיו מעורבים בו אנשים נוספים מלבדיך.
+    # Check 1: Basic length (too short = not enough details)
+    if len(situation_text) < 50:
+        logger.info(f"[Situation Validation] Too short ({len(situation_text)} chars)")
+        return True, None  # Let LLM handle it
+    
+    # Check 2: "I was alone" = no interpersonal arena
+    alone_indicators = ["הייתי לבד", "הייתי בבית לבד", "לבד בבית", "i was alone", "by myself", "all alone"]
+    if any(ind in situation_lower for ind in alone_indicators):
+        logger.info(f"[Situation Validation] Detected 'alone' situation - needs interpersonal")
+        if language == "he":
+            return False, """אני מבין את החוויה שתיארת. כדי לזהות דפוס אנחנו מחפשים אירוע שהיו מעורבים בו אנשים נוספים מלבדיך.
 
 בוא ננסה משהו אחר - ספר לי על **אירוע מהחיים שלך** (יכול להיות מהעבודה, עם חברים, עם משפחה, בכל מצב) שבו היו אנשים אחרים וחווית סערה רגשית.
 
 **חשוב:** האירוע לא חייב להיות קשור לנושא האימון - הדפוס שלך מתגלה בכל תחומי החיים, ולפעמים דווקא באירוע מתחום אחר לגמרי."""
-            else:
-                return False, "I understand the experience you described. To identify a pattern we're looking for an event where other people were involved besides you. Let's try something else - tell me about **an event from your life** (can be from work, with friends, with family, any situation) where other people were present and you experienced emotional turmoil. **Important:** The event doesn't have to be related to the coaching topic - your pattern shows up in all areas of life, sometimes most clearly in a completely different area."
-        
-        # All criteria met!
-        logger.info(f"[Situation Validation] All 4 criteria met ✓")
-        return True, None
+        else:
+            return False, "I understand the experience you described. To identify a pattern we're looking for an event where other people were involved besides you. Let's try something else - tell me about **an event from your life** (can be from work, with friends, with family, any situation) where other people were present and you experienced emotional turmoil. **Important:** The event doesn't have to be related to the coaching topic - your pattern shows up in all areas of life, sometimes most clearly in a completely different area."
     
-    except asyncio.TimeoutError:
-        logger.error(f"[Situation Validation] LLM call timed out after 15s")
-        # Fallback: allow progression (don't block on timeout)
-        return True, None
-        
-    except Exception as e:
-        logger.error(f"[Situation Validation] LLM call failed: {e}")
-        import traceback
-        traceback.print_exc()
-        # Fallback: allow progression (don't block on validation errors)
-        return True, None
+    # All basic checks passed - let the LLM prompt handle detailed validation
+    logger.info(f"[Situation Validation] Basic checks passed (fast mode, no LLM call)")
+    return True, None
 
 
 def user_questions_unrelated_event(user_message: str) -> bool:
