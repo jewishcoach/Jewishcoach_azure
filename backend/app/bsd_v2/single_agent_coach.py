@@ -1516,20 +1516,13 @@ def validate_stage_transition(
             return False, "Wait, before we talk about thoughts - tell me first **what did you feel** in that moment?"
     
     # 🚨 CRITICAL: Block backwards transitions (can't go backwards!)
-    stage_order = ["S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12"]
-    try:
-        old_idx = stage_order.index(old_step) if old_step in stage_order else -1
-        new_idx = stage_order.index(new_step) if new_step in stage_order else -1
-        
-        # Don't allow going backwards (except to S0/S1 which are resets)
-        if old_idx >= 2 and new_idx >= 2 and new_idx < old_idx:
-            logger.error(f"[Safety Net] 🚫 BLOCKED backwards transition {old_step}→{new_step}")
-            if language == "he":
-                return False, "בוא נמשיך הלאה במקום לחזור אחורה."
-            else:
-                return False, "Let's move forward instead of going backwards."
-    except (ValueError, AttributeError):
-        pass  # Stage not in list, continue
+    # Don't allow going backwards (except to S0/S1 which are resets)
+    if old_idx >= 2 and new_idx >= 2 and new_idx < old_idx:
+        logger.error(f"[Safety Net] 🚫 BLOCKED backwards transition {old_step}→{new_step}")
+        if language == "he":
+            return False, "בוא נמשיך הלאה במקום לחזור אחורה."
+        else:
+            return False, "Let's move forward instead of going backwards."
     
     # S2→S3: Need detailed event (at least 3 turns in S2)
     if old_step == "S2" and new_step == "S3":
