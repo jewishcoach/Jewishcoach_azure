@@ -1251,7 +1251,7 @@ def user_said_already_gave_examples(user_message: str) -> bool:
     return any(p in msg_lower for p in phrases_he + phrases_en)
 
 
-async def validate_situation_quality(state: Dict[str, Any], llm, language: str = "he") -> tuple[bool, str | None]:
+async def validate_situation_quality(state: Dict[str, Any], llm, language: str = "he") -> Tuple[bool, Optional[str]]:
     """
     Validate that the situation (S2) meets all 4 required criteria:
     1. Time frame: 2 weeks to 2 months ago
