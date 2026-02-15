@@ -1991,6 +1991,16 @@ So feel free to share an event from any area where you interacted with people an
         logger.info(f"[BSD V2] LLM response preview: {response_text[:500]}...")
         logger.info(f"[BSD V2] LLM response FULL:\n{response_text}")
         
+        # 🔍 DEBUG: Save LLM response to state for inspection
+        if "debug_llm_responses" not in state:
+            state["debug_llm_responses"] = []
+        state["debug_llm_responses"].append({
+            "stage": state["current_step"],
+            "user_input": user_message[:100],
+            "response_length": len(response_text),
+            "response": response_text[:1000]  # First 1000 chars
+        })
+        
         # 4. Parse JSON response
         t5 = time.time()
         try:
