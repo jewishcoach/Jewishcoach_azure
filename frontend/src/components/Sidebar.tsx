@@ -61,7 +61,7 @@ export const Sidebar = ({ conversations, activeId, onSelect, onNewChat, onDelete
         ) : (
           <div className="space-y-2">
             {conversations.map((conv) => (
-              <div key={conv.id} className="relative">
+              <div key={conv.id} className="relative" data-conv-id={conv.id}>
                 <motion.div
                   whileHover={{ scale: 1.02 }}
                   onClick={() => onSelect(conv.id)}
@@ -95,7 +95,7 @@ export const Sidebar = ({ conversations, activeId, onSelect, onNewChat, onDelete
                 {openMenuId === conv.id && (
                   <div
                     ref={menuRef}
-                    className={`absolute ${isRTL ? 'left-4' : 'right-4'} top-12 z-50 w-40 rounded-lg bg-white shadow-lg border border-gray-200`}
+                    className={`absolute ${isRTL ? 'left-4' : 'right-4'} top-12 z-[9999] w-40 rounded-lg bg-white shadow-2xl border border-gray-300`}
                   >
                     <button
                       type="button"
