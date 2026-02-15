@@ -1976,6 +1976,11 @@ So feel free to share an event from any area where you interacted with people an
         # 3. Call LLM
         t3 = time.time()
         llm = get_azure_chat_llm(purpose="talker")  # Higher temperature for natural conversation
+        
+        logger.info(f"[BSD V2] 🔄 Calling LLM...")
+        logger.info(f"[BSD V2] System prompt size: {len(system_prompt)} chars")
+        logger.info(f"[BSD V2] Context size: {len(context)} chars")
+        
         response = await llm.ainvoke(messages)
         t4 = time.time()
         
@@ -1984,6 +1989,7 @@ So feel free to share an event from any area where you interacted with people an
         logger.info(f"[PERF] LLM call: {(t4-t3)*1000:.0f}ms")
         logger.info(f"[BSD V2] LLM response ({len(response_text)} chars)")
         logger.info(f"[BSD V2] LLM response preview: {response_text[:500]}...")
+        logger.info(f"[BSD V2] LLM response FULL:\n{response_text}")
         
         # 4. Parse JSON response
         t5 = time.time()
@@ -2002,8 +2008,9 @@ So feel free to share an event from any area where you interacted with people an
             internal_state = parsed.get("internal_state", {})
             
         except json.JSONDecodeError as e:
-            logger.error(f"[BSD V2] Failed to parse JSON: {e}")
-            logger.error(f"[BSD V2] Response text: {response_text}")
+            logger.error(f"[BSD V2] ❌ JSON PARSE ERROR: {e}")
+            logger.error(f"[BSD V2] Raw response that failed to parse:")
+            logger.error(f"[BSD V2] {response_text[:2000]}")  # First 2000 chars
             
             # Fallback: treat entire response as coach message
             coach_message = response_text
