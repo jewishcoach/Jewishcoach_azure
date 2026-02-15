@@ -11,6 +11,7 @@ V2 uses a single LLM call with rich context and clear guidance.
 import json
 import logging
 import asyncio
+import time
 from typing import Dict, Any, Tuple, Optional
 from langchain_core.messages import SystemMessage, HumanMessage
 
@@ -1952,10 +1953,13 @@ So feel free to share an event from any area where you interacted with people an
         return apology_message, state
     
     try:
+        start_time = time.time()
+        
         # 1. Build context
+        t1 = time.time()
         context = build_conversation_context(state, user_message, language)
-        logger.info(f"[BSD V2] Context built ({len(context)} chars)")
-        logger.info(f"[BSD V2] Context preview:\n{context[:500]}...")
+        t2 = time.time()
+        logger.info(f"[PERF] Build context: {(t2-t1)*1000:.0f}ms ({len(context)} chars)")
         
         # 2. Prepare messages (use COMPACT version for speed)
         system_prompt = SYSTEM_PROMPT_COMPACT_HE if language == "he" else SYSTEM_PROMPT_COMPACT_EN
@@ -1966,15 +1970,19 @@ So feel free to share an event from any area where you interacted with people an
         ]
         
         # 3. Call LLM
+        t3 = time.time()
         llm = get_azure_chat_llm(purpose="talker")  # Higher temperature for natural conversation
         response = await llm.ainvoke(messages)
+        t4 = time.time()
         
         response_text = response.content.strip()
         
+        logger.info(f"[PERF] LLM call: {(t4-t3)*1000:.0f}ms")
         logger.info(f"[BSD V2] LLM response ({len(response_text)} chars)")
         logger.info(f"[BSD V2] LLM response preview: {response_text[:500]}...")
         
         # 4. Parse JSON response
+        t5 = time.time()
         try:
             # Clean markdown code blocks if present
             if response_text.startswith("```"):
@@ -2000,10 +2008,15 @@ So feel free to share an event from any area where you interacted with people an
                 "saturation_score": state["saturation_score"],
                 "reflection": "Failed to parse structured output"
             }
+        t6 = time.time()
+        logger.info(f"[PERF] Parse JSON: {(t6-t5)*1000:.0f}ms")
         
         # 5. Safety Net: Check for repeated questions
+        t7 = time.time()
         history_for_check = get_conversation_history(state, last_n=10)
         repeated_check = check_repeated_question(coach_message, history_for_check, state['current_step'], language)
+        t8 = time.time()
+        logger.info(f"[PERF] Repeated check: {(t8-t7)*1000:.0f}ms")
         
         if repeated_check:
             logger.warning(f"[Safety Net] Overriding repeated question")
@@ -2013,8 +2026,11 @@ So feel free to share an event from any area where you interacted with people an
             internal_state["saturation_score"] = 0.3
         
         # 6. Safety Net: Check for stage/question mismatch
-        # This fixes the bug where LLM asks S8 question but doesn't update current_step
+        t9 = time.time()
         mismatch_stage = detect_stage_question_mismatch(coach_message, state["current_step"], language)
+        t10 = time.time()
+        logger.info(f"[PERF] Stage mismatch check: {(t10-t9)*1000:.0f}ms")
+        
         if mismatch_stage:
             logger.warning(f"[Safety Net] Auto-correcting stage mismatch: {state['current_step']} → {mismatch_stage}")
             internal_state["current_step"] = mismatch_stage
@@ -2023,6 +2039,7 @@ So feel free to share an event from any area where you interacted with people an
         old_step = state["current_step"]
         new_step = internal_state.get("current_step", old_step)
         
+        t11 = time.time()
         if old_step == "S2" and new_step == "S3":
             # Check if situation meets all 4 criteria
             logger.info(f"[Safety Net] Validating S2 situation quality before S2→S3...")
@@ -2032,9 +2049,15 @@ So feel free to share an event from any area where you interacted with people an
                 logger.warning(f"[Safety Net] Situation doesn't meet criteria, blocking S2→S3")
                 coach_message = guidance
                 internal_state["current_step"] = "S2"  # Stay in S2
+        t12 = time.time()
+        if old_step == "S2" and new_step == "S3":
+            logger.info(f"[PERF] S2 validation: {(t12-t11)*1000:.0f}ms")
         
         # 7. Safety Net: Validate stage transition
+        t13 = time.time()
         is_valid, correction = validate_stage_transition(old_step, new_step, state, language, coach_message)
+        t14 = time.time()
+        logger.info(f"[PERF] Stage transition validation: {(t14-t13)*1000:.0f}ms")
         
         if not is_valid and correction:
             # Override LLM response with correction
@@ -2053,8 +2076,12 @@ So feel free to share an event from any area where you interacted with people an
         # Add coach message with internal state
         state = add_message(state, "coach", coach_message, internal_state)
         
+        end_time = time.time()
+        total_ms = (end_time - start_time) * 1000
+        
         logger.info(f"[BSD V2] Updated to step: {state['current_step']}, saturation: {state['saturation_score']:.2f}")
         logger.info(f"[BSD V2] Total messages now: {len(state['messages'])}")
+        logger.info(f"[PERF] ⏱️  TOTAL TIME: {total_ms:.0f}ms ({total_ms/1000:.1f}s)")
         
         return coach_message, state
         

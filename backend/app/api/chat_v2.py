@@ -5,6 +5,7 @@ Side-by-side with V1 - experimental single-agent architecture.
 """
 
 import logging
+import time
 from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
@@ -117,6 +118,8 @@ async def send_message_v2(
         }
     """
     try:
+        api_start = time.time()
+        
         print(f"\n{'='*80}")
         print(f"[BSD V2 API] ✅ REQUEST RECEIVED")
         print(f"[BSD V2 API] User: {current_user.id}")
@@ -127,22 +130,32 @@ async def send_message_v2(
         logger.info(f"[BSD V2 API] User {current_user.id} sent message to conv {request.conversation_id}")
         
         # Load state
+        t1 = time.time()
         state = load_v2_state(request.conversation_id, db)
+        t2 = time.time()
+        logger.info(f"[PERF API] Load state from DB: {(t2-t1)*1000:.0f}ms")
         logger.info(f"[BSD V2 API] Loaded state: step={state['current_step']}, messages={len(state.get('messages', []))}")
         
         # Handle conversation
+        t3 = time.time()
         coach_message, updated_state = await handle_conversation(
             user_message=request.message,
             state=state,
             language=request.language
         )
+        t4 = time.time()
+        logger.info(f"[PERF API] handle_conversation: {(t4-t3)*1000:.0f}ms")
         
         # Save state
+        t5 = time.time()
         logger.info(f"[BSD V2 API] Saving state: step={updated_state['current_step']}, messages={len(updated_state.get('messages', []))}")
         save_v2_state(request.conversation_id, updated_state, db)
+        t6 = time.time()
+        logger.info(f"[PERF API] Save state to DB: {(t6-t5)*1000:.0f}ms")
         logger.info(f"[BSD V2 API] State saved successfully")
         
         # Also save messages to DB (for compatibility with UI)
+        t7 = time.time()
         from datetime import datetime
         
         # Save user message
@@ -164,6 +177,8 @@ async def send_message_v2(
         db.add(coach_msg)
         
         db.commit()
+        t8 = time.time()
+        logger.info(f"[PERF API] Save messages to DB: {(t8-t7)*1000:.0f}ms")
         
         response = ChatResponse(
             coach_message=coach_message,
@@ -172,15 +187,20 @@ async def send_message_v2(
             saturation_score=updated_state["saturation_score"]
         )
         
+        api_end = time.time()
+        api_total_ms = (api_end - api_start) * 1000
+        
         print(f"\n{'='*80}")
         print(f"[BSD V2 API] ✅ RETURNING RESPONSE")
         print(f"[BSD V2 API] Message length: {len(coach_message)} chars")
         print(f"[BSD V2 API] Message preview: {coach_message[:100]}...")
         print(f"[BSD V2 API] Step: {updated_state['current_step']}")
         print(f"[BSD V2 API] Saturation: {updated_state['saturation_score']:.2f}")
+        print(f"[PERF API] 🏁 TOTAL API TIME: {api_total_ms:.0f}ms ({api_total_ms/1000:.1f}s)")
         print(f"{'='*80}\n", flush=True)
         
         logger.info(f"[BSD V2 API] Returning response: coach_message length={len(coach_message)}")
+        logger.info(f"[PERF API] 🏁 TOTAL API TIME: {api_total_ms:.0f}ms ({api_total_ms/1000:.1f}s)")
         
         return response
         
