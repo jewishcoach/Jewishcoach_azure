@@ -10,6 +10,7 @@ V2 uses a single LLM call with rich context and clear guidance.
 
 import json
 import logging
+import asyncio
 from typing import Dict, Any, Tuple, Optional
 from langchain_core.messages import SystemMessage, HumanMessage
 
@@ -1322,8 +1323,11 @@ Return JSON:
             HumanMessage(content=validation_prompt)
         ]
         
-        response = await llm.ainvoke(validation_messages)
+        logger.info(f"[Situation Validation] Starting LLM validation call...")
+        # Add timeout to prevent hanging
+        response = await asyncio.wait_for(llm.ainvoke(validation_messages), timeout=15.0)
         result_text = response.content.strip()
+        logger.info(f"[Situation Validation] LLM responded: {result_text[:200]}...")
         
         # Try to parse JSON
         import json
@@ -1373,9 +1377,16 @@ Return JSON:
         # All criteria met!
         logger.info(f"[Situation Validation] All 4 criteria met ✓")
         return True, None
+    
+    except asyncio.TimeoutError:
+        logger.error(f"[Situation Validation] LLM call timed out after 15s")
+        # Fallback: allow progression (don't block on timeout)
+        return True, None
         
     except Exception as e:
         logger.error(f"[Situation Validation] LLM call failed: {e}")
+        import traceback
+        traceback.print_exc()
         # Fallback: allow progression (don't block on validation errors)
         return True, None
 
@@ -2098,7 +2109,9 @@ So feel free to share an event from any area where you interacted with people an
         
         if old_step == "S2" and new_step == "S3":
             # Check if situation meets all 4 criteria
+            logger.info(f"[Safety Net] Validating S2 situation quality before S2→S3...")
             situation_valid, guidance = await validate_situation_quality(state, llm, language)
+            logger.info(f"[Safety Net] Validation result: valid={situation_valid}")
             if not situation_valid and guidance:
                 logger.warning(f"[Safety Net] Situation doesn't meet criteria, blocking S2→S3")
                 coach_message = guidance
