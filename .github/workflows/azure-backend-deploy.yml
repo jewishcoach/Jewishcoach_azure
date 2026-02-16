@@ -41,5 +41,20 @@ jobs:
     - name: Verify deployment
       if: success()
       run: |
-        echo "⏩ Skipping verification - deployment complete"
-        echo "Note: App may take 1-2 minutes to fully restart"
+        echo "⏳ Waiting for app to restart..."
+        sleep 90
+        
+        echo "🔍 Checking health endpoint..."
+        for i in {1..10}; do
+          if curl -sf --max-time 15 https://jewishcoach-api.azurewebsites.net/health; then
+            echo ""
+            echo "✅ Health check passed!"
+            exit 0
+          fi
+          echo "❌ Attempt $i/10 failed, waiting 15 seconds..."
+          sleep 15
+        done
+        
+        echo "❌ Health check failed after 10 attempts"
+        echo "⚠️  Deployment may have issues. Check logs manually."
+        exit 1
