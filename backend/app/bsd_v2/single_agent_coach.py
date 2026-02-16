@@ -1480,6 +1480,15 @@ def validate_stage_transition(
     
     # Otherwise, check minimum turns for critical transitions
     
+    # Calculate stage indices FIRST (before using them!)
+    stage_order = ["S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12"]
+    try:
+        old_idx = stage_order.index(old_step) if old_step in stage_order else -1
+        new_idx = stage_order.index(new_step) if new_step in stage_order else -1
+    except (ValueError, AttributeError):
+        old_idx = -1
+        new_idx = -1
+    
     # 🚨 CRITICAL: S1→S2 - Must have clear topic!
     if old_step == "S1" and new_step == "S2":
         has_topic, reason = has_clear_topic_for_s2(state)
