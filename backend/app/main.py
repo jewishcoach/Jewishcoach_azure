@@ -8,8 +8,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Create tables
-Base.metadata.create_all(bind=engine)
+# Create tables only if they don't exist
+Base.metadata.create_all(bind=engine, checkfirst=True)
 
 app = FastAPI(
     title="Jewish Coaching API",
