@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Message, Conversation, ToolCall } from '../types';
 import { apiClient } from '../services/api';
-import { BSD_VERSION, getBsdEndpoint } from '../config';
+import { BSD_VERSION, getBsdEndpoint, getBsdStreamEndpoint } from '../config';
 
 export const useChat = (displayName?: string | null) => {
   const { t, i18n } = useTranslation();
@@ -165,13 +165,13 @@ export const useChat = (displayName?: string | null) => {
 
     try {
       // ═══════════════════════════════════════════════════════════════════
-      // V2: Single-agent conversational coach (non-streaming)
+      // V2: Single-agent conversational coach (real streaming via SSE)
       // ═══════════════════════════════════════════════════════════════════
       if (BSD_VERSION === 'v2') {
         console.log('🆕 [BSD V2] Sending message...');
-        
+
         const response = await fetch(
-          getBsdEndpoint(currentConvId!, 'v2'),  // currentConvId is guaranteed to be set
+          getBsdStreamEndpoint(currentConvId!, 'v2'),  // currentConvId is guaranteed to be set
           {
             method: 'POST',
             credentials: 'include',
@@ -191,56 +191,83 @@ export const useChat = (displayName?: string | null) => {
           throw new Error('Failed to send message (V2)');
         }
 
-        const data = await response.json();
-        console.log('✅ [BSD V2] Response:', data);
-
-        // Simulate streaming for smooth UX
-        const assistantContent = data.coach_message;
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let assistantContent = '';
         const assistantMessageId = Date.now() + 1;
-        
-        // Add message character by character (simulated streaming)
-        let currentText = '';
-        const words = assistantContent.split(' ');
-        
-        for (let i = 0; i < words.length; i++) {
-          currentText += (i > 0 ? ' ' : '') + words[i];
-          
-          setMessages(prev => {
-            const newMessages = [...prev];
-            const existingIndex = newMessages.findIndex(
-              msg => msg.role === 'assistant' && msg.id === assistantMessageId
-            );
-            
-            const newMessage = {
-              id: assistantMessageId,
-              role: 'assistant' as const,
-              content: currentText,
-              timestamp: new Date().toISOString(),
-            };
-            
-            if (existingIndex !== -1) {
-              newMessages[existingIndex] = newMessage;
-            } else {
-              newMessages.push(newMessage);
+        let doneReceived = false;
+        let firstChunkReceived = false;
+        let sseBuffer = '';
+
+        if (reader) {
+          while (!doneReceived) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            sseBuffer += decoder.decode(value, { stream: true });
+
+            const events = sseBuffer.split('\n\n');
+            sseBuffer = events.pop() || '';
+
+            for (const eventChunk of events) {
+              const dataLine = eventChunk
+                .split('\n')
+                .find((line) => line.startsWith('data: '));
+
+              if (!dataLine) continue;
+
+              try {
+                const payload = JSON.parse(dataLine.slice(6));
+
+                if (payload.type === 'content' && payload.chunk) {
+                  assistantContent += payload.chunk;
+
+                  if (!firstChunkReceived) {
+                    firstChunkReceived = true;
+                    setLoading(false);
+                  }
+
+                  setMessages(prev => {
+                    const newMessages = [...prev];
+                    const existingIndex = newMessages.findIndex(
+                      msg => msg.role === 'assistant' && msg.id === assistantMessageId
+                    );
+
+                    const nextMessage = {
+                      id: assistantMessageId,
+                      role: 'assistant' as const,
+                      content: assistantContent,
+                      timestamp: new Date().toISOString(),
+                    };
+
+                    if (existingIndex !== -1) {
+                      newMessages[existingIndex] = nextMessage;
+                    } else {
+                      newMessages.push(nextMessage);
+                    }
+
+                    return newMessages;
+                  });
+                } else if (payload.type === 'done') {
+                  if (payload.state?.current_step) {
+                    setCurrentPhase(payload.state.current_step);
+                  }
+                  doneReceived = true;
+                } else if (payload.type === 'error') {
+                  throw new Error(payload.message || 'V2 stream error');
+                }
+              } catch (e) {
+                console.error('Error parsing V2 SSE payload:', e, eventChunk);
+              }
             }
-            
-            return newMessages;
-          });
-          
-          // Small delay for typing effect
-          await new Promise(resolve => setTimeout(resolve, 30));
+          }
         }
-        
-        // Update phase
-        if (data.current_step) {
-          setCurrentPhase(data.current_step);
-        }
-        
+
         // Call completion callback
-        if (onResponseComplete && assistantContent.trim()) {
+        if (onResponseComplete && assistantContent.trim() && doneReceived) {
           onResponseComplete(assistantContent.trim());
         }
-        
+
         setLoading(false);
         return;
       }

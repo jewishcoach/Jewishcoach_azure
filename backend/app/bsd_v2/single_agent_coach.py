@@ -12,14 +12,170 @@ import json
 import logging
 import asyncio
 import time
+import os
+import re
 from typing import Dict, Any, Tuple, Optional
 from langchain_core.messages import SystemMessage, HumanMessage
 
 from ..bsd.llm import get_azure_chat_llm
 from .state_schema_v2 import add_message, get_conversation_history
-from .prompt_optimized import SYSTEM_PROMPT_OPTIMIZED_HE, SYSTEM_PROMPT_OPTIMIZED_EN
+from .prompt_compact import SYSTEM_PROMPT_COMPACT_HE, SYSTEM_PROMPT_COMPACT_EN
 
 logger = logging.getLogger(__name__)
+
+
+STAGE_EXAMPLES_HE = {
+    "S1": [
+        {"tags": ["זוגיות", "חיבור"], "text": "משתמש: על הזוגיות שלי | מאמן: מה בזוגיות מעסיק אותך במיוחד?"},
+        {"tags": ["מנהיגות", "עבודה"], "text": "משתמש: להיות מנהיג | מאמן: למה אתה מתכוון כשאתה אומר 'להיות מנהיג'?"},
+        {"tags": ["לחץ", "שקט"], "text": "משתמש: על השקט הנפשי | מאמן: ספר לי יותר - איפה זה פוגש אותך?"}
+    ],
+    "S2": [
+        {"tags": ["אירוע", "משפחה"], "text": "מאמן: ספר על אירוע אחד ספציפי לאחרונה עם אנשים אחרים שבו הייתה סערה רגשית."},
+        {"tags": ["עבודה", "פגישה"], "text": "מאמן: עם מי זה היה, מתי זה קרה, ומה בדיוק קרה שם?"},
+        {"tags": ["פנימי", "מחשבה"], "text": "מאמן: אני שומע מחשבה פנימית. בוא ניקח רגע חיצוני של שיחה/אינטראקציה עם מישהו."}
+    ],
+    "S3": [
+        {"tags": ["רגש", "מה עוד"], "text": "מאמן: מה הרגשת באותו רגע? ... ומה עוד? ... ומה עוד?"},
+        {"tags": ["כעס", "תסכול"], "text": "מאמן: ספר לי יותר על התסכול - מה בתסכול הזה?"},
+        {"tags": ["עומק", "שהייה"], "text": "מאמן: אני נשאר איתך שם רגע. מה עוד היה שם עבורך?"}
+    ],
+    "S4": [
+        {"tags": ["מחשבה", "משפט"], "text": "מאמן: מה עבר לך בראש באותו רגע? מה המשפט שאמרת לעצמך?"},
+        {"tags": ["אמרתי", "לעצמי"], "text": "מאמן: אם היית שם כתובית פנימית למשפט הזה - מה הייתה הכתובת?"},
+        {"tags": ["דיוק", "מילולי"], "text": "מאמן: תן את זה במילים המדויקות שרצו לך בראש."}
+    ],
+    "S5": [
+        {"tags": ["מעשה", "רצוי"], "text": "מאמן: קודם מה עשית בפועל? ורק אחר כך - מה היית רוצה לעשות במקום?"},
+        {"tags": ["סיכום", "דפוס"], "text": "מאמן: בוא נסכם את הדפוס: מצב → רגש → מחשבה → מעשה. זה נכון?"},
+        {"tags": ["אישור"], "text": "מאמן: חשוב לי אישור שלך לפני שנמשיך - זה מדויק לך?"}
+    ],
+    "S6": [
+        {"tags": ["פער", "שם"], "text": "מאמן: איך היית קורא לפער בין מה שעשית לבין מה שרצית?"},
+        {"tags": ["ציון", "1-10"], "text": "מאמן: בסולם 1-10, כמה חזק הפער הזה עבורך?"},
+        {"tags": ["דיוק"], "text": "מאמן: אם הפער היה מקבל שם קצר של 1-2 מילים, מה השם שלו?"}
+    ],
+    "S7": [
+        {"tags": ["דפוס", "חוזר"], "text": "מאמן: איפה עוד אתה מזהה את אותה תגובה בדיוק?"},
+        {"tags": ["דוגמאות", "אישור"], "text": "מאמן: תן לי עוד דוגמה אחת... ועוד אחת. מה חוזר ביניהן?"},
+        {"tags": ["ליבה"], "text": "מאמן: המצבים שונים, אבל התגובה דומה - אתה מזהה שזה דפוס שלך?"}
+    ],
+}
+
+STAGE_EXAMPLES_EN = {
+    "S1": [
+        {"tags": ["topic"], "text": "Coach: What exactly about this topic do you want to coach on?"},
+        {"tags": ["clarify"], "text": "Coach: Tell me more - what do you mean by that?"},
+        {"tags": ["focus"], "text": "Coach: What's the specific focus within this general area?"}
+    ],
+    "S2": [
+        {"tags": ["event"], "text": "Coach: Please share one specific recent interpersonal event."},
+        {"tags": ["detail"], "text": "Coach: Who was there, when did it happen, and what happened exactly?"},
+        {"tags": ["external"], "text": "Coach: Let's move from inner thoughts to an external interaction moment."}
+    ],
+}
+
+
+def _normalize_text_for_match(text: str) -> str:
+    return re.sub(r"\s+", " ", text.lower()).strip()
+
+
+def _get_relevant_examples(stage: str, user_message: str, language: str, limit: int = 3) -> list[str]:
+    """
+    Small in-memory example KB retrieval (dictionary-based).
+    Scores examples by tag overlap with current user message.
+    """
+    db = STAGE_EXAMPLES_HE if language == "he" else STAGE_EXAMPLES_EN
+    pool = db.get(stage, [])
+    if not pool:
+        return []
+
+    msg = _normalize_text_for_match(user_message)
+    scored = []
+    for item in pool:
+        tags = item.get("tags", [])
+        score = sum(1 for t in tags if t.lower() in msg)
+        scored.append((score, item["text"]))
+
+    scored.sort(key=lambda x: x[0], reverse=True)
+    selected = [text for _, text in scored[:max(1, limit)]]
+    return selected
+
+
+def _strip_static_examples_from_prompt(prompt: str) -> str:
+    """
+    Remove bulky static examples/code-fences to keep core BSD instructions.
+    We keep rules and stage gates, and inject only relevant dynamic examples per turn.
+    """
+    lines = prompt.splitlines()
+    out = []
+    in_code_block = False
+    for ln in lines:
+        stripped = ln.strip()
+        if stripped.startswith("```"):
+            in_code_block = not in_code_block
+            continue
+        if in_code_block:
+            continue
+
+        # Drop explicit example lines to reduce token load.
+        if (
+            "דוגמה" in stripped
+            or "דוגמא" in stripped
+            or stripped.lower().startswith("example")
+            or stripped.startswith("✅")
+            or stripped.startswith("❌")
+        ):
+            continue
+        out.append(ln)
+    return "\n".join(out)
+
+
+def _build_dynamic_system_prompt(base_prompt: str, stage: str, user_message: str, language: str) -> str:
+    """
+    Build runtime prompt:
+    1) Keep core BSD methodology text.
+    2) Inject only the most relevant examples for current stage.
+    """
+    core = _strip_static_examples_from_prompt(base_prompt)
+    k = int(os.getenv("BSD_V2_EXAMPLES_PER_TURN", "3"))
+    examples = _get_relevant_examples(stage=stage, user_message=user_message, language=language, limit=k)
+
+    if not examples:
+        return core
+
+    if language == "he":
+        title = "\n\n# דוגמאות ממוקדות לשלב הנוכחי (נשלפות דינמית)\n"
+    else:
+        title = "\n\n# Focused examples for current stage (dynamically retrieved)\n"
+
+    example_block = title + "\n".join(f"- {e}" for e in examples)
+    return core + example_block
+
+
+async def _ainvoke_with_prompt_cache(llm, messages, cache_key: str):
+    """
+    Invoke Azure OpenAI with prompt_cache_key when supported.
+    Falls back automatically for deployments/API versions that reject the param.
+    """
+    try:
+        return await llm.ainvoke(messages, prompt_cache_key=cache_key)
+    except Exception as cache_exc:
+        err = str(cache_exc).lower()
+        unsupported_cache_param = (
+            "prompt_cache_key" in err
+            or "unrecognized request argument" in err
+            or "unknown parameter" in err
+            or "additional properties are not allowed" in err
+            or "unexpected keyword argument" in err
+        )
+        if unsupported_cache_param:
+            logger.warning(
+                "[BSD V2] prompt_cache_key unsupported; retrying without it. error=%s",
+                cache_exc,
+            )
+            return await llm.ainvoke(messages)
+        raise
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1099,7 +1255,11 @@ Answer only: yes or no"""
             HumanMessage(content=prompt)
         ]
         
-        response = await llm.ainvoke(detection_messages)
+        response = await _ainvoke_with_prompt_cache(
+            llm,
+            detection_messages,
+            cache_key=f"{os.getenv('AZURE_OPENAI_PROMPT_CACHE_KEY_PREFIX', 'bsd_v2')}:emotion_detection:{language}",
+        )
         answer = response.content.strip().lower()
         
         has_emotions = "כן" in answer or "yes" in answer
@@ -1450,6 +1610,11 @@ def validate_stage_transition(
         - If is_valid=True, allow the transition
         - If is_valid=False, return correction message to override LLM response
     """
+    # Compute stage indexes once (guards against unbound locals)
+    stage_order = ["S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12"]
+    old_idx = stage_order.index(old_step) if old_step in stage_order else -1
+    new_idx = stage_order.index(new_step) if new_step in stage_order else -1
+
     # GENERIC SOLUTION: Check if user wants to move on
     recent_user_messages = [
         msg.get("content", "").lower() for msg in state.get("messages", [])[-3:]
@@ -1516,20 +1681,13 @@ def validate_stage_transition(
             return False, "Wait, before we talk about thoughts - tell me first **what did you feel** in that moment?"
     
     # 🚨 CRITICAL: Block backwards transitions (can't go backwards!)
-    stage_order = ["S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12"]
-    try:
-        old_idx = stage_order.index(old_step) if old_step in stage_order else -1
-        new_idx = stage_order.index(new_step) if new_step in stage_order else -1
-        
-        # Don't allow going backwards (except to S0/S1 which are resets)
-        if old_idx >= 2 and new_idx >= 2 and new_idx < old_idx:
-            logger.error(f"[Safety Net] 🚫 BLOCKED backwards transition {old_step}→{new_step}")
-            if language == "he":
-                return False, "בוא נמשיך הלאה במקום לחזור אחורה."
-            else:
-                return False, "Let's move forward instead of going backwards."
-    except (ValueError, AttributeError):
-        pass  # Stage not in list, continue
+    # Don't allow going backwards (except to S0/S1 which are resets)
+    if old_idx >= 2 and new_idx >= 2 and new_idx < old_idx:
+        logger.error(f"[Safety Net] 🚫 BLOCKED backwards transition {old_step}→{new_step}")
+        if language == "he":
+            return False, "בוא נמשיך הלאה במקום לחזור אחורה."
+        else:
+            return False, "Let's move forward instead of going backwards."
     
     # S2→S3: Need detailed event (at least 3 turns in S2)
     if old_step == "S2" and new_step == "S3":
@@ -1750,9 +1908,20 @@ def build_conversation_context(
     Returns:
         Context string for LLM
     """
-    # Get recent history (last 12 messages to ensure full context)
-    history = get_conversation_history(state, last_n=12)
-    logger.info(f"[BSD V2 CONTEXT] Found {len(history)} messages in history")
+    # Context window tuning (preserve methodology, reduce repetitive token load)
+    # Default keeps enough turns for BSD stage continuity while avoiding long-tail drift.
+    history_last_n = int(os.getenv("BSD_V2_HISTORY_LAST_N", "8"))
+    max_msg_chars = int(os.getenv("BSD_V2_HISTORY_MSG_MAX_CHARS", "420"))
+
+    # Some stages benefit from slightly wider local context.
+    if state.get("current_step") in {"S2", "S3", "S7"}:
+        history_last_n = max(history_last_n, 10)
+
+    # Get recent history
+    history = get_conversation_history(state, last_n=history_last_n)
+    logger.info(
+        f"[BSD V2 CONTEXT] History window={history_last_n}, max_msg_chars={max_msg_chars}, loaded={len(history)}"
+    )
     
     # Build context
     context_parts = []
@@ -1805,6 +1974,9 @@ def build_conversation_context(
             content_value = msg.get("content", "")
             if not content_value:  # Skip empty messages
                 continue
+            # Keep only the informative head of long turns to reduce repeated token cost.
+            if len(content_value) > max_msg_chars:
+                content_value = content_value[:max_msg_chars] + " ...[truncated]"
             sender = "משתמש" if sender_value == "user" else "מאמן"
             if language == "en":
                 sender = "User" if sender_value == "user" else "Coach"
@@ -1814,7 +1986,11 @@ def build_conversation_context(
     context_parts.append("\n# הודעה חדשה" if language == "he" else "\n# New Message")
     context_parts.append(f"משתמש: {user_message}" if language == "he" else f"User: {user_message}")
     
-    return "\n".join(context_parts)
+    context = "\n".join(context_parts)
+    logger.info(
+        f"[PERF] Context size chars={len(context)}, history_msgs={len(history)}, step={state.get('current_step')}"
+    )
+    return context
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1961,8 +2137,19 @@ So feel free to share an event from any area where you interacted with people an
         t2 = time.time()
         logger.info(f"[PERF] Build context: {(t2-t1)*1000:.0f}ms ({len(context)} chars)")
         
-        # 2. Prepare messages (use COMPACT version for speed)
-        system_prompt = SYSTEM_PROMPT_OPTIMIZED_HE if language == "he" else SYSTEM_PROMPT_OPTIMIZED_EN
+        # 2. Prepare messages:
+        # Keep full BSD methodology, but inject only relevant examples dynamically.
+        base_prompt = SYSTEM_PROMPT_COMPACT_HE if language == "he" else SYSTEM_PROMPT_COMPACT_EN
+        system_prompt = _build_dynamic_system_prompt(
+            base_prompt=base_prompt,
+            stage=state.get("current_step", "S1"),
+            user_message=user_message,
+            language=language,
+        )
+        logger.info(
+            "[PERF] System prompt chars after dynamic example retrieval: %s",
+            len(system_prompt),
+        )
         
         messages = [
             SystemMessage(content=system_prompt),
@@ -1972,7 +2159,11 @@ So feel free to share an event from any area where you interacted with people an
         # 3. Call LLM
         t3 = time.time()
         llm = get_azure_chat_llm(purpose="talker")  # Higher temperature for natural conversation
-        response = await llm.ainvoke(messages)
+        # Azure prompt caching is enabled by default for supported models.
+        # prompt_cache_key improves cache hit routing for repeated BSD system-prefix.
+        cache_key_prefix = os.getenv("AZURE_OPENAI_PROMPT_CACHE_KEY_PREFIX", "bsd_v2_compact_prompt")
+        cache_key = f"{cache_key_prefix}:main_coach:{language}"
+        response = await _ainvoke_with_prompt_cache(llm, messages, cache_key=cache_key)
         t4 = time.time()
         
         response_text = response.content.strip()
@@ -1980,6 +2171,11 @@ So feel free to share an event from any area where you interacted with people an
         logger.info(f"[PERF] LLM call: {(t4-t3)*1000:.0f}ms")
         logger.info(f"[BSD V2] LLM response ({len(response_text)} chars)")
         logger.info(f"[BSD V2] LLM response preview: {response_text[:500]}...")
+        token_usage = getattr(response, "response_metadata", {}).get("token_usage", {})
+        prompt_token_details = token_usage.get("prompt_tokens_details", {})
+        cached_tokens = prompt_token_details.get("cached_tokens")
+        if cached_tokens is not None:
+            logger.info(f"[PERF] Prompt cache hit tokens: {cached_tokens}")
         
         # 4. Parse JSON response
         t5 = time.time()
@@ -1990,13 +2186,60 @@ So feel free to share an event from any area where you interacted with people an
                 if response_text.startswith("json"):
                     response_text = response_text[4:]
                 response_text = response_text.strip()
-            
-            parsed = json.loads(response_text)
-            
+
+            parsed = None
+            trailing_text = ""
+
+            # 1) Preferred path: full JSON payload
+            try:
+                parsed = json.loads(response_text)
+            except json.JSONDecodeError:
+                # 2) Fallback: JSON prefix + trailing natural-language line
+                decoder = json.JSONDecoder()
+                for start_idx, ch in enumerate(response_text):
+                    if ch != "{":
+                        continue
+                    try:
+                        candidate, end_idx = decoder.raw_decode(response_text[start_idx:])
+                        if isinstance(candidate, dict):
+                            parsed = candidate
+                            trailing_text = response_text[start_idx + end_idx :].strip().strip('"')
+                            break
+                    except json.JSONDecodeError:
+                        continue
+
+            if parsed is None:
+                raise json.JSONDecodeError("Could not parse model JSON payload", response_text, 0)
+
             # Try both field names for backwards compatibility
-            coach_message = parsed.get("coach_message", "") or parsed.get("response", "")
+            coach_message = (
+                parsed.get("coach_message", "")
+                or parsed.get("response", "")
+                or parsed.get("question", "")
+                or trailing_text
+            )
             internal_state = parsed.get("internal_state", {})
-            
+
+            # Backward compatibility for metadata-style payloads returned by the model
+            if not internal_state:
+                stage = parsed.get("stage", state["current_step"])
+                saturation = parsed.get(
+                    "saturation_score",
+                    parsed.get("Saturation Score", state["saturation_score"])
+                )
+                internal_state = {
+                    "current_step": stage if isinstance(stage, str) else state["current_step"],
+                    "saturation_score": float(saturation) if isinstance(saturation, (int, float)) else state["saturation_score"],
+                    "reflection": "Parsed legacy metadata payload",
+                }
+
+            # Never expose raw metadata JSON to end users
+            if isinstance(coach_message, str) and coach_message.strip().startswith("{"):
+                coach_message = trailing_text or ""
+
+            if not coach_message:
+                coach_message = "על איזה היבט היית רוצה להתמקד?" if language == "he" else "Which aspect would you like to focus on?"
+
         except json.JSONDecodeError as e:
             logger.error(f"[BSD V2] Failed to parse JSON: {e}")
             logger.error(f"[BSD V2] Response text: {response_text}")
@@ -2089,11 +2332,18 @@ So feel free to share an event from any area where you interacted with people an
         logger.error(f"[BSD V2] Error handling conversation: {e}")
         import traceback
         traceback.print_exc()
-        
-        # Fallback response
+
+        # Graceful fallback for provider rate limiting
+        err_text = str(e)
+        if "RateLimitReached" in err_text or "Error code: 429" in err_text or "429" in err_text:
+            if language == "he":
+                return "יש כרגע עומס רגעי במערכת. ננסה שוב בעוד כמה שניות ונמשיך מאותה נקודה.", state
+            return "There is temporary load on the model right now. Please retry in a few seconds and we will continue from the same point.", state
+
+        # Generic fallback
         if language == "he":
             fallback = "מצטער, היתה בעיה טכנית. האם נוכל לנסות שוב?"
         else:
             fallback = "Sorry, there was a technical issue. Can we try again?"
-        
+
         return fallback, state

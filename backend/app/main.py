@@ -8,8 +8,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Create tables only if they don't exist
-Base.metadata.create_all(bind=engine, checkfirst=True)
+# Important: do not create DB schema at import-time.
+# With multiple Gunicorn workers this can race (especially on SQLite)
+# and fail the whole app boot. Schema init is handled in startup.sh once.
 
 app = FastAPI(
     title="Jewish Coaching API",

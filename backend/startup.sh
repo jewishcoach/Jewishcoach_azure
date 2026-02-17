@@ -1,78 +1,63 @@
 #!/bin/bash
-set -e  # Exit on error
+set -e
 
 echo "🚀 Starting Jewish Coach Backend..."
-echo "📁 Working directory: $(pwd)"
-
-# Navigate to app directory
 cd /home/site/wwwroot
-echo "✅ Changed to /home/site/wwwroot"
 
-# Upgrade pip
-echo "📦 Upgrading pip..."
-python -m pip install --upgrade pip --no-cache-dir
-echo "✅ Pip upgraded"
+# Persistent dependency cache in /home (survives restarts)
+DEPS_DIR="/home/site/python_deps"
+STATE_DIR="/home/site/startup_state"
+REQ_FILE="/home/site/wwwroot/requirements.txt"
+REQ_HASH_FILE="$STATE_DIR/requirements.sha256"
 
-# Install dependencies
-echo "📦 Installing dependencies from requirements.txt..."
-python -m pip install -r requirements.txt --no-cache-dir
-echo "✅ Dependencies installed"
+mkdir -p "$DEPS_DIR" "$STATE_DIR"
 
-# Set Python path
-export PYTHONPATH=/home/site/wwwroot:$PYTHONPATH
-echo "✅ PYTHONPATH set to: $PYTHONPATH"
+if [ ! -f "$REQ_FILE" ]; then
+  echo "❌ requirements.txt not found at $REQ_FILE"
+  exit 1
+fi
 
-# Set UTF-8 encoding for Hebrew text support
+CURRENT_HASH=$(sha256sum "$REQ_FILE" | awk '{print $1}')
+PREV_HASH=""
+if [ -f "$REQ_HASH_FILE" ]; then
+  PREV_HASH=$(cat "$REQ_HASH_FILE")
+fi
+
+# Install deps only on first boot or when requirements changed
+if [ "$CURRENT_HASH" != "$PREV_HASH" ]; then
+  echo "📦 requirements changed (or first boot) -> installing dependencies..."
+  python -m pip install --upgrade pip --no-cache-dir
+  python -m pip install -r "$REQ_FILE" --target "$DEPS_DIR" --no-cache-dir --ignore-installed
+  echo "$CURRENT_HASH" > "$REQ_HASH_FILE"
+  echo "✅ Dependencies installed in $DEPS_DIR"
+else
+  echo "✅ Dependency cache hit, skipping pip install"
+fi
+
+export PYTHONPATH="$DEPS_DIR:/home/site/wwwroot:${PYTHONPATH}"
 export PYTHONUTF8=1
 export LANG=en_US.UTF-8
 export LC_ALL=en_US.UTF-8
-echo "✅ UTF-8 encoding configured"
-
-# Check critical environment variables
-echo "🔍 Checking environment variables..."
-if [ -z "$AZURE_OPENAI_API_KEY" ]; then
-    echo "⚠️  WARNING: AZURE_OPENAI_API_KEY not set"
-else
-    echo "✅ AZURE_OPENAI_API_KEY is set"
-fi
-
-if [ -z "$AZURE_OPENAI_ENDPOINT" ]; then
-    echo "⚠️  WARNING: AZURE_OPENAI_ENDPOINT not set"
-else
-    echo "✅ AZURE_OPENAI_ENDPOINT is set"
-fi
-
-# Initialize database
-echo "🗄️  Initializing database..."
-python -c "from app.database import engine, Base; Base.metadata.create_all(bind=engine)" 2>&1 || echo "⚠️  Database initialization failed (may be normal)"
-echo "✅ Database initialization complete"
-
-# Get port from Azure (default 8000)
 PORT="${PORT:-8000}"
-echo "🌐 Using port: $PORT"
 
-# Start gunicorn with uvicorn workers
-echo "🚀 Starting Gunicorn with config file..."
+echo "🌐 Port: $PORT"
+echo "📚 PYTHONPATH: $PYTHONPATH"
 
-# Use gunicorn config file if exists, otherwise use CLI args
-if [ -f "gunicorn_conf.py" ]; then
-    echo "✅ Using gunicorn_conf.py (timeout: 600s)"
-    exec gunicorn \
-        -c gunicorn_conf.py \
-        app.main:app
+# Optional DB init (single process, checkfirst avoids duplicate table create)
+python -c "from app.database import engine, Base; Base.metadata.create_all(bind=engine, checkfirst=True)" 2>&1 || true
+
+echo "🚀 Launching Gunicorn..."
+if [ -f "/home/site/wwwroot/gunicorn_conf.py" ]; then
+  exec gunicorn -c /home/site/wwwroot/gunicorn_conf.py app.main:app
 else
-    echo "⚠️  gunicorn_conf.py not found, using CLI args"
-    echo "   Workers: 2"
-    echo "   Bind: 0.0.0.0:$PORT"
-    echo "   Timeout: 600s"
-    
-    exec gunicorn \
-        -w 2 \
-        -k uvicorn.workers.UvicornWorker \
-        app.main:app \
-        --bind 0.0.0.0:$PORT \
-        --timeout 600 \
-        --access-logfile - \
-        --error-logfile - \
-        --log-level info
+  echo "⚠️ gunicorn_conf.py missing, starting with safe inline defaults"
+  exec gunicorn \
+    -w "${GUNICORN_WORKERS:-2}" \
+    -k uvicorn.workers.UvicornWorker \
+    app.main:app \
+    --bind "0.0.0.0:${PORT}" \
+    --timeout "${GUNICORN_TIMEOUT:-600}" \
+    --access-logfile - \
+    --error-logfile - \
+    --log-level info
 fi

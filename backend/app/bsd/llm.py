@@ -77,14 +77,17 @@ def get_azure_chat_llm(*, purpose: str) -> AzureChatOpenAI:
     # Get temperature for this purpose (default to reasoner temp if unknown)
     temperature = TEMPERATURE_MAP.get(purpose.lower(), 0.1)
 
+    timeout_seconds = int(os.getenv("AZURE_OPENAI_TIMEOUT_SECONDS", "30"))
+    max_retries = int(os.getenv("AZURE_OPENAI_MAX_RETRIES", "0"))
+
     return AzureChatOpenAI(
         azure_endpoint=endpoint,
         api_key=api_key,
         api_version=api_version,
         azure_deployment=deployment,
         temperature=temperature,
-        request_timeout=60,  # 60 seconds (increased for complex prompts)
-        max_retries=2,       # Retry on transient failures
+        request_timeout=timeout_seconds,
+        max_retries=max_retries,
     )
 
 

@@ -287,7 +287,7 @@ async def get_conversation_insights_v2(
                 "message_count": len(messages),
                 "turns_in_current_stage": turns_in_current_stage
             },
-            "updated_at": conv.updated_at.isoformat() if conv.updated_at else None
+            "updated_at": (conv_updated := getattr(conv, 'updated_at', None) or conv.created_at) and conv_updated.isoformat() or None
         }
         
     except HTTPException:
