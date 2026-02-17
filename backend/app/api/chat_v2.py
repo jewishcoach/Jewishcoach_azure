@@ -297,3 +297,77 @@ async def get_conversation_insights_v2(
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+# ══════════════════════════════════════════════════════════════════════════════
+# STREAMING ENDPOINT (NEW!)
+# ══════════════════════════════════════════════════════════════════════════════
+
+from fastapi.responses import StreamingResponse
+
+@router.post("/message/stream")
+async def chat_v2_stream(
+    request: ChatRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    BSD V2 Chat with Streaming Response
+    
+    Returns: Server-Sent Events (SSE) stream with coach response chunks
+    """
+    try:
+        # Load state
+        state = load_v2_state(request.conversation_id, db)
+        
+        # Import streaming handler
+        from ..bsd_v2.single_agent_coach_streaming import handle_conversation_stream
+        
+        async def generate():
+            """Generate SSE events"""
+            try:
+                final_state = None
+                
+                async for chunk in handle_conversation_stream(
+                    user_message=request.message,
+                    state=state,
+                    language=request.language
+                ):
+                    # Check for special markers
+                    if chunk.startswith("\n__STATE_UPDATE__:"):
+                        # Extract and save final state
+                        state_json = chunk.replace("\n__STATE_UPDATE__:", "")
+                        final_state = json.loads(state_json)
+                        
+                        # Save to DB
+                        save_v2_state(request.conversation_id, final_state, db)
+                        db.commit()
+                        
+                        # Send done event
+                        yield f"data: {json.dumps({'type': 'done', 'state': {'current_step': final_state.get('current_step', 'S1'), 'saturation_score': final_state.get('saturation_score', 0)}})}\n\n"
+                        
+                    elif chunk.startswith("\n__ERROR__:"):
+                        error_msg = chunk.replace("\n__ERROR__:", "")
+                        yield f"data: {json.dumps({'type': 'error', 'message': error_msg})}\n\n"
+                        
+                    else:
+                        # Regular content chunk
+                        yield f"data: {json.dumps({'type': 'content', 'chunk': chunk})}\n\n"
+                
+            except Exception as e:
+                logger.error(f"Error in stream generation: {e}")
+                yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+        
+        return StreamingResponse(
+            generate(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no"  # Disable nginx buffering
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"Error in streaming endpoint: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
