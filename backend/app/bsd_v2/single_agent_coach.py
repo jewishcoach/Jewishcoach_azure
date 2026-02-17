@@ -17,7 +17,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 
 from ..bsd.llm import get_azure_chat_llm
 from .state_schema_v2 import add_message, get_conversation_history
-from .prompt_compact import SYSTEM_PROMPT_COMPACT_HE, SYSTEM_PROMPT_COMPACT_EN
+from .prompt_optimized import SYSTEM_PROMPT_OPTIMIZED_HE, SYSTEM_PROMPT_OPTIMIZED_EN
 
 logger = logging.getLogger(__name__)
 
@@ -1962,7 +1962,7 @@ So feel free to share an event from any area where you interacted with people an
         logger.info(f"[PERF] Build context: {(t2-t1)*1000:.0f}ms ({len(context)} chars)")
         
         # 2. Prepare messages (use COMPACT version for speed)
-        system_prompt = SYSTEM_PROMPT_COMPACT_HE if language == "he" else SYSTEM_PROMPT_COMPACT_EN
+        system_prompt = SYSTEM_PROMPT_OPTIMIZED_HE if language == "he" else SYSTEM_PROMPT_OPTIMIZED_EN
         
         messages = [
             SystemMessage(content=system_prompt),
