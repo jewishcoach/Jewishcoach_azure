@@ -37,7 +37,7 @@ if allow_tunnels:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins_list,
-        allow_origin_regex=r"https://.*\.(ngrok-free\.app|lhr\.life|localhost\.run)",
+        allow_origin_regex=r"https://.*\.(ngrok-free\.app|lhr\.life|localhost\.run|azurestaticapps\.net)",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

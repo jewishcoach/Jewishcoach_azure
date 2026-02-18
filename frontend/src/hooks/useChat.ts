@@ -170,25 +170,38 @@ export const useChat = (displayName?: string | null) => {
       if (BSD_VERSION === 'v2') {
         console.log('🆕 [BSD V2] Sending message...');
 
-        const response = await fetch(
-          getBsdStreamEndpoint(currentConvId!, 'v2'),  // currentConvId is guaranteed to be set
-          {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ 
-              message: content, 
-              conversation_id: currentConvId,
-              language 
-            }),
+        const streamUrl = getBsdStreamEndpoint(currentConvId!, 'v2');
+        const nonStreamUrl = getBsdEndpoint(currentConvId!, 'v2');
+        const reqBody = JSON.stringify({ message: content, conversation_id: currentConvId, language });
+        const reqHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+        const reqOpts = { method: 'POST' as const, credentials: 'include' as const, headers: reqHeaders, body: reqBody };
+
+        let response = await fetch(streamUrl, reqOpts);
+
+        // Fallback to non-streaming if stream endpoint returns 404 (not yet deployed)
+        if (response.status === 404) {
+          console.warn('🔄 [BSD V2] Stream endpoint not available, falling back to non-streaming');
+          response = await fetch(nonStreamUrl, reqOpts);
+          if (response.ok) {
+            const data = await response.json();
+            const assistantMessageId = Date.now() + 1;
+            setMessages(prev => [...prev, {
+              id: assistantMessageId,
+              role: 'assistant',
+              content: data.coach_message,
+              timestamp: new Date().toISOString(),
+            }]);
+            if (data.current_step) setCurrentPhase(data.current_step);
+            if (onResponseComplete && data.coach_message?.trim()) onResponseComplete(data.coach_message.trim());
+            setLoading(false);
+            return;
           }
-        );
+        }
 
         if (!response.ok) {
-          throw new Error('Failed to send message (V2)');
+          const errBody = await response.text();
+          console.error('[BSD V2] Error response:', response.status, errBody);
+          throw new Error(`Failed to send message (V2): ${response.status} ${errBody.slice(0, 100)}`);
         }
 
         const reader = response.body?.getReader();
