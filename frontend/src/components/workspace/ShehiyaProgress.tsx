@@ -33,16 +33,18 @@ export const ShehiyaProgress = ({ loading }: ShehiyaProgressProps) => {
         initial={{ opacity: 0, height: 0 }}
         animate={{ opacity: 1, height: 2 }}
         exit={{ opacity: 0, height: 0 }}
-        className="bg-white/10 rounded-b overflow-hidden"
+        className="rounded-b overflow-hidden"
+        style={{ background: 'rgba(255,255,255,0.06)' }}
       >
         <motion.div
-          className="h-full bg-[#D4AF37]"
+          className="h-full"
+          style={{ background: 'linear-gradient(90deg, #BF953F, #FCF6BA, #B38728, #FBF5B7, #AA771C)' }}
           initial={{ width: '0%' }}
           animate={{ width: ['0%', '70%', '90%', '100%'] }}
           transition={{ duration: 2, repeat: Infinity, repeatType: 'reverse' }}
         />
       </motion.div>
-      <div className="absolute top-1 left-4 text-xs text-[#D4AF37]/90 font-medium">
+      <div className="absolute top-2 left-6 text-[13px] font-light tracking-[0.05em]" style={{ fontFamily: 'Cormorant Garamond, serif', color: '#FCF6BA' }}>
         {phrase}
       </div>
     </div>

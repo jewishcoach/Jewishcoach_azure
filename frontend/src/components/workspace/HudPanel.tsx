@@ -52,37 +52,38 @@ export const HudPanel = ({ conversationId, onArchiveClick }: HudPanelProps) => {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      className="rounded-[4px] p-4"
+      className="rounded-[4px] p-5"
       style={{
-        background: 'rgba(255,255,255,0.03)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        border: '0.5px solid rgba(212, 175, 55, 0.2)',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.35), 0 0 0 1px rgba(212,175,55,0.05)',
+        background: 'rgba(255, 255, 255, 0.03)',
+        backdropFilter: 'blur(25px)',
+        WebkitBackdropFilter: 'blur(25px)',
+        border: '0.5px solid rgba(255, 255, 255, 0.1)',
+        boxShadow: '0 12px 40px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.04)',
       }}
     >
-      <div className="flex items-center gap-2.5 mb-2">
+      <div className="flex items-center gap-3 mb-3">
         <span
           className="shrink-0"
           style={{
-            color: empty ? 'rgba(212,175,55,0.4)' : 'rgba(212,175,55,0.95)',
-            filter: empty ? undefined : 'drop-shadow(0 0 4px rgba(212,175,55,0.3))',
+            color: empty ? 'rgba(252,246,186,0.35)' : 'rgba(252,246,186,0.95)',
+            filter: 'drop-shadow(0 0 5px rgba(212, 175, 55, 0.5))',
+            strokeWidth: 1,
           }}
         >
           {icon}
         </span>
-        <span className="text-[13px] font-medium text-white/90 tracking-wide" style={{ fontFamily: 'Cormorant Garamond, Playfair Display, serif', letterSpacing: '0.04em' }}>{title}</span>
+        <span className="text-[14px] font-light tracking-[0.1em]" style={{ fontFamily: 'Cormorant Garamond, Playfair Display, serif', color: '#F5F5F0' }}>{title}</span>
       </div>
       {empty ? (
-        <p className="text-[13px] text-white/30 italic" style={{ fontFamily: 'Cormorant Garamond, serif', fontStyle: 'italic' }}>
+        <p className="text-[14px] italic" style={{ fontFamily: 'Cormorant Garamond, serif', fontStyle: 'italic', color: 'rgba(245,245,240,0.4)' }}>
           {placeholder || '—'}
         </p>
       ) : value ? (
-        <p className="text-[13px] text-white/85 leading-relaxed" style={{ lineHeight: 1.6, fontFamily: 'Inter, sans-serif', fontWeight: 300 }}>{value}</p>
+        <p className="text-[14px] leading-relaxed" style={{ lineHeight: 1.7, fontFamily: 'Inter, sans-serif', fontWeight: 300, color: 'rgba(245,245,240,0.9)' }}>{value}</p>
       ) : items && items.length > 0 ? (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2.5">
           {items.map((item, j) => (
-            <span key={j} className="text-[12px] px-2.5 py-1 rounded-[4px] bg-[#D4AF37]/10 text-white/85 border border-[#D4AF37]/25" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <span key={j} className="text-[13px] px-3 py-1.5 rounded-[4px] border" style={{ fontFamily: 'Inter, sans-serif', background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(252,246,186,0.25)', color: 'rgba(245,245,240,0.9)' }}>
               {item}
             </span>
           ))}
@@ -92,23 +93,23 @@ export const HudPanel = ({ conversationId, onArchiveClick }: HudPanelProps) => {
   );
 
   return (
-    <div className="w-64 flex flex-col h-full bg-[#020617]/50">
+    <div className="w-72 flex flex-col h-full bg-[#020617]/50">
       {/* Archive button - top corner */}
       {onArchiveClick && (
-        <div className="p-3 border-b border-white/[0.06] flex justify-end">
+        <div className="p-4 border-b border-white/[0.06] flex justify-end">
           <button
             onClick={onArchiveClick}
-            className="p-2 rounded-[4px] text-white/40 hover:text-[#D4AF37]/80 hover:bg-white/5 transition-colors"
+            className="p-2.5 rounded-[4px] text-white/40 hover:text-[#FCF6BA]/90 hover:bg-white/5 transition-colors"
             aria-label="ארכיון"
           >
-            <Archive size={18} />
+            <Archive size={18} strokeWidth={1.5} />
           </button>
         </div>
       )}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-5">
-        {/* כוחות מקור - luxury card */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-6">
+        {/* כוחות מקור - premium ID card */}
         <section>
-          <h4 className="text-[11px] uppercase tracking-[0.2em] text-[#D4AF37]/70 mb-3" style={{ fontFamily: 'Cormorant Garamond, Playfair Display, serif' }}>כוחות מקור</h4>
+          <h4 className="text-[12px] font-light uppercase tracking-[0.1em] mb-4" style={{ fontFamily: 'Cormorant Garamond, Playfair Display, serif', color: 'rgba(245,245,240,0.8)' }}>כוחות מקור</h4>
           <Card
             icon={<Gem size={16} strokeWidth={1.5} />}
             title="ערכים"
@@ -117,9 +118,9 @@ export const HudPanel = ({ conversationId, onArchiveClick }: HudPanelProps) => {
             placeholder="הערכים שעולים בשיחה יופיעו כאן"
           />
         </section>
-        {/* כוחות טבע - luxury card */}
+        {/* כוחות טבע - premium ID card */}
         <section>
-          <h4 className="text-[11px] uppercase tracking-[0.2em] text-[#D4AF37]/70 mb-3" style={{ fontFamily: 'Cormorant Garamond, Playfair Display, serif' }}>כוחות טבע</h4>
+          <h4 className="text-[12px] font-light uppercase tracking-[0.1em] mb-4" style={{ fontFamily: 'Cormorant Garamond, Playfair Display, serif', color: 'rgba(245,245,240,0.8)' }}>כוחות טבע</h4>
           <Card
             icon={<Layers size={16} strokeWidth={1.5} />}
             title="דפוס"

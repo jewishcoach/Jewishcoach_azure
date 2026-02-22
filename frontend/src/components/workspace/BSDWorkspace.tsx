@@ -155,7 +155,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
   return (
     <div className="flex h-full w-full bg-[#020617]">
       {/* LEFT: Cognitive HUD (Kamaz) - Mekor, Teva, Archive */}
-      <div className="w-64 flex-shrink-0 border-r border-[#D4AF37]/20 bg-[#020617]/80 overflow-hidden">
+      <div className="w-72 flex-shrink-0 border-r border-white/[0.08] bg-[#020617]/80 overflow-hidden">
         <HudPanel conversationId={conversationId} onArchiveClick={() => setArchiveOpen(true)} />
       </div>
 
@@ -181,7 +181,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
       >
         <ShehiyaProgress loading={loading} />
 
-        <div className="flex-1 overflow-y-auto px-6 py-6 custom-scrollbar bg-[#020617]">
+        <div className="flex-1 overflow-y-auto px-8 py-8 custom-scrollbar bg-[#020617]">
           {messages.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
@@ -195,7 +195,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
               </p>
             </motion.div>
           ) : (
-            <div className="space-y-5">
+            <div className="space-y-7">
               <AnimatePresence>
                 {messages.map((message) => (
                   <WorkspaceMessageBubble key={message.id} message={message} />
@@ -220,8 +220,8 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
               onStop={() => setIsVoiceMode(false)}
             />
           ) : (
-            <div key="text-input" className="p-5 border-t border-white/[0.06]">
-              <form onSubmit={handleSubmit} className="flex items-end gap-3">
+            <div key="text-input" className="p-7 border-t border-white/[0.06]">
+              <form onSubmit={handleSubmit} className="flex items-end gap-4">
                 <textarea
                   ref={inputRef}
                   value={inputValue}
@@ -229,23 +229,35 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
                   onKeyDown={handleKeyDown}
                   placeholder={t('chat.placeholder')}
                   disabled={loading}
-                  className="flex-1 resize-none rounded-[4px] bg-white/[0.04] border border-white/10 px-4 py-3.5 text-white placeholder-white/35 focus:outline-none focus:border-[#D4AF37]/40 text-[15px] max-h-28"
-                  style={{ fontFamily: 'Inter, sans-serif', fontWeight: 300, lineHeight: 1.5, minHeight: '44px' }}
+                  className="flex-1 resize-none rounded-[4px] px-5 py-4 text-[16px] max-h-28 placeholder-[rgba(245,245,240,0.35)] focus:border-[#FCF6BA]/40"
+                  style={{
+                    fontFamily: 'Inter, sans-serif',
+                    fontWeight: 300,
+                    lineHeight: 1.6,
+                    minHeight: '48px',
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '0.5px solid rgba(255,255,255,0.1)',
+                    color: '#F5F5F0',
+                  }}
                   rows={1}
                 />
                 <button
                   type="button"
                   onClick={() => setIsVoiceMode(true)}
-                  className="p-3 rounded-[4px] bg-white/10 hover:bg-white/15 text-white transition-colors"
+                  className="p-4 rounded-[4px] bg-white/[0.06] hover:bg-white/[0.1] text-[#F5F5F0]/80 transition-colors"
                 >
-                  <Mic size={18} />
+                  <Mic size={18} strokeWidth={1.5} />
                 </button>
                 <button
                   type="submit"
                   disabled={!inputValue.trim() || loading}
-                  className="p-3 rounded-[4px] bg-[#D4AF37]/80 hover:bg-[#D4AF37] text-[#020617] font-medium disabled:opacity-50 transition-colors"
+                  className="p-4 rounded-[4px] text-[#020617] font-light disabled:opacity-50 transition-all"
+                  style={{
+                    background: 'linear-gradient(45deg, #BF953F, #FCF6BA, #B38728, #FBF5B7, #AA771C)',
+                    filter: 'drop-shadow(0 0 5px rgba(212, 175, 55, 0.5))',
+                  }}
                 >
-                  <Send size={18} />
+                  <Send size={18} strokeWidth={1.5} />
                 </button>
               </form>
             </div>
@@ -255,12 +267,12 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
 
       {/* RIGHT: Vision Ladder (S1-S12) / Dashboard - expands when Dashboard opens */}
       <motion.div
-        className="flex flex-col border-l border-[#D4AF37]/20 overflow-hidden flex-shrink-0"
+        className="flex flex-col border-l border-white/[0.08] overflow-hidden flex-shrink-0"
         initial={false}
         animate={{
           flex: showDashboard ? 1 : 0,
-          minWidth: showDashboard ? 0 : 260,
-          width: showDashboard ? 'auto' : 260,
+          minWidth: showDashboard ? 0 : 280,
+          width: showDashboard ? 'auto' : 280,
         }}
         transition={{ type: 'tween', duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
       >

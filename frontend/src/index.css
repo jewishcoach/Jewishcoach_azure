@@ -6,21 +6,20 @@
   --color-primary-light: #1e293b;
   --color-primary-dark: #020617;
   
-  /* Accent Colors - Soft Gold (Insight Sparks) */
-  --color-accent: #f59e0b;
-  --color-accent-light: #fbbf24;
-  --color-accent-dark: #d97706;
+  /* Metallic Gold - Real metal, not flat yellow */
+  --gold-metallic: linear-gradient(45deg, #BF953F, #FCF6BA, #B38728, #FBF5B7, #AA771C);
+  --gold-glow: drop-shadow(0 0 5px rgba(212, 175, 55, 0.5));
   
-  /* Background - Warm Cream */
-  --color-cream: #fafaf9;
-  --color-cream-dark: #f5f5f4;
+  /* Cream-white for readability */
+  --text-cream: #F5F5F0;
+  --text-cream-muted: rgba(245, 245, 240, 0.7);
   
   /* Font Families */
-  --font-family-serif: Georgia, Cambria, "Times New Roman", serif;
+  --font-family-serif: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
   
   /* Shadows */
-  --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
-  --shadow-glow: 0 0 20px rgba(245, 158, 11, 0.3);
+  --shadow-glass: 0 12px 40px rgba(0,0,0,0.5);
+  --shadow-glow: 0 0 24px rgba(212, 175, 55, 0.35), 0 0 48px rgba(212, 175, 55, 0.15);
 }
 
 body {
