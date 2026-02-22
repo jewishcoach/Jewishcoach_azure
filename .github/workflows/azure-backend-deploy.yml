@@ -1,0 +1,50 @@
+# Deploy backend (FastAPI) to Azure Web App
+# Required secret: AZURE_WEBAPP_PUBLISH_PROFILE
+#   Download from Azure Portal → jewishcoach-api → Get publish profile
+
+name: Deploy Backend to Azure Web App
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+  workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_NAME: jewishcoach-api
+  RESOURCE_GROUP: jewish-coach-rg
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    name: Build and Deploy Backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create deploy zip
+        run: |
+          cd backend
+          python3 -c "
+          import zipfile, os
+          with zipfile.ZipFile('deploy.zip', 'w', zipfile.ZIP_DEFLATED) as z:
+              for path in ['app', 'requirements.txt', 'startup.sh', 'gunicorn_conf.py', 'web.config']:
+                  if os.path.isdir(path):
+                      for r, d, f in os.walk(path):
+                          for fn in f:
+                              if '__pycache__' in r or fn.endswith('.pyc') or 'antenv' in r or 'test_venv' in r:
+                                  continue
+                              z.write(os.path.join(r, fn))
+                  elif os.path.isfile(path):
+                      z.write(path)
+          "
+          ls -la deploy.zip
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          package: backend/deploy.zip
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}

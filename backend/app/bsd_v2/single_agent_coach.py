@@ -890,7 +890,9 @@ def count_turns_in_step(state: Dict[str, Any], step: str) -> int:
     """
     count = 0
     for msg in state.get("messages", []):
-        if msg.get("role") == "assistant" and msg.get("metadata", {}).get("internal_state", {}).get("current_step") == step:
+        is_coach = msg.get("sender") == "coach" or msg.get("role") == "assistant"
+        internal = msg.get("internal_state") or msg.get("metadata", {}).get("internal_state", {})
+        if is_coach and (internal or {}).get("current_step") == step:
             count += 1
     return count
 
@@ -1056,6 +1058,30 @@ def get_next_step_question(current_step: str, language: str = "he") -> str:
         }
     
     return step_questions.get(current_step, "בוא נמשיך הלאה." if language == "he" else "Let's continue.")
+
+
+def detect_re_asking_for_event(coach_message: str, state: Dict[str, Any], language: str = "he") -> Optional[str]:
+    """
+    If coach asks for event again but user already gave full event - override with S4 question.
+    Prevents the "ספרתי לך על הרגע במגרש" loop.
+    """
+    current_step = state.get("current_step", "")
+    if current_step not in ("S2", "S3"):
+        return None
+    coach_lower = coach_message.lower()
+    event_asking_phrases = [
+        "אירוע ספציפי", "תיקח אותי לרגע", "ספר לי על אירוע",
+        "פעם אחת ספציפית", "רגע מסוים שבו", "מתי זה היה", "עם מי זה היה"
+    ]
+    if not any(p in coach_lower for p in event_asking_phrases):
+        return None
+    has_event, _ = has_sufficient_event_details(state)
+    if not has_event:
+        return None
+    logger.warning(f"[Safety Net] Coach re-asking for event but user already gave it - overriding with S4")
+    if language == "he":
+        return "מצטער על החזרה! שמעתי על האירוע במגרש. עכשיו אני רוצה להבין – מה עבר לך בראש **באותו רגע** כשוויתרת? מה המשפט שאמרת לעצמך?"
+    return "Sorry for repeating! I heard about the event. Now I want to understand – what went through your mind **in that moment** when you gave up? What did you tell yourself?"
 
 
 def check_repeated_question(coach_message: str, history: list, current_step: str, language: str = "he") -> Optional[str]:
@@ -1484,13 +1510,20 @@ def has_sufficient_event_details(state: Dict[str, Any]) -> Tuple[bool, str]:
     Returns:
         (has_sufficient, reason_if_not)
     """
+    # Fast path: LLM already extracted event description
+    collected = state.get("collected_data") or {}
+    event_desc = collected.get("event_description") or ""
+    if event_desc and len(event_desc.strip()) >= 30:
+        return True, ""
+    
     messages = state.get("messages", [])
     
     # Get user messages in current stage (rough approximation)
+    # Support both sender and role for API compatibility
     recent_user_messages = [
         msg.get("content", "")
         for msg in messages[-10:]  # Look at last 10 messages
-        if msg.get("sender") == "user" and msg.get("content")
+        if (msg.get("sender") == "user" or msg.get("role") == "user") and msg.get("content")
     ]
     
     if len(recent_user_messages) < 2:
@@ -1627,14 +1660,44 @@ def validate_stage_transition(
     
     # 🚨 CRITICAL: Block S1→S3 (can't skip S2 event!)
     if old_step == "S1" and new_step == "S3":
+        # ✅ EXCEPTION: If user already gave event details, allow S3 (state may be stale)
+        has_event, _ = has_sufficient_event_details(state)
+        if has_event:
+            logger.info(f"[Safety Net] User already gave event in S1 context → allowing S1→S3")
+            return True, None
         logger.error(f"[Safety Net] 🚫 BLOCKED S1→S3: Cannot skip S2 (event)!")
+        topic = (state.get("collected_data") or {}).get("topic") or ""
+        # Sanitize: LLM might copy placeholder "[נושא]" from prompt
+        if topic and ("[" in topic or "]" in topic or topic.strip() in ("[נושא]", "[topic]")):
+            topic = ""
+        if not topic:
+            # Fallback: use first substantial user message as topic hint (e.g. "לומר לא", "נאמנות לעצמי")
+            for msg in (state.get("messages") or []):
+                if msg.get("sender") == "user":
+                    content = (msg.get("content") or "").strip()
+                    if len(content) >= 5 and len(content) <= 80:
+                        topic = content
+                        break
         if language == "he":
-            return False, "רגע, לפני שנדבר על רגשות - בוא ניקח **אירוע ספציפי אחד** שקרה לאחרונה. ספר לי על פעם אחת ש[נושא] - מתי זה היה? עם מי?"
+            if topic:
+                msg = f"רגע, לפני שנדבר על רגשות - בוא ניקח **אירוע ספציפי אחד** שקרה לאחרונה. ספר לי על פעם אחת ש{topic} - מתי זה היה? עם מי?"
+            else:
+                msg = "רגע, לפני שנדבר על רגשות - בוא ניקח **אירוע ספציפי אחד** שקרה לאחרונה. ספר לי על פעם אחת - מתי זה היה? עם מי?"
+            return False, msg
         else:
-            return False, "Wait, before we talk about emotions - let's take **one specific event** that happened recently. Tell me about one time when [topic] - when was it? Who was there?"
+            if topic:
+                msg = f"Wait, before we talk about emotions - let's take **one specific event** that happened recently. Tell me about one time when {topic} - when was it? Who was there?"
+            else:
+                msg = "Wait, before we talk about emotions - let's take **one specific event** that happened recently. Tell me about one time - when was it? Who was there?"
+            return False, msg
     
     # 🚨 CRITICAL: Block S1→S4, S1→S5, etc. (can't skip multiple stages!)
     if old_step == "S1" and new_idx > 2:
+        # ✅ EXCEPTION: If user already gave event details (e.g. re_ask_check moved us), allow
+        has_event, _ = has_sufficient_event_details(state)
+        if has_event:
+            logger.info(f"[Safety Net] User already gave event → allowing S1→{new_step}")
+            return True, None
         logger.error(f"[Safety Net] 🚫 BLOCKED S1→{new_step}: Cannot skip S2!")
         if language == "he":
             return False, "רגע, בוא קודם ניקח אירוע ספציפי אחד. ספר לי על פעם אחת לאחרונה - מתי זה היה?"
@@ -1778,6 +1841,11 @@ def validate_stage_transition(
             logger.info(f"[Safety Net] LLM already asked S4 question, allowing transition despite {s3_turns} turns")
             return True, None  # Allow transition
         
+        # If user already gave emotions (2+), allow S3→S4 - no need to drill each one
+        if user_already_gave_emotions(state):
+            logger.info(f"[Safety Net] User gave emotions → allowing S3→S4 (no per-emotion drilling)")
+            return True, None
+        
         # If LLM hasn't moved to S4 yet, check turns count
         if s3_turns < 3:
             logger.warning(f"[Safety Net] Blocked S3→S4: only {s3_turns} turns in S3")
@@ -1905,6 +1973,8 @@ def build_conversation_context(
     if collected:
         context_parts.append("\nנתונים שנאספו:" if language == "he" else "\nCollected Data:")
         context_parts.append(json.dumps(collected, ensure_ascii=False, indent=2))
+        if state.get("current_step") in ("S5", "S6"):
+            context_parts.append("\n🚨 השתמש בנתונים האלה לבניית הסיכום! אל תסכם בלי לדעת מה נאסף." if language == "he" else "\n🚨 Use this data to build the summary! Don't summarize without knowing what was collected.")
     
     # Extract event details from history for S2 (to prevent repeated questions)
     if state['current_step'] == 'S2' and history:
@@ -2035,15 +2105,20 @@ So feel free to share an event from any area where you interacted with people an
         # Do NOT use single words like "די", "מספיק", "זהו" alone
         explicit_frustration_phrases = [
             "אמרתי כבר", "אמרתי לך", "כבר אמרתי", "כבר סיפרתי",
+            "ספרתי לך", "ספרתי לך על", "עשינו זאת כבר", "בוא נתקדם",
+            "זה חוזר שוב", "זה חוזר", "כבר ספרתי על",
             "חזרת על עצמך", "אתה חוזר", "עניתי כבר", "עניתי לך",
+            "עניתי הכי טוב", "עניתי הכי טוב שהצלחתי", "זה הכי טוב שיכולתי",
             "די כבר", "די די", "מספיק כבר", "די לי כבר"
         ]
         
         user_frustrated = any(phrase in user_msg_lower for phrase in explicit_frustration_phrases)
     else:
         explicit_frustration_phrases = [
-            "i already said", "i told you", "already told you", 
-            "you're repeating", "i already answered", "stop repeating"
+            "i already said", "i told you", "already told you", "i told you about",
+            "you're repeating", "i already answered", "stop repeating",
+            "this is repeating", "it keeps repeating",
+            "i answered the best i could", "that's the best i could do"
         ]
         user_frustrated = any(phrase in user_message.lower() for phrase in explicit_frustration_phrases)
     
@@ -2054,11 +2129,20 @@ So feel free to share an event from any area where you interacted with people an
         # Add user message first
         state = add_message(state, "user", user_message)
         
-        # 🎯 SPECIAL HANDLING FOR S1 - check if topic is clear before progressing
+        # 🎯 SPECIAL HANDLING FOR S1 - check if topic/event before progressing
         if current_step == "S1":
+            has_event, _ = has_sufficient_event_details(state)
             has_topic, reason = has_clear_topic_for_s2(state)
             
-            if has_topic:
+            if has_event:
+                # ✅ User already gave event - move to S3 (emotions)!
+                logger.info(f"[Safety Net] User frustrated in S1, but already gave event → moving to S3")
+                if language == "he":
+                    apology_message = "מצטער על החזרה! שמעתי על האירוע. עכשיו – מה הרגשת באותו רגע?"
+                else:
+                    apology_message = "Sorry for repeating! I heard about the event. Now – what did you feel in that moment?"
+                next_step = "S3"
+            elif has_topic:
                 # ✅ Topic is clear - can progress to S2
                 logger.info(f"[Safety Net] User frustrated in S1, but topic is clear → moving to S2")
                 if language == "he":
@@ -2237,6 +2321,13 @@ So feel free to share an event from any area where you interacted with people an
             internal_state["current_step"] = "S3"
             internal_state["saturation_score"] = 0.3
         
+        # 5.5. Safety Net: Coach re-asking for event when user already gave it
+        re_ask_check = detect_re_asking_for_event(coach_message, state, language)
+        if re_ask_check:
+            coach_message = re_ask_check
+            internal_state["current_step"] = "S4"
+            internal_state["saturation_score"] = 0.3
+        
         # 6. Safety Net: Check for stage/question mismatch
         t9 = time.time()
         mismatch_stage = detect_stage_question_mismatch(coach_message, state["current_step"], language)
@@ -2277,6 +2368,14 @@ So feel free to share an event from any area where you interacted with people an
             coach_message = correction
             # Keep current step (don't advance)
             internal_state["current_step"] = old_step
+        
+        # 6b. Replace placeholder [נושא] in coach_message with actual topic
+        topic_for_msg = (internal_state.get("collected_data") or {}).get("topic") or ""
+        if topic_for_msg and ("[" in topic_for_msg or topic_for_msg.strip() in ("[נושא]", "[topic]")):
+            topic_for_msg = ""
+        if "[נושא]" in coach_message or "[topic]" in coach_message:
+            replacement = topic_for_msg or (user_message[:50] + "..." if len(user_message) > 50 else user_message) if user_message else "הנושא"
+            coach_message = coach_message.replace("[נושא]", replacement).replace("[topic]", replacement)
         
         # 7. Update state
         logger.info(f"[BSD V2] Parsed coach_message: {coach_message[:100]}...")
