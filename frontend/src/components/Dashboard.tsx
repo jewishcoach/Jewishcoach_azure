@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { 
   User, MessageSquare, TrendingUp, Calendar, Award,
-  Settings, Edit2, Save, X
+  Settings, Edit2, Save, X, ArrowRight
 } from 'lucide-react';
 import { CoachingCalendar } from './CoachingCalendar';
 import { RemindersManager } from './RemindersManager';
@@ -38,7 +38,11 @@ interface DashboardData {
   recent_conversations: any[];
 }
 
-export const Dashboard = () => {
+interface DashboardProps {
+  onBack?: () => void;
+}
+
+export const Dashboard = ({ onBack }: DashboardProps) => {
   const { getToken } = useAuth();
   const { t, i18n } = useTranslation();
   const [data, setData] = useState<DashboardData | null>(null);
@@ -114,6 +118,15 @@ export const Dashboard = () => {
       <div className="max-w-7xl mx-auto p-8">
         {/* Header */}
         <div className="mb-8">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="flex items-center gap-2 text-primary/80 hover:text-primary mb-4 transition-colors"
+            >
+              <ArrowRight className="w-5 h-5" />
+              <span>{t('chat.button')}</span>
+            </button>
+          )}
           <h1 className="text-4xl font-bold text-primary mb-2">{t('dashboard.title')}</h1>
           <p className="text-gray-600">{t('dashboard.subtitle')}</p>
         </div>

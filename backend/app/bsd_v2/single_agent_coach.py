@@ -943,59 +943,28 @@ def detect_stage_question_mismatch(coach_message: str, current_step: str, langua
 
 def has_clear_topic_for_s2(state: Dict[str, Any]) -> Tuple[bool, str]:
     """
-    Check if we have a clear enough topic in S1 to move to S2.
+    Minimal safety net: block S1→S2 only in extreme cases.
+    
+    Trust the LLM's judgment. Only block when we have very little content
+    (e.g. 1 short message like "על שמחה" with no context).
     
     Returns:
         (has_clear_topic, reason_if_not)
     """
     messages = state.get("messages", [])
-    
-    # Get user messages in S1 (approximate - look at recent messages)
     recent_user_msgs = [
-        msg.get("content", "")
-        for msg in messages[-8:]  # Look at last 8 messages
-        if msg.get("sender") == "user" and msg.get("content")
+        msg.get("content", "").strip()
+        for msg in messages[-8:]
+        if msg.get("sender") == "user" and msg.get("content", "").strip()
     ]
     
+    # Block only if: 1 message or less, OR total content very short
     if len(recent_user_msgs) < 2:
         return False, "need_more_clarification"
     
-    # Check total length (not just "על שמחה")
     total_length = sum(len(msg) for msg in recent_user_msgs)
-    if total_length < 25:
+    if total_length < 30:
         return False, "too_vague"
-    
-    # Check for specific topic indicators
-    topic_indicators_he = [
-        # Goal/desire words
-        "רוצה ל", "להתאמן על", "כדי ש", "שאוכל", "שאדע", "להיות",
-        # Problem/challenge words
-        "פחד", "קושי", "בעיה", "לא מצליח", "מתקשה", "נאבק",
-        # Ability/skill words
-        "יכולת", "כישור", "לדבר", "להגיד", "לבטא", "לעשות",
-        # Context words
-        "עם", "כש", "במצבים", "בזמן", "לפני", "אחרי", "כל", "מול"
-    ]
-    topic_indicators_en = [
-        # Goal/desire words
-        "want to", "work on", "so that", "able to", "know how", "to be",
-        # Problem/challenge words
-        "fear", "difficulty", "problem", "can't", "struggling", "hard to",
-        # Ability/skill words
-        "ability", "skill", "to speak", "to say", "to express", "to do",
-        # Context words
-        "with", "when", "in situations", "during", "before", "after", "every", "in front"
-    ]
-    
-    all_text = " ".join(recent_user_msgs)
-    
-    # Count how many indicators present
-    indicator_count = sum(1 for word in topic_indicators_he if word in all_text)
-    indicator_count += sum(1 for word in topic_indicators_en if word in all_text.lower())
-    
-    # Need at least 2 indicators for a clear topic
-    if indicator_count < 2:
-        return False, "missing_context"
     
     return True, ""
 
@@ -1623,9 +1592,9 @@ def validate_stage_transition(
     
     if language == "he":
         move_on_keywords = [
-            "מסכם", "זה הכל", "נתקדם", "הלאה", "די", "די לי",
+            "מסכם", "זה הכל", "זהו", "נתקדם", "הלאה", "די", "די לי",
             "כל הרגשות", "כבר כתבתי", "בוא נתקדם", "מה הלאה",
-            "אמרתי כבר", "כבר אמרתי", "עניתי", "זה מספיק"
+            "אמרתי כבר", "כבר אמרתי", "עניתי", "זה מספיק", "לא"
         ]
     else:
         move_on_keywords = [

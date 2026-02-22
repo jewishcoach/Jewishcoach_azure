@@ -9,7 +9,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 
 from ..bsd.llm import get_azure_chat_llm
 from .state_schema_v2 import add_message, get_conversation_history
-from .prompt_optimized import SYSTEM_PROMPT_OPTIMIZED_HE, SYSTEM_PROMPT_OPTIMIZED_EN
+from .prompt_compact import SYSTEM_PROMPT_COMPACT_HE, SYSTEM_PROMPT_COMPACT_EN
 
 logger = logging.getLogger(__name__)
 
@@ -23,10 +23,11 @@ async def handle_conversation_stream(
     Handle conversation with streaming support.
     
     Yields coach response chunks as they're generated.
+    Uses same prompt as non-streaming (prompt_compact) for consistent behavior.
     """
     try:
-        # Select prompt based on language
-        system_prompt = SYSTEM_PROMPT_OPTIMIZED_HE if language == "he" else SYSTEM_PROMPT_OPTIMIZED_EN
+        # Select prompt based on language (same as non-streaming single_agent_coach)
+        system_prompt = SYSTEM_PROMPT_COMPACT_HE if language == "he" else SYSTEM_PROMPT_COMPACT_EN
         
         # Get LLM with streaming enabled
         llm = get_azure_chat_llm(purpose="talker")

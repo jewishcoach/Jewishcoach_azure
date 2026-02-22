@@ -4,8 +4,7 @@ import { motion } from 'framer-motion';
 import { SignedIn, SignedOut, UserButton, useUser, useClerk, useAuth } from '@clerk/clerk-react';
 import { Sparkles, Shield, CreditCard, BarChart3 } from 'lucide-react';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
-import { ChatInterface } from './components/ChatInterface';
-import { ChatInterfaceDemo } from './components/ChatInterfaceDemo';
+import { BSDWorkspace } from './components/workspace/BSDWorkspace';
 import { LandingPage } from './components/LandingPage';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { BillingPageSimple as BillingPage } from './components/BillingPageSimple';
@@ -141,7 +140,13 @@ function SignedInContent() {
         </div>
       </motion.header>
       <main className="flex-1 flex overflow-hidden">
-        {showDashboard ? <Dashboard /> : showBilling ? <BillingPage /> : showAdmin ? <AdminDashboard /> : !checkingAdmin && <ChatInterface displayName={displayName} />}
+        {showBilling ? <BillingPage /> : showAdmin ? <AdminDashboard /> : !checkingAdmin && (
+          <BSDWorkspace
+            displayName={displayName}
+            showDashboard={showDashboard}
+            onCloseDashboard={() => setShowDashboard(false)}
+          />
+        )}
       </main>
     </div>
   );
@@ -198,7 +203,13 @@ function DemoModeContent() {
         </div>
       </motion.header>
       <main className="flex-1 flex overflow-hidden">
-        {showDashboard ? <Dashboard /> : showBilling ? <BillingPage /> : <ChatInterfaceDemo displayName="Demo User" />}
+        {showBilling ? <BillingPage /> : (
+          <BSDWorkspace
+            displayName="Demo User"
+            showDashboard={showDashboard}
+            onCloseDashboard={() => setShowDashboard(false)}
+          />
+        )}
       </main>
     </div>
   );
