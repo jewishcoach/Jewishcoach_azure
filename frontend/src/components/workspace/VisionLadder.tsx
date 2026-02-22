@@ -27,53 +27,56 @@ export const VisionLadder = ({ currentStep }: VisionLadderProps) => {
   const activeIndex = currentIndex >= 0 ? currentIndex : 0;
 
   return (
-    <div className="w-full min-w-[200px] flex flex-col h-full bg-[#020617] py-5" dir="ltr">
-      <h3 className="text-[11px] font-medium text-[#D4AF37]/80 uppercase tracking-[0.2em] px-4 mb-5" style={{ fontFamily: 'Playfair Display, serif' }}>
+    <div className="w-full min-w-[220px] flex flex-col h-full bg-[#020617] py-6 px-4" dir="ltr">
+      <h3 className="text-[12px] font-medium text-[#D4AF37]/90 uppercase tracking-[0.25em] mb-6" style={{ fontFamily: 'Cormorant Garamond, Playfair Display, serif' }}>
         סולם התהליך
       </h3>
-      <div className="flex-1 overflow-y-auto custom-scrollbar px-3 relative">
-        {/* Vertical connecting line */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar relative">
+        {/* Vertical line - subtle gold gradient */}
         <div
-          className="absolute top-0 bottom-0 w-px"
-          style={{ left: 11, background: `linear-gradient(to bottom, ${CHAMPAGNE_GOLD}40, ${CHAMPAGNE_GOLD}20, transparent)` }}
+          className="absolute top-0 bottom-0 w-[2px] rounded-full"
+          style={{
+            left: 14,
+            background: `linear-gradient(to bottom, rgba(212,175,55,0.5) 0%, rgba(212,175,55,0.25) 40%, rgba(212,175,55,0.1) 100%)`,
+          }}
         />
-        <div className="relative space-y-0">
+        <div className="relative space-y-1">
           {STAGES.map((stage, i) => {
             const isActive = i === activeIndex;
             const isPast = i < activeIndex;
             return (
               <motion.div
                 key={stage.id}
-                className="group relative flex items-start gap-3 py-2"
+                className="group relative flex items-start gap-4 py-3"
                 initial={{ opacity: 0.5 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.2 }}
               >
                 {/* Dot on timeline */}
                 <div
-                  className="relative z-10 mt-1.5 shrink-0 w-2.5 h-2.5 rounded-full border transition-all duration-200"
+                  className="relative z-10 mt-2 shrink-0 w-3 h-3 rounded-full border-2 transition-all duration-300"
                   style={{
-                    backgroundColor: isActive ? CHAMPAGNE_GOLD : isPast ? `${CHAMPAGNE_GOLD}60` : 'transparent',
-                    borderColor: isActive ? CHAMPAGNE_GOLD : isPast ? `${CHAMPAGNE_GOLD}50` : `${CHAMPAGNE_GOLD}30`,
-                    borderWidth: '1px',
-                    boxShadow: isActive ? `0 0 8px ${CHAMPAGNE_GOLD}80` : undefined,
+                    backgroundColor: isActive ? CHAMPAGNE_GOLD : isPast ? `${CHAMPAGNE_GOLD}50` : 'transparent',
+                    borderColor: isActive ? CHAMPAGNE_GOLD : isPast ? `${CHAMPAGNE_GOLD}40` : 'rgba(212,175,55,0.25)',
+                    boxShadow: isActive ? `0 0 20px ${CHAMPAGNE_GOLD}60, 0 0 40px ${CHAMPAGNE_GOLD}30` : undefined,
                   }}
                 />
-                {/* Stage label - full text visible */}
+                {/* Stage label - generous space */}
                 <div
                   className={`
-                    flex-1 min-w-0 py-1.5 px-2 rounded-[4px] transition-all duration-200
+                    flex-1 min-w-0 py-2.5 px-3 rounded-[4px] transition-all duration-300
                     ${isActive
-                      ? 'bg-[#D4AF37]/12 border border-[#D4AF37]/40'
+                      ? 'bg-[#D4AF37]/10 border border-[#D4AF37]/35'
                       : isPast
-                        ? 'text-white/60'
-                        : 'text-white/30'
+                        ? 'text-white/55'
+                        : 'text-white/25'
                     }
                   `}
                   style={{
-                    boxShadow: isActive ? `0 0 16px ${CHAMPAGNE_GOLD}25` : undefined,
-                    fontFamily: 'Playfair Display, serif',
-                    fontSize: 11,
+                    boxShadow: isActive ? `0 0 24px rgba(212,175,55,0.2), 0 4px 12px rgba(0,0,0,0.3)` : undefined,
+                    fontFamily: 'Cormorant Garamond, Playfair Display, serif',
+                    fontSize: isActive ? 14 : 12,
+                    letterSpacing: '0.03em',
                     textAlign: 'right',
                   }}
                 >
@@ -81,8 +84,8 @@ export const VisionLadder = ({ currentStep }: VisionLadderProps) => {
                 </div>
                 {/* Premium tooltip */}
                 <div
-                  className="absolute right-full mr-3 top-1/2 -translate-y-1/2 z-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none w-52 p-3 rounded-[4px] bg-[#020617]/98 border border-[#D4AF37]/40 text-xs text-white/95 shadow-2xl"
-                  style={{ fontFamily: 'Inter, sans-serif', lineHeight: 1.5 }}
+                  className="absolute right-full mr-3 top-1/2 -translate-y-1/2 z-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none w-56 p-3.5 rounded-[4px] bg-[#0a0f1a]/98 backdrop-blur-xl border border-[#D4AF37]/30 text-[13px] text-white/95 shadow-2xl"
+                  style={{ fontFamily: 'Inter, sans-serif', lineHeight: 1.6, boxShadow: '0 12px 40px rgba(0,0,0,0.5)' }}
                 >
                   <div className="text-[#D4AF37]/90 text-[10px] uppercase tracking-wider mb-1" style={{ fontFamily: 'Playfair Display, serif' }}>{stage.fullLabel}</div>
                   {stage.tooltip}

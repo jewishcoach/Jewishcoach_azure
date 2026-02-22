@@ -186,16 +186,16 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="flex flex-col items-center justify-center h-full text-center py-20"
+              className="flex flex-col items-center justify-center h-full text-center py-20 px-8"
             >
-              <p className="text-white/60 text-sm max-w-md">
+              <p className="text-white/70 text-[16px] max-w-md" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 300, lineHeight: 1.6 }}>
                 {i18n.language === 'he'
                   ? 'שלום! על מה תרצה להתאמן היום?'
                   : 'Hello! What would you like to work on today?'}
               </p>
             </motion.div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-5">
               <AnimatePresence>
                 {messages.map((message) => (
                   <WorkspaceMessageBubble key={message.id} message={message} />
@@ -220,7 +220,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
               onStop={() => setIsVoiceMode(false)}
             />
           ) : (
-            <div key="text-input" className="p-4 border-t border-white/10">
+            <div key="text-input" className="p-5 border-t border-white/[0.06]">
               <form onSubmit={handleSubmit} className="flex items-end gap-3">
                 <textarea
                   ref={inputRef}
@@ -229,9 +229,9 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
                   onKeyDown={handleKeyDown}
                   placeholder={t('chat.placeholder')}
                   disabled={loading}
-                  className="flex-1 resize-none rounded-[4px] bg-white/5 border border-white/10 px-4 py-3 text-white placeholder-white/40 focus:outline-none focus:border-[#D4AF37]/50 text-sm max-h-28"
+                  className="flex-1 resize-none rounded-[4px] bg-white/[0.04] border border-white/10 px-4 py-3.5 text-white placeholder-white/35 focus:outline-none focus:border-[#D4AF37]/40 text-[15px] max-h-28"
+                  style={{ fontFamily: 'Inter, sans-serif', fontWeight: 300, lineHeight: 1.5, minHeight: '44px' }}
                   rows={1}
-                  style={{ minHeight: '44px' }}
                 />
                 <button
                   type="button"
@@ -259,8 +259,8 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
         initial={false}
         animate={{
           flex: showDashboard ? 1 : 0,
-          minWidth: showDashboard ? 0 : 240,
-          width: showDashboard ? 'auto' : 240,
+          minWidth: showDashboard ? 0 : 260,
+          width: showDashboard ? 'auto' : 260,
         }}
         transition={{ type: 'tween', duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
       >

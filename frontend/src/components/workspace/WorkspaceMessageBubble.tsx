@@ -18,20 +18,26 @@ export const WorkspaceMessageBubble = ({ message }: Props) => {
     >
       <div
         className={`
-          max-w-[85%] rounded-[4px] px-4 py-3
+          max-w-[85%] rounded-[4px] px-5 py-4
           ${isUser
             ? 'border-r-2 border-[#991B1B] bg-transparent'
-            : 'bg-white/[0.06] backdrop-blur-xl'
+            : ''
           }
         `}
-        style={!isUser ? { border: '0.5px solid rgba(212, 175, 55, 0.35)' } : undefined}
+        style={!isUser ? {
+          background: 'rgba(255,255,255,0.04)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          border: '0.5px solid rgba(212, 175, 55, 0.3)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(212,175,55,0.05)',
+        } : undefined}
       >
-        <div className={`prose prose-sm max-w-none ${isUser ? 'prose-invert text-white/95' : 'text-white/90'}`} style={{ fontFamily: 'Inter, sans-serif' }}>
+        <div className={`prose prose-sm max-w-none ${isUser ? 'prose-invert text-white/95' : 'text-white/90'}`} style={{ fontFamily: 'Inter, sans-serif', fontWeight: 300, lineHeight: 1.6 }}>
           <ReactMarkdown
             components={{
-              p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed text-sm">{children}</p>,
-              ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1 text-sm">{children}</ul>,
-              ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1 text-sm">{children}</ol>,
+              p: ({ children }) => <p className="mb-3 last:mb-0 leading-relaxed text-[15px]" style={{ lineHeight: 1.6 }}>{children}</p>,
+              ul: ({ children }) => <ul className="list-disc list-inside mb-3 space-y-1.5 text-[15px]" style={{ lineHeight: 1.6 }}>{children}</ul>,
+              ol: ({ children }) => <ol className="list-decimal list-inside mb-3 space-y-1.5 text-[15px]" style={{ lineHeight: 1.6 }}>{children}</ol>,
               li: ({ children }) => <li className="mb-1">{children}</li>,
               strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
             }}
