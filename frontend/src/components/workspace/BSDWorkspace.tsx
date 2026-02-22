@@ -4,7 +4,7 @@ import { Send, Mic } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@clerk/clerk-react';
 import { useChat } from '../../hooks/useChat';
-import { BsdScale } from './BsdScale';
+import { VisionLadder } from './VisionLadder';
 import { ArchiveDrawer } from './ArchiveDrawer';
 import { HudPanel } from './HudPanel';
 import { ShehiyaProgress } from './ShehiyaProgress';
@@ -153,9 +153,11 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
   const isRTL = i18n.dir() === 'rtl';
 
   return (
-    <div className="flex h-full w-full bg-[#0F172A]">
-      {/* LEFT: BSD Scale */}
-      <BsdScale currentStep={currentPhase} onArchiveClick={() => setArchiveOpen(true)} />
+    <div className="flex h-full w-full bg-[#020617]">
+      {/* LEFT: Cognitive HUD (Kamaz) - Mekor, Teva, Archive */}
+      <div className="w-64 flex-shrink-0 border-r border-[#D4AF37]/20 bg-[#020617]/80 overflow-hidden">
+        <HudPanel conversationId={conversationId} onArchiveClick={() => setArchiveOpen(true)} />
+      </div>
 
       {/* Archive Drawer */}
       <ArchiveDrawer
@@ -170,16 +172,16 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
         isRTL={isRTL}
       />
 
-      {/* CENTER: Chat - shrinks when Dashboard opens */}
+      {/* CENTER: Resonance Workspace - Obsidian Black */}
       <motion.div
-        className="flex flex-col min-w-0 relative overflow-hidden"
+        className="flex flex-col min-w-0 relative overflow-hidden bg-[#020617]"
         initial={false}
         animate={{ flex: showDashboard ? 0 : 1, minWidth: showDashboard ? 0 : undefined }}
         transition={{ type: 'tween', duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
       >
         <ShehiyaProgress loading={loading} />
 
-        <div className="flex-1 overflow-y-auto px-6 py-6 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto px-6 py-6 custom-scrollbar bg-[#020617]">
           {messages.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
@@ -227,7 +229,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
                   onKeyDown={handleKeyDown}
                   placeholder={t('chat.placeholder')}
                   disabled={loading}
-                  className="flex-1 resize-none rounded-[4px] bg-white/5 border border-white/10 px-4 py-3 text-white placeholder-white/40 focus:outline-none focus:border-amber-500/50 text-sm max-h-28"
+                  className="flex-1 resize-none rounded-[4px] bg-white/5 border border-white/10 px-4 py-3 text-white placeholder-white/40 focus:outline-none focus:border-[#D4AF37]/50 text-sm max-h-28"
                   rows={1}
                   style={{ minHeight: '44px' }}
                 />
@@ -241,7 +243,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
                 <button
                   type="submit"
                   disabled={!inputValue.trim() || loading}
-                  className="p-3 rounded-[4px] bg-amber-500/80 hover:bg-amber-500 text-white disabled:opacity-50 transition-colors"
+                  className="p-3 rounded-[4px] bg-[#D4AF37]/80 hover:bg-[#D4AF37] text-[#020617] font-medium disabled:opacity-50 transition-colors"
                 >
                   <Send size={18} />
                 </button>
@@ -251,14 +253,14 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
         </AnimatePresence>
       </motion.div>
 
-      {/* RIGHT: HUD / Dashboard - expands to center when Dashboard opens */}
+      {/* RIGHT: Vision Ladder (S1-S12) / Dashboard - expands when Dashboard opens */}
       <motion.div
-        className="flex flex-col border-l border-white/10 bg-[#0F172A]/80 overflow-hidden flex-shrink-0"
+        className="flex flex-col border-l border-[#D4AF37]/20 overflow-hidden flex-shrink-0"
         initial={false}
         animate={{
           flex: showDashboard ? 1 : 0,
-          minWidth: showDashboard ? 0 : 256,
-          width: showDashboard ? 'auto' : 256,
+          minWidth: showDashboard ? 0 : 240,
+          width: showDashboard ? 'auto' : 240,
         }}
         transition={{ type: 'tween', duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
       >
@@ -270,20 +272,20 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="flex-1 min-w-0 overflow-auto"
+              className="flex-1 min-w-0 overflow-auto bg-[#0F172A]"
             >
               <Dashboard onBack={onCloseDashboard} />
             </motion.div>
           ) : (
             <motion.div
-              key="hud"
+              key="ladder"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="w-64 flex-shrink-0 h-full"
+              className="h-full"
             >
-              <HudPanel conversationId={conversationId} />
+              <VisionLadder currentStep={currentPhase} />
             </motion.div>
           )}
         </AnimatePresence>

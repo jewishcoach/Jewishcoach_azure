@@ -2,9 +2,34 @@
 BSD V2 - Compact System Prompt (Fast Version)
 ==============================================
 Optimized for speed while maintaining quality.
+Loads from prompts.json when available for Azure stability and UTF-8 compliance.
 
 Updated: 2026-02-10 - Expert feedback improvements applied
 """
+
+import json
+import logging
+import os
+
+logger = logging.getLogger(__name__)
+
+def _load_prompts_from_json() -> tuple[str | None, str | None]:
+    """Load system prompts from external JSON. Returns (he, en) or (None, None) on failure."""
+    try:
+        path = os.path.join(os.path.dirname(__file__), "prompts.json")
+        if os.path.isfile(path):
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            he = data.get("he")
+            en = data.get("en")
+            if he and en:
+                logger.info("[prompt_compact] Loaded prompts from prompts.json")
+                return (he, en)
+    except Exception as e:
+        logger.warning(f"[prompt_compact] Could not load prompts.json: {e}")
+    return (None, None)
+
+_loaded_he, _loaded_en = _load_prompts_from_json()
 
 SYSTEM_PROMPT_COMPACT_HE = """אתה "בני", מאמן בשיטת BSD. תפקידך: להחזיק מרחב שבו המשתמש מגלה תשובות בעצמו.
 
@@ -1060,4 +1085,10 @@ Turn 3: "I think I'm not good at it" → S2 NOW!
 ✅ Instead: Move to S2 now!
 ```
 """
+
+# Override with JSON-loaded prompts if available
+if _loaded_he is not None:
+    SYSTEM_PROMPT_COMPACT_HE = _loaded_he
+if _loaded_en is not None:
+    SYSTEM_PROMPT_COMPACT_EN = _loaded_en
 

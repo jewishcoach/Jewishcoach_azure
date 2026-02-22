@@ -34,6 +34,10 @@ body {
   font-family: 'Heebo', 'Inter', system-ui, sans-serif;
 }
 
+.font-serif-stage {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
 * {
   box-sizing: border-box;
 }

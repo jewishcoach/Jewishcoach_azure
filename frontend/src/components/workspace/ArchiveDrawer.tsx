@@ -42,15 +42,14 @@ export const ArchiveDrawer = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/40 z-40 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/30 z-40 backdrop-blur-sm"
           />
           <motion.div
-            initial={{ x: isRTL ? 320 : -320 }}
+            initial={{ x: -320 }}
             animate={{ x: 0 }}
-            exit={{ x: isRTL ? 320 : -320 }}
+            exit={{ x: -320 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed top-0 bottom-0 w-80 bg-[#0F172A] border-r border-white/10 z-50 shadow-2xl"
-            style={{ [isRTL ? 'right' : 'left']: 0 }}
+            className="fixed top-0 bottom-0 left-0 w-80 bg-[#0F172A]/95 backdrop-blur-md border-r border-white/10 z-50 shadow-2xl"
           >
             <div className="p-4 border-b border-white/10 flex justify-between items-center">
               <h3 className="text-sm font-medium text-white/90">ארכיון שיחות</h3>

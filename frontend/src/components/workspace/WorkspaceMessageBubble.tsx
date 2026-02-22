@@ -21,11 +21,12 @@ export const WorkspaceMessageBubble = ({ message }: Props) => {
           max-w-[85%] rounded-[4px] px-4 py-3
           ${isUser
             ? 'border-r-2 border-[#991B1B] bg-transparent'
-            : 'bg-white/10 backdrop-blur-xl border border-amber-500/20'
+            : 'bg-white/[0.06] backdrop-blur-xl'
           }
         `}
+        style={!isUser ? { border: '0.5px solid rgba(212, 175, 55, 0.35)' } : undefined}
       >
-        <div className={`prose prose-sm max-w-none ${isUser ? 'prose-invert text-white/95' : 'text-white/90'}`}>
+        <div className={`prose prose-sm max-w-none ${isUser ? 'prose-invert text-white/95' : 'text-white/90'}`} style={{ fontFamily: 'Inter, sans-serif' }}>
           <ReactMarkdown
             components={{
               p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed text-sm">{children}</p>,
