@@ -151,6 +151,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
   };
 
   const isRTL = i18n.dir() === 'rtl';
+  const onArchiveClick = useCallback(() => setArchiveOpen(true), []);
 
   return (
     <div className="flex h-full w-full bg-[#020617]">
@@ -181,12 +182,12 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
       >
         <ShehiyaProgress loading={loading} />
 
-        <div className="flex-1 overflow-y-auto px-8 py-8 custom-scrollbar bg-[#020617]">
+        <div className="flex-1 overflow-y-auto px-10 py-10 custom-scrollbar bg-[#020617]">
           {messages.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="flex flex-col items-center justify-center h-full text-center py-20 px-8"
+              className="flex flex-col items-center justify-center h-full text-center py-24 px-10"
             >
               <p className="text-white/70 text-[16px] max-w-md" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 300, lineHeight: 1.6 }}>
                 {i18n.language === 'he'
@@ -195,12 +196,34 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
               </p>
             </motion.div>
           ) : (
-            <div className="space-y-7">
+            <div className="space-y-9">
               <AnimatePresence>
                 {messages.map((message) => (
                   <WorkspaceMessageBubble key={message.id} message={message} />
                 ))}
               </AnimatePresence>
+              {loading && (
+                <div className="flex justify-start">
+                  <div
+                    className="rounded-[4px] px-6 py-4 flex items-center gap-3"
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.03)',
+                      backdropFilter: 'blur(25px)',
+                      WebkitBackdropFilter: 'blur(25px)',
+                      border: '0.5px solid rgba(255, 255, 255, 0.1)',
+                    }}
+                  >
+                    <div className="flex gap-1">
+                      <span className="w-2 h-2 rounded-full bg-[#FCF6BA]/70 animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-2 h-2 rounded-full bg-[#FCF6BA]/70 animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-2 h-2 rounded-full bg-[#FCF6BA]/70 animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                    <span className="text-[14px] font-light text-[#F5F5F0]/80" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      {i18n.language === 'he' ? 'המאמן חושב...' : 'Coach is thinking...'}
+                    </span>
+                  </div>
+                </div>
+              )}
               <div ref={messagesEndRef} />
             </div>
           )}
@@ -220,8 +243,8 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
               onStop={() => setIsVoiceMode(false)}
             />
           ) : (
-            <div key="text-input" className="p-7 border-t border-white/[0.06]">
-              <form onSubmit={handleSubmit} className="flex items-end gap-4">
+            <div key="text-input" className="p-9 border-t border-white/[0.06]">
+              <form onSubmit={handleSubmit} className="flex items-end gap-5">
                 <textarea
                   ref={inputRef}
                   value={inputValue}
@@ -229,7 +252,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
                   onKeyDown={handleKeyDown}
                   placeholder={t('chat.placeholder')}
                   disabled={loading}
-                  className="flex-1 resize-none rounded-[4px] px-5 py-4 text-[16px] max-h-28 placeholder-[rgba(245,245,240,0.35)] focus:border-[#FCF6BA]/40"
+                  className="flex-1 resize-none rounded-[4px] px-6 py-5 text-[16px] max-h-28 placeholder-[rgba(245,245,240,0.35)] focus:border-[#FCF6BA]/40"
                   style={{
                     fontFamily: 'Inter, sans-serif',
                     fontWeight: 300,

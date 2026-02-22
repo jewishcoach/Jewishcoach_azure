@@ -22,15 +22,29 @@
   --shadow-glow: 0 0 24px rgba(212, 175, 55, 0.35), 0 0 48px rgba(212, 175, 55, 0.15);
 }
 
+:root {
+  --font-display: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --cream: #F5F5F0;
+  --obsidian: #020617;
+  --gold-metallic: linear-gradient(135deg, #BF953F, #FCF6BA, #B38728, #FBF5B7, #AA771C);
+  --glass: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.1);
+}
+
 body {
   margin: 0;
-  font-family: 'Inter', 'Heebo', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-[lang="he"] body, [dir="rtl"] {
-  font-family: 'Heebo', 'Inter', system-ui, sans-serif;
+/* Workspace display fonts - Heebo for Hebrew, Cormorant for Latin */
+.workspace-ladder,
+.workspace-ladder *,
+.workspace-hud-card,
+.workspace-hud-card * {
+  font-family: 'Cormorant Garamond', 'Heebo', 'Playfair Display', serif !important;
 }
 
 .font-serif-stage {

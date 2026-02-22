@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { useEffect, useState, memo } from 'react';
 import { Heart, Brain, Target, Zap, Archive, Gem, Layers } from 'lucide-react';
 import { apiClient } from '../../services/api';
 
@@ -21,7 +20,7 @@ interface HudPanelProps {
   onArchiveClick?: () => void;
 }
 
-export const HudPanel = ({ conversationId, onArchiveClick }: HudPanelProps) => {
+export const HudPanel = memo(({ conversationId, onArchiveClick }: HudPanelProps) => {
   const [data, setData] = useState<CognitiveData | null>(null);
 
   useEffect(() => {
@@ -33,13 +32,18 @@ export const HudPanel = ({ conversationId, onArchiveClick }: HudPanelProps) => {
     const fetchData = async () => {
       try {
         const res = await apiClient.getConversationInsights(conversationId);
-        if (res.exists !== false) setData(res.cognitive_data || {});
+        if (res.exists === false) return;
+        const next = res.cognitive_data || {};
+        setData((prev) => {
+          if (prev && JSON.stringify(prev) === JSON.stringify(next)) return prev;
+          return next;
+        });
       } catch {
         setData(null);
       }
     };
     fetchData();
-    interval = setInterval(fetchData, 3000);
+    interval = setInterval(fetchData, 5000);
     return () => { if (interval) clearInterval(interval); };
   }, [conversationId]);
 
@@ -48,20 +52,17 @@ export const HudPanel = ({ conversationId, onArchiveClick }: HudPanelProps) => {
   const hasOther = !!(data?.topic || data?.emotions?.length || data?.thought || data?.gap_name);
 
   const Card = ({ icon, title, items, value, empty, placeholder }: { icon: React.ReactNode; title: string; items?: string[]; value?: string; empty?: boolean; placeholder?: string }) => (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25 }}
-      className="rounded-[4px] p-5"
+    <div
+      className="rounded-[4px] p-6 workspace-hud-card min-h-[100px]"
       style={{
         background: 'rgba(255, 255, 255, 0.03)',
         backdropFilter: 'blur(25px)',
         WebkitBackdropFilter: 'blur(25px)',
         border: '0.5px solid rgba(255, 255, 255, 0.1)',
-        boxShadow: '0 12px 40px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.04)',
+        boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04), 0 0 0 1px rgba(212,175,55,0.06)',
       }}
     >
-      <div className="flex items-center gap-3 mb-3">
+      <div className="flex items-center gap-4 mb-4">
         <span
           className="shrink-0"
           style={{
@@ -72,10 +73,10 @@ export const HudPanel = ({ conversationId, onArchiveClick }: HudPanelProps) => {
         >
           {icon}
         </span>
-        <span className="text-[14px] font-light tracking-[0.1em]" style={{ fontFamily: 'Cormorant Garamond, Playfair Display, serif', color: '#F5F5F0' }}>{title}</span>
+        <span className="text-[14px] font-light tracking-[0.1em]" style={{ fontFamily: "'Cormorant Garamond', 'Playfair Display', 'Heebo', serif", color: '#F5F5F0' }}>{title}</span>
       </div>
       {empty ? (
-        <p className="text-[14px] italic" style={{ fontFamily: 'Cormorant Garamond, serif', fontStyle: 'italic', color: 'rgba(245,245,240,0.4)' }}>
+        <p className="text-[14px] italic" style={{ fontFamily: "'Cormorant Garamond', 'Heebo', serif", fontStyle: 'italic', color: 'rgba(245,245,240,0.4)' }}>
           {placeholder || '—'}
         </p>
       ) : value ? (
@@ -89,27 +90,27 @@ export const HudPanel = ({ conversationId, onArchiveClick }: HudPanelProps) => {
           ))}
         </div>
       ) : null}
-    </motion.div>
+    </div>
   );
 
   return (
     <div className="w-72 flex flex-col h-full bg-[#020617]/50">
       {/* Archive button - top corner */}
       {onArchiveClick && (
-        <div className="p-4 border-b border-white/[0.06] flex justify-end">
+        <div className="p-5 border-b border-white/[0.06] flex justify-end">
           <button
             onClick={onArchiveClick}
-            className="p-2.5 rounded-[4px] text-white/40 hover:text-[#FCF6BA]/90 hover:bg-white/5 transition-colors"
+            className="p-3 rounded-[4px] text-white/40 hover:text-[#FCF6BA]/95 hover:bg-white/5 hover:[filter:drop-shadow(0_0_6px_rgba(212,175,55,0.4))] transition-colors"
             aria-label="ארכיון"
           >
             <Archive size={18} strokeWidth={1.5} />
           </button>
         </div>
       )}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-6">
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
         {/* כוחות מקור - premium ID card */}
         <section>
-          <h4 className="text-[12px] font-light uppercase tracking-[0.1em] mb-4" style={{ fontFamily: 'Cormorant Garamond, Playfair Display, serif', color: 'rgba(245,245,240,0.8)' }}>כוחות מקור</h4>
+          <h4 className="text-[12px] font-light uppercase tracking-[0.1em] mb-4" style={{ fontFamily: "'Cormorant Garamond', 'Playfair Display', 'Heebo', serif", color: 'rgba(245,245,240,0.8)' }}>כוחות מקור</h4>
           <Card
             icon={<Gem size={16} strokeWidth={1.5} />}
             title="ערכים"
@@ -120,7 +121,7 @@ export const HudPanel = ({ conversationId, onArchiveClick }: HudPanelProps) => {
         </section>
         {/* כוחות טבע - premium ID card */}
         <section>
-          <h4 className="text-[12px] font-light uppercase tracking-[0.1em] mb-4" style={{ fontFamily: 'Cormorant Garamond, Playfair Display, serif', color: 'rgba(245,245,240,0.8)' }}>כוחות טבע</h4>
+          <h4 className="text-[12px] font-light uppercase tracking-[0.1em] mb-4" style={{ fontFamily: "'Cormorant Garamond', 'Playfair Display', 'Heebo', serif", color: 'rgba(245,245,240,0.8)' }}>כוחות טבע</h4>
           <Card
             icon={<Layers size={16} strokeWidth={1.5} />}
             title="דפוס"
@@ -138,4 +139,6 @@ export const HudPanel = ({ conversationId, onArchiveClick }: HudPanelProps) => {
       </div>
     </div>
   );
-};
+});
+
+HudPanel.displayName = 'HudPanel';

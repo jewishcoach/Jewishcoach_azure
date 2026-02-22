@@ -77,20 +77,20 @@ function SignedInContent() {
   }, [showDashboard, showBilling, showAdmin, getToken]);
 
   return (
-    <div className="h-screen flex flex-col bg-[#0F172A]">
+    <div className="h-screen flex flex-col bg-[#020617] workspace-root">
       <motion.header
         initial={{ opacity: 0, y: -50 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 120, damping: 14 }}
-        className="relative z-20 flex justify-between items-center p-4 bg-[#0F172A]/95 backdrop-blur-md border-b border-white/10"
+        className="relative z-20 flex justify-between items-center p-6 bg-[#020617]/95 backdrop-blur-[25px] border-b border-white/[0.08]"
       >
-        <h1 className="text-xl font-medium text-white flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-amber-400/90" />
+        <h1 className="text-xl font-light text-white flex items-center gap-2 tracking-[0.1em]" style={{ fontFamily: 'Cormorant Garamond, Playfair Display, serif' }}>
+          <Sparkles className="w-5 h-5" style={{ filter: 'drop-shadow(0 0 6px rgba(212, 175, 55, 0.5))', color: '#FCF6BA' }} />
           {t('app.title')}
         </h1>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           {user && (
-            <span className="text-white/80 text-sm font-medium">
+            <span className="text-white/80 text-sm font-light tracking-[0.02em]" style={{ fontFamily: 'Inter, sans-serif' }}>
               {t('app.welcome')}, {displayName || user.firstName || user.emailAddresses[0].emailAddress}!
             </span>
           )}
@@ -100,7 +100,8 @@ function SignedInContent() {
               setShowBilling(false);
               setShowAdmin(false);
             }}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-[4px] bg-white/10 hover:bg-white/15 text-white text-sm transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-[4px] bg-white/[0.06] hover:bg-white/[0.1] text-white text-sm font-light transition-colors"
+            style={{ fontFamily: 'Inter, sans-serif' }}
           >
             <BarChart3 className="w-4 h-4" />
             {showDashboard ? t('chat.button') : t('dashboard.button')}
@@ -111,7 +112,8 @@ function SignedInContent() {
               setShowDashboard(false);
               setShowAdmin(false);
             }}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-[4px] bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 text-sm transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-[4px] text-sm font-light transition-colors"
+            style={{ background: 'rgba(212,175,55,0.12)', color: '#FCF6BA', fontFamily: 'Inter, sans-serif' }}
           >
             <CreditCard className="w-4 h-4" />
             {showBilling ? t('chat.button') : t('billing.button')}
@@ -123,7 +125,8 @@ function SignedInContent() {
                 setShowBilling(false);
                 setShowDashboard(false);
               }}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-[4px] bg-white/10 hover:bg-white/15 text-white text-sm transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-[4px] bg-white/[0.06] hover:bg-white/[0.1] text-white text-sm font-light transition-colors"
+              style={{ fontFamily: 'Inter, sans-serif' }}
             >
               <Shield className="w-4 h-4" />
               {showAdmin ? t('chat.button') : t('admin.button')}

@@ -18,19 +18,17 @@ export const WorkspaceMessageBubble = ({ message }: Props) => {
     >
       <div
         className={`
-          max-w-[85%] rounded-[4px] px-7 py-5
-          ${isUser
-            ? 'border-r-2 border-[#991B1B] bg-transparent'
-            : ''
-          }
+          max-w-[85%] rounded-[4px] px-9 py-6
+          ${isUser ? '' : ''}
         `}
-        style={!isUser ? {
-          background: 'rgba(255, 255, 255, 0.03)',
+        style={{
+          background: isUser ? 'rgba(255, 255, 255, 0.02)' : 'rgba(255, 255, 255, 0.03)',
           backdropFilter: 'blur(25px)',
           WebkitBackdropFilter: 'blur(25px)',
-          border: '0.5px solid rgba(255, 255, 255, 0.1)',
+          border: isUser ? '0.5px solid rgba(255, 255, 255, 0.08)' : '0.5px solid rgba(255, 255, 255, 0.1)',
           boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03)',
-        } : undefined}
+          ...(isUser && { borderRight: '2px solid rgba(212, 175, 55, 0.4)' }),
+        }}
       >
         <div className={`prose prose-sm max-w-none ${isUser ? 'prose-invert' : ''}`} style={{ fontFamily: 'Inter, sans-serif', fontWeight: 300, lineHeight: 1.6, color: isUser ? 'rgba(245,245,240,0.95)' : 'rgba(245,245,240,0.92)' }}>
           <ReactMarkdown
