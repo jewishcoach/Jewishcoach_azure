@@ -77,26 +77,20 @@ function SignedInContent() {
   }, [showDashboard, showBilling, showAdmin, getToken]);
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-cream to-cream-dark">
+    <div className="h-screen flex flex-col bg-[#0F172A]">
       <motion.header
         initial={{ opacity: 0, y: -50 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 120, damping: 14 }}
-        className="relative z-20 flex justify-between items-center p-4 bg-white/50 backdrop-blur-md shadow-glass border-b border-accent-light/20"
+        className="relative z-20 flex justify-between items-center p-4 bg-[#0F172A]/95 backdrop-blur-md border-b border-white/10"
       >
-        <h1 className="text-2xl font-serif font-bold text-primary dark:text-white flex items-center gap-2">
-          <motion.div
-            initial={{ rotate: 0 }}
-            animate={{ rotate: 360 }}
-            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-          >
-            <Sparkles className="w-6 h-6 text-accent" />
-          </motion.div>
+        <h1 className="text-xl font-medium text-white flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-amber-400/90" />
           {t('app.title')}
         </h1>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           {user && (
-            <span className="text-primary dark:text-cream text-lg font-medium">
+            <span className="text-white/80 text-sm font-medium">
               {t('app.welcome')}, {displayName || user.firstName || user.emailAddresses[0].emailAddress}!
             </span>
           )}
@@ -106,7 +100,7 @@ function SignedInContent() {
               setShowBilling(false);
               setShowAdmin(false);
             }}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-[4px] bg-white/10 hover:bg-white/15 text-white text-sm transition-colors"
           >
             <BarChart3 className="w-4 h-4" />
             {showDashboard ? t('chat.button') : t('dashboard.button')}
@@ -117,7 +111,7 @@ function SignedInContent() {
               setShowDashboard(false);
               setShowAdmin(false);
             }}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent hover:bg-accent-dark text-white transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-[4px] bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 text-sm transition-colors"
           >
             <CreditCard className="w-4 h-4" />
             {showBilling ? t('chat.button') : t('billing.button')}
@@ -129,7 +123,7 @@ function SignedInContent() {
                 setShowBilling(false);
                 setShowDashboard(false);
               }}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-[4px] bg-white/10 hover:bg-white/15 text-white text-sm transition-colors"
             >
               <Shield className="w-4 h-4" />
               {showAdmin ? t('chat.button') : t('admin.button')}
@@ -165,11 +159,11 @@ function DemoModeContent() {
   }, []);
 
   return (
-    <div className="flex flex-col h-screen bg-primary">
+    <div className="flex flex-col h-screen bg-[#0F172A]">
       <motion.header
         initial={{ y: -100 }}
         animate={{ y: 0 }}
-        className="sticky top-0 z-50 flex items-center justify-between p-4 bg-primary/80 backdrop-blur-sm border-b border-white/10"
+        className="sticky top-0 z-50 flex items-center justify-between p-4 bg-[#0F172A]/95 backdrop-blur-sm border-b border-white/10"
       >
         <div className="flex items-center gap-3">
           <Sparkles className="w-8 h-8 text-accent" />
