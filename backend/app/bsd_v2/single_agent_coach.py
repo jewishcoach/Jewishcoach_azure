@@ -24,6 +24,19 @@ from .prompts.prompt_manager import assemble_system_prompt
 
 logger = logging.getLogger(__name__)
 
+# Debug logging: BSD_DEBUG=1 enables extra verbose logs (full messages)
+BSD_DEBUG = os.getenv("BSD_DEBUG", "0").strip() in ("1", "true", "yes")
+
+
+def _bsd_log(tag: str, **kwargs: Any) -> None:
+    """Structured log for debugging repetition and stage transitions. Always on."""
+    parts = [f"[BSD] {tag}"]
+    for k, v in kwargs.items():
+        if isinstance(v, str) and len(v) > 120 and not BSD_DEBUG:
+            v = v[:117] + "..."
+        parts.append(f"{k}={v}")
+    logger.info(" | ".join(str(p) for p in parts))
+
 
 STAGE_EXAMPLES_HE = {
     "S1": [
@@ -1171,6 +1184,7 @@ def check_repeated_question(coach_message: str, history: list, current_step: str
         indicators = emotions_indicators_he if language == "he" else emotions_indicators_en
         coach_lower = coach_message.lower()
         if any(ind in coach_lower for ind in indicators):
+            _bsd_log("REPETITION_RULE", rule="S1_emotions_question", step=current_step)
             logger.warning(f"[Safety Net] S1 but coach asked emotions question - BLOCKING (no event yet!)")
             return get_next_step_question(current_step, language)
     
@@ -1212,16 +1226,19 @@ def check_repeated_question(coach_message: str, history: list, current_step: str
         
         # If user said done + coach asking "what else?" again = LOOP!
         if user_said_done and asking_what_else:
+            _bsd_log("REPETITION_RULE", rule="user_said_done_but_what_else", step=current_step)
             logger.warning(f"[Safety Net] User said done, but coach asking 'מה עוד?' - BLOCKING")
             return get_next_step_question(current_step, language)
         
         # If "מה עוד?" asked 3+ times = LOOP!
         if what_else_count >= 3:
+            _bsd_log("REPETITION_RULE", rule="what_else_3plus", count=what_else_count, step=current_step)
             logger.warning(f"[Safety Net] 'מה עוד?' asked {what_else_count} times - BLOCKING")
             return get_next_step_question(current_step, language)
         
         # === Check if coach is sending the EXACT same message again ===
         if coach_message in recent_coach_messages[-2:]:
+            _bsd_log("REPETITION_RULE", rule="exact_repeat", step=current_step)
             logger.warning(f"[Safety Net] Detected EXACT repeated message")
             return get_next_step_question(current_step, language)
         
@@ -1243,6 +1260,7 @@ def check_repeated_question(coach_message: str, history: list, current_step: str
         # S1: trigger after 2 (not 3) - catch loop earlier
         threshold = 2 if current_step == "S1" else 3
         if generic_count >= threshold:
+            _bsd_log("REPETITION_RULE", rule="generic_patterns", count=generic_count, threshold=threshold, step=current_step)
             logger.warning(f"[Safety Net] Too many generic questions ({generic_count})")
             return get_next_step_question(current_step, language)
     
@@ -2163,6 +2181,10 @@ async def handle_conversation(
     Returns:
         (coach_message, updated_state)
     """
+    # Per-turn debug: repetition & stage transition tracking
+    overrides_applied: List[str] = []
+    _bsd_log("TURN_START", step=state['current_step'], saturation=state['saturation_score'],
+             msg_count=len(state.get('messages', [])), user_preview=user_message[:80])
     logger.info(f"[BSD V2] Handling message: '{user_message[:50]}...'")
     logger.info(f"[BSD V2] Current step: {state['current_step']}, saturation: {state['saturation_score']:.2f}")
     logger.info(f"[BSD V2] Message count in state: {len(state.get('messages', []))}")
@@ -2228,6 +2250,7 @@ So feel free to share an event from any area where you interacted with people an
         user_frustrated = any(phrase in user_message.lower() for phrase in explicit_frustration_phrases)
     
     if user_frustrated:
+        _bsd_log("USER_FRUSTRATED", step=state['current_step'], user_msg=user_message[:60])
         logger.warning(f"[Safety Net] User is frustrated ('{user_message}') - checking if can progress")
         current_step = state['current_step']
         
@@ -2374,6 +2397,14 @@ So feel free to share an event from any area where you interacted with people an
             )
             internal_state = parsed.get("internal_state", {})
 
+            # Log LLM decision for debugging transitions
+            llm_step = internal_state.get("current_step", parsed.get("stage"))
+            llm_sat = internal_state.get("saturation_score")
+            cd = internal_state.get("collected_data") or {}
+            cd_keys = [k for k, v in cd.items() if v is not None and v != [] and v != {}]
+            _bsd_log("LLM_DECISION", step=llm_step, saturation=llm_sat,
+                     collected_data_keys=cd_keys, coach_preview=(coach_message or "")[:60])
+
             # Backward compatibility for metadata-style payloads returned by the model
             if not internal_state:
                 stage = parsed.get("stage", state["current_step"])
@@ -2420,6 +2451,9 @@ So feel free to share an event from any area where you interacted with people an
         logger.info(f"[PERF] Repeated check: {(t8-t7)*1000:.0f}ms")
         
         if repeated_check:
+            overrides_applied.append("repetition")
+            _bsd_log("REPETITION_OVERRIDE", original=coach_message[:80], replacement=repeated_check[:80],
+                     step=state['current_step'])
             logger.warning(f"[Safety Net] Overriding repeated question")
             coach_message = repeated_check
             # Keep step conservative; mismatch/transition validators will decide advancement.
@@ -2429,7 +2463,9 @@ So feel free to share an event from any area where you interacted with people an
         # 5.5. Safety Net: Coach re-asking for event when user already gave it
         re_ask_check = detect_re_asking_for_event(coach_message, state, language)
         if re_ask_check:
+            overrides_applied.append("re_ask_event")
             coach_message, next_step_for_reask = re_ask_check
+            _bsd_log("RE_ASK_OVERRIDE", step=next_step_for_reask, reason="user_already_gave_event")
             internal_state["current_step"] = next_step_for_reask
             internal_state["saturation_score"] = 0.3
         
@@ -2440,6 +2476,9 @@ So feel free to share an event from any area where you interacted with people an
         logger.info(f"[PERF] Stage mismatch check: {(t10-t9)*1000:.0f}ms")
         
         if mismatch_stage:
+            overrides_applied.append("stage_mismatch")
+            _bsd_log("STAGE_MISMATCH", llm_step=internal_state.get("current_step"), corrected=mismatch_stage,
+                     coach_preview=coach_message[:60])
             logger.warning(f"[Safety Net] Auto-correcting stage mismatch: {state['current_step']} → {mismatch_stage}")
             internal_state["current_step"] = mismatch_stage
         
@@ -2454,6 +2493,8 @@ So feel free to share an event from any area where you interacted with people an
             situation_valid, guidance = await validate_situation_quality(state, llm, language)
             logger.info(f"[Safety Net] Validation result: valid={situation_valid}")
             if not situation_valid and guidance:
+                overrides_applied.append("s2_quality_block")
+                _bsd_log("S2_QUALITY_BLOCK", reason="situation_not_meet_criteria")
                 logger.warning(f"[Safety Net] Situation doesn't meet criteria, blocking S2→S3")
                 coach_message = guidance
                 internal_state["current_step"] = "S2"  # Stay in S2
@@ -2466,9 +2507,12 @@ So feel free to share an event from any area where you interacted with people an
         is_valid, correction = validate_stage_transition(old_step, new_step, state, language, coach_message)
         t14 = time.time()
         logger.info(f"[PERF] Stage transition validation: {(t14-t13)*1000:.0f}ms")
-        
+        if old_step != new_step:
+            _bsd_log("TRANSITION_ATTEMPT", old_step=old_step, new_step=new_step, allowed=is_valid)
+
         if not is_valid and correction:
-            # Override LLM response with correction
+            overrides_applied.append("transition_block")
+            _bsd_log("TRANSITION_BLOCK", old_step=old_step, new_step=new_step, reason=correction[:80])
             logger.warning(f"[Safety Net] Overriding transition {old_step}→{new_step}")
             coach_message = correction
             # Keep current step (don't advance)
@@ -2498,7 +2542,9 @@ So feel free to share an event from any area where you interacted with people an
         logger.info(f"[BSD V2] Updated to step: {state['current_step']}, saturation: {state['saturation_score']:.2f}")
         logger.info(f"[BSD V2] Total messages now: {len(state['messages'])}")
         logger.info(f"[PERF] ⏱️  TOTAL TIME: {total_ms:.0f}ms ({total_ms/1000:.1f}s)")
-        
+        _bsd_log("TURN_END", final_step=state['current_step'], overrides=overrides_applied,
+                 collected_data_keys=[k for k, v in state.get('collected_data', {}).items() if v])
+
         return coach_message, state
         
     except Exception as e:
