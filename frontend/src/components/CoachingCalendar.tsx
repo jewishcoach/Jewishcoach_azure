@@ -69,16 +69,16 @@ export const CoachingCalendar = ({ conversations }: CoachingCalendarProps) => {
     <div className="space-y-4">
       {/* Calendar */}
       <motion.div
-        className="bg-white rounded-2xl p-6 shadow-lg"
+        className="bg-white/[0.04] rounded-2xl p-6 border border-white/[0.08]"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
         <div className="flex items-center gap-2 mb-4">
-          <CalendarIcon className="w-5 h-5 text-accent" />
-          <h3 className="text-lg font-bold">{t('calendar.title')}</h3>
+          <CalendarIcon className="w-5 h-5 text-[#FCF6BA]" />
+          <h3 className="text-lg font-bold text-[#F5F5F0]">{t('calendar.title')}</h3>
         </div>
 
-        <div className="coaching-calendar" dir="ltr">
+        <div className="coaching-calendar coaching-calendar-dark" dir="ltr">
           <Calendar
             onChange={(value) => setSelectedDate(value as Date)}
             value={selectedDate}
@@ -90,8 +90,8 @@ export const CoachingCalendar = ({ conversations }: CoachingCalendarProps) => {
         </div>
 
         {/* Legend */}
-        <div className="flex items-center gap-2 mt-4 text-sm text-gray-600">
-          <div className="w-2 h-2 rounded-full bg-accent"></div>
+        <div className="flex items-center gap-2 mt-4 text-sm text-[#F5F5F0]/70">
+          <div className="w-2 h-2 rounded-full bg-[#FCF6BA]"></div>
           <span>{t('calendar.daysWithCoaching')}</span>
         </div>
       </motion.div>
@@ -100,14 +100,14 @@ export const CoachingCalendar = ({ conversations }: CoachingCalendarProps) => {
       <AnimatePresence>
         {selectedDate && selectedConversations.length > 0 && (
           <motion.div
-            className="bg-white rounded-2xl p-6 shadow-lg"
+            className="bg-white/[0.04] rounded-2xl p-6 border border-white/[0.08]"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
           >
             <div className="flex items-center gap-2 mb-4">
-              <MessageSquare className="w-5 h-5 text-accent" />
-              <h3 className="text-lg font-bold">
+              <MessageSquare className="w-5 h-5 text-[#FCF6BA]" />
+              <h3 className="text-lg font-bold text-[#F5F5F0]">
                 {t('calendar.sessionsOn')}{selectedDate.toLocaleDateString(i18n.language === 'he' ? 'he-IL' : 'en-US')}
               </h3>
             </div>
@@ -116,15 +116,15 @@ export const CoachingCalendar = ({ conversations }: CoachingCalendarProps) => {
               {selectedConversations.map((conv) => (
                 <motion.div
                   key={conv.id}
-                  className="p-4 rounded-lg bg-gradient-to-r from-blue-50 to-purple-50 border border-accent/20"
+                  className="p-4 rounded-lg bg-white/[0.06] border border-white/[0.1]"
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   whileHover={{ scale: 1.02 }}
                 >
                   <div className="flex justify-between items-start">
                     <div>
-                      <div className="font-medium text-gray-900">{conv.title}</div>
-                      <div className="text-sm text-gray-600 mt-1">
+                      <div className="font-medium text-[#F5F5F0]">{conv.title}</div>
+                      <div className="text-sm text-[#F5F5F0]/70 mt-1">
                         {new Date(conv.created_at).toLocaleTimeString(i18n.language === 'he' ? 'he-IL' : 'en-US', {
                           hour: '2-digit',
                           minute: '2-digit',
@@ -132,14 +132,14 @@ export const CoachingCalendar = ({ conversations }: CoachingCalendarProps) => {
                       </div>
                     </div>
                     <div className="flex items-center gap-4 text-sm">
-                      <div className="flex items-center gap-1">
-                        <MessageSquare className="w-4 h-4 text-accent" />
+                      <div className="flex items-center gap-1 text-[#F5F5F0]/80">
+                        <MessageSquare className="w-4 h-4 text-[#FCF6BA]" />
                         <span>{conv.message_count} {t('calendar.messages')}</span>
                       </div>
                       {conv.current_phase && (
-                        <div className="flex items-center gap-1">
-                          <TrendingUp className="w-4 h-4 text-green-600" />
-                          <span className="text-green-700">{translatePhase(conv.current_phase)}</span>
+                        <div className="flex items-center gap-1 text-[#FCF6BA]">
+                          <TrendingUp className="w-4 h-4" />
+                          <span>{translatePhase(conv.current_phase)}</span>
                         </div>
                       )}
                     </div>
@@ -153,28 +153,28 @@ export const CoachingCalendar = ({ conversations }: CoachingCalendarProps) => {
 
       {/* Stats Summary */}
       <motion.div
-        className="bg-gradient-to-br from-accent/10 to-primary/10 rounded-2xl p-6 shadow-lg border border-accent/20"
+        className="bg-[#FCF6BA]/10 rounded-2xl p-6 border border-[#FCF6BA]/20"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
         <div className="grid grid-cols-3 gap-4 text-center">
           <div>
-            <div className="text-3xl font-bold text-accent">
+            <div className="text-3xl font-bold text-[#FCF6BA]">
               {Object.keys(conversationsByDate).length}
             </div>
-            <div className="text-sm text-gray-600 mt-1">{t('calendar.activeDays')}</div>
+            <div className="text-sm text-[#F5F5F0]/70 mt-1">{t('calendar.activeDays')}</div>
           </div>
           <div>
-            <div className="text-3xl font-bold text-primary">
+            <div className="text-3xl font-bold text-[#F5F5F0]">
               {conversations.length}
             </div>
-            <div className="text-sm text-gray-600 mt-1">{t('calendar.totalSessions')}</div>
+            <div className="text-sm text-[#F5F5F0]/70 mt-1">{t('calendar.totalSessions')}</div>
           </div>
           <div>
-            <div className="text-3xl font-bold text-green-600">
+            <div className="text-3xl font-bold text-[#FCF6BA]">
               {conversations.reduce((sum, c) => sum + c.message_count, 0)}
             </div>
-            <div className="text-sm text-gray-600 mt-1">{t('calendar.totalMessages')}</div>
+            <div className="text-sm text-[#F5F5F0]/70 mt-1">{t('calendar.totalMessages')}</div>
           </div>
         </div>
       </motion.div>

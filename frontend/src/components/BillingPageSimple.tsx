@@ -46,22 +46,22 @@ export const BillingPageSimple = () => {
   };
 
   return (
-    <div className="flex-1 w-full bg-gradient-to-br from-blue-50 via-white to-purple-50 overflow-y-auto" dir="rtl">
+    <div className="flex-1 w-full bg-[#0F172A] overflow-y-auto custom-scrollbar" dir="rtl">
       <div className="max-w-6xl mx-auto p-8">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-primary mb-2">{t('billing.title')}</h1>
-          <p className="text-gray-600">{t('billing.subtitle')}</p>
+          <h1 className="text-4xl font-bold text-[#F5F5F0] mb-2">{t('billing.title')}</h1>
+          <p className="text-[#F5F5F0]/70">{t('billing.subtitle')}</p>
         </div>
 
         {/* Coupon Section */}
-        <div className="bg-white rounded-2xl p-8 shadow-lg mb-8 max-w-2xl mx-auto">
-          <h3 className="text-2xl font-bold mb-4 flex items-center gap-2">
-            <Gift className="w-6 h-6 text-accent" />
+        <div className="bg-white/[0.04] rounded-2xl p-8 border border-white/[0.08] mb-8 max-w-2xl mx-auto">
+          <h3 className="text-2xl font-bold mb-4 flex items-center gap-2 text-[#F5F5F0]">
+            <Gift className="w-6 h-6 text-[#FCF6BA]" />
             {t('billing.couponTitle')}
           </h3>
-          <p className="text-gray-600 mb-4">
-            הזן את קוד הקופון <strong className="text-accent">BSD100</strong> כדי לקבל גישה חינמית לצמיתות לחבילת PRO!
+          <p className="text-[#F5F5F0]/80 mb-4">
+            הזן את קוד הקופון <strong className="text-[#FCF6BA]">BSD100</strong> כדי לקבל גישה חינמית לצמיתות לחבילת PRO!
           </p>
           <div className="flex gap-2">
             <input
@@ -69,21 +69,22 @@ export const BillingPageSimple = () => {
               value={couponCode}
               onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
               placeholder={t('billing.couponPlaceholder')}
-              className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent text-lg"
+              className="flex-1 px-4 py-3 border border-white/10 rounded-lg bg-white/[0.04] text-[#F5F5F0] placeholder-[#F5F5F0]/40 focus:ring-2 focus:ring-[#FCF6BA]/30 focus:border-[#FCF6BA]/40 text-lg"
               dir="ltr"
               disabled={loading}
             />
             <button
               onClick={handleRedeemCoupon}
               disabled={loading || !couponCode.trim()}
-              className="px-8 py-3 bg-accent text-white rounded-lg hover:bg-accent-dark transition-colors font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-8 py-3 rounded-lg font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              style={{ background: 'linear-gradient(45deg, #BF953F, #FCF6BA, #B38728)', color: '#020617' }}
             >
               {loading ? t('billing.couponActivating') : t('billing.couponActivate')}
             </button>
           </div>
           {couponMessage && (
             <div className={`mt-4 p-4 rounded-lg ${
-              couponMessage.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+              couponMessage.type === 'success' ? 'bg-[#FCF6BA]/15 text-[#FCF6BA] border border-[#FCF6BA]/30' : 'bg-red-500/20 text-red-300 border border-red-500/30'
             }`}>
               <p className="font-bold">{couponMessage.text}</p>
               {couponMessage.type === 'success' && (
@@ -96,67 +97,67 @@ export const BillingPageSimple = () => {
         {/* Plans Grid */}
         <div className="grid md:grid-cols-3 gap-6 mb-8">
           {/* Basic Plan */}
-          <div className="bg-white rounded-2xl p-6 shadow-lg border-2 border-gray-200">
+          <div className="bg-white/[0.04] rounded-2xl p-6 border border-white/[0.08]">
             <div className="text-center mb-6">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-3">
-                <Sparkles className="w-8 h-8 text-gray-600" />
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white/10 mb-3">
+                <Sparkles className="w-8 h-8 text-[#F5F5F0]/80" />
               </div>
-              <h3 className="text-2xl font-bold">בסיסי</h3>
+              <h3 className="text-2xl font-bold text-[#F5F5F0]">בסיסי</h3>
               <div className="mt-2">
-                <span className="text-4xl font-bold">חינם</span>
+                <span className="text-4xl font-bold text-[#F5F5F0]">חינם</span>
               </div>
             </div>
             <ul className="space-y-3 mb-6">
-              <li className="flex items-start gap-2">
-                <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+              <li className="flex items-start gap-2 text-[#F5F5F0]/90">
+                <Check className="w-5 h-5 text-[#FCF6BA] flex-shrink-0 mt-0.5" />
                 <span>10 הודעות/חודש</span>
               </li>
-              <li className="flex items-start gap-2">
-                <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+              <li className="flex items-start gap-2 text-[#F5F5F0]/90">
+                <Check className="w-5 h-5 text-[#FCF6BA] flex-shrink-0 mt-0.5" />
                 <span>ללא זמן דיבור</span>
               </li>
-              <li className="flex items-start gap-2">
-                <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+              <li className="flex items-start gap-2 text-[#F5F5F0]/90">
+                <Check className="w-5 h-5 text-[#FCF6BA] flex-shrink-0 mt-0.5" />
                 <span>שלבי אימון בסיסיים</span>
               </li>
             </ul>
           </div>
 
           {/* Premium Plan */}
-          <div className="bg-white rounded-2xl p-6 shadow-lg border-2 border-accent">
+          <div className="bg-white/[0.04] rounded-2xl p-6 border-2 border-[#FCF6BA]/40">
             <div className="text-center mb-6">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-accent/10 mb-3">
-                <Zap className="w-8 h-8 text-accent" />
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#FCF6BA]/15 mb-3">
+                <Zap className="w-8 h-8 text-[#FCF6BA]" />
               </div>
-              <h3 className="text-2xl font-bold">פרמיום</h3>
+              <h3 className="text-2xl font-bold text-[#F5F5F0]">פרמיום</h3>
               <div className="mt-2">
-                <span className="text-4xl font-bold">₪89</span>
-                <span className="text-gray-600">/חודש</span>
+                <span className="text-4xl font-bold text-[#F5F5F0]">₪89</span>
+                <span className="text-[#F5F5F0]/70">/חודש</span>
               </div>
             </div>
             <ul className="space-y-3 mb-6">
-              <li className="flex items-start gap-2">
-                <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+              <li className="flex items-start gap-2 text-[#F5F5F0]/90">
+                <Check className="w-5 h-5 text-[#FCF6BA] flex-shrink-0 mt-0.5" />
                 <span>100 הודעות/חודש</span>
               </li>
-              <li className="flex items-start gap-2">
-                <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+              <li className="flex items-start gap-2 text-[#F5F5F0]/90">
+                <Check className="w-5 h-5 text-[#FCF6BA] flex-shrink-0 mt-0.5" />
                 <span>30 דקות דיבור</span>
               </li>
-              <li className="flex items-start gap-2">
-                <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+              <li className="flex items-start gap-2 text-[#F5F5F0]/90">
+                <Check className="w-5 h-5 text-[#FCF6BA] flex-shrink-0 mt-0.5" />
                 <span>כל 9 שלבי האימון</span>
               </li>
-              <li className="flex items-start gap-2">
-                <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+              <li className="flex items-start gap-2 text-[#F5F5F0]/90">
+                <Check className="w-5 h-5 text-[#FCF6BA] flex-shrink-0 mt-0.5" />
                 <span>יומן אישי</span>
               </li>
             </ul>
           </div>
 
           {/* Pro Plan */}
-          <div className="bg-gradient-to-br from-primary to-accent text-white rounded-2xl p-6 shadow-xl transform scale-105">
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-yellow-400 text-primary px-4 py-1 rounded-full text-sm font-bold">
+          <div className="rounded-2xl p-6 shadow-xl transform scale-105 text-white" style={{ background: 'linear-gradient(135deg, #0f172a, #1e293b, #BF953F)' }}>
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#FCF6BA] text-[#020617] px-4 py-1 rounded-full text-sm font-bold">
               מומלץ ביותר
             </div>
             <div className="text-center mb-6">
@@ -194,9 +195,9 @@ export const BillingPageSimple = () => {
         </div>
 
         {/* Info Box */}
-        <div className="bg-blue-50 rounded-xl p-6 text-center border-2 border-blue-200">
-          <p className="text-lg">
-            💡 <strong>טיפ:</strong> הזן את הקוד <code className="bg-white px-3 py-1 rounded font-mono text-accent font-bold">BSD100</code> למעלה כדי לקבל גישה חינמית לצמיתות לחבילת PRO!
+        <div className="bg-[#FCF6BA]/10 rounded-xl p-6 text-center border border-[#FCF6BA]/20">
+          <p className="text-lg text-[#F5F5F0]/90">
+            💡 <strong>טיפ:</strong> הזן את הקוד <code className="bg-white/10 px-3 py-1 rounded font-mono text-[#FCF6BA] font-bold">BSD100</code> למעלה כדי לקבל גישה חינמית לצמיתות לחבילת PRO!
           </p>
         </div>
       </div>

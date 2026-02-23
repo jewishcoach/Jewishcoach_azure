@@ -136,7 +136,7 @@ export const RemindersManager = () => {
   const weekDays = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
 
   if (loading) {
-    return <div className="text-center py-8">{t('chat.loading')}</div>;
+    return <div className="text-center py-8 text-[#F5F5F0]/70">{t('chat.loading')}</div>;
   }
 
   return (
@@ -144,12 +144,13 @@ export const RemindersManager = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <Bell className="w-5 h-5 text-accent" />
-          <h3 className="text-lg font-bold">{t('reminders.title')}</h3>
+          <Bell className="w-5 h-5 text-[#FCF6BA]" />
+          <h3 className="text-lg font-bold text-[#F5F5F0]">{t('reminders.title')}</h3>
         </div>
         <button
           onClick={() => setShowAddForm(!showAddForm)}
-          className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-dark transition-colors"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors"
+          style={{ background: 'linear-gradient(45deg, #BF953F, #FCF6BA)', color: '#020617' }}
         >
           {showAddForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
           {showAddForm ? t('reminders.cancel') : t('reminders.new')}
@@ -164,61 +165,61 @@ export const RemindersManager = () => {
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             onSubmit={handleSubmit}
-            className="bg-white rounded-2xl p-6 shadow-lg border border-accent/20"
+            className="bg-white/[0.04] rounded-2xl p-6 border border-white/[0.08]"
           >
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">{t('reminders.title_input')}</label>
+                <label className="block text-sm font-medium mb-2 text-[#F5F5F0]">{t('reminders.title_input')}</label>
                 <input
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData({...formData, title: e.target.value})}
                   placeholder={t('reminders.title_placeholder')}
                   required
-                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-accent"
+                  className="w-full px-4 py-2 border border-white/10 rounded-lg bg-white/[0.04] text-[#F5F5F0] placeholder-[#F5F5F0]/40 focus:ring-2 focus:ring-[#FCF6BA]/30"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">{t('reminders.description')}</label>
+                <label className="block text-sm font-medium mb-2 text-[#F5F5F0]">{t('reminders.description')}</label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({...formData, description: e.target.value})}
                   placeholder={t('reminders.description_placeholder')}
                   rows={2}
-                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-accent"
+                  className="w-full px-4 py-2 border border-white/10 rounded-lg bg-white/[0.04] text-[#F5F5F0] placeholder-[#F5F5F0]/40 focus:ring-2 focus:ring-[#FCF6BA]/30"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">{t('reminders.date')}</label>
+                  <label className="block text-sm font-medium mb-2 text-[#F5F5F0]">{t('reminders.date')}</label>
                   <input
                     type="date"
                     value={formData.reminder_date}
                     onChange={(e) => setFormData({...formData, reminder_date: e.target.value})}
                     required
-                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-accent"
+                    className="w-full px-4 py-2 border border-white/10 rounded-lg bg-white/[0.04] text-[#F5F5F0] focus:ring-2 focus:ring-[#FCF6BA]/30"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">{t('reminders.time')}</label>
+                  <label className="block text-sm font-medium mb-2 text-[#F5F5F0]">{t('reminders.time')}</label>
                   <input
                     type="time"
                     value={formData.reminder_time}
                     onChange={(e) => setFormData({...formData, reminder_time: e.target.value})}
-                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-accent"
+                    className="w-full px-4 py-2 border border-white/10 rounded-lg bg-white/[0.04] text-[#F5F5F0] focus:ring-2 focus:ring-[#FCF6BA]/30"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">{t('reminders.repeat')}</label>
+                <label className="block text-sm font-medium mb-2 text-[#F5F5F0]">{t('reminders.repeat')}</label>
                 <select
                   value={formData.repeat_type}
                   onChange={(e) => setFormData({...formData, repeat_type: e.target.value})}
-                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-accent"
+                  className="w-full px-4 py-2 border border-white/10 rounded-lg bg-white/[0.04] text-[#F5F5F0] focus:ring-2 focus:ring-[#FCF6BA]/30"
                 >
                   <option value="once">{t('reminders.once')}</option>
                   <option value="daily">{t('reminders.daily')}</option>
@@ -230,7 +231,7 @@ export const RemindersManager = () => {
 
               {formData.repeat_type === 'weekly' && (
                 <div>
-                  <label className="block text-sm font-medium mb-2">{t('reminders.weekDays')}</label>
+                  <label className="block text-sm font-medium mb-2 text-[#F5F5F0]">{t('reminders.weekDays')}</label>
                   <div className="flex gap-2">
                     {weekDays.map((day, index) => (
                       <button
@@ -239,8 +240,8 @@ export const RemindersManager = () => {
                         onClick={() => toggleRepeatDay(index)}
                         className={`w-10 h-10 rounded-full transition-colors ${
                           formData.repeat_days.includes(index)
-                            ? 'bg-accent text-white'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            ? 'bg-[#FCF6BA]/30 text-[#FCF6BA]'
+                            : 'bg-white/10 text-[#F5F5F0] hover:bg-white/15'
                         }`}
                       >
                         {day}
@@ -253,7 +254,8 @@ export const RemindersManager = () => {
               <div className="flex gap-2">
                 <button
                   type="submit"
-                  className="flex items-center gap-2 px-6 py-2 bg-accent text-white rounded-lg hover:bg-accent-dark transition-colors"
+                  className="flex items-center gap-2 px-6 py-2 rounded-lg transition-colors"
+                  style={{ background: 'linear-gradient(45deg, #BF953F, #FCF6BA)', color: '#020617' }}
                 >
                   <Save className="w-4 h-4" />
                   {editingId ? t('reminders.update') : t('reminders.save')}
@@ -261,7 +263,7 @@ export const RemindersManager = () => {
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="px-6 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
+                  className="px-6 py-2 bg-white/10 text-[#F5F5F0] rounded-lg hover:bg-white/15 transition-colors"
                 >
                   {t('reminders.cancel')}
                 </button>
@@ -274,7 +276,7 @@ export const RemindersManager = () => {
       {/* Reminders List */}
       <div className="space-y-3">
         {reminders.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8 text-[#F5F5F0]/50">
             {t('reminders.noReminders')}
           </div>
         ) : (
@@ -284,24 +286,24 @@ export const RemindersManager = () => {
               layout
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-xl p-4 shadow-md border border-accent/10"
+              className="bg-white/[0.06] rounded-xl p-4 border border-white/[0.1]"
             >
               <div className="flex justify-between items-start">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <Bell className="w-4 h-4 text-accent" />
-                    <h4 className="font-bold">{reminder.title}</h4>
+                    <Bell className="w-4 h-4 text-[#FCF6BA]" />
+                    <h4 className="font-bold text-[#F5F5F0]">{reminder.title}</h4>
                   </div>
                   {reminder.description && (
-                    <p className="text-sm text-gray-600 mt-1">{reminder.description}</p>
+                    <p className="text-sm text-[#F5F5F0]/70 mt-1">{reminder.description}</p>
                   )}
-                  <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
+                  <div className="flex items-center gap-4 mt-2 text-sm text-[#F5F5F0]/60">
                     <div className="flex items-center gap-1">
                       <Clock className="w-4 h-4" />
                       {new Date(reminder.reminder_date).toLocaleDateString('he-IL')}
                       {reminder.reminder_time && ` • ${reminder.reminder_time}`}
                     </div>
-                    <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+                    <span className="px-2 py-1 bg-[#FCF6BA]/15 text-[#FCF6BA] rounded text-xs">
                       {getRepeatLabel(reminder.repeat_type, t)}
                     </span>
                   </div>
@@ -310,13 +312,13 @@ export const RemindersManager = () => {
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleEdit(reminder)}
-                    className="p-2 text-gray-600 hover:text-accent transition-colors"
+                    className="p-2 text-[#F5F5F0]/60 hover:text-[#FCF6BA] transition-colors"
                   >
                     <Edit2 className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => handleDelete(reminder.id)}
-                    className="p-2 text-gray-600 hover:text-red-600 transition-colors"
+                    className="p-2 text-[#F5F5F0]/60 hover:text-red-400 transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>

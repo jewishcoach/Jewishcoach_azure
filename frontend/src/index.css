@@ -181,3 +181,41 @@ body {
   border: 2px solid #3b82f6;
   font-weight: 600;
 }
+
+/* Dark theme for calendar (when inside Dashboard) */
+.coaching-calendar-dark .react-calendar {
+  background: transparent;
+}
+
+.coaching-calendar-dark .react-calendar__month-view__weekdays {
+  color: rgba(245, 245, 240, 0.7);
+}
+
+.coaching-calendar-dark .react-calendar__tile {
+  color: rgba(245, 245, 240, 0.9);
+}
+
+.coaching-calendar-dark .react-calendar__tile:hover {
+  background-color: rgba(252, 246, 186, 0.1);
+}
+
+.coaching-calendar-dark .react-calendar__tile--active {
+  background-color: rgba(212, 175, 55, 0.3) !important;
+  color: #F5F5F0;
+}
+
+.coaching-calendar-dark .react-calendar__tile.has-coaching {
+  color: #FCF6BA;
+}
+
+.coaching-calendar-dark .react-calendar__navigation button {
+  color: #F5F5F0;
+}
+
+.coaching-calendar-dark .react-calendar__navigation button:hover {
+  background-color: rgba(252, 246, 186, 0.1);
+}
+
+.coaching-calendar-dark .react-calendar__month-view__days__day--weekend {
+  color: rgba(212, 175, 55, 0.8);
+}

@@ -77,7 +77,7 @@ export const ArchiveDrawer = ({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="חיפוש שיחות..."
-                  className={`w-full py-2 rounded-[4px] bg-white/5 border border-white/10 text-white placeholder-white/40 text-sm focus:outline-none focus:border-amber-500/50 ${isRTL ? 'pr-9 pl-3' : 'pl-9 pr-3'}`}
+                  className={`w-full py-2 rounded-[4px] bg-white/5 border border-white/10 text-white placeholder-white/40 text-sm focus:outline-none focus:border-[#FCF6BA]/40 ${isRTL ? 'pr-9 pl-3' : 'pl-9 pr-3'}`}
                   dir="rtl"
                 />
               </div>
@@ -104,7 +104,7 @@ export const ArchiveDrawer = ({
                       }}
                       className={`
                         px-3 py-2.5 rounded-[4px] cursor-pointer transition-colors
-                        ${activeId === conv.id ? 'bg-amber-500/20 text-amber-400' : 'text-white/80 hover:bg-white/5'}
+                        ${activeId === conv.id ? 'bg-[#FCF6BA]/15 text-[#FCF6BA]' : 'text-white/80 hover:bg-white/5'}
                       `}
                     >
                       <div className="flex justify-between items-start gap-2">

@@ -189,7 +189,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
               animate={{ opacity: 1 }}
               className="flex flex-col items-center justify-center h-full text-center py-24 px-10"
             >
-              <p className="text-white/70 text-[16px] max-w-md" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 300, lineHeight: 1.6 }}>
+              <p className="text-[#F5F5F0]/85 text-[16px] max-w-md" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 300, lineHeight: 1.6 }}>
                 {i18n.language === 'he'
                   ? 'שלום! על מה תרצה להתאמן היום?'
                   : 'Hello! What would you like to work on today?'}
@@ -252,7 +252,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
                   onKeyDown={handleKeyDown}
                   placeholder={t('chat.placeholder')}
                   disabled={loading}
-                  className="flex-1 resize-none rounded-[4px] px-6 py-5 text-[16px] max-h-28 placeholder-[rgba(245,245,240,0.35)] focus:border-[#FCF6BA]/40"
+                  className="flex-1 resize-none rounded-[4px] px-6 py-5 text-[16px] max-h-28 placeholder-[rgba(245,245,240,0.35)] focus:border-[#FCF6BA]/40 focus:ring-2 focus:ring-[#FCF6BA]/20 focus:outline-none"
                   style={{
                     fontFamily: 'Inter, sans-serif',
                     fontWeight: 300,
