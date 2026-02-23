@@ -9,10 +9,12 @@ from functools import lru_cache
 
 STAGE_FILES: Dict[str, str] = {
     "S0": "s0_contract.md", "S1": "s1_topic.md", "S2": "s2_event.md",
-    "S3": "s3_emotions.md", "S4": "s4_thought.md", "S5": "s5_action_desired.md",
-    "S6": "s6_gap.md", "S7": "s7_pattern.md", "S8": "s8_stance.md",
-    "S9": "s9_forces.md", "S10": "s10_choice.md", "S11": "s11_vision.md",
-    "S12": "s12_commitment.md",
+    "S3": "s3_emotions.md", "S4": "s4_thought.md",
+    "S5": "s5_action.md",       # מצוי - מעשה בלבד
+    "S6": "s6_desired.md",     # רצוי - רגש, מחשבה, מעשה
+    "S7": "s6_gap.md",         # פער
+    "S8": "s7_pattern.md", "S9": "s8_stance.md", "S10": "s9_forces.md",
+    "S11": "s10_choice.md", "S12": "s11_vision.md", "S13": "s12_commitment.md",
 }
 
 SUPPORTED_LANGUAGES = {"he", "en"}

@@ -200,6 +200,14 @@ function translatePhase(phase: string): string {
     'S3': 'רגשות',
     'S4': 'מחשבה',
     'S5': 'מעשה',
+    'S6': 'רצוי',
+    'S7': 'פער',
+    'S8': 'דפוס',
+    'S9': 'עמדה',
+    'S10': 'כוחות',
+    'S11': 'בחירה',
+    'S12': 'חזון',
+    'S13': 'מחויבות',
   };
   return translations[phase] || phase;
 }

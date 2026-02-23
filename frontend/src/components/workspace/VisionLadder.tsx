@@ -3,16 +3,17 @@
  * שלבים כפי שמופיעים בחוברת
  */
 
-// מיפוי שלב נוכחי (S0-S12) → אינדקס שלב בחוברת
+// מיפוי שלב נוכחי (S0-S13) → אינדקס שלב בחוברת
 const STEP_TO_PHASE: Record<string, number> = {
   S0: 0,                                 // בקשה לאימון
-  S1: 1, S2: 1, S3: 1, S4: 1, S5: 1,    // מצוי (כולל שלושה מסכים)
-  S6: 3,                                 // פער
-  S7: 4,                                 // דפוס
-  S8: 6,                                 // עמדה
-  S9: 8,                                 // מקור-טבע-שכל (כמ"ז)
-  S10: 10,                               // בחירה
-  S11: 11, S12: 11,                      // חזון
+  S1: 1, S2: 1, S3: 1, S4: 1, S5: 1,    // מצוי (נושא, אירוע, רגש, מחשבה, מעשה)
+  S6: 2,                                 // רצוי
+  S7: 3,                                 // פער
+  S8: 4,                                 // דפוס
+  S9: 6,                                 // עמדה
+  S10: 8,                                // מקור-טבע-שכל (כמ"ז)
+  S11: 10,                               // בחירה
+  S12: 11, S13: 11,                      // חזון ומחויבות
 };
 
 // 12 שלבים לפי החוברת
@@ -50,7 +51,7 @@ export const VisionLadder = ({ currentStep }: VisionLadderProps) => {
           return (
             <div key={phase.id} className="flex flex-col items-stretch">
               <div
-                className="group relative rounded-[4px] px-4 py-3 border transition-all duration-300"
+                className="group relative rounded-[4px] px-4 py-3 border transition-all duration-300 cursor-default"
                 style={{
                   background: isActive ? 'rgba(212, 175, 55, 0.12)' : 'rgba(255, 255, 255, 0.03)',
                   borderColor: isActive ? 'rgba(212, 175, 55, 0.4)' : 'rgba(255, 255, 255, 0.08)',
@@ -58,18 +59,19 @@ export const VisionLadder = ({ currentStep }: VisionLadderProps) => {
                 }}
               >
                 <div
-                  className="text-right font-light text-[15px] tracking-[0.06em] leading-snug"
+                  className="text-center font-light text-[15px] tracking-[0.06em] leading-snug w-full"
                   style={{
                     color: isActive ? CREAM_WHITE : isPast ? 'rgba(245,245,240,0.6)' : 'rgba(245,245,240,0.35)',
                   }}
                 >
                   {phase.title}
                 </div>
+                {/* תיאור שלב - מופיע בריחוף עכבר */}
                 <div
-                  className="absolute left-full ml-3 top-1/2 -translate-y-1/2 z-[100] opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none p-3 rounded text-[12px] shadow-xl min-w-[180px] max-w-[260px]"
+                  className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-[100] opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none p-3 rounded text-[12px] shadow-xl w-[220px] text-right"
                   style={{
                     fontFamily: 'Inter, sans-serif',
-                    lineHeight: 1.55,
+                    lineHeight: 1.6,
                     background: 'rgba(2,6,23,0.98)',
                     border: '0.5px solid rgba(255,255,255,0.12)',
                     color: 'rgba(245,245,240,0.95)',

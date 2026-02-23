@@ -7,14 +7,15 @@ Advance only when the current stage is sufficiently complete.
 - S2->S3: one specific event with when/where/who/what and event validity.
 - S3->S4: at least 3-4 emotions with experiential depth.
 - S4->S5: clear in-the-moment thought sentence.
-- S5->S6: actual + desired + confirmed summary.
-- S6->S7: gap name + 1-10 score.
-- S7->S8: explicit pattern summary + user confirmation.
-- S8->S9: 2+ gains and 2+ losses.
-- S9->S10: 2+ values and 2+ abilities.
-- S10->S11: clear new choice.
-- S11->S12: clear vision.
-- S12->End: specific commitment.
+- S5->S6: clear actual action (what they did).
+- S6->S7: desired (action + emotion + thought) + confirmed summary.
+- S7->S8: gap name + 1-10 score.
+- S8->S9: explicit pattern summary + user confirmation.
+- S9->S10: 2+ gains and 2+ losses.
+- S10->S11: 2+ values and 2+ abilities.
+- S11->S12: clear new choice.
+- S12->S13: clear vision.
+- S13->End: specific commitment.
 
 Safety rules:
 - Do not repeat answered questions.

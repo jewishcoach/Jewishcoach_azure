@@ -121,12 +121,13 @@ export const SmartInsightsPanel = ({ conversationId, currentPhase }: SmartInsigh
     'S1': { he: 'נושא האימון', en: 'Coaching Topic' },
     'S3': { he: 'מסך הרגש', en: 'Emotion Screen' },
     'S4': { he: 'מסך המחשבה', en: 'Thought Screen' },
-    'S5': { he: 'מסך המעשה', en: 'Action Screen' },
-    'S6': { he: 'ניתוח הפער', en: 'Gap Analysis' },
-    'S7': { he: 'דפוס ופרדיגמה', en: 'Pattern & Paradigm' },
-    'S8': { he: 'בירור הרצון', en: 'Clarify Desire' },
-    'S9': { he: 'כמ"ז - כוחות', en: 'KaMaZ - Forces' },
-    'S10': { he: 'נוסחת המחויבות', en: 'Commitment Formula' }
+    'S5': { he: 'מסך המעשה (מצוי)', en: 'Action Screen (actual)' },
+    'S6': { he: 'הרצוי', en: 'Desired' },
+    'S7': { he: 'ניתוח הפער', en: 'Gap Analysis' },
+    'S8': { he: 'דפוס ופרדיגמה', en: 'Pattern & Paradigm' },
+    'S9': { he: 'בירור הרצון', en: 'Clarify Desire' },
+    'S10': { he: 'כמ"ז - כוחות', en: 'KaMaZ - Forces' },
+    'S13': { he: 'נוסחת המחויבות', en: 'Commitment Formula' }
   };
 
   const lang = i18n.language as 'he' | 'en';
@@ -171,12 +172,26 @@ export const SmartInsightsPanel = ({ conversationId, currentPhase }: SmartInsigh
     });
   }
 
-  // S6: Gap
-  if (insights.gap_analysis?.name) {
+  // S6: Desired
+  if (insights.event_actual?.action_desired || insights.event_actual?.emotion_desired || insights.event_actual?.thought_desired) {
     insightItems.push({
       stage: 'S6',
       title: stageTitles['S6'][lang],
       status: currentPhase === 'S6' ? 'draft' : 'final',
+      data: {
+        action_desired: insights.event_actual?.action_desired,
+        emotion_desired: insights.event_actual?.emotion_desired,
+        thought_desired: insights.event_actual?.thought_desired
+      }
+    });
+  }
+
+  // S7: Gap
+  if (insights.gap_analysis?.name) {
+    insightItems.push({
+      stage: 'S7',
+      title: stageTitles['S7'][lang],
+      status: currentPhase === 'S7' ? 'draft' : 'final',
       data: {
         current_reality: lang === 'he' ? `פער: ${insights.gap_analysis.name}` : `Gap: ${insights.gap_analysis.name}`,
         desired_reality: lang === 'he' ? `ציון: ${insights.gap_analysis.score || 0}/10` : `Score: ${insights.gap_analysis.score || 0}/10`,
@@ -186,12 +201,12 @@ export const SmartInsightsPanel = ({ conversationId, currentPhase }: SmartInsigh
     });
   }
 
-  // S7: Pattern
+  // S8: Pattern
   if (insights.pattern_id?.name) {
     insightItems.push({
-      stage: 'S7',
-      title: stageTitles['S7'][lang],
-      status: currentPhase === 'S7' ? 'draft' : 'final',
+      stage: 'S8',
+      title: stageTitles['S8'][lang],
+      status: currentPhase === 'S8' ? 'draft' : 'final',
       data: {
         trigger: insights.pattern_id.name || '',
         reaction: lang === 'he' ? 'תגובה חוזרת' : 'Recurring reaction',
@@ -200,22 +215,22 @@ export const SmartInsightsPanel = ({ conversationId, currentPhase }: SmartInsigh
     });
   }
 
-  // S8: Being
+  // S9: Being
   if (insights.being_desire?.identity) {
-    insightItems.push({
-      stage: 'S8',
-      title: stageTitles['S8'][lang],
-      status: currentPhase === 'S8' ? 'draft' : 'final',
-      data: { identity: insights.being_desire.identity }
-    });
-  }
-
-  // S9: KaMaZ
-  if (insights.kmz_forces?.source_forces?.length || insights.kmz_forces?.nature_forces?.length) {
     insightItems.push({
       stage: 'S9',
       title: stageTitles['S9'][lang],
       status: currentPhase === 'S9' ? 'draft' : 'final',
+      data: { identity: insights.being_desire.identity }
+    });
+  }
+
+  // S10: KaMaZ
+  if (insights.kmz_forces?.source_forces?.length || insights.kmz_forces?.nature_forces?.length) {
+    insightItems.push({
+      stage: 'S10',
+      title: stageTitles['S10'][lang],
+      status: currentPhase === 'S10' ? 'draft' : 'final',
       data: {
         source_forces: insights.kmz_forces.source_forces || [],
         nature_forces: insights.kmz_forces.nature_forces || []
@@ -223,12 +238,12 @@ export const SmartInsightsPanel = ({ conversationId, currentPhase }: SmartInsigh
     });
   }
 
-  // S10: Commitment
+  // S13: Commitment
   if (insights.commitment?.difficulty) {
     insightItems.push({
-      stage: 'S10',
-      title: stageTitles['S10'][lang],
-      status: currentPhase === 'S10' ? 'draft' : 'final',
+      stage: 'S13',
+      title: stageTitles['S13'][lang],
+      status: currentPhase === 'S13' ? 'draft' : 'final',
       data: {
         difficulty: insights.commitment.difficulty,
         result: insights.commitment.result || ''
@@ -294,19 +309,34 @@ function renderWidgetContent(stage: string, data: any, language: 'he' | 'en') {
       );
 
     case 'S6':
-      return <GapWidget data={data} language={language} />;
+      return (
+        <div className="space-y-2 text-sm">
+          {data.action_desired && (
+            <div><span className="font-semibold">{language === 'he' ? 'מעשה רצוי:' : 'Desired action:'}</span> {data.action_desired}</div>
+          )}
+          {data.emotion_desired && (
+            <div><span className="font-semibold">{language === 'he' ? 'רגש רצוי:' : 'Desired emotion:'}</span> {data.emotion_desired}</div>
+          )}
+          {data.thought_desired && (
+            <div><span className="font-semibold">{language === 'he' ? 'מחשבה רצויה:' : 'Desired thought:'}</span> {data.thought_desired}</div>
+          )}
+        </div>
+      );
 
     case 'S7':
-      return <PatternWidget data={data} language={language} />;
+      return <GapWidget data={data} language={language} />;
 
     case 'S8':
+      return <PatternWidget data={data} language={language} />;
+
+    case 'S9':
       return (
         <div className="text-sm text-primary font-medium">
           {data.identity}
         </div>
       );
 
-    case 'S9':
+    case 'S10':
       return (
         <div className="space-y-3">
           {data.source_forces && data.source_forces.length > 0 && (
@@ -340,7 +370,7 @@ function renderWidgetContent(stage: string, data: any, language: 'he' | 'en') {
         </div>
       );
 
-    case 'S10':
+    case 'S13':
       return (
         <div className="space-y-2 text-sm">
           <div>

@@ -58,11 +58,14 @@ def _v2_collected_data_to_cognitive_data(collected: dict, messages: list = None)
         inferred = _infer_topic_from_messages(messages)
         if inferred:
             out["topic"] = inferred
-    # event_actual: emotions_list, thought_content, action_content
+    # event_actual: emotions_list, thought_content, action_content, action_desired, emotion_desired, thought_desired
     emotions = collected.get("emotions") or []
     thought = collected.get("thought")
     action_actual = collected.get("action_actual")
-    if emotions or thought or action_actual:
+    action_desired = collected.get("action_desired")
+    emotion_desired = collected.get("emotion_desired")
+    thought_desired = collected.get("thought_desired")
+    if emotions or thought or action_actual or action_desired or emotion_desired or thought_desired:
         out["event_actual"] = {}
         if emotions:
             out["event_actual"]["emotions_list"] = emotions if isinstance(emotions, list) else [emotions]
@@ -70,6 +73,12 @@ def _v2_collected_data_to_cognitive_data(collected: dict, messages: list = None)
             out["event_actual"]["thought_content"] = thought
         if action_actual:
             out["event_actual"]["action_content"] = action_actual
+        if action_desired:
+            out["event_actual"]["action_desired"] = action_desired
+        if emotion_desired:
+            out["event_actual"]["emotion_desired"] = emotion_desired
+        if thought_desired:
+            out["event_actual"]["thought_desired"] = thought_desired
     # gap_analysis
     gap_name = collected.get("gap_name")
     gap_score = collected.get("gap_score")
