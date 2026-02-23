@@ -1,17 +1,34 @@
-const STAGES: { id: string; title: string; tooltip: string }[] = [
-  { id: 'S0', title: 'חוזה', tooltip: 'קבלת רשות להתחיל את תהליך האימון' },
-  { id: 'S1', title: 'נושא', tooltip: 'הבנת הנושא הכללי' },
-  { id: 'S2', title: 'אירוע', tooltip: 'קבלת אירוע ספציפי מפורט' },
-  { id: 'S3', title: 'חקירת רגשות', tooltip: 'הצפת רגשות ללא שיפוטיות' },
-  { id: 'S4', title: 'מחשבה', tooltip: 'משפט מילולי מדויק באותו רגע' },
-  { id: 'S5', title: 'מצוי ורצוי', tooltip: 'סיכום הדפוס' },
-  { id: 'S6', title: 'פער', tooltip: 'שם וציון לפער' },
-  { id: 'S7', title: 'זיהוי דפוס', tooltip: 'תגובה החוזרת במצבים שונים' },
-  { id: 'S8', title: 'רווחים והפסדים', tooltip: 'מה מרוויח ומה מפסיד' },
-  { id: 'S9', title: 'ערכים ויכולות', tooltip: 'ערכים חשובים ויכולות קיימות' },
-  { id: 'S10', title: 'בחירה', tooltip: 'עמדה חדשה' },
-  { id: 'S11', title: 'חזון', tooltip: 'לאן הבחירה מובילה' },
-  { id: 'S12', title: 'מחויבות', tooltip: 'פעולה קונקרטית' },
+/**
+ * Vision Ladder - לפי חוברת "תהליך השיבה" מהדורה שלישית
+ * שלבים כפי שמופיעים בחוברת
+ */
+
+// מיפוי שלב נוכחי (S0-S12) → אינדקס שלב בחוברת
+const STEP_TO_PHASE: Record<string, number> = {
+  S0: 0,                                 // בקשה לאימון
+  S1: 1, S2: 1, S3: 1, S4: 1, S5: 1,    // מצוי (כולל שלושה מסכים)
+  S6: 3,                                 // פער
+  S7: 4,                                 // דפוס
+  S8: 6,                                 // עמדה
+  S9: 8,                                 // מקור-טבע-שכל (כמ"ז)
+  S10: 10,                               // בחירה
+  S11: 11, S12: 11,                      // חזון
+};
+
+// 12 שלבים לפי החוברת
+const PHASES: { id: string; title: string; tooltip: string }[] = [
+  { id: 'p0', title: 'בקשה לאימון', tooltip: 'קבלת רשות והסכמה להתחיל את תהליך האימון.' },
+  { id: 'p1', title: 'מצוי', tooltip: 'נושא, אירוע, ושלושת המסכים: רגש, מחשבה, מעשה.' },
+  { id: 'p2', title: 'רצוי', tooltip: 'איך היית רוצה – פעולה, רגש ומחשבה רצויים.' },
+  { id: 'p3', title: 'פער', tooltip: 'ניתוח הפער בין המצוי לרצוי – שם וציון.' },
+  { id: 'p4', title: 'דפוס', tooltip: 'זיהוי הדפוס החוזר – איפה עוד זה קורה?' },
+  { id: 'p5', title: 'פרדיגמה', tooltip: 'האמונה והתפיסה שמאחורי הדפוס.' },
+  { id: 'p6', title: 'עמדה', tooltip: 'רווח והפסד – מה מרוויח ומה מפסיד מהעמדה.' },
+  { id: 'p7', title: 'שינוי', tooltip: 'מעבר מהעמדה הישנה לעמדה חדשה.' },
+  { id: 'p8', title: 'מקור-טבע-שכל', tooltip: 'כוחות מקור, כוחות טבע – חיבור לכוח הפנימי.' },
+  { id: 'p9', title: 'כמ"ז', tooltip: 'כוח, מקור, זהות – בניית כמ"ז.' },
+  { id: 'p10', title: 'בחירה', tooltip: 'התחדשות ובחירה חדשה – עמדה, פרדיגמה ודפוס חדשים.' },
+  { id: 'p11', title: 'חזון', tooltip: 'חפץ הלב, שליחות, ומחויבות קונקרטית.' },
 ];
 
 const CREAM_WHITE = '#F5F5F0';
@@ -21,19 +38,17 @@ interface VisionLadderProps {
 }
 
 export const VisionLadder = ({ currentStep }: VisionLadderProps) => {
-  const currentIndex = STAGES.findIndex((s) => s.id === currentStep);
-  const activeIndex = currentIndex >= 0 ? currentIndex : 0;
+  const activePhaseIndex = STEP_TO_PHASE[currentStep] ?? 0;
 
   return (
-    <div className="w-full min-w-[220px] flex flex-col h-full bg-[#020617] py-8 px-5 workspace-ladder" dir="rtl">
-      <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-0">
-        {STAGES.map((stage, i) => {
-          const isActive = i === activeIndex;
-          const isPast = i < activeIndex;
-          const isLast = i === STAGES.length - 1;
+    <div className="w-full min-w-[240px] flex flex-col h-full bg-[#020617] py-8 px-5 workspace-ladder" dir="rtl">
+      <div className="flex-1 overflow-y-auto overflow-x-visible custom-scrollbar flex flex-col gap-0">
+        {PHASES.map((phase, i) => {
+          const isActive = i === activePhaseIndex;
+          const isPast = i < activePhaseIndex;
+          const isLast = i === PHASES.length - 1;
           return (
-            <div key={stage.id} className="flex flex-col items-stretch">
-              {/* Rectangle box for each step */}
+            <div key={phase.id} className="flex flex-col items-stretch">
               <div
                 className="group relative rounded-[4px] px-4 py-3 border transition-all duration-300"
                 style={{
@@ -48,28 +63,26 @@ export const VisionLadder = ({ currentStep }: VisionLadderProps) => {
                     color: isActive ? CREAM_WHITE : isPast ? 'rgba(245,245,240,0.6)' : 'rgba(245,245,240,0.35)',
                   }}
                 >
-                  {stage.title}
+                  {phase.title}
                 </div>
-                {/* Tooltip on hover */}
                 <div
-                  className="absolute left-full ml-3 top-1/2 -translate-y-1/2 z-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none w-48 p-3 rounded text-[12px]"
+                  className="absolute left-full ml-3 top-1/2 -translate-y-1/2 z-[100] opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none p-3 rounded text-[12px] shadow-xl min-w-[180px] max-w-[260px]"
                   style={{
                     fontFamily: 'Inter, sans-serif',
-                    lineHeight: 1.5,
+                    lineHeight: 1.55,
                     background: 'rgba(2,6,23,0.98)',
-                    border: '0.5px solid rgba(255,255,255,0.08)',
-                    color: 'rgba(245,245,240,0.9)',
+                    border: '0.5px solid rgba(255,255,255,0.12)',
+                    color: 'rgba(245,245,240,0.95)',
                   }}
                 >
-                  {stage.tooltip}
+                  {phase.tooltip}
                 </div>
               </div>
-              {/* Connecting line to next step */}
               {!isLast && (
                 <div
                   className="w-[1px] flex-shrink-0 mx-auto"
                   style={{
-                    height: 8,
+                    height: 6,
                     background: 'linear-gradient(to bottom, rgba(212, 175, 55, 0.5), rgba(212, 175, 55, 0.2))',
                   }}
                 />

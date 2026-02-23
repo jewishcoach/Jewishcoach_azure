@@ -182,6 +182,18 @@ def _get_system_prompt(
     return assemble_system_prompt(current_step=current_step, language=language)
 
 
+def _sanitize_coach_message(coach_message: str) -> str:
+    """Remove model artifacts like role prefixes from user-facing message."""
+    if not isinstance(coach_message, str):
+        return coach_message
+    cleaned = coach_message.strip()
+    if cleaned.startswith("מאמן:"):
+        cleaned = cleaned.replace("מאמן:", "", 1).strip()
+    if cleaned.startswith("Coach:"):
+        cleaned = cleaned.replace("Coach:", "", 1).strip()
+    return cleaned
+
+
 async def _ainvoke_with_prompt_cache(llm, messages, cache_key: str):
     """
     Invoke Azure OpenAI with prompt_cache_key when supported.
@@ -1089,9 +1101,14 @@ def get_next_step_question(current_step: str, language: str = "he") -> str:
     return step_questions.get(current_step, "בוא נמשיך הלאה." if language == "he" else "Let's continue.")
 
 
-def detect_re_asking_for_event(coach_message: str, state: Dict[str, Any], language: str = "he") -> Optional[str]:
+def detect_re_asking_for_event(
+    coach_message: str,
+    state: Dict[str, Any],
+    language: str = "he"
+) -> Optional[Tuple[str, str]]:
     """
-    If coach asks for event again but user already gave full event - override with S4 question.
+    If coach asks for event again but user already gave full event - override with
+    the *next valid stage question* (usually S3 from S2).
     Prevents the "ספרתי לך על הרגע במגרש" loop.
     """
     current_step = state.get("current_step", "")
@@ -1107,10 +1124,30 @@ def detect_re_asking_for_event(coach_message: str, state: Dict[str, Any], langua
     has_event, _ = has_sufficient_event_details(state)
     if not has_event:
         return None
-    logger.warning(f"[Safety Net] Coach re-asking for event but user already gave it - overriding with S4")
+    current_step = state.get("current_step", "S2")
+    logger.warning(f"[Safety Net] Coach re-asking for event but user already gave it - overriding with stage-aware next question")
+
+    if current_step == "S2":
+        if language == "he":
+            return (
+                "מצטער על החזרה! שמעתי את האירוע. עכשיו בוא ניכנס פנימה לרגע הזה - מה הרגשת באותו רגע?",
+                "S3",
+            )
+        return (
+            "Sorry for repeating! I heard the event. Now let's go into that moment - what did you feel right then?",
+            "S3",
+        )
+
+    # If we're already in S3 and still got an event-reask, move to S4 question.
     if language == "he":
-        return "מצטער על החזרה! שמעתי על האירוע במגרש. עכשיו אני רוצה להבין – מה עבר לך בראש **באותו רגע** כשוויתרת? מה המשפט שאמרת לעצמך?"
-    return "Sorry for repeating! I heard about the event. Now I want to understand – what went through your mind **in that moment** when you gave up? What did you tell yourself?"
+        return (
+            "מצטער על החזרה! כבר יש לנו את האירוע. עכשיו אני רוצה להבין - מה עבר לך בראש באותו רגע?",
+            "S4",
+        )
+    return (
+        "Sorry for repeating! We already have the event. Now I want to understand - what went through your mind in that moment?",
+        "S4",
+    )
 
 
 def check_repeated_question(coach_message: str, history: list, current_step: str, language: str = "he") -> Optional[str]:
@@ -2314,7 +2351,7 @@ So feel free to share an event from any area where you interacted with people an
                 coach_message = trailing_text or ""
 
             if not coach_message:
-                coach_message = "על איזה היבט היית רוצה להתמקד?" if language == "he" else "Which aspect would you like to focus on?"
+                coach_message = get_next_step_question(state.get("current_step", "S1"), language)
 
         except json.JSONDecodeError as e:
             logger.error(f"[BSD V2] Failed to parse JSON: {e}")
@@ -2327,8 +2364,12 @@ So feel free to share an event from any area where you interacted with people an
                 "saturation_score": state["saturation_score"],
                 "reflection": "Failed to parse structured output"
             }
+            if not coach_message or not coach_message.strip():
+                coach_message = get_next_step_question(state.get("current_step", "S1"), language)
         t6 = time.time()
         logger.info(f"[PERF] Parse JSON: {(t6-t5)*1000:.0f}ms")
+
+        coach_message = _sanitize_coach_message(coach_message)
         
         # 5. Safety Net: Check for repeated questions
         t7 = time.time()
@@ -2340,15 +2381,15 @@ So feel free to share an event from any area where you interacted with people an
         if repeated_check:
             logger.warning(f"[Safety Net] Overriding repeated question")
             coach_message = repeated_check
-            # Force move to S3
-            internal_state["current_step"] = "S3"
-            internal_state["saturation_score"] = 0.3
+            # Keep step conservative; mismatch/transition validators will decide advancement.
+            internal_state["current_step"] = state["current_step"]
+            internal_state["saturation_score"] = state.get("saturation_score", 0.3)
         
         # 5.5. Safety Net: Coach re-asking for event when user already gave it
         re_ask_check = detect_re_asking_for_event(coach_message, state, language)
         if re_ask_check:
-            coach_message = re_ask_check
-            internal_state["current_step"] = "S4"
+            coach_message, next_step_for_reask = re_ask_check
+            internal_state["current_step"] = next_step_for_reask
             internal_state["saturation_score"] = 0.3
         
         # 6. Safety Net: Check for stage/question mismatch

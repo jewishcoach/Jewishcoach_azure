@@ -215,6 +215,85 @@ async def send_message_v2(
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# DEBUG: Export last conversation (for analyzing coach behavior)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/debug/last-conversation")
+async def get_last_conversation_debug(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Return the user's most recent V2 conversation in full (messages + state).
+    For debugging coach behavior - share output to analyze.
+    """
+    conv = db.query(ConversationModel).filter(
+        ConversationModel.user_id == current_user.id,
+        ConversationModel.v2_state.isnot(None)
+    ).order_by(ConversationModel.created_at.desc()).first()
+    
+    if not conv or not conv.v2_state:
+        return {"message": "No V2 conversation found", "conversation_id": None}
+    
+    state = conv.v2_state
+    messages = state.get("messages", [])
+    
+    # Build readable transcript
+    transcript = []
+    for m in messages:
+        role = m.get("sender") or m.get("role", "?")
+        content = (m.get("content") or "").strip()
+        if content:
+            transcript.append({"role": role, "content": content})
+    
+    return {
+        "conversation_id": conv.id,
+        "title": conv.title,
+        "current_step": state.get("current_step"),
+        "saturation_score": state.get("saturation_score"),
+        "collected_data": state.get("collected_data"),
+        "transcript": transcript,
+        "message_count": len(messages),
+    }
+
+
+@router.get("/debug/conversation/{conversation_id}")
+async def get_conversation_debug(
+    conversation_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Export a specific conversation for debugging (same format as last-conversation)."""
+    conv = db.query(ConversationModel).filter(
+        ConversationModel.id == conversation_id,
+        ConversationModel.user_id == current_user.id
+    ).first()
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    if not conv.v2_state:
+        return {"message": "Not a V2 conversation (no v2_state)", "conversation_id": conversation_id}
+    
+    state = conv.v2_state
+    messages = state.get("messages", [])
+    transcript = []
+    for m in messages:
+        role = m.get("sender") or m.get("role", "?")
+        content = (m.get("content") or "").strip()
+        if content:
+            transcript.append({"role": role, "content": content})
+    
+    return {
+        "conversation_id": conv.id,
+        "title": conv.title,
+        "current_step": state.get("current_step"),
+        "saturation_score": state.get("saturation_score"),
+        "collected_data": state.get("collected_data"),
+        "transcript": transcript,
+        "message_count": len(messages),
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # INSIGHTS ENDPOINT
 # ══════════════════════════════════════════════════════════════════════════════
 
