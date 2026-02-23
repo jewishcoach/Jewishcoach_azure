@@ -8,7 +8,6 @@ import { BSDWorkspace } from './components/workspace/BSDWorkspace';
 import { LandingPage } from './components/LandingPage';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { BillingPageSimple as BillingPage } from './components/BillingPageSimple';
-import { Dashboard } from './components/Dashboard';
 import { apiClient } from './services/api';
 import './i18n';
 

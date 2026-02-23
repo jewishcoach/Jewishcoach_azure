@@ -26,7 +26,7 @@ export const useChat = (displayName?: string | null) => {
       // Add welcome message with animation delay
       setTimeout(() => {
         // Get user's display name, fall back to Clerk name
-        const userName = displayName || user?.firstName || user?.fullName?.split(' ')[0] || '';
+        const userName = displayName || user?.firstName || '';
         
         // Create greeting with name
         let greeting: string;
@@ -70,7 +70,7 @@ export const useChat = (displayName?: string | null) => {
       const conv = await apiClient.getConversation(conversationId);
       
       // Filter out metadata from message content
-      const cleanMessages = (conv.messages || []).map(msg => {
+      const cleanMessages = (conv.messages || []).map((msg: Message) => {
         // Clean metadata from assistant messages
         if (msg.role === 'assistant') {
           let cleanContent = msg.content;
@@ -104,7 +104,7 @@ export const useChat = (displayName?: string | null) => {
     setLoading(false); // Clear any loading state when starting new chat
     
     // Get user's display name, fall back to Clerk name
-    const userName = displayName || user?.firstName || user?.fullName?.split(' ')[0] || '';
+    const userName = displayName || user?.firstName || '';
     
     // Create greeting with name
     let greeting: string;

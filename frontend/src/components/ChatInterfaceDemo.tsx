@@ -140,14 +140,16 @@ export const ChatInterfaceDemo = ({ displayName }: ChatInterfaceDemoProps) => {
     <div className="flex h-full w-full overflow-hidden">
       <Sidebar 
         conversations={conversations}
-        currentConversationId={conversationId}
-        onSelectConversation={handleSelectConversation}
+        activeId={conversationId}
+        onSelect={(id) => handleSelectConversation(id)}
         onNewChat={handleNewChat}
-        onDeleteConversation={handleDeleteConversation}
+        onDelete={handleDeleteConversation}
+        onShare={() => {}}
+        isRTL={i18n.language === 'he'}
       />
       
       <div className="flex-1 flex flex-col min-w-0 relative">
-        <PhaseIndicator currentPhase={currentPhase} />
+        <PhaseIndicator currentPhase={currentPhase} language={i18n.language} />
         
         <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4" dir={i18n.language === 'he' ? 'rtl' : 'ltr'}>
           <AnimatePresence mode="popLayout">
@@ -188,11 +190,14 @@ export const ChatInterfaceDemo = ({ displayName }: ChatInterfaceDemoProps) => {
 
         {isVoiceMode && (
           <VoiceControlBar 
-            isActive={isVoiceMode}
+            language={i18n.language as 'he' | 'en'}
+            voiceGender={voiceGender}
+            onVoiceGenderChange={setVoiceGender}
+            onMessageSync={async () => {}}
+            onAIResponseReady={(fn) => { speakFunctionRef.current = fn; }}
+            onStopSessionReady={(fn) => { stopVoiceSessionRef.current = fn; }}
             onStop={() => {
-              if (stopVoiceSessionRef.current) {
-                stopVoiceSessionRef.current();
-              }
+              if (stopVoiceSessionRef.current) stopVoiceSessionRef.current();
               setIsVoiceMode(false);
             }}
           />
@@ -244,7 +249,9 @@ export const ChatInterfaceDemo = ({ displayName }: ChatInterfaceDemoProps) => {
       {conversationId && (
         <InsightHub 
           conversationId={conversationId}
+          currentPhase={currentPhase}
           activeTool={activeTool}
+          onToolSubmit={async () => {}}
         />
       )}
     </div>
