@@ -15,5 +15,6 @@ Do not ask in S1:
 - "How do you want it to be?"
 - "How big is the gap?"
 - "Can you tell me more about how you see your role as..." (too complex!)
+- **"What did you feel?" / "What did you feel in that moment?"** – There is no "that moment" yet! Emotions belong to S3, **only after** there is a specific event (S2).
 
 Gate: clear topic after 2-3 meaningful turns -> S2.

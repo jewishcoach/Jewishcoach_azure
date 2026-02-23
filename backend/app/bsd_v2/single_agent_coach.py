@@ -1159,7 +1159,7 @@ def check_repeated_question(coach_message: str, history: list, current_step: str
     """
     # Get recent messages
     recent_coach_messages = [
-        msg.get("content", "") for msg in history[-6:]
+        msg.get("content", "") for msg in history[-8:]
         if msg.get("sender") in ["coach", "assistant"]
     ]
     
@@ -1167,6 +1167,16 @@ def check_repeated_question(coach_message: str, history: list, current_step: str
         msg.get("content", "").lower() for msg in history[-4:]
         if msg.get("sender") == "user"
     ]
+    
+    # === CRITICAL: S1 + emotions question = wrong stage! Block immediately ===
+    if current_step == "S1":
+        emotions_indicators_he = ["מה הרגשת", "איזה רגש", "להתעמק ברגשות", "מה עבר בך", "איפה הרגשת"]
+        emotions_indicators_en = ["what did you feel", "what emotion", "delve into emotions", "how did you feel"]
+        indicators = emotions_indicators_he if language == "he" else emotions_indicators_en
+        coach_lower = coach_message.lower()
+        if any(ind in coach_lower for ind in indicators):
+            logger.warning(f"[Safety Net] S1 but coach asked emotions question - BLOCKING (no event yet!)")
+            return get_next_step_question(current_step, language)
     
     if language == "he":
         # === CRITICAL: Check if user said they're done ===
@@ -1224,7 +1234,9 @@ def check_repeated_question(coach_message: str, history: list, current_step: str
             "ספר לי עוד על הרגע הזה",
             "מה בדיוק קרה",
             "ספר לי יותר על",
-            "תוכל לספר לי יותר"
+            "תוכל לספר לי יותר",
+            "תוכל לספר לי יותר על",
+            "מה בדיוק ב"
         ]
         
         generic_count = sum(
@@ -1232,7 +1244,9 @@ def check_repeated_question(coach_message: str, history: list, current_step: str
             if any(pattern in msg_content for pattern in generic_patterns)
         )
         
-        if generic_count >= 3:
+        # S1: trigger after 2 (not 3) - catch loop earlier
+        threshold = 2 if current_step == "S1" else 3
+        if generic_count >= threshold:
             logger.warning(f"[Safety Net] Too many generic questions ({generic_count})")
             return get_next_step_question(current_step, language)
     
@@ -1272,6 +1286,22 @@ def check_repeated_question(coach_message: str, history: list, current_step: str
         
         if coach_message in recent_coach_messages[-2:]:
             logger.warning(f"[Safety Net] Detected EXACT repeated message")
+            return get_next_step_question(current_step, language)
+        
+        # === Generic patterns (English S1 loop) ===
+        generic_patterns_en = [
+            "tell me more about",
+            "can you tell me more",
+            "what exactly about",
+            "what specifically"
+        ]
+        generic_count = sum(
+            1 for msg_content in recent_coach_messages
+            if any(pattern in msg_content.lower() for pattern in generic_patterns_en)
+        )
+        threshold = 2 if current_step == "S1" else 3
+        if generic_count >= threshold:
+            logger.warning(f"[Safety Net] Too many generic questions ({generic_count})")
             return get_next_step_question(current_step, language)
     
     return None
