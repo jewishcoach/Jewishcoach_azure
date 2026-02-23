@@ -19,17 +19,45 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 bsd_engine = BsdEngine()
 
 
-def _v2_collected_data_to_cognitive_data(collected: dict) -> dict:
+def _infer_topic_from_messages(messages: list) -> str:
+    """
+    Fallback: infer coaching topic from first user messages (like previous system).
+    Used when LLM does not populate collected_data.topic in S1.
+    """
+    if not messages:
+        return ""
+    for msg in messages[:6]:
+        if not isinstance(msg, dict):
+            continue
+        sender = msg.get("sender") or msg.get("role")
+        if sender not in ("user", "human"):
+            continue
+        content = (msg.get("content") or "").strip()
+        if not content or content.startswith("{"):
+            continue
+        if 5 <= len(content) <= 80:
+            return content
+        if len(content) > 80:
+            return content[:77] + "..."
+    return ""
+
+
+def _v2_collected_data_to_cognitive_data(collected: dict, messages: list = None) -> dict:
     """
     Transform V2 collected_data schema to frontend CognitiveData format.
     SmartInsightsPanel expects: event_actual, gap_analysis, pattern_id, kmz_forces, etc.
     V2 has: emotions, thought, action_actual, gap_name, gap_score, pattern, forces, etc.
     """
     if not collected:
-        return {}
+        collected = {}
     out = {}
-    if collected.get("topic"):
-        out["topic"] = collected["topic"]
+    topic = collected.get("topic") or ""
+    if topic and str(topic).strip() and topic not in ("[נושא]", "[topic]"):
+        out["topic"] = str(topic).strip()
+    elif messages and len(messages) >= 2:
+        inferred = _infer_topic_from_messages(messages)
+        if inferred:
+            out["topic"] = inferred
     # event_actual: emotions_list, thought_content, action_content
     emotions = collected.get("emotions") or []
     thought = collected.get("thought")
@@ -265,7 +293,7 @@ def get_conversation_insights_safe(
                 logger.warning(f"Could not count turns: {e}")
             
             # Transform V2 collected_data to frontend CognitiveData schema
-            cognitive_data = _v2_collected_data_to_cognitive_data(collected_data)
+            cognitive_data = _v2_collected_data_to_cognitive_data(collected_data, messages)
             return {
                 "exists": True,
                 "current_stage": current_stage,
@@ -398,7 +426,7 @@ def get_conversation_insights(
                 logger.warning(f"Could not count turns: {e}")
                 turns_in_current_stage = 0
             
-            cognitive_data = _v2_collected_data_to_cognitive_data(collected_data)
+            cognitive_data = _v2_collected_data_to_cognitive_data(collected_data, messages)
             return {
                 "current_stage": current_stage,
                 "saturation_score": saturation_score,

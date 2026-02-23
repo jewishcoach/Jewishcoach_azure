@@ -14,7 +14,7 @@ import asyncio
 import time
 import os
 import re
-from typing import Dict, Any, Tuple, Optional
+from typing import Dict, Any, Tuple, Optional, List
 from langchain_core.messages import SystemMessage, HumanMessage
 
 from ..bsd.llm import get_azure_chat_llm
@@ -530,8 +530,9 @@ SYSTEM_PROMPT_HE = """# זהות ותפקיד
   - אל תשאל "מה קורה כשאתה..." (זה כללי!)
   - אל תשאל "איך זה מרגיש?" (זה S3!)
   - אל תקפוץ לרגשות לפני שיש אירוע ברור
+  - **אל תאמר "לפני שנדבר על רגשות"** – זה מבלבל. כשמבקשים אירוע: "בוא ניקח אירוע ספציפי" או "לפני שנדבר על זה"
   
-  📊 Gate Check: יש אירוע ספציפי אחד (מתי, עם מי, מה קרה) → עבור ל-S3
+  📊 Gate Check: יש אירוע ספציפי אחד (מתי, איפה, עם מי, מה קרה) → עבור ל-S3
 
 - **S3 (רגש - שהייה ואיסוף!):**
   🎯 **משימה:** איסוף **בדיוק 4 רגשות או יותר**.
@@ -1600,91 +1601,115 @@ def user_wants_to_continue(user_message: str) -> bool:
     return any(signal in msg_lower for signal in continue_signals)
 
 
-def has_sufficient_event_details(state: Dict[str, Any]) -> Tuple[bool, str]:
+def _check_event_criteria_bsd(state: Dict[str, Any], language: str = "he") -> Tuple[bool, List[str]]:
     """
-    Check if we have enough event details in S2 to move to S3 (emotions).
-    
-    Returns:
-        (has_sufficient, reason_if_not)
+    BSD methodology: אירוע מפורט = מתי + איפה + מי + מה קרה.
+    Returns (has_sufficient, list of missing: "מתי"|"איפה"|"מי"|"מה").
     """
-    # Fast path: LLM already extracted event description
     collected = state.get("collected_data") or {}
     event_desc = collected.get("event_description") or ""
-    if event_desc and len(event_desc.strip()) >= 30:
-        return True, ""
-    
     messages = state.get("messages", [])
-    
-    # Get user messages in current stage (rough approximation)
-    # Support both sender and role for API compatibility
-    recent_user_messages = [
+    recent_user = [
         msg.get("content", "")
-        for msg in messages[-10:]  # Look at last 10 messages
+        for msg in messages[-10:]
         if (msg.get("sender") == "user" or msg.get("role") == "user") and msg.get("content")
     ]
-    
-    if len(recent_user_messages) < 2:
+    all_text = " ".join(recent_user).lower() if recent_user else ""
+
+    # Fast path: LLM extracted structured event
+    if event_desc and len(event_desc.strip()) >= 40:
+        return True, []
+
+    if len(recent_user) < 2:
+        return False, ["מתי", "איפה", "מי", "מה"]
+
+    missing: List[str] = []
+
+    # מתי - מסגרת זמן ספציפית (לא "כשאני לחוץ" - זה תנאי, לא זמן)
+    mati_he = ["אתמול", "שבועיים", "לפני שבוע", "לפני חודש", "ביום שישי", "בשבוע שעבר", "בחודש שעבר", "לא מזמן", "לאחרונה"]
+    mati_en = ["yesterday", "last week", "last month", "a few weeks", "recently"]
+    mati_ok = any(p in all_text for p in mati_he) or any(p in all_text for p in mati_en)
+    if not mati_ok:
+        missing.append("מתי")
+
+    # איפה - מיקום/זירה
+    eyfa_he = ["בבית", "בחדר", "בסלון", "בעבודה", "במשרד", "בפגישה", "באוטו", "במטבח", "בכניסה"]
+    eyfa_en = ["at home", "at work", "in the", "in a meeting"]
+    eyfa_ok = any(p in all_text for p in eyfa_he) or any(p in all_text for p in eyfa_en)
+    if not eyfa_ok:
+        missing.append("איפה")
+
+    # מי - אנשים מעורבים (לא "אני" לבד)
+    mi_he = ["אשתי", "בעלי", "בן ", "בת ", "חבר", "עמית", "מנהל", "בוס", "ילדים", "משפחה", "עם ", "איתה", "איתו"]
+    mi_en = ["wife", "husband", "son", "daughter", "friend", "boss", "manager", "with "]
+    mi_ok = any(p in all_text for p in mi_he) or any(p in all_text for p in mi_en)
+    if not mi_ok:
+        missing.append("מי")
+
+    # מה - מה קרה (אינטראקציה, דיאלוג, תגובה)
+    ma_he = ["קרה", "אמר", "אמרה", "שאל", "הגיב", "נאמר", "נפגע", "דיברנו", "שיחה", "מריבה", "ראיתי", "שמעתי", "מתייחס"]
+    ma_en = ["said", "asked", "happened", "told", "talked", "argued", "saw", "heard"]
+    ma_ok = any(p in all_text for p in ma_he) or any(p in all_text for p in ma_en)
+    if not ma_ok:
+        missing.append("מה")
+
+    # BSD: אם יש 3+ מ-4 = מספיק (גמישות סבירה)
+    has_enough = (mati_ok and mi_ok and ma_ok) or (eyfa_ok and mi_ok and ma_ok)
+    if has_enough:
+        return True, []
+    return False, missing if missing else ["מתי", "איפה", "מי", "מה"]
+
+
+def has_sufficient_event_details(state: Dict[str, Any]) -> Tuple[bool, str]:
+    """
+    Check if we have enough event details per BSD: מתי, איפה, מי, מה קרה.
+    Returns (has_sufficient, reason_if_not) - reason is comma-separated missing criteria.
+    """
+    has_enough, missing = _check_event_criteria_bsd(state)
+    if has_enough:
+        return True, ""
+    if not missing:
         return False, "need_more_responses"
-    
-    # Check total length (not just "כן" / "לא")
-    total_length = sum(len(msg) for msg in recent_user_messages)
-    if total_length < 40:
-        return False, "responses_too_short"
-    
-    # Check for detail indicators
-    detail_words_he = ["מי", "איפה", "אמר", "עשה", "הגיב", "קרה", "היה"]
-    detail_words_en = ["who", "where", "said", "did", "happened", "was", "were"]
-    
-    all_text = " ".join(recent_user_messages).lower()
-    has_he_details = any(word in all_text for word in detail_words_he)
-    has_en_details = any(word in all_text for word in detail_words_en)
-    
-    if not (has_he_details or has_en_details):
-        return False, "missing_details"
-    
-    return True, ""
+    return False, ",".join(missing)
 
 
 def get_explanatory_response_for_missing_details(reason: str, language: str) -> str:
     """
-    Generate an explanatory response when user is frustrated but we need more info.
+    BSD-aligned: ask TARGETED questions based on what's missing (מתי, איפה, מי, מה).
     """
+    missing = [m.strip() for m in reason.split(",") if m.strip()] if reason else []
+    if not missing:
+        missing = ["מתי", "איפה", "מי", "מה"]
+
     if language == "he":
-        explanations = {
-            "need_more_responses": (
-                "אני מבין שאתה רוצה להמשיך. "
-                "כדי שנוכל לזהות את הדפוס שלך בצורה מדויקת, אני צריך עוד קצת פרטים על האירוע הספציפי. "
-                "ספר לי - מה בדיוק קרה שם?"
-            ),
-            "responses_too_short": (
-                "אני שומע שאתה רוצה להמשיך. "
-                "הסיבה שאני שואל על פרטים היא שכדי לזהות את הדפוס שלך, אני צריך להבין את המצב המלא. "
-                "תוכל לספר לי עוד קצת על מה שקרה? מי היה שם? מה בדיוק נאמר?"
-            ),
-            "missing_details": (
-                "אני מבין. הסיבה שאני צריך פרטים נוספים היא שהדפוס שלך מתגלה דרך המצבים הספציפיים. "
-                "ספר לי בבקשה - מי עוד היה במצב הזה? מה בדיוק נאמר או קרה?"
-            )
-        }
-        return explanations.get(reason, explanations["missing_details"])
+        # שאלות ממוקדות לפי מה שחסר (BSD: מתי, איפה, מי, מה)
+        q = []
+        if "מתי" in missing:
+            q.append("מתי זה היה לאחרונה? לפני שבוע? אתמול?")
+        if "איפה" in missing:
+            q.append("איפה הייתם? בבית? בעבודה? בשיחה?")
+        if "מי" in missing:
+            q.append("עם מי היה? מי עוד היה שם?")
+        if "מה" in missing:
+            q.append("מה בדיוק קרה? מה נאמר? איך הגיבו?")
+        if not q:
+            q = ["מה בדיוק קרה שם?"]
+        prefix = "אני מבין שאתה רוצה להמשיך. כדי שנוכל לזהות את הדפוס, אני צריך רגע אחד ספציפי. "
+        return prefix + " ".join(q)
     else:
-        explanations = {
-            "need_more_responses": (
-                "I understand you want to continue. "
-                "To accurately identify your pattern, I need a few more details about the specific event. "
-                "Tell me - what exactly happened there?"
-            ),
-            "responses_too_short": (
-                "I hear you want to move forward. "
-                "The reason I'm asking for details is that to identify your pattern, I need to understand the full situation. "
-                "Can you tell me more about what happened? Who was there? What exactly was said?"
-            ),
-            "missing_details": (
-                "I understand. The reason I need more details is that your pattern reveals itself through specific situations. "
-                "Please tell me - who else was in this situation? What exactly was said or happened?"
-            )
-        }
-        return explanations.get(reason, explanations["missing_details"])
+        q = []
+        if "מתי" in missing:
+            q.append("When did it happen? Last week? Recently?")
+        if "איפה" in missing:
+            q.append("Where were you? At home? At work?")
+        if "מי" in missing:
+            q.append("Who was there? Who else was involved?")
+        if "מה" in missing:
+            q.append("What exactly happened? What was said? How did they react?")
+        if not q:
+            q = ["What exactly happened there?"]
+        prefix = "I understand you want to continue. To identify your pattern, I need one specific moment. "
+        return prefix + " ".join(q)
 
 
 def validate_stage_transition(
@@ -1864,28 +1889,14 @@ def validate_stage_transition(
             logger.info(f"[Safety Net] LLM already asked S3 question, allowing transition despite {s2_turns} turns")
             return True, None  # Allow transition
         
-        # If LLM hasn't moved to S3 yet, check turns count
+        # If LLM hasn't moved to S3 yet: use BSD-aligned targeted questions (מתי, איפה, מי, מה)
         if s2_turns < 3:
-            logger.warning(f"[Safety Net] Blocked S2→S3: only {s2_turns} turns in S2, need 3+")
-            if language == "he":
-                # GENERIC: Start with general questions, then specific (not dialogue-first)
-                followup_questions = [
-                    "מה עוד קרה באותו רגע? ספר לי יותר פרטים.",
-                    "איך זה התפתח? מה קרה **אחרי** זה?",
-                    "מי עוד היה שם? איך **הם** הגיבו?",
-                    "אם היה דיאלוג, מה **בדיוק** נאמר?"
-                ]
-                question = followup_questions[min(s2_turns, len(followup_questions) - 1)]
-                return False, question
-            else:
-                followup_questions = [
-                    "What else happened in that moment? Tell me more details.",
-                    "How did it develop? What happened **after** that?",
-                    "Who else was there? How did **they** react?",
-                    "If there was dialogue, what **exactly** was said?"
-                ]
-                question = followup_questions[min(s2_turns, len(followup_questions) - 1)]
-                return False, question
+            has_info, reason = has_sufficient_event_details(state)
+            if has_info:
+                return True, None  # We have enough per BSD criteria
+            logger.warning(f"[Safety Net] Blocked S2→S3: missing ({reason})")
+            question = get_explanatory_response_for_missing_details(reason, language)
+            return False, question
     
     # S3→S4: Need emotions (at least 3 turns in S3)
     if old_step == "S3" and new_step == "S4":

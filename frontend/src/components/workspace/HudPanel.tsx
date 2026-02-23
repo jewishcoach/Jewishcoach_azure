@@ -1,16 +1,18 @@
 import { useEffect, useState, memo } from 'react';
-import { Heart, Brain, Target, Zap, Archive, Gem, Layers } from 'lucide-react';
+import { Heart, Brain, Target, Zap, Archive } from 'lucide-react';
 import { apiClient } from '../../services/api';
 import { EnrichmentVideos } from './EnrichmentVideos';
 
 interface CognitiveData {
   topic?: string;
   emotions?: string[];
+  event_actual?: { emotions_list?: string[]; thought_content?: string; action_content?: string };
   thought?: string;
   action_actual?: string;
   action_desired?: string;
   gap_name?: string;
   gap_score?: number;
+  gap_analysis?: { name?: string; score?: number };
   pattern?: string;
   stance?: { gains?: string[]; losses?: string[] };
   forces?: { source?: string[]; nature?: string[] };
@@ -49,9 +51,10 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', onArchiveCl
     return () => { if (interval) clearInterval(interval); };
   }, [conversationId]);
 
-  const hasMekor = (data?.forces?.source?.length ?? 0) > 0;
-  const hasTeva = !!data?.pattern;
-  const hasOther = !!(data?.topic || data?.emotions?.length || data?.thought || data?.gap_name);
+  const emotions = data?.emotions ?? data?.event_actual?.emotions_list ?? [];
+  const thought = data?.thought ?? data?.event_actual?.thought_content;
+  const gapName = data?.gap_name ?? data?.gap_analysis?.name;
+  const gapScore = data?.gap_score ?? data?.gap_analysis?.score;
 
   const Card = ({ icon, title, items, value, empty, placeholder }: { icon: React.ReactNode; title: string; items?: string[]; value?: string; empty?: boolean; placeholder?: string }) => (
     <div
@@ -110,34 +113,11 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', onArchiveCl
         </div>
       )}
       <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
-        {/* כוחות מקור - premium ID card */}
-        <section>
-          <h4 className="text-[12px] font-light uppercase tracking-[0.1em] mb-4" style={{ fontFamily: "'Cormorant Garamond', 'Playfair Display', 'Heebo', serif", color: 'rgba(245,245,240,0.8)' }}>כוחות מקור</h4>
-          <Card
-            icon={<Gem size={16} strokeWidth={1.5} />}
-            title="ערכים"
-            items={data?.forces?.source}
-            empty={!hasMekor}
-            placeholder="הערכים שעולים בשיחה יופיעו כאן"
-          />
-        </section>
-        {/* כוחות טבע - premium ID card */}
-        <section>
-          <h4 className="text-[12px] font-light uppercase tracking-[0.1em] mb-4" style={{ fontFamily: "'Cormorant Garamond', 'Playfair Display', 'Heebo', serif", color: 'rgba(245,245,240,0.8)' }}>כוחות טבע</h4>
-          <Card
-            icon={<Layers size={16} strokeWidth={1.5} />}
-            title="דפוס"
-            value={data?.pattern}
-            empty={!hasTeva}
-            placeholder="הדפוס שזוהה יופיע כאן"
-          />
-        </section>
-        {/* Other data - when available */}
-        {data?.topic && <Card icon={<Target size={16} strokeWidth={1.5} />} title="נושא" value={data.topic} />}
-        {data?.emotions?.length ? <Card icon={<Heart size={16} strokeWidth={1.5} />} title="רגשות" items={data.emotions} /> : null}
-        {data?.thought && <Card icon={<Brain size={16} strokeWidth={1.5} />} title="מחשבה" value={data.thought} />}
-        {data?.gap_name && <Card icon={<Zap size={16} strokeWidth={1.5} />} title="פער" value={`${data.gap_name}${data.gap_score != null ? ` (${data.gap_score})` : ''}`} />}
-        {data?.forces?.nature?.length ? <Card icon={<Zap size={16} strokeWidth={1.5} />} title="יכולות" items={data.forces!.nature} /> : null}
+        {/* נושא האימון - תגית לפי השיחה (כמו במערכת הקודמת) */}
+        {data?.topic && <Card icon={<Target size={16} strokeWidth={1.5} />} title="נושא האימון" value={data.topic} />}
+        {emotions.length ? <Card icon={<Heart size={16} strokeWidth={1.5} />} title="רגשות" items={emotions} /> : null}
+        {thought && <Card icon={<Brain size={16} strokeWidth={1.5} />} title="מחשבה" value={thought} />}
+        {gapName && <Card icon={<Zap size={16} strokeWidth={1.5} />} title="פער" value={`${gapName}${gapScore != null ? ` (${gapScore})` : ''}`} />}
 
         {/* סרטוני העשרה - מתחת לכוחות מקור, מותאם למובייל */}
         <EnrichmentVideos currentPhase={currentPhase} />
