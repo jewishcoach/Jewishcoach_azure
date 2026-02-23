@@ -31,6 +31,8 @@ python3 test_prompt_pipeline_local.py
 python3 test_prompts_simple.py
 ```
 
+Note: these scripts resolve paths relative to repository root and are CI-runner friendly.
+
 ## CI/CD
 
 Backend deployment pipeline:

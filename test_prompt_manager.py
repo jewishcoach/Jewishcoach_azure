@@ -4,11 +4,11 @@
 Prompt manager smoke tests for BSD V2 modular markdown prompts.
 """
 
-import sys
 import importlib.util
 from pathlib import Path
 
-PROMPT_MANAGER_PATH = Path("/home/ishai/code/Jewishcoach_azure/backend/app/bsd_v2/prompts/prompt_manager.py")
+REPO_ROOT = Path(__file__).resolve().parent
+PROMPT_MANAGER_PATH = REPO_ROOT / "backend/app/bsd_v2/prompts/prompt_manager.py"
 spec = importlib.util.spec_from_file_location("prompt_manager", PROMPT_MANAGER_PATH)
 prompt_manager = importlib.util.module_from_spec(spec)
 assert spec and spec.loader

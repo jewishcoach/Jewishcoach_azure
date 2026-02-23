@@ -13,7 +13,8 @@ import importlib.util
 from pathlib import Path
 
 
-PROMPT_MANAGER_PATH = Path("/home/ishai/code/Jewishcoach_azure/backend/app/bsd_v2/prompts/prompt_manager.py")
+REPO_ROOT = Path(__file__).resolve().parent
+PROMPT_MANAGER_PATH = REPO_ROOT / "backend/app/bsd_v2/prompts/prompt_manager.py"
 spec = importlib.util.spec_from_file_location("prompt_manager", PROMPT_MANAGER_PATH)
 prompt_manager = importlib.util.module_from_spec(spec)
 assert spec and spec.loader
@@ -21,7 +22,7 @@ spec.loader.exec_module(prompt_manager)
 
 assemble_system_prompt = prompt_manager.assemble_system_prompt
 
-STATE_SCHEMA_PATH = Path("/home/ishai/code/Jewishcoach_azure/backend/app/bsd_v2/state_schema_v2.py")
+STATE_SCHEMA_PATH = REPO_ROOT / "backend/app/bsd_v2/state_schema_v2.py"
 state_spec = importlib.util.spec_from_file_location("state_schema_v2", STATE_SCHEMA_PATH)
 state_schema_v2 = importlib.util.module_from_spec(state_spec)
 assert state_spec and state_spec.loader
