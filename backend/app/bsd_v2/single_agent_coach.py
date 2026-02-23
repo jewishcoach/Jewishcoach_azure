@@ -1075,7 +1075,7 @@ def get_next_step_question(current_step: str, language: str = "he") -> str:
     if language == "he":
         step_questions = {
             "S0": "על מה תרצה להתאמן?",
-            "S1": "ספר לי על פעם אחת ספציפית שבו זה קרה - מתי זה היה?",  # Move to S2!
+            "S1": "עכשיו כדי שנוכל להבין לעומק, אני מבקש שתשתף אותי בסיפור אחד ספציפי – שיחה או אינטראקציה שהתרחשה לאחרונה, עם אנשים נוספים, שבה הרגשת סערה רגשית. ספר לי: עם מי זה היה? מתי? מה קרה שם?",  # Move to S2!
             "S2": "ספר לי על רגע אחד ספציפי שבו זה קרה - מתי זה היה?",
             "S3": "אני מבין. עכשיו אני רוצה לשמוע - מה עבר לך בראש באותו רגע?",
             "S4": "מה עשית באותו רגע?",
@@ -1177,15 +1177,18 @@ def check_repeated_question(coach_message: str, history: list, current_step: str
         if msg.get("sender") == "user"
     ]
     
-    # === CRITICAL: S1 + emotions question = wrong stage! Block immediately ===
-    if current_step == "S1":
-        emotions_indicators_he = ["מה הרגשת", "איזה רגש", "להתעמק ברגשות", "מה עבר בך", "איפה הרגשת"]
+    # === CRITICAL: S1/S2 + emotions question without event = wrong! Block immediately ===
+    if current_step in ("S1", "S2"):
+        emotions_indicators_he = [
+            "מה הרגשת", "איזה רגש", "להתעמק ברגשות", "מה עבר בך", "איפה הרגשת",
+            "עכשיו אני רוצה להתעמק ברגשות", "מה הרגשת באותו רגע"  # exact phrases from bug
+        ]
         emotions_indicators_en = ["what did you feel", "what emotion", "delve into emotions", "how did you feel"]
         indicators = emotions_indicators_he if language == "he" else emotions_indicators_en
         coach_lower = coach_message.lower()
         if any(ind in coach_lower for ind in indicators):
             _bsd_log("REPETITION_RULE", rule="S1_emotions_question", step=current_step)
-            logger.warning(f"[Safety Net] S1 but coach asked emotions question - BLOCKING (no event yet!)")
+            logger.warning(f"[Safety Net] {current_step} but coach asked emotions question - BLOCKING (no event yet!)")
             return get_next_step_question(current_step, language)
     
     if language == "he":
@@ -1249,7 +1252,8 @@ def check_repeated_question(coach_message: str, history: list, current_step: str
             "ספר לי יותר על",
             "תוכל לספר לי יותר",
             "תוכל לספר לי יותר על",
-            "מה בדיוק ב"
+            "מה בדיוק ב", "מה בדיוק היית", "מה בדיוק",
+            "מה בזה מעסיק", "מה בזה מעסיק אותך",  # S1 drilling loop
         ]
         
         generic_count = sum(
@@ -1725,6 +1729,14 @@ def get_explanatory_response_for_missing_details(reason: str, language: str) -> 
         return prefix + " ".join(q)
 
 
+def _safe_stage_index(step: Any, stage_order: List[str]) -> int:
+    """Return stage index or -1 if invalid. Never raises."""
+    if step is None or not isinstance(step, str):
+        return -1
+    s = step.strip()
+    return stage_order.index(s) if s in stage_order else -1
+
+
 def validate_stage_transition(
     old_step: str,
     new_step: str,
@@ -1747,10 +1759,10 @@ def validate_stage_transition(
         - If is_valid=True, allow the transition
         - If is_valid=False, return correction message to override LLM response
     """
-    # Compute stage indexes once (guards against unbound locals)
+    # Compute stage indexes once - ALWAYS set (guards against UnboundLocalError)
     stage_order = ["S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13"]
-    old_idx = stage_order.index(old_step) if old_step in stage_order else -1
-    new_idx = stage_order.index(new_step) if new_step in stage_order else -1
+    old_idx = _safe_stage_index(old_step, stage_order)
+    new_idx = _safe_stage_index(new_step, stage_order)
 
     # GENERIC SOLUTION: Check if user wants to move on
     recent_user_messages = [
@@ -2369,7 +2381,14 @@ So feel free to share an event from any area where you interacted with people an
 
             # 1) Preferred path: full JSON payload
             try:
-                parsed = json.loads(response_text)
+                raw = json.loads(response_text)
+                parsed = raw if isinstance(raw, dict) else None
+                if parsed is None and isinstance(raw, str):
+                    # LLM returned a bare string like "question?"
+                    parsed = {
+                        "coach_message": raw,
+                        "internal_state": {"current_step": state.get("current_step", "S1"), "saturation_score": state.get("saturation_score", 0.3), "reflection": "Parsed as string"}
+                    }
             except json.JSONDecodeError:
                 # 2) Fallback: JSON prefix + trailing natural-language line
                 decoder = json.JSONDecoder()
@@ -2385,6 +2404,22 @@ So feel free to share an event from any area where you interacted with people an
                     except json.JSONDecodeError:
                         continue
 
+            # 3) Last resort: wrap plain text as valid structure (avoids crash, enables safety nets)
+            if parsed is None and response_text.strip():
+                plain = response_text.strip()
+                if not plain.startswith("{"):
+                    logger.warning(f"[BSD V2] Wrapping plain text as synthetic JSON")
+                    inferred_step = state.get("current_step", "S1")
+                    if inferred_step == "S0" and user_message and len(user_message.strip()) >= 2:
+                        inferred_step = "S1"
+                    parsed = {
+                        "coach_message": plain,
+                        "internal_state": {
+                            "current_step": inferred_step,
+                            "saturation_score": state.get("saturation_score", 0.3),
+                            "reflection": "Synthetic from plain text"
+                        }
+                    }
             if parsed is None:
                 raise json.JSONDecodeError("Could not parse model JSON payload", response_text, 0)
 
@@ -2430,14 +2465,23 @@ So feel free to share an event from any area where you interacted with people an
             logger.error(f"[BSD V2] Response text: {response_text}")
             
             # Fallback: treat entire response as coach message
-            coach_message = response_text
+            coach_message = (response_text or "").strip()
+            current_step = state.get("current_step", "S1")
+            
+            # When JSON fails: S0→S1 if user has engaged (prevents stuck at S0)
+            if current_step == "S0":
+                msg_count = len([m for m in state.get("messages", []) if m.get("sender") == "user"])
+                if msg_count >= 1 and user_message and len(user_message.strip()) >= 2:
+                    current_step = "S1"
+                    logger.info(f"[BSD V2] JSON failed but user engaged → inferring S0→S1")
+            
             internal_state = {
-                "current_step": state["current_step"],
-                "saturation_score": state["saturation_score"],
+                "current_step": current_step,
+                "saturation_score": state.get("saturation_score", 0.3),
                 "reflection": "Failed to parse structured output"
             }
-            if not coach_message or not coach_message.strip():
-                coach_message = get_next_step_question(state.get("current_step", "S1"), language)
+            if not coach_message:
+                coach_message = get_next_step_question(current_step, language)
         t6 = time.time()
         logger.info(f"[PERF] Parse JSON: {(t6-t5)*1000:.0f}ms")
 

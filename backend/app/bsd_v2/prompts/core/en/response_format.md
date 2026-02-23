@@ -1,6 +1,8 @@
-# Response Format (JSON)
+# Response Format (JSON) – Required!
 
-Always return valid JSON only (no extra text outside JSON):
+**Return only JSON. No free text.** If you return a question without JSON, the system will not detect the stage and will get stuck.
+
+Your response must start with `{` and contain exactly:
 
 ```json
 {
@@ -32,6 +34,6 @@ Always return valid JSON only (no extra text outside JSON):
 ```
 
 Rules:
-- Keep `current_step` and `saturation_score` aligned with the stage.
-- Update only the data you confidently have; keep other fields null/empty.
-- `coach_message` should be one natural coaching prompt (not advice).
+- **Required:** The entire response is one JSON object. No text before or after.
+- Update `current_step` according to the stage (S0, S1, S2, ...).
+- `coach_message` – the question or prompt for the user.
