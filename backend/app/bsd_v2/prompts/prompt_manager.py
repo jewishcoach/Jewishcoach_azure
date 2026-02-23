@@ -79,18 +79,20 @@ def assemble_system_prompt(current_step: str, language: str = "he") -> str:
     stage_content = _load_file(str(stage_path)).strip()
 
     stage_title = f"# שלב נוכחי: {current_step}" if lang == "he" else f"# Current Stage: {current_step}"
+    response_format = core_sections[-1]
 
+    # Inject JSON format right after stage title (in every stage) so model always sees it
     return f"""{'\n\n---\n\n'.join(core_sections[:-1])}
 
 ---
 
 {stage_title}
 
-{stage_content}
+{response_format}
 
 ---
 
-{core_sections[-1]}
+{stage_content}
 """
 
 

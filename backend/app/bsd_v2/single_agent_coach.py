@@ -994,9 +994,7 @@ def detect_stage_question_mismatch(coach_message: str, current_step: str, langua
 def has_clear_topic_for_s2(state: Dict[str, Any]) -> Tuple[bool, str]:
     """
     Minimal safety net: block S1→S2 only in extreme cases.
-    
-    Trust the LLM's judgment. Only block when we have very little content
-    (e.g. 1 short message like "על שמחה" with no context).
+    Criteria are now in the prompt (s1_topic.md); this is a fallback for edge cases.
     
     Returns:
         (has_clear_topic, reason_if_not)
@@ -1008,14 +1006,11 @@ def has_clear_topic_for_s2(state: Dict[str, Any]) -> Tuple[bool, str]:
         if msg.get("sender") == "user" and msg.get("content", "").strip()
     ]
     
-    # Block only if: 1 message or less, OR total content very short
+    # Block only if: 0-1 user messages (extreme case). Trust LLM when 2+
     if len(recent_user_msgs) < 2:
         return False, "need_more_clarification"
     
-    total_length = sum(len(msg) for msg in recent_user_msgs)
-    if total_length < 30:
-        return False, "too_vague"
-    
+    # With 2+ messages, trust the prompt/LLM - topic criteria are in s1_topic.md
     return True, ""
 
 
