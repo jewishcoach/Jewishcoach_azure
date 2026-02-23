@@ -24,6 +24,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validate prompt pipeline
+        run: |
+          python3 test_prompt_manager.py
+          python3 test_prompt_pipeline_local.py
+          python3 test_prompts_simple.py
+
       - name: Create deploy zip
         run: |
           cd backend

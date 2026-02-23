@@ -1,10 +1,10 @@
-# פורמט תשובה (JSON)
+# Response Format (JSON)
 
-החזר **תמיד** JSON תקין בפורמט זה (ללא טקסט מחוץ ל-JSON):
+Always return valid JSON only (no extra text outside JSON):
 
 ```json
 {
-  "coach_message": "התשובה למשתמש",
+  "coach_message": "response to user",
   "internal_state": {
     "current_step": "S1",
     "saturation_score": 0.5,
@@ -26,12 +26,12 @@
       "vision": null,
       "commitment": null
     },
-    "reflection": "מחשבה פנימית קצרה"
+    "reflection": "short internal reasoning note"
   }
 }
 ```
 
-כללים חשובים:
-- עדכן `current_step` ו-`saturation_score` בהתאם לשלב הנוכחי.
-- עדכן ב-`collected_data` רק מידע חדש/מדויק; מותר להשאיר `null`/ריק לשדות שלא רלוונטיים עדיין.
-- `coach_message` חייב להיות שאלה/הנחיה אחת טבעית למשתמש (ללא עצות).
+Rules:
+- Keep `current_step` and `saturation_score` aligned with the stage.
+- Update only the data you confidently have; keep other fields null/empty.
+- `coach_message` should be one natural coaching prompt (not advice).

@@ -20,6 +20,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from ..bsd.llm import get_azure_chat_llm
 from .state_schema_v2 import add_message, get_conversation_history
 from .prompt_compact import SYSTEM_PROMPT_COMPACT_HE, SYSTEM_PROMPT_COMPACT_EN
+from .prompts.prompt_manager import assemble_system_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -151,6 +152,34 @@ def _build_dynamic_system_prompt(base_prompt: str, stage: str, user_message: str
 
     example_block = title + "\n".join(f"- {e}" for e in examples)
     return core + example_block
+
+
+def _get_system_prompt(
+    state: Dict[str, Any],
+    user_message: str,
+    language: str,
+) -> str:
+    """
+    Select runtime prompt strategy.
+    BSD_V2_PROMPT_MODE=markdown -> modular prompt_manager (default)
+    BSD_V2_PROMPT_MODE=compact  -> legacy compact prompt + dynamic examples
+    """
+    current_step = state.get("current_step", "S1")
+    prompt_mode = os.getenv("BSD_V2_PROMPT_MODE", "markdown").strip().lower()
+
+    if prompt_mode == "compact":
+        base_prompt = SYSTEM_PROMPT_COMPACT_HE if language == "he" else SYSTEM_PROMPT_COMPACT_EN
+        prompt = _build_dynamic_system_prompt(
+            base_prompt=base_prompt,
+            stage=current_step,
+            user_message=user_message,
+            language=language,
+        )
+        logger.info("[PROMPT] Using compact mode")
+        return prompt
+
+    logger.info("[PROMPT] Using markdown stage mode")
+    return assemble_system_prompt(current_step=current_step, language=language)
 
 
 async def _ainvoke_with_prompt_cache(llm, messages, cache_key: str):
@@ -2190,17 +2219,11 @@ So feel free to share an event from any area where you interacted with people an
         t2 = time.time()
         logger.info(f"[PERF] Build context: {(t2-t1)*1000:.0f}ms ({len(context)} chars)")
         
-        # 2. Prepare messages:
-        # Keep full BSD methodology, but inject only relevant examples dynamically.
-        base_prompt = SYSTEM_PROMPT_COMPACT_HE if language == "he" else SYSTEM_PROMPT_COMPACT_EN
-        system_prompt = _build_dynamic_system_prompt(
-            base_prompt=base_prompt,
-            stage=state.get("current_step", "S1"),
-            user_message=user_message,
-            language=language,
-        )
+        # 2. Prepare messages using modular stage-aware prompt assembly.
+        current_step = state.get("current_step", "S1")
+        system_prompt = _get_system_prompt(state=state, user_message=user_message, language=language)
         logger.info(
-            "[PERF] System prompt chars after dynamic example retrieval: %s",
+            "[PERF] System prompt chars from prompt_manager: %s",
             len(system_prompt),
         )
         
@@ -2214,8 +2237,8 @@ So feel free to share an event from any area where you interacted with people an
         llm = get_azure_chat_llm(purpose="talker")  # Higher temperature for natural conversation
         # Azure prompt caching is enabled by default for supported models.
         # prompt_cache_key improves cache hit routing for repeated BSD system-prefix.
-        cache_key_prefix = os.getenv("AZURE_OPENAI_PROMPT_CACHE_KEY_PREFIX", "bsd_v2_compact_prompt")
-        cache_key = f"{cache_key_prefix}:main_coach:{language}"
+        cache_key_prefix = os.getenv("AZURE_OPENAI_PROMPT_CACHE_KEY_PREFIX", "bsd_v2_markdown_prompt")
+        cache_key = f"{cache_key_prefix}:main_coach:{language}:{current_step}"
         response = await _ainvoke_with_prompt_cache(llm, messages, cache_key=cache_key)
         t4 = time.time()
         
