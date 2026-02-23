@@ -154,10 +154,10 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
   const onArchiveClick = useCallback(() => setArchiveOpen(true), []);
 
   return (
-    <div className="flex h-full w-full bg-[#020617]">
-      {/* LEFT: Cognitive HUD (Kamaz) - Mekor, Teva, Archive */}
-      <div className="w-72 flex-shrink-0 border-r border-white/[0.08] bg-[#020617]/80 overflow-hidden">
-        <HudPanel conversationId={conversationId} onArchiveClick={() => setArchiveOpen(true)} />
+    <div className="flex flex-col md:flex-row h-full w-full bg-[#020617] overflow-hidden">
+      {/* RIGHT in RTL: Cognitive HUD - Mekor, Teva, Archive, Videos. On mobile: below chat */}
+      <div className="order-2 md:order-1 w-full md:w-64 lg:w-72 flex-shrink-0 border-t md:border-t-0 md:border-r border-white/[0.08] bg-[#020617]/80 overflow-hidden min-h-0 max-h-[45vh] md:max-h-none">
+        <HudPanel conversationId={conversationId} currentPhase={currentPhase} onArchiveClick={() => setArchiveOpen(true)} />
       </div>
 
       {/* Archive Drawer */}
@@ -173,9 +173,9 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
         isRTL={isRTL}
       />
 
-      {/* CENTER: Resonance Workspace - Obsidian Black */}
+      {/* CENTER: Resonance Workspace - Obsidian Black. On mobile: first */}
       <motion.div
-        className="flex flex-col min-w-0 relative overflow-hidden bg-[#020617]"
+        className="order-1 md:order-2 flex flex-col min-w-0 relative overflow-hidden bg-[#020617] flex-1"
         initial={false}
         animate={{ flex: showDashboard ? 0 : 1, minWidth: showDashboard ? 0 : undefined }}
         transition={{ type: 'tween', duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
@@ -288,9 +288,9 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
         </AnimatePresence>
       </motion.div>
 
-      {/* RIGHT: Vision Ladder (S1-S12) / Dashboard - expands when Dashboard opens */}
+      {/* LEFT in RTL: Vision Ladder / Dashboard. On mobile: last */}
       <motion.div
-        className="flex flex-col border-l border-white/[0.08] overflow-hidden flex-shrink-0"
+        className="order-3 flex flex-col border-t md:border-t-0 md:border-l border-white/[0.08] overflow-hidden flex-shrink-0"
         initial={false}
         animate={{
           flex: showDashboard ? 1 : 0,

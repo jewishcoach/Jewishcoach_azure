@@ -1,6 +1,7 @@
 import { useEffect, useState, memo } from 'react';
 import { Heart, Brain, Target, Zap, Archive, Gem, Layers } from 'lucide-react';
 import { apiClient } from '../../services/api';
+import { EnrichmentVideos } from './EnrichmentVideos';
 
 interface CognitiveData {
   topic?: string;
@@ -17,10 +18,11 @@ interface CognitiveData {
 
 interface HudPanelProps {
   conversationId: number | null;
+  currentPhase?: string;
   onArchiveClick?: () => void;
 }
 
-export const HudPanel = memo(({ conversationId, onArchiveClick }: HudPanelProps) => {
+export const HudPanel = memo(({ conversationId, currentPhase = 'S0', onArchiveClick }: HudPanelProps) => {
   const [data, setData] = useState<CognitiveData | null>(null);
 
   useEffect(() => {
@@ -94,7 +96,7 @@ export const HudPanel = memo(({ conversationId, onArchiveClick }: HudPanelProps)
   );
 
   return (
-    <div className="w-72 flex flex-col h-full bg-[#020617]/50">
+    <div className="w-full md:w-72 flex flex-col h-full bg-[#020617]/50 min-h-0">
       {/* Archive button - top corner */}
       {onArchiveClick && (
         <div className="p-5 border-b border-white/[0.06] flex justify-end">
@@ -136,6 +138,9 @@ export const HudPanel = memo(({ conversationId, onArchiveClick }: HudPanelProps)
         {data?.thought && <Card icon={<Brain size={16} strokeWidth={1.5} />} title="מחשבה" value={data.thought} />}
         {data?.gap_name && <Card icon={<Zap size={16} strokeWidth={1.5} />} title="פער" value={`${data.gap_name}${data.gap_score != null ? ` (${data.gap_score})` : ''}`} />}
         {data?.forces?.nature?.length ? <Card icon={<Zap size={16} strokeWidth={1.5} />} title="יכולות" items={data.forces!.nature} /> : null}
+
+        {/* סרטוני העשרה - מתחת לכוחות מקור, מותאם למובייל */}
+        <EnrichmentVideos currentPhase={currentPhase} />
       </div>
     </div>
   );

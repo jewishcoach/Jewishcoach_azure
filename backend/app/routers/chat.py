@@ -18,6 +18,66 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 bsd_engine = BsdEngine()
 
+
+def _v2_collected_data_to_cognitive_data(collected: dict) -> dict:
+    """
+    Transform V2 collected_data schema to frontend CognitiveData format.
+    SmartInsightsPanel expects: event_actual, gap_analysis, pattern_id, kmz_forces, etc.
+    V2 has: emotions, thought, action_actual, gap_name, gap_score, pattern, forces, etc.
+    """
+    if not collected:
+        return {}
+    out = {}
+    if collected.get("topic"):
+        out["topic"] = collected["topic"]
+    # event_actual: emotions_list, thought_content, action_content
+    emotions = collected.get("emotions") or []
+    thought = collected.get("thought")
+    action_actual = collected.get("action_actual")
+    if emotions or thought or action_actual:
+        out["event_actual"] = {}
+        if emotions:
+            out["event_actual"]["emotions_list"] = emotions if isinstance(emotions, list) else [emotions]
+        if thought:
+            out["event_actual"]["thought_content"] = thought
+        if action_actual:
+            out["event_actual"]["action_content"] = action_actual
+    # gap_analysis
+    gap_name = collected.get("gap_name")
+    gap_score = collected.get("gap_score")
+    if gap_name is not None or gap_score is not None:
+        out["gap_analysis"] = {"name": gap_name, "score": gap_score}
+    # pattern_id: V2 has flat "pattern" - use as name
+    pattern = collected.get("pattern")
+    stance = collected.get("stance") or {}
+    if not isinstance(stance, dict):
+        stance = {}
+    if pattern:
+        paradigm = (stance.get("gains") or [""])[0] if stance.get("gains") else ""
+        out["pattern_id"] = {"name": pattern, "paradigm": paradigm}
+    # being_desire: V2 has stance.gains/losses, renewal, vision - map identity from renewal
+    renewal = collected.get("renewal")
+    vision = collected.get("vision")
+    if renewal or vision or stance.get("gains") or stance.get("losses"):
+        out["being_desire"] = {"identity": renewal or vision or (stance.get("gains") or [""])[0] if stance.get("gains") else ""}
+    # kmz_forces: V2 has forces.source, forces.nature
+    forces = collected.get("forces") or {}
+    if not isinstance(forces, dict):
+        forces = {}
+    if forces.get("source") or forces.get("nature"):
+        out["kmz_forces"] = {
+            "source_forces": forces.get("source") or [],
+            "nature_forces": forces.get("nature") or []
+        }
+    # commitment: V2 has flat "commitment" - could be string or dict
+    commitment = collected.get("commitment")
+    if commitment:
+        if isinstance(commitment, dict):
+            out["commitment"] = commitment
+        else:
+            out["commitment"] = {"difficulty": str(commitment), "result": ""}
+    return out
+
 # OpenAI client for title generation
 openai_client = AzureOpenAI(
     api_key=os.getenv("AZURE_OPENAI_API_KEY"),
@@ -204,11 +264,13 @@ def get_conversation_insights_safe(
             except Exception as e:
                 logger.warning(f"Could not count turns: {e}")
             
+            # Transform V2 collected_data to frontend CognitiveData schema
+            cognitive_data = _v2_collected_data_to_cognitive_data(collected_data)
             return {
                 "exists": True,
                 "current_stage": current_stage,
                 "saturation_score": saturation_score,
-                "cognitive_data": collected_data,
+                "cognitive_data": cognitive_data,
                 "metrics": {
                     "message_count": len(messages),
                     "turns_in_current_stage": turns_in_current_stage
@@ -336,10 +398,11 @@ def get_conversation_insights(
                 logger.warning(f"Could not count turns: {e}")
                 turns_in_current_stage = 0
             
+            cognitive_data = _v2_collected_data_to_cognitive_data(collected_data)
             return {
                 "current_stage": current_stage,
                 "saturation_score": saturation_score,
-                "cognitive_data": collected_data,
+                "cognitive_data": cognitive_data,
                 "metrics": {
                     "message_count": len(messages),
                     "turns_in_current_stage": turns_in_current_stage
