@@ -13,6 +13,9 @@ interface CognitiveData {
     emotions_list?: string[];
     thought_content?: string;
     action_content?: string;
+    action_desired?: string;
+    emotion_desired?: string;
+    thought_desired?: string;
   };
   gap_analysis?: {
     name?: string;
