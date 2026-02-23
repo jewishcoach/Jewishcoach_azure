@@ -1219,11 +1219,12 @@ def check_repeated_question(coach_message: str, history: list, current_step: str
             logger.warning(f"[Safety Net] Detected EXACT repeated message")
             return get_next_step_question(current_step, language)
         
-        # === Generic patterns (less critical) ===
+        # === Generic patterns (S1 loop: "תוכל לספר לי יותר" etc.) ===
         generic_patterns = [
             "ספר לי עוד על הרגע הזה",
             "מה בדיוק קרה",
-            "ספר לי יותר על"
+            "ספר לי יותר על",
+            "תוכל לספר לי יותר"
         ]
         
         generic_count = sum(
@@ -1233,7 +1234,7 @@ def check_repeated_question(coach_message: str, history: list, current_step: str
         
         if generic_count >= 3:
             logger.warning(f"[Safety Net] Too many generic questions ({generic_count})")
-            return "אני מבין. עכשיו אני רוצה להתעמק ברגשות. מה הרגשת באותו רגע?"
+            return get_next_step_question(current_step, language)
     
     else:  # English
         # Check if user said they're done
@@ -1746,15 +1747,15 @@ def validate_stage_transition(
                         break
         if language == "he":
             if topic:
-                msg = f"רגע, לפני שנדבר על רגשות - בוא ניקח **אירוע ספציפי אחד** שקרה לאחרונה. ספר לי על פעם אחת ש{topic} - מתי זה היה? עם מי?"
+                msg = f"בוא ניקח **אירוע ספציפי אחד** שקרה לאחרונה. ספר לי על פעם אחת ש{topic} - מתי זה היה? עם מי?"
             else:
-                msg = "רגע, לפני שנדבר על רגשות - בוא ניקח **אירוע ספציפי אחד** שקרה לאחרונה. ספר לי על פעם אחת - מתי זה היה? עם מי?"
+                msg = "בוא ניקח **אירוע ספציפי אחד** שקרה לאחרונה. ספר לי על פעם אחת - מתי זה היה? עם מי?"
             return False, msg
         else:
             if topic:
-                msg = f"Wait, before we talk about emotions - let's take **one specific event** that happened recently. Tell me about one time when {topic} - when was it? Who was there?"
+                msg = f"Let's take **one specific event** that happened recently. Tell me about one time when {topic} - when was it? Who was there?"
             else:
-                msg = "Wait, before we talk about emotions - let's take **one specific event** that happened recently. Tell me about one time - when was it? Who was there?"
+                msg = "Let's take **one specific event** that happened recently. Tell me about one time - when was it? Who was there?"
             return False, msg
     
     # 🚨 CRITICAL: Block S1→S4, S1→S5, etc. (can't skip multiple stages!)
@@ -2175,7 +2176,8 @@ So feel free to share an event from any area where you interacted with people an
             "זה חוזר שוב", "זה חוזר", "כבר ספרתי על",
             "חזרת על עצמך", "אתה חוזר", "עניתי כבר", "עניתי לך",
             "עניתי הכי טוב", "עניתי הכי טוב שהצלחתי", "זה הכי טוב שיכולתי",
-            "די כבר", "די די", "מספיק כבר", "די לי כבר"
+            "די כבר", "די די", "מספיק כבר", "די לי כבר",
+            "מה הכונה", "מה הכוונה", "לא הבנתי", "מה כוונתך"
         ]
         
         user_frustrated = any(phrase in user_msg_lower for phrase in explicit_frustration_phrases)
@@ -2184,7 +2186,8 @@ So feel free to share an event from any area where you interacted with people an
             "i already said", "i told you", "already told you", "i told you about",
             "you're repeating", "i already answered", "stop repeating",
             "this is repeating", "it keeps repeating",
-            "i answered the best i could", "that's the best i could do"
+            "i answered the best i could", "that's the best i could do",
+            "what do you mean", "i don't understand", "i didn't understand"
         ]
         user_frustrated = any(phrase in user_message.lower() for phrase in explicit_frustration_phrases)
     
@@ -2210,12 +2213,14 @@ So feel free to share an event from any area where you interacted with people an
                 next_step = "S3"
             elif has_topic:
                 # ✅ Topic is clear - can progress to S2
-                logger.info(f"[Safety Net] User frustrated in S1, but topic is clear → moving to S2")
+                logger.info(f"[Safety Net] User frustrated/confused in S1, but topic is clear → moving to S2")
+                confusion_phrases = ["מה הכונה", "מה הכוונה", "לא הבנתי", "מה כוונתך", "what do you mean", "i don't understand"]
+                is_confusion = any(p in user_message.lower() for p in confusion_phrases)
                 if language == "he":
-                    apology_message = f"אני מבין. {get_next_step_question(current_step, language)}"
+                    prefix = "סליחה על השאלה המסובכת. " if is_confusion else "אני מבין. "
                 else:
-                    apology_message = f"I understand. {get_next_step_question(current_step, language)}"
-                
+                    prefix = "Sorry for the confusing question. " if is_confusion else "I understand. "
+                apology_message = f"{prefix}{get_next_step_question(current_step, language)}"
                 next_step = "S2"
             else:
                 # ⚠️ Topic not clear - EXPLAIN why we need more info

@@ -2,14 +2,18 @@
 
 Goal: identify the general coaching topic only (not current-vs-desired yet).
 
-Ask:
+Ask (short, simple questions):
 - "What would you like to coach on?"
-- "What do you mean by that?"
-- "Tell me a little more about what is most active for you in this topic."
+- "What about this concerns you?"
+- "What challenges you there?"
+
+**Important:** After 2-3 turns with a clear topic – **move to S2 immediately!** Don't keep asking "can you tell me more".
+- If the user gave a specific topic (e.g. "boundaries with kids", "saying no") – **that's enough**, ask for an event.
 
 Do not ask in S1:
 - "How is it now?"
 - "How do you want it to be?"
 - "How big is the gap?"
+- "Can you tell me more about how you see your role as..." (too complex!)
 
 Gate: clear topic after 2-3 meaningful turns -> S2.
