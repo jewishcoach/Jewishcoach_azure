@@ -19,7 +19,7 @@ STAGE_FILES: Dict[str, str] = {
 
 SUPPORTED_LANGUAGES = {"he", "en"}
 
-# Gate per stage only – each stage sees only ITS transition rule
+# Gate per stage only – each stage sees only its transition rule
 STAGE_GATES_HE: Dict[str, str] = {
     "S0": "**Gate (S0→S1):** רשות מפורשת להתחיל (כן/בסדר/בוא נתחיל).",
     "S1": "**Gate (S1→S2):** נושא ברור אחרי 2–3 תורות (מספיק להבין על מה להתאמן).",
