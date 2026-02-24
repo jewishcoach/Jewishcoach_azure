@@ -6,10 +6,10 @@
 
 name: Deploy Backend to Azure Web App
 
-# Prevent overlapping deploys (409 Conflict often from concurrent deployments)
+# Queue deploys - do NOT cancel. Cancelling leaves Azure in locked state → 409 on next deploy.
 concurrency:
   group: backend-deploy-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 on:
   push:
@@ -80,7 +80,7 @@ jobs:
         continue-on-error: true
 
       - name: Wait for any previous deployment to finish
-        run: sleep 120
+        run: sleep 180
 
       - name: Deploy to Azure Web App
         id: deploy
@@ -101,8 +101,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: echo "First deploy failed. Waiting 2 min before retry..."
-      - run: sleep 120
+      - run: echo "First deploy failed (likely 409). Waiting 3 min before retry..."
+      - run: sleep 180
       - name: Create deploy zip
         run: |
           cd backend
@@ -120,6 +120,19 @@ jobs:
                       z.write(path)
           "
       - name: Retry Deploy to Azure Web App
+        id: retry1
+        uses: azure/webapps-deploy@v2
+        continue-on-error: true
+        with:
+          app-name: jewishcoach-api
+          package: backend/deploy.zip
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+
+      - name: Second retry (if first retry failed)
+        if: steps.retry1.outcome == 'failure'
+        run: sleep 120
+      - name: Final Deploy
+        if: steps.retry1.outcome == 'failure'
         uses: azure/webapps-deploy@v2
         with:
           app-name: jewishcoach-api
