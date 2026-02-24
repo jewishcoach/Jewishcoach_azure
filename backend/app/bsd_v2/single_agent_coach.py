@@ -2431,6 +2431,10 @@ So feel free to share an event from any area where you interacted with people an
         # 3. Call LLM
         t3 = time.time()
         llm = get_azure_chat_llm(purpose="talker")  # Higher temperature for natural conversation
+        # JSON Mode: force valid JSON output (gpt-4o, gpt-4-turbo, gpt-3.5-turbo-1106+)
+        # Requires "JSON" in system prompt - response_format.md provides that.
+        if os.getenv("BSD_V2_JSON_MODE", "1").strip() in ("1", "true", "yes"):
+            llm = llm.bind(response_format={"type": "json_object"})
         # Azure prompt caching is enabled by default for supported models.
         # prompt_cache_key improves cache hit routing for repeated BSD system-prefix.
         cache_key_prefix = os.getenv("AZURE_OPENAI_PROMPT_CACHE_KEY_PREFIX", "bsd_v2_markdown_prompt")
