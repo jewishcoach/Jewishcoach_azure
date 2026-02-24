@@ -75,7 +75,7 @@ def root():
     return {
         "message": "Jewish Coaching API",
         "status": "running",
-        "version": "2.0.0",
+        "version": "2.0.1",
         "bsd_version": "v2"
     }
 
