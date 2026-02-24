@@ -210,7 +210,8 @@ async def run_quality_check(
 @router.post("/conversations", response_model=ConversationResponse)
 def create_conversation(
     user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    background_tasks: BackgroundTasks = Depends(),
 ):
     """Create a new conversation for authenticated user"""
     title = f"New Conversation - {datetime.now().strftime('%b %d')}"
@@ -222,6 +223,11 @@ def create_conversation(
     db.add(conversation)
     db.commit()
     db.refresh(conversation)
+
+    # Pre-warm prompt cache for faster first response
+    from ..bsd_v2.single_agent_coach import warm_prompt_cache
+    background_tasks.add_task(warm_prompt_cache, "he", ("S0", "S1"))
+
     return conversation
 
 @router.get("/conversations", response_model=List[ConversationResponse])
