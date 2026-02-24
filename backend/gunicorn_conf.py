@@ -11,8 +11,9 @@ import multiprocessing
 bind = f"0.0.0.0:{os.getenv('PORT', '8000')}"
 backlog = 2048
 
-# Worker processes
-workers = int(os.getenv("GUNICORN_WORKERS", multiprocessing.cpu_count() * 2 + 1))
+# Worker processes - 4+ for multi-user; Azure App Service often has 1-2 vCPUs
+_workers_default = max(4, (multiprocessing.cpu_count() or 1) * 2 + 1)
+workers = int(os.getenv("GUNICORN_WORKERS", _workers_default))
 worker_class = "uvicorn.workers.UvicornWorker"
 worker_connections = 1000
 max_requests = 1000

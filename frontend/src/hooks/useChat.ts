@@ -22,7 +22,10 @@ export const useChat = (displayName?: string | null) => {
     if (!hasInitialized && messages.length === 0 && conversationId === null) {
       setHasInitialized(true);
       setLoading(false); // Clear loading state on initial load
-      
+
+      // Pre-warm prompt cache for faster first coach response
+      apiClient.warmupCache();
+
       // Add welcome message with animation delay
       setTimeout(() => {
         // Get user's display name, fall back to Clerk name
@@ -137,6 +140,9 @@ export const useChat = (displayName?: string | null) => {
     setActiveTool(null); // NEW: Clear active tool for new conversation
     setHasInitialized(true); // Mark as initialized to prevent duplicate welcome
     setLoading(false); // Ensure loading is off
+
+    // Pre-warm prompt cache for faster first coach response
+    apiClient.warmupCache();
   };
 
   const sendMessage = async (

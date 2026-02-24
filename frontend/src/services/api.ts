@@ -41,6 +41,15 @@ class ApiClient {
     return response.data;
   }
 
+  /** Pre-warm prompt cache for faster first response. Call when starting new chat. */
+  async warmupCache() {
+    try {
+      await this.client.get('/chat/v2/warmup');
+    } catch {
+      // Ignore - warmup is best-effort
+    }
+  }
+
   async getConversations() {
     const response = await this.client.get('/chat/conversations');
     return response.data;

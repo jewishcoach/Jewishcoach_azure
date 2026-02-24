@@ -77,8 +77,9 @@ def get_azure_chat_llm(*, purpose: str) -> AzureChatOpenAI:
     # Get temperature for this purpose (default to reasoner temp if unknown)
     temperature = TEMPERATURE_MAP.get(purpose.lower(), 0.1)
 
-    timeout_seconds = int(os.getenv("AZURE_OPENAI_TIMEOUT_SECONDS", "30"))
-    max_retries = int(os.getenv("AZURE_OPENAI_MAX_RETRIES", "0"))
+    # 90s default: Azure can take 45-60s under load; 30s caused premature timeouts
+    timeout_seconds = int(os.getenv("AZURE_OPENAI_TIMEOUT_SECONDS", "90"))
+    max_retries = int(os.getenv("AZURE_OPENAI_MAX_RETRIES", "2"))  # Retry on 429 throttling
 
     return AzureChatOpenAI(
         azure_endpoint=endpoint,
