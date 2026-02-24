@@ -153,6 +153,33 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
   const isRTL = i18n.dir() === 'rtl';
   const onArchiveClick = useCallback(() => setArchiveOpen(true), []);
 
+  // Dashboard: full-screen + Vision Ladder sidebar. No chat HudPanel.
+  if (showDashboard) {
+    return (
+      <>
+        <div className="flex-1 flex overflow-hidden bg-[#0F172A]">
+          <div className="flex-1 min-w-0 overflow-hidden">
+            <Dashboard onBack={onCloseDashboard} />
+          </div>
+          <div className="w-[280px] flex-shrink-0 border-r border-white/[0.08] overflow-hidden hidden md:block">
+            <VisionLadder currentStep={currentPhase} />
+          </div>
+        </div>
+        <ArchiveDrawer
+          isOpen={archiveOpen}
+          onClose={() => setArchiveOpen(false)}
+          conversations={conversations}
+          activeId={conversationId}
+          onSelect={handleSelectConversation}
+          onNewChat={handleNewChat}
+          onDelete={handleDeleteConversation}
+          onShare={handleShareConversation}
+          isRTL={isRTL}
+        />
+      </>
+    );
+  }
+
   return (
     <div className="flex flex-col md:flex-row h-full w-full bg-[#020617] overflow-hidden">
       {/* RIGHT in RTL: Cognitive HUD - Mekor, Teva, Archive, Videos. On mobile: below chat */}
@@ -174,12 +201,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
       />
 
       {/* CENTER: Resonance Workspace - Obsidian Black. On mobile: first */}
-      <motion.div
-        className="order-1 md:order-2 flex flex-col min-w-0 relative overflow-hidden bg-[#020617] flex-1"
-        initial={false}
-        animate={{ flex: showDashboard ? 0 : 1, minWidth: showDashboard ? 0 : undefined }}
-        transition={{ type: 'tween', duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
-      >
+      <div className="order-1 md:order-2 flex flex-col min-w-0 relative overflow-hidden bg-[#020617] flex-1">
         <ShehiyaProgress loading={loading} />
 
         <div className="flex-1 overflow-y-auto px-10 py-10 custom-scrollbar bg-[#020617]">
@@ -286,45 +308,12 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
             </div>
           )}
         </AnimatePresence>
-      </motion.div>
+      </div>
 
-      {/* LEFT in RTL: Vision Ladder / Dashboard. On mobile: last */}
-      <motion.div
-        className="order-3 flex flex-col border-t md:border-t-0 md:border-l border-white/[0.08] overflow-hidden flex-shrink-0"
-        initial={false}
-        animate={{
-          flex: showDashboard ? 1 : 0,
-          minWidth: showDashboard ? 0 : 280,
-          width: showDashboard ? 'auto' : 280,
-        }}
-        transition={{ type: 'tween', duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
-      >
-        <AnimatePresence mode="wait">
-          {showDashboard ? (
-            <motion.div
-              key="dashboard"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="flex-1 min-w-0 overflow-auto bg-[#0F172A]"
-            >
-              <Dashboard onBack={onCloseDashboard} />
-            </motion.div>
-          ) : (
-            <motion.div
-              key="ladder"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="h-full"
-            >
-              <VisionLadder currentStep={currentPhase} />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
+      {/* LEFT in RTL: Vision Ladder. On mobile: last */}
+      <div className="order-3 w-[280px] flex-shrink-0 border-t md:border-t-0 md:border-l border-white/[0.08] overflow-hidden">
+        <VisionLadder currentStep={currentPhase} />
+      </div>
     </div>
   );
 };

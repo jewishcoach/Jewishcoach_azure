@@ -1,5 +1,5 @@
 import { useEffect, useState, memo } from 'react';
-import { Heart, Brain, Target, Zap, Archive } from 'lucide-react';
+import { Sparkles, Archive } from 'lucide-react';
 import { apiClient } from '../../services/api';
 import { EnrichmentVideos } from './EnrichmentVideos';
 
@@ -14,6 +14,7 @@ interface CognitiveData {
   gap_score?: number;
   gap_analysis?: { name?: string; score?: number };
   pattern?: string;
+  pattern_id?: { name?: string };
   stance?: { gains?: string[]; losses?: string[] };
   forces?: { source?: string[]; nature?: string[] };
 }
@@ -23,6 +24,21 @@ interface HudPanelProps {
   currentPhase?: string;
   onArchiveClick?: () => void;
 }
+
+/** Compact tag for insight - appears at top of right panel */
+const InsightTag = ({ label, value }: { label: string; value: string }) => (
+  <div
+    className="px-3 py-2 rounded-[4px] border"
+    style={{
+      background: 'rgba(255, 255, 255, 0.04)',
+      borderColor: 'rgba(252, 246, 186, 0.2)',
+      fontFamily: 'Inter, sans-serif',
+    }}
+  >
+    <span className="text-[11px] uppercase tracking-wider text-[#FCF6BA]/70">{label}</span>
+    <p className="text-[13px] font-light text-[#F5F5F0]/95 mt-0.5">{value}</p>
+  </div>
+);
 
 export const HudPanel = memo(({ conversationId, currentPhase = 'S0', onArchiveClick }: HudPanelProps) => {
   const [data, setData] = useState<CognitiveData | null>(null);
@@ -47,56 +63,42 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', onArchiveCl
       }
     };
     fetchData();
-    interval = setInterval(fetchData, 5000);
+    interval = setInterval(fetchData, 3000);
     return () => { if (interval) clearInterval(interval); };
   }, [conversationId]);
 
   const emotions = data?.emotions ?? data?.event_actual?.emotions_list ?? [];
   const thought = data?.thought ?? data?.event_actual?.thought_content;
+  const actionActual = data?.action_actual ?? data?.event_actual?.action_content;
   const gapName = data?.gap_name ?? data?.gap_analysis?.name;
   const gapScore = data?.gap_score ?? data?.gap_analysis?.score;
+  const pattern = data?.pattern ?? data?.pattern_id?.name;
 
-  const Card = ({ icon, title, items, value, empty, placeholder }: { icon: React.ReactNode; title: string; items?: string[]; value?: string; empty?: boolean; placeholder?: string }) => (
-    <div
-      className="rounded-[4px] p-6 workspace-hud-card min-h-[100px]"
-      style={{
-        background: 'rgba(255, 255, 255, 0.03)',
-        backdropFilter: 'blur(25px)',
-        WebkitBackdropFilter: 'blur(25px)',
-        border: '0.5px solid rgba(255, 255, 255, 0.1)',
-        boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04), 0 0 0 1px rgba(212,175,55,0.06)',
-      }}
-    >
-      <div className="flex items-center gap-4 mb-4">
-        <span
-          className="shrink-0"
-          style={{
-            color: empty ? 'rgba(252,246,186,0.35)' : 'rgba(252,246,186,0.95)',
-            filter: 'drop-shadow(0 0 5px rgba(212, 175, 55, 0.5))',
-            strokeWidth: 1,
-          }}
-        >
-          {icon}
-        </span>
-        <span className="text-[14px] font-light tracking-[0.1em]" style={{ fontFamily: "'Cormorant Garamond', 'Playfair Display', 'Heebo', serif", color: '#F5F5F0' }}>{title}</span>
-      </div>
-      {empty ? (
-        <p className="text-[14px] italic" style={{ fontFamily: "'Cormorant Garamond', 'Heebo', serif", fontStyle: 'italic', color: 'rgba(245,245,240,0.4)' }}>
-          {placeholder || '—'}
-        </p>
-      ) : value ? (
-        <p className="text-[14px] leading-relaxed" style={{ lineHeight: 1.7, fontFamily: 'Inter, sans-serif', fontWeight: 300, color: 'rgba(245,245,240,0.9)' }}>{value}</p>
-      ) : items && items.length > 0 ? (
-        <div className="flex flex-wrap gap-2.5">
-          {items.map((item, j) => (
-            <span key={j} className="text-[13px] px-3 py-1.5 rounded-[4px] border" style={{ fontFamily: 'Inter, sans-serif', background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(252,246,186,0.25)', color: 'rgba(245,245,240,0.9)' }}>
-              {item}
-            </span>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
+  const stepIndex = (s: string) => parseInt(s.replace('S', ''), 10) || 0;
+  const currentIdx = stepIndex(currentPhase);
+
+  const insightTags: { label: string; value: string }[] = [];
+
+  if (data?.topic && currentIdx >= 1) {
+    insightTags.push({ label: 'נושא האימון', value: data.topic });
+  }
+  if (currentIdx >= 2 && (emotions.length > 0 || thought || actionActual)) {
+    const parts: string[] = [];
+    if (emotions.length) parts.push(emotions.slice(0, 3).join(', ') + (emotions.length > 3 ? '...' : ''));
+    if (thought) parts.push((thought.length > 40 ? thought.slice(0, 40) + '...' : thought));
+    if (actionActual) parts.push(actionActual.length > 40 ? actionActual.slice(0, 40) + '...' : actionActual);
+    if (parts.length) insightTags.push({ label: 'מצוי (סיכום 3 המסכים)', value: parts.join(' · ') });
+  }
+  if (gapName && currentIdx >= 6) {
+    insightTags.push({ label: 'פער', value: `${gapName}${gapScore != null ? ` (${gapScore}/10)` : ''}` });
+  }
+  if (pattern && currentIdx >= 7) {
+    insightTags.push({ label: 'דפוס', value: pattern });
+  }
+  if (data?.action_desired && currentIdx >= 5) {
+    const v = data.action_desired;
+    insightTags.push({ label: 'רצוי', value: v.length > 50 ? v.slice(0, 50) + '...' : v });
+  }
 
   return (
     <div className="w-full md:w-72 flex flex-col h-full bg-[#020617]/50 min-h-0">
@@ -112,15 +114,24 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', onArchiveCl
           </button>
         </div>
       )}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
-        {/* נושא האימון - תגית לפי השיחה (כמו במערכת הקודמת) */}
-        {data?.topic && <Card icon={<Target size={16} strokeWidth={1.5} />} title="נושא האימון" value={data.topic} />}
-        {emotions.length ? <Card icon={<Heart size={16} strokeWidth={1.5} />} title="רגשות" items={emotions} /> : null}
-        {thought && <Card icon={<Brain size={16} strokeWidth={1.5} />} title="מחשבה" value={thought} />}
-        {gapName && <Card icon={<Zap size={16} strokeWidth={1.5} />} title="פער" value={`${gapName}${gapScore != null ? ` (${gapScore})` : ''}`} />}
-
-        {/* סרטוני העשרה - מתחת לכוחות מקור, מותאם למובייל */}
-        <EnrichmentVideos currentPhase={currentPhase} />
+      <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col min-h-0">
+        {/* תובנות - תגיות למעלה, מצטברות לפי שלב */}
+        {insightTags.length > 0 && (
+          <section className="p-5 border-b border-white/[0.06] flex-shrink-0">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles size={16} className="text-[#FCF6BA]/80" />
+              <h4 className="text-[12px] font-light uppercase tracking-[0.15em]" style={{ color: 'rgba(245,245,240,0.8)' }}>תובנות</h4>
+            </div>
+            <div className="space-y-2">
+              {insightTags.map((tag, i) => (
+                <InsightTag key={i} label={tag.label} value={tag.value} />
+              ))}
+            </div>
+          </section>
+        )}
+        <div className="flex-1 overflow-y-auto p-5">
+          <EnrichmentVideos currentPhase={currentPhase} />
+        </div>
       </div>
     </div>
   );
