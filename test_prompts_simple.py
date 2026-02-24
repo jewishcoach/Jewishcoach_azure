@@ -69,10 +69,10 @@ def test_prompt_content() -> bool:
     print()
 
     s2_he = assemble_system_prompt("S2", language="he")
-    s7_he = assemble_system_prompt("S7", language="he")
+    s8_he = assemble_system_prompt("S8", language="he")  # S8 = דפוס (pattern)
 
     key_concepts_s2 = ["4 תנאים", "זמן", "מעורבות", "רגש", "אנשים", "לא חייב"]
-    key_concepts_s7 = ["דפוס", "תגובה", "מצבים", "אישור"]
+    key_concepts_s8 = ["דפוס", "תגובה", "מצבים", "אישור"]
 
     all_present = True
     print("S2 concepts:")
@@ -83,9 +83,9 @@ def test_prompt_content() -> bool:
             print(f"   [MISS] {concept}")
             all_present = False
 
-    print("\nS7 concepts:")
-    for concept in key_concepts_s7:
-        if concept in s7_he:
+    print("\nS8 (דפוס) concepts:")
+    for concept in key_concepts_s8:
+        if concept in s8_he:
             print(f"   [OK] {concept}")
         else:
             print(f"   [MISS] {concept}")

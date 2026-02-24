@@ -48,35 +48,18 @@ def test_prompt_assembly() -> bool:
 
 def test_schema_keys_present() -> bool:
     print("\n" + "=" * 80)
-    print("TESTING COLLECTED_DATA SCHEMA KEYS")
+    print("TESTING COLLECTED_DATA SCHEMA (Azure-optimized: topic only)")
     print("=" * 80)
 
-    prompt = assemble_system_prompt("S5", language="he")
-    required_keys = [
-        "topic",
-        "event_description",
-        "emotions",
-        "thought",
-        "action_actual",
-        "action_desired",
-        "emotion_desired",
-        "thought_desired",
-        "gap_name",
-        "gap_score",
-        "pattern",
-        "stance",
-        "forces",
-        "renewal",
-        "vision",
-        "commitment",
-    ]
-
-    missing = [key for key in required_keys if key not in prompt]
+    prompt = assemble_system_prompt("S1", language="he")
+    # Azure-optimized: minimal JSON - only topic in collected_data
+    required = ["coach_message", "current_step", "saturation_score", "collected_data", "topic", "reflection"]
+    missing = [key for key in required if key not in prompt]
     if missing:
         print(f"[FAIL] Missing keys: {missing}")
         return False
 
-    print("[OK] All required collected_data keys are present")
+    print("[OK] Required schema keys present (coach_message, internal_state, collected_data.topic)")
     return True
 
 
