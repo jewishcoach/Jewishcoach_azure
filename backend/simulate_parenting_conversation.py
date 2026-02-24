@@ -125,8 +125,9 @@ def run_safety_net_tests():
     ]
     bad_msg = "אני מבין. עכשיו אני רוצה להתעמק ברגשות. מה הרגשת באותו רגע?"
     correction = check_repeated_question(bad_msg, history, "S1", "he")
-    ok = correction is not None and ("אירוע" in correction or "פעם אחת" in correction or "מתי" in correction)
-    results.append(("S1+emotions blocked", ok, f"correction={correction[:80] if correction else None}..."))
+    repl = correction[0] if isinstance(correction, tuple) else correction
+    ok = correction is not None and ("אירוע" in repl or "פעם אחת" in repl or "מתי" in repl)
+    results.append(("S1+emotions blocked", ok, f"correction={repl[:80] if repl else None}..."))
 
     # 2) "תוכל לספר לי יותר" x2 - אמור להיתפס
     history = [

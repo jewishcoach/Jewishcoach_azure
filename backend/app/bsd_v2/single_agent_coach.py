@@ -174,6 +174,7 @@ def _get_system_prompt(
     state: Dict[str, Any],
     user_message: str,
     language: str,
+    user_gender: Optional[str] = None,
 ) -> str:
     """
     Select runtime prompt strategy.
@@ -191,11 +192,16 @@ def _get_system_prompt(
             user_message=user_message,
             language=language,
         )
+        if user_gender:
+            if language == "he":
+                prompt += "\n\n**מגדר:** המתאמן/ת היא אישה - פנה ב'את'." if user_gender == "female" else "\n\n**מגדר:** המתאמן/ת הוא גבר - פנה ב'אתה'."
+            else:
+                prompt += f"\n\n**Gender:** Coachee is {user_gender}."
         logger.info("[PROMPT] Using compact mode")
         return prompt
 
     logger.info("[PROMPT] Using markdown stage mode")
-    return assemble_system_prompt(current_step=current_step, language=language)
+    return assemble_system_prompt(current_step=current_step, language=language, user_gender=user_gender)
 
 
 def _sanitize_coach_message(coach_message: str) -> str:
@@ -208,6 +214,36 @@ def _sanitize_coach_message(coach_message: str) -> str:
     if cleaned.startswith("Coach:"):
         cleaned = cleaned.replace("Coach:", "", 1).strip()
     return cleaned
+
+
+async def warm_prompt_cache(language: str = "he", steps: tuple = ("S0", "S1")) -> None:
+    """
+    Pre-warm Azure prompt cache for new conversations.
+    Call when user opens/creates a conversation - before first message.
+    Runs minimal LLM requests so the next real request hits cache.
+    """
+    try:
+        from ..bsd.llm import get_azure_chat_llm
+        llm = get_azure_chat_llm(purpose="talker")
+        cache_key_prefix = os.getenv("AZURE_OPENAI_PROMPT_CACHE_KEY_PREFIX", "bsd_v2_markdown_prompt")
+        from .state_schema_v2 import create_initial_state
+        from .prompts.prompt_manager import assemble_system_prompt
+
+        async def _warm_one(step: str) -> None:
+            state = create_initial_state("warmup", "warmup", language)
+            state["current_step"] = step
+            state["saturation_score"] = 0.0
+            placeholder = "כן" if language == "he" else "yes"
+            context = build_conversation_context(state, placeholder, language)
+            system_prompt = assemble_system_prompt(step, language)
+            messages = [SystemMessage(content=system_prompt), HumanMessage(content=context)]
+            cache_key = f"{cache_key_prefix}:main_coach:{language}:{step}"
+            _ = await _ainvoke_with_prompt_cache(llm, messages, cache_key=cache_key)
+            logger.info(f"[BSD V2] Prompt cache warmed: {cache_key}")
+
+        await asyncio.gather(*[_warm_one(s) for s in steps])
+    except Exception as e:
+        logger.warning(f"[BSD V2] Prompt cache warm-up failed: {e}")
 
 
 async def _ainvoke_with_prompt_cache(llm, messages, cache_key: str):
@@ -991,10 +1027,13 @@ def detect_stage_question_mismatch(coach_message: str, current_step: str, langua
     return None  # No mismatch detected
 
 
-def has_clear_topic_for_s2(state: Dict[str, Any]) -> Tuple[bool, str]:
+def has_clear_topic_for_s2(state: Dict[str, Any], user_message: Optional[str] = None) -> Tuple[bool, str]:
     """
     Minimal safety net: block S1→S2 only in extreme cases.
     Criteria are now in the prompt (s1_topic.md); this is a fallback for edge cases.
+    
+    IMPORTANT: user_message is the CURRENT turn's message - it's not in state yet when we validate.
+    If user gives event in this message (e.g. "לפני יומיים רציתי לתרום... בעלי חשב אחרת"), we must allow.
     
     Returns:
         (has_clear_topic, reason_if_not)
@@ -1005,6 +1044,19 @@ def has_clear_topic_for_s2(state: Dict[str, Any]) -> Tuple[bool, str]:
         for msg in messages[-8:]
         if msg.get("sender") == "user" and msg.get("content", "").strip()
     ]
+    
+    # ✅ FIX: Include current user message - it's not in state yet during validation!
+    if user_message and user_message.strip():
+        recent_user_msgs = list(recent_user_msgs)  # copy
+        recent_user_msgs.append(user_message.strip())
+    
+    # ✅ FIX: If current message contains event (מתי, איפה, מי, מה) - allow immediately
+    if user_message and len(user_message.strip()) >= 30:
+        um_lower = user_message.lower()
+        event_indicators_he = ["אתמול", "לפני", "שבוע", "חודש", "בעלי", "אשתי", "בן ", "בת ", "חבר", "קרה", "אמר", "דיברנו", "שיחה"]
+        event_indicators_en = ["yesterday", "last week", "husband", "wife", "said", "happened", "told", "talked"]
+        if any(p in um_lower for p in event_indicators_he + event_indicators_en):
+            return True, ""
     
     # Block only if: 0-1 user messages (extreme case). Trust LLM when 2+
     if len(recent_user_msgs) < 2:
@@ -1108,15 +1160,17 @@ def get_next_step_question(current_step: str, language: str = "he") -> str:
 def detect_re_asking_for_event(
     coach_message: str,
     state: Dict[str, Any],
-    language: str = "he"
+    language: str = "he",
+    user_message: Optional[str] = None
 ) -> Optional[Tuple[str, str]]:
     """
     If coach asks for event again but user already gave full event - override with
     the *next valid stage question* (usually S3 from S2).
     Prevents the "ספרתי לך על הרגע במגרש" loop.
+    Also runs in S1 when user_message contains event (e.g. "אתמול עם בעלי...").
     """
     current_step = state.get("current_step", "")
-    if current_step not in ("S2", "S3"):
+    if current_step not in ("S1", "S2", "S3"):
         return None
     coach_lower = coach_message.lower()
     event_asking_phrases = [
@@ -1126,10 +1180,22 @@ def detect_re_asking_for_event(
     if not any(p in coach_lower for p in event_asking_phrases):
         return None
     has_event, _ = has_sufficient_event_details(state)
-    if not has_event:
+    # S1: user may have given event in current message (not yet in state)
+    user_gave_event_in_msg = False
+    if current_step == "S1" and user_message and len(user_message.strip()) >= 30:
+        um_lower = user_message.lower()
+        event_indicators = ["אתמול", "לפני", "שבוע", "חודש", "בעלי", "אשתי", "בן ", "בת ", "חבר", "קרה", "אמר", "דיברנו", "שיחה", "yesterday", "last week", "husband", "wife", "said", "happened"]
+        user_gave_event_in_msg = any(p in um_lower for p in event_indicators)
+    if not has_event and not user_gave_event_in_msg:
         return None
     current_step = state.get("current_step", "S2")
     logger.warning(f"[Safety Net] Coach re-asking for event but user already gave it - overriding with stage-aware next question")
+
+    if current_step == "S1":
+        # User gave event in S1 message - move to S3 (emotions) to avoid re-asking
+        if language == "he":
+            return ("מצטער על החזרה! שמעתי את האירוע. עכשיו בוא ניכנס פנימה - מה הרגשת באותו רגע?", "S3")
+        return ("Sorry for repeating! I heard the event. Now let's go into that moment - what did you feel right then?", "S3")
 
     if current_step == "S2":
         if language == "he":
@@ -1154,12 +1220,14 @@ def detect_re_asking_for_event(
     )
 
 
-def check_repeated_question(coach_message: str, history: list, current_step: str, language: str = "he") -> Optional[str]:
+def check_repeated_question(coach_message: str, history: list, current_step: str, language: str = "he", user_message: Optional[str] = None) -> Optional[Tuple[str, Optional[str]]]:
     """
     Check if coach is repeating a question that was already answered or sent recently.
     
     Returns:
-        Correction message if repeating, None otherwise
+        None if no override needed.
+        str: correction message only (step unchanged).
+        (str, str): (correction message, step_override) when we should advance (e.g. S1→S3).
     """
     # Get recent messages
     recent_coach_messages = [
@@ -1184,7 +1252,7 @@ def check_repeated_question(coach_message: str, history: list, current_step: str
         if any(ind in coach_lower for ind in indicators):
             _bsd_log("REPETITION_RULE", rule="S1_emotions_question", step=current_step)
             logger.warning(f"[Safety Net] {current_step} but coach asked emotions question - BLOCKING (no event yet!)")
-            return get_next_step_question(current_step, language)
+            return (get_next_step_question(current_step, language), None)
     
     if language == "he":
         # === CRITICAL: Check if user said they're done ===
@@ -1222,23 +1290,35 @@ def check_repeated_question(coach_message: str, history: list, current_step: str
             if any(pattern in msg for pattern in ["מה עוד", "עוד משהו"])
         )
         
+        # S1: If user gave event (in current or recent msg) and coach asks "מה עוד" - progress, don't loop
+        event_indicators = ["אתמול", "לפני", "שבוע", "חודש", "בעלי", "אשתי", "בן ", "בת ", "חבר", "קרה", "אמר", "דיברנו", "שיחה"]
+        all_user_text = list(recent_user_messages)
+        if user_message and user_message.strip():
+            all_user_text.append(user_message.strip().lower())
+        user_gave_event = any(any(p in t for p in event_indicators) for t in all_user_text if len(t) >= 20)
+        if current_step == "S1" and user_gave_event and asking_what_else:
+            _bsd_log("REPETITION_RULE", rule="S1_user_gave_event_what_else", step=current_step)
+            logger.warning(f"[Safety Net] S1: User gave event, coach asking 'מה עוד?' - progressing to S3")
+            msg = "מצטער על החזרה! שמעתי את האירוע. עכשיו בוא ניכנס פנימה - מה הרגשת באותו רגע?" if language == "he" else "Sorry for repeating! I heard the event. Now let's go into that moment - what did you feel right then?"
+            return (msg, "S3")  # Advance to S3
+        
         # If user said done + coach asking "what else?" again = LOOP!
         if user_said_done and asking_what_else:
             _bsd_log("REPETITION_RULE", rule="user_said_done_but_what_else", step=current_step)
             logger.warning(f"[Safety Net] User said done, but coach asking 'מה עוד?' - BLOCKING")
-            return get_next_step_question(current_step, language)
+            return (get_next_step_question(current_step, language), None)
         
         # If "מה עוד?" asked 3+ times = LOOP!
         if what_else_count >= 3:
             _bsd_log("REPETITION_RULE", rule="what_else_3plus", count=what_else_count, step=current_step)
             logger.warning(f"[Safety Net] 'מה עוד?' asked {what_else_count} times - BLOCKING")
-            return get_next_step_question(current_step, language)
+            return (get_next_step_question(current_step, language), None)
         
         # === Check if coach is sending the EXACT same message again ===
         if coach_message in recent_coach_messages[-2:]:
             _bsd_log("REPETITION_RULE", rule="exact_repeat", step=current_step)
             logger.warning(f"[Safety Net] Detected EXACT repeated message")
-            return get_next_step_question(current_step, language)
+            return (get_next_step_question(current_step, language), None)
         
         # === Generic patterns (S1 loop: "תוכל לספר לי יותר" etc.) ===
         generic_patterns = [
@@ -1261,7 +1341,7 @@ def check_repeated_question(coach_message: str, history: list, current_step: str
         if generic_count >= threshold:
             _bsd_log("REPETITION_RULE", rule="generic_patterns", count=generic_count, threshold=threshold, step=current_step)
             logger.warning(f"[Safety Net] Too many generic questions ({generic_count})")
-            return get_next_step_question(current_step, language)
+            return (get_next_step_question(current_step, language), None)
     
     else:  # English
         # Check if user said they're done
@@ -1291,15 +1371,15 @@ def check_repeated_question(coach_message: str, history: list, current_step: str
         
         if user_said_done and asking_what_else:
             logger.warning(f"[Safety Net] User said done, but coach asking 'what else?' - BLOCKING")
-            return get_next_step_question(current_step, language)
+            return (get_next_step_question(current_step, language), None)
         
         if what_else_count >= 3:
             logger.warning(f"[Safety Net] 'What else?' asked {what_else_count} times - BLOCKING")
-            return get_next_step_question(current_step, language)
+            return (get_next_step_question(current_step, language), None)
         
         if coach_message in recent_coach_messages[-2:]:
             logger.warning(f"[Safety Net] Detected EXACT repeated message")
-            return get_next_step_question(current_step, language)
+            return (get_next_step_question(current_step, language), None)
         
         # === Generic patterns (English S1 loop) ===
         generic_patterns_en = [
@@ -1315,7 +1395,7 @@ def check_repeated_question(coach_message: str, history: list, current_step: str
         threshold = 2 if current_step == "S1" else 3
         if generic_count >= threshold:
             logger.warning(f"[Safety Net] Too many generic questions ({generic_count})")
-            return get_next_step_question(current_step, language)
+            return (get_next_step_question(current_step, language), None)
     
     return None
 
@@ -1737,7 +1817,8 @@ def validate_stage_transition(
     new_step: str,
     state: Dict[str, Any],
     language: str,
-    coach_message: str = ""
+    coach_message: str = "",
+    user_message: Optional[str] = None,
 ) -> Tuple[bool, Optional[str]]:
     """
     Safety net: validate if stage transition is premature.
@@ -1791,7 +1872,7 @@ def validate_stage_transition(
     
     # 🚨 CRITICAL: S1→S2 - Must have clear topic!
     if old_step == "S1" and new_step == "S2":
-        has_topic, reason = has_clear_topic_for_s2(state)
+        has_topic, reason = has_clear_topic_for_s2(state, user_message=user_message)
         
         if not has_topic:
             logger.warning(f"[Safety Net] Blocking S1→S2: topic not clear ({reason})")
@@ -1804,8 +1885,14 @@ def validate_stage_transition(
     if old_step == "S1" and new_step == "S3":
         # ✅ EXCEPTION: If user already gave event details, allow S3 (state may be stale)
         has_event, _ = has_sufficient_event_details(state)
-        if has_event:
-            logger.info(f"[Safety Net] User already gave event in S1 context → allowing S1→S3")
+        # ✅ EXCEPTION: User gave event in CURRENT message (not in state yet) - e.g. "אתמול עם בעלי..."
+        user_gave_event_in_msg = False
+        if user_message and len(user_message.strip()) >= 30:
+            um_lower = user_message.lower()
+            event_indicators = ["אתמול", "לפני", "שבוע", "חודש", "בעלי", "אשתי", "בן ", "בת ", "חבר", "קרה", "אמר", "דיברנו", "שיחה", "yesterday", "husband", "wife", "said", "happened"]
+            user_gave_event_in_msg = any(p in um_lower for p in event_indicators)
+        if has_event or user_gave_event_in_msg:
+            logger.info(f"[Safety Net] User already gave event (state or current msg) → allowing S1→S3")
             return True, None
         logger.error(f"[Safety Net] 🚫 BLOCKED S1→S3: Cannot skip S2 (event)!")
         topic = (state.get("collected_data") or {}).get("topic") or ""
@@ -2167,7 +2254,8 @@ def build_conversation_context(
 async def handle_conversation(
     user_message: str,
     state: Dict[str, Any],
-    language: str = "he"
+    language: str = "he",
+    user_gender: Optional[str] = None
 ) -> Tuple[str, Dict[str, Any]]:
     """
     Handle single conversation turn in V2.
@@ -2329,7 +2417,7 @@ So feel free to share an event from any area where you interacted with people an
         
         # 2. Prepare messages using modular stage-aware prompt assembly.
         current_step = state.get("current_step", "S1")
-        system_prompt = _get_system_prompt(state=state, user_message=user_message, language=language)
+        system_prompt = _get_system_prompt(state=state, user_message=user_message, language=language, user_gender=user_gender)
         logger.info(
             "[PERF] System prompt chars from prompt_manager: %s",
             len(system_prompt),
@@ -2418,6 +2506,10 @@ So feel free to share an event from any area where you interacted with people an
             if parsed is None:
                 raise json.JSONDecodeError("Could not parse model JSON payload", response_text, 0)
 
+            # Guard: parsed can be str in edge cases (e.g. json.loads('"text"'))
+            if isinstance(parsed, str):
+                parsed = {"coach_message": parsed, "internal_state": {"current_step": state.get("current_step", "S1"), "saturation_score": state.get("saturation_score", 0.3), "reflection": "Parsed as string"}}
+
             # Try both field names for backwards compatibility
             coach_message = (
                 parsed.get("coach_message", "")
@@ -2485,22 +2577,23 @@ So feel free to share an event from any area where you interacted with people an
         # 5. Safety Net: Check for repeated questions
         t7 = time.time()
         history_for_check = get_conversation_history(state, last_n=10)
-        repeated_check = check_repeated_question(coach_message, history_for_check, state['current_step'], language)
+        repeated_check = check_repeated_question(coach_message, history_for_check, state['current_step'], language, user_message=user_message)
         t8 = time.time()
         logger.info(f"[PERF] Repeated check: {(t8-t7)*1000:.0f}ms")
         
         if repeated_check:
             overrides_applied.append("repetition")
-            _bsd_log("REPETITION_OVERRIDE", original=coach_message[:80], replacement=repeated_check[:80],
+            repl_msg = repeated_check[0] if isinstance(repeated_check, tuple) else repeated_check
+            step_override = repeated_check[1] if isinstance(repeated_check, tuple) and len(repeated_check) > 1 else None
+            _bsd_log("REPETITION_OVERRIDE", original=coach_message[:80], replacement=repl_msg[:80],
                      step=state['current_step'])
             logger.warning(f"[Safety Net] Overriding repeated question")
-            coach_message = repeated_check
-            # Keep step conservative; mismatch/transition validators will decide advancement.
-            internal_state["current_step"] = state["current_step"]
+            coach_message = repl_msg
+            internal_state["current_step"] = step_override if step_override else state["current_step"]
             internal_state["saturation_score"] = state.get("saturation_score", 0.3)
         
         # 5.5. Safety Net: Coach re-asking for event when user already gave it
-        re_ask_check = detect_re_asking_for_event(coach_message, state, language)
+        re_ask_check = detect_re_asking_for_event(coach_message, state, language, user_message=user_message)
         if re_ask_check:
             overrides_applied.append("re_ask_event")
             coach_message, next_step_for_reask = re_ask_check
@@ -2543,7 +2636,9 @@ So feel free to share an event from any area where you interacted with people an
         
         # 7. Safety Net: Validate stage transition
         t13 = time.time()
-        is_valid, correction = validate_stage_transition(old_step, new_step, state, language, coach_message)
+        is_valid, correction = validate_stage_transition(
+            old_step, new_step, state, language, coach_message, user_message=user_message
+        )
         t14 = time.time()
         logger.info(f"[PERF] Stage transition validation: {(t14-t13)*1000:.0f}ms")
         if old_step != new_step:

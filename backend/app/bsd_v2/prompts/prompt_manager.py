@@ -54,8 +54,9 @@ def _resolve_prompt_file(base_dir: Path, language: str, filename: str) -> Path:
     raise FileNotFoundError(f"Prompt file not found for language={language}: {filename}")
 
 
-def assemble_system_prompt(current_step: str, language: str = "he") -> str:
-    """Assemble focused prompt for current stage and language."""
+def assemble_system_prompt(current_step: str, language: str = "he", user_gender: str = None) -> str:
+    """Assemble focused prompt for current stage and language.
+    user_gender: 'male', 'female', or None - from user dashboard. Affects אתה/את etc."""
     lang = _normalize_language(language)
     prompts_dir = Path(__file__).parent
     core_dir = prompts_dir / "core"
@@ -81,8 +82,21 @@ def assemble_system_prompt(current_step: str, language: str = "he") -> str:
     stage_title = f"# שלב נוכחי: {current_step}" if lang == "he" else f"# Current Stage: {current_step}"
     response_format = core_sections[-1]
 
+    # Gender instruction (from user dashboard) - critical for correct אתה/את
+    gender_suffix = ""
+    if lang == "he" and user_gender:
+        if user_gender == "female":
+            gender_suffix = "\n\n**מגדר:** המתאמן/ת היא אישה. פנה אליה ב'את' (לא 'אתה')."
+        elif user_gender == "male":
+            gender_suffix = "\n\n**מגדר:** המתאמן/ת הוא גבר. פנה אליו ב'אתה' (לא 'את')."
+    elif lang == "en" and user_gender:
+        if user_gender == "female":
+            gender_suffix = "\n\n**Gender:** The coachee is female."
+        elif user_gender == "male":
+            gender_suffix = "\n\n**Gender:** The coachee is male."
+
     # Inject JSON format right after stage title (in every stage) so model always sees it
-    return f"""{'\n\n---\n\n'.join(core_sections[:-1])}
+    return f"""{'\n\n---\n\n'.join(core_sections[:-1])}{gender_suffix}
 
 ---
 

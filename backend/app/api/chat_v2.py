@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
 from ..dependencies import get_current_user
-from ..bsd_v2.single_agent_coach import handle_conversation
+from ..bsd_v2.single_agent_coach import handle_conversation, warm_prompt_cache
 from ..bsd_v2.state_schema_v2 import create_initial_state
 from ..database import get_db
 from ..models import User, Conversation as ConversationModel, Message
@@ -86,8 +86,22 @@ def save_v2_state(conversation_id: int, state: Dict[str, Any], db: Session) -> N
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# ENDPOINT
+# ENDPOINTS
 # ══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/warmup")
+async def warmup_cache(
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Pre-warm Azure prompt cache for new conversations.
+    Call when user opens/creates a conversation - before first message.
+    Returns immediately; warm-up runs in background.
+    """
+    import asyncio
+    asyncio.create_task(warm_prompt_cache(language="he", steps=("S0", "S1")))
+    return {"status": "warmup_started"}
+
 
 @router.post("/message", response_model=ChatResponse)
 async def send_message_v2(
@@ -136,12 +150,14 @@ async def send_message_v2(
         logger.info(f"[PERF API] Load state from DB: {(t2-t1)*1000:.0f}ms")
         logger.info(f"[BSD V2 API] Loaded state: step={state['current_step']}, messages={len(state.get('messages', []))}")
         
-        # Handle conversation
+        # Handle conversation (pass user gender from dashboard for אתה/את)
         t3 = time.time()
+        user_gender = getattr(current_user, "gender", None) or None
         coach_message, updated_state = await handle_conversation(
             user_message=request.message,
             state=state,
-            language=request.language
+            language=request.language,
+            user_gender=user_gender
         )
         t4 = time.time()
         logger.info(f"[PERF API] handle_conversation: {(t4-t3)*1000:.0f}ms")
