@@ -1,12 +1,10 @@
 # Deploy backend (FastAPI) to Azure Web App
 # Required: AZURE_WEBAPP_PUBLISH_PROFILE (from Azure Portal → jewishcoach-api → Get publish profile)
-# Optional: AZURE_CREDENTIALS - if set, restarts app before deploy to clear 409 lock
-#   Create: az ad sp create-for-rbac --name "github-deploy" --role contributor --scopes /subscriptions/<SUB_ID>/resourceGroups/jewish-coach-rg --sdk-auth
-#   Add to GitHub: Settings → Secrets → AZURE_CREDENTIALS (paste JSON)
+#
+# Lean workflow ~2-3 min. If 409: re-run manually from Actions tab.
 
 name: Deploy Backend to Azure Web App
 
-# One deploy at a time. New runs cancel in-progress (may cause 409 if previous was mid-deploy).
 concurrency:
   group: backend-deploy-${{ github.ref }}
   cancel-in-progress: true
@@ -28,7 +26,7 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     name: Build and Deploy Backend
-    timeout-minutes: 15
+    timeout-minutes: 5
 
     steps:
       - uses: actions/checkout@v4
@@ -67,76 +65,9 @@ jobs:
           "
           ls -la deploy.zip
 
-      - name: Restart app (clear 409 lock) - requires AZURE_CREDENTIALS
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-        continue-on-error: true
-
-      - name: Restart app (clear 409 lock)
-        run: |
-          az webapp restart --name jewishcoach-api --resource-group jewish-coach-rg
-          echo "Waiting 60s for app to stabilize..."
-          sleep 60
-        continue-on-error: true
-
-      - name: Wait for any previous deployment to finish
-        run: sleep 90
-
       - name: Deploy to Azure Web App
-        id: deploy
         uses: azure/webapps-deploy@v2
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          package: backend/deploy.zip
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-
-  # Retry deploy on 409 Conflict (common transient error)
-  retry-deploy:
-    needs: build-and-deploy
-    if: failure()
-    runs-on: ubuntu-latest
-    name: Retry Deploy (on 409)
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - run: echo "First deploy failed (likely 409). Waiting 90s before retry..."
-      - run: sleep 90
-      - name: Create deploy zip
-        run: |
-          cd backend
-          python3 -c "
-          import zipfile, os
-          with zipfile.ZipFile('deploy.zip', 'w', zipfile.ZIP_DEFLATED) as z:
-              for path in ['app', 'requirements.txt', 'startup.sh', 'gunicorn_conf.py', 'web.config']:
-                  if os.path.isdir(path):
-                      for r, d, f in os.walk(path):
-                          for fn in f:
-                              if '__pycache__' in r or fn.endswith('.pyc') or 'antenv' in r or 'test_venv' in r:
-                                  continue
-                              z.write(os.path.join(r, fn))
-                  elif os.path.isfile(path):
-                      z.write(path)
-          "
-      - name: Retry Deploy to Azure Web App
-        id: retry1
-        uses: azure/webapps-deploy@v2
-        continue-on-error: true
-        with:
-          app-name: jewishcoach-api
-          package: backend/deploy.zip
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-
-      - name: Second retry (if first retry failed)
-        if: steps.retry1.outcome == 'failure'
-        run: sleep 60
-      - name: Final Deploy
-        if: steps.retry1.outcome == 'failure'
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: jewishcoach-api
           package: backend/deploy.zip
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
