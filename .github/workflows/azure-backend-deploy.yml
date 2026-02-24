@@ -79,9 +79,6 @@ jobs:
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
-        retry:
-          max-attempts: 3
-          when: failure()
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           package: backend/deploy.zip
