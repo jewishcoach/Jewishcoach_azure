@@ -21,9 +21,14 @@ interface Goal {
   is_completed: boolean;
 }
 
-export const GoalsManager = () => {
+const LIGHT = { text: 'text-[#1E293B]', muted: 'text-[#64748B]', accent: 'text-[#0EA5E9]', card: 'bg-gray-50 border border-gray-200', input: 'border-gray-200 bg-white text-[#1E293B] placeholder-gray-400', btn: 'bg-[#0EA5E9] text-white', btnSecondary: 'bg-gray-200 text-[#1E293B]', progress: 'from-[#0EA5E9] to-[#38BDF8]' };
+const DARK = { text: 'text-[#F5F5F0]', muted: 'text-[#F5F5F0]/70', card: 'bg-white/[0.06] border border-white/[0.1]', input: 'border-white/10 bg-white/[0.04] text-[#F5F5F0] placeholder-[#F5F5F0]/40', btn: '', btnSecondary: 'bg-white/10 text-[#F5F5F0]', progress: 'from-[#BF953F] to-[#FCF6BA]' };
+
+interface GoalsManagerProps { variant?: 'light' | 'dark'; }
+export const GoalsManager = ({ variant = 'dark' }: GoalsManagerProps) => {
   const { getToken } = useAuth();
   const { t } = useTranslation();
+  const theme = variant === 'light' ? LIGHT : DARK;
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -152,7 +157,7 @@ export const GoalsManager = () => {
   };
 
   if (loading) {
-    return <div className="text-center py-8 text-[#F5F5F0]/70">{t('chat.loading')}</div>;
+    return <div className={`text-center py-8 ${theme.muted}`}>{t('chat.loading')}</div>;
   }
 
   return (
@@ -160,20 +165,20 @@ export const GoalsManager = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <Target className="w-5 h-5 text-[#FCF6BA]" />
-          <h3 className="text-lg font-bold text-[#F5F5F0]">{t('goals.title')}</h3>
+          <Target className={`w-5 h-5 ${variant === 'light' ? 'text-[#0EA5E9]' : 'text-[#FCF6BA]'}`} />
+          <h3 className={`text-lg font-bold ${theme.text}`}>{t('goals.title')}</h3>
         </div>
         <div className="flex gap-2">
           <button
             onClick={quickSetWeekly}
-            className="px-4 py-2 bg-white/10 text-[#F5F5F0] rounded-lg hover:bg-white/15 transition-colors text-sm"
+            className={`px-4 py-2 rounded-lg transition-colors text-sm ${variant === 'light' ? 'bg-gray-200 text-[#1E293B] hover:bg-gray-300' : 'bg-white/10 text-[#F5F5F0] hover:bg-white/15'}`}
           >
             {t('goals.weekly')}
           </button>
           <button
             onClick={() => setShowAddForm(!showAddForm)}
             className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors"
-            style={{ background: 'linear-gradient(45deg, #BF953F, #FCF6BA)', color: '#020617' }}
+            style={variant === 'light' ? { background: '#0EA5E9', color: 'white' } : { background: 'linear-gradient(45deg, #BF953F, #FCF6BA)', color: '#020617' }}
           >
             {showAddForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
             {showAddForm ? t('goals.cancel') : t('goals.new')}
@@ -189,28 +194,28 @@ export const GoalsManager = () => {
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             onSubmit={handleSubmit}
-            className="bg-white/[0.04] rounded-2xl p-6 border border-white/[0.08]"
+            className={`rounded-2xl p-6 border ${theme.card}`}
           >
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2 text-[#F5F5F0]">{t('goals.title_input')}</label>
+                <label className={`block text-sm font-medium mb-2 ${theme.text}`}>{t('goals.title_input')}</label>
                 <input
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData({...formData, title: e.target.value})}
                   placeholder={t('goals.title_placeholder')}
                   required
-                  className="w-full px-4 py-2 border border-white/10 rounded-lg bg-white/[0.04] text-[#F5F5F0] placeholder-[#F5F5F0]/40 focus:ring-2 focus:ring-[#FCF6BA]/30"
+                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#0EA5E9]/30 focus:outline-none ${variant === 'light' ? 'border-gray-200 bg-white text-[#1E293B] placeholder-gray-400' : 'border-white/10 bg-white/[0.04] text-[#F5F5F0] placeholder-[#F5F5F0]/40 focus:ring-[#FCF6BA]/30'}`}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-[#F5F5F0]">{t('goals.type')}</label>
+                  <label className={`block text-sm font-medium mb-2 ${theme.text}`}>{t('goals.type')}</label>
                   <select
                     value={formData.goal_type}
                     onChange={(e) => setFormData({...formData, goal_type: e.target.value})}
-                    className="w-full px-4 py-2 border border-white/10 rounded-lg bg-white/[0.04] text-[#F5F5F0] focus:ring-2 focus:ring-[#FCF6BA]/30"
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none ${variant === 'light' ? 'border-gray-200 bg-white text-[#1E293B] focus:ring-[#0EA5E9]/30' : 'border-white/10 bg-white/[0.04] text-[#F5F5F0] focus:ring-[#FCF6BA]/30'}`}
                   >
                     <option value="weekly">{t('goals.weekly')}</option>
                     <option value="monthly">{t('goals.monthly')}</option>
@@ -219,38 +224,38 @@ export const GoalsManager = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-[#F5F5F0]">{t('goals.target')}</label>
+                  <label className={`block text-sm font-medium mb-2 ${theme.text}`}>{t('goals.target')}</label>
                   <input
                     type="number"
                     value={formData.target_count}
                     onChange={(e) => setFormData({...formData, target_count: parseInt(e.target.value)})}
                     min="1"
                     required
-                    className="w-full px-4 py-2 border border-white/10 rounded-lg bg-white/[0.04] text-[#F5F5F0] focus:ring-2 focus:ring-[#FCF6BA]/30"
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none ${variant === 'light' ? 'border-gray-200 bg-white text-[#1E293B] focus:ring-[#0EA5E9]/30' : 'border-white/10 bg-white/[0.04] text-[#F5F5F0] focus:ring-[#FCF6BA]/30'}`}
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-[#F5F5F0]">{t('goals.startDate')}</label>
+                  <label className={`block text-sm font-medium mb-2 ${theme.text}`}>{t('goals.startDate')}</label>
                   <input
                     type="date"
                     value={formData.start_date}
                     onChange={(e) => setFormData({...formData, start_date: e.target.value})}
                     required
-                    className="w-full px-4 py-2 border border-white/10 rounded-lg bg-white/[0.04] text-[#F5F5F0] focus:ring-2 focus:ring-[#FCF6BA]/30"
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none ${variant === 'light' ? 'border-gray-200 bg-white text-[#1E293B] focus:ring-[#0EA5E9]/30' : 'border-white/10 bg-white/[0.04] text-[#F5F5F0] focus:ring-[#FCF6BA]/30'}`}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-[#F5F5F0]">{t('goals.endDate')}</label>
+                  <label className={`block text-sm font-medium mb-2 ${theme.text}`}>{t('goals.endDate')}</label>
                   <input
                     type="date"
                     value={formData.end_date}
                     onChange={(e) => setFormData({...formData, end_date: e.target.value})}
                     required
-                    className="w-full px-4 py-2 border border-white/10 rounded-lg bg-white/[0.04] text-[#F5F5F0] focus:ring-2 focus:ring-[#FCF6BA]/30"
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none ${variant === 'light' ? 'border-gray-200 bg-white text-[#1E293B] focus:ring-[#0EA5E9]/30' : 'border-white/10 bg-white/[0.04] text-[#F5F5F0] focus:ring-[#FCF6BA]/30'}`}
                   />
                 </div>
               </div>
@@ -259,7 +264,7 @@ export const GoalsManager = () => {
                 <button
                   type="submit"
                   className="flex items-center gap-2 px-6 py-2 rounded-lg transition-colors"
-                  style={{ background: 'linear-gradient(45deg, #BF953F, #FCF6BA)', color: '#020617' }}
+                  style={variant === 'light' ? { background: '#0EA5E9', color: 'white' } : { background: 'linear-gradient(45deg, #BF953F, #FCF6BA)', color: '#020617' }}
                 >
                   <Save className="w-4 h-4" />
                   {t('goals.save')}
@@ -267,7 +272,7 @@ export const GoalsManager = () => {
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="px-6 py-2 bg-white/10 text-[#F5F5F0] rounded-lg hover:bg-white/15 transition-colors"
+                  className={`px-6 py-2 rounded-lg transition-colors ${variant === 'light' ? 'bg-gray-200 text-[#1E293B] hover:bg-gray-300' : 'bg-white/10 text-[#F5F5F0] hover:bg-white/15'}`}
                 >
                   {t('goals.cancel')}
                 </button>
@@ -280,7 +285,7 @@ export const GoalsManager = () => {
       {/* Goals List */}
       <div className="grid md:grid-cols-2 gap-4">
         {goals.length === 0 ? (
-          <div className="col-span-2 text-center py-8 text-[#F5F5F0]/50">
+          <div className={`col-span-2 text-center py-8 ${theme.muted}`}>
             {t('goals.noGoals')}
           </div>
         ) : (
@@ -290,16 +295,16 @@ export const GoalsManager = () => {
               layout
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-white/[0.06] rounded-2xl p-6 border border-white/[0.1]"
+              className={`rounded-2xl p-6 border ${theme.card}`}
             >
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-2">
-                  <Target className="w-5 h-5 text-[#FCF6BA]" />
-                  <h4 className="font-bold text-[#F5F5F0]">{goal.title}</h4>
+                  <Target className={`w-5 h-5 ${variant === 'light' ? 'text-[#0EA5E9]' : 'text-[#FCF6BA]'}`} />
+                  <h4 className={`font-bold ${theme.text}`}>{goal.title}</h4>
                 </div>
                 <button
                   onClick={() => handleDelete(goal.id)}
-                  className="text-[#F5F5F0]/50 hover:text-red-400 transition-colors"
+                  className={`${theme.muted} hover:text-red-400 transition-colors`}
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -307,22 +312,22 @@ export const GoalsManager = () => {
 
               {/* Progress Bar */}
               <div className="mb-4">
-                <div className="flex justify-between text-sm mb-2 text-[#F5F5F0]/80">
+                <div className={`flex justify-between text-sm mb-2 ${theme.muted}`}>
                   <span>{goal.current_count} / {goal.target_count} {t('goals.sessions')}</span>
-                  <span className="font-bold">{Math.round(goal.progress_percentage || 0)}%</span>
+                  <span className={`font-bold ${theme.text}`}>{Math.round(goal.progress_percentage || 0)}%</span>
                 </div>
-                <div className="w-full bg-white/10 rounded-full h-3">
+                <div className={`w-full rounded-full h-3 ${variant === 'light' ? 'bg-gray-200' : 'bg-white/10'}`}>
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${goal.progress_percentage || 0}%` }}
-                    className="bg-gradient-to-r from-[#BF953F] to-[#FCF6BA] h-3 rounded-full"
+                    className={`bg-gradient-to-r h-3 rounded-full ${variant === 'light' ? 'from-[#0EA5E9] to-[#38BDF8]' : 'from-[#BF953F] to-[#FCF6BA]'}`}
                   />
                 </div>
               </div>
 
               {/* Status */}
               <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2 text-[#F5F5F0]/70">
+                <div className={`flex items-center gap-2 ${theme.muted}`}>
                   <TrendingUp className="w-4 h-4" />
                   {goal.days_remaining !== null && goal.days_remaining > 0 ? (
                     <span>{goal.days_remaining} {t('goals.daysRemaining')}</span>
@@ -332,14 +337,14 @@ export const GoalsManager = () => {
                 </div>
 
                 {goal.is_completed ? (
-                  <span className="flex items-center gap-1 text-[#FCF6BA] font-bold">
+                  <span className={`flex items-center gap-1 font-bold ${variant === 'light' ? 'text-[#0EA5E9]' : 'text-[#FCF6BA]'}`}>
                     <Check className="w-4 h-4" />
                     {t('goals.completed')}
                   </span>
                 ) : goal.current_count >= (goal.target_count || 0) ? (
                   <button
                     onClick={() => handleComplete(goal.id)}
-                    className="px-3 py-1 bg-[#FCF6BA]/20 text-[#FCF6BA] rounded-lg hover:bg-[#FCF6BA]/30 transition-colors text-sm"
+                    className={`px-3 py-1 rounded-lg transition-colors text-sm ${variant === 'light' ? 'bg-[#0EA5E9]/20 text-[#0EA5E9] hover:bg-[#0EA5E9]/30' : 'bg-[#FCF6BA]/20 text-[#FCF6BA] hover:bg-[#FCF6BA]/30'}`}
                   >
                     {t('goals.complete')}
                   </button>
