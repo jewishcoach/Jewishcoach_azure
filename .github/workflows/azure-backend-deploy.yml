@@ -83,8 +83,45 @@ jobs:
         run: sleep 120
 
       - name: Deploy to Azure Web App
+        id: deploy
         uses: azure/webapps-deploy@v2
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          package: backend/deploy.zip
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+
+  # Retry deploy on 409 Conflict (common transient error)
+  retry-deploy:
+    needs: build-and-deploy
+    if: failure()
+    runs-on: ubuntu-latest
+    name: Retry Deploy (on 409)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: echo "First deploy failed. Waiting 2 min before retry..."
+      - run: sleep 120
+      - name: Create deploy zip
+        run: |
+          cd backend
+          python3 -c "
+          import zipfile, os
+          with zipfile.ZipFile('deploy.zip', 'w', zipfile.ZIP_DEFLATED) as z:
+              for path in ['app', 'requirements.txt', 'startup.sh', 'gunicorn_conf.py', 'web.config']:
+                  if os.path.isdir(path):
+                      for r, d, f in os.walk(path):
+                          for fn in f:
+                              if '__pycache__' in r or fn.endswith('.pyc') or 'antenv' in r or 'test_venv' in r:
+                                  continue
+                              z.write(os.path.join(r, fn))
+                  elif os.path.isfile(path):
+                      z.write(path)
+          "
+      - name: Retry Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: jewishcoach-api
           package: backend/deploy.zip
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
