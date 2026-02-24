@@ -19,6 +19,40 @@ STAGE_FILES: Dict[str, str] = {
 
 SUPPORTED_LANGUAGES = {"he", "en"}
 
+# Gate per stage only – each stage sees only ITS transition rule
+STAGE_GATES_HE: Dict[str, str] = {
+    "S0": "**Gate (S0→S1):** רשות מפורשת להתחיל (כן/בסדר/בוא נתחיל).",
+    "S1": "**Gate (S1→S2):** נושא ברור אחרי 2–3 תורות (מספיק להבין על מה להתאמן).",
+    "S2": "**Gate (S2→S3):** אירוע ספציפי עם מתי/איפה/עם מי/מה קרה.",
+    "S3": "**Gate (S3→S4):** 3–4 רגשות עם עומק חווייתי.",
+    "S4": "**Gate (S4→S5):** משפט מחשבה ברור באותו רגע.",
+    "S5": "**Gate (S5→S6):** מעשה בפועל ברור.",
+    "S6": "**Gate (S6→S7):** רצוי (מעשה+רגש+מחשבה) + סיכום מאושר.",
+    "S7": "**Gate (S7→S8):** שם לפער + ציון 1–10.",
+    "S8": "**Gate (S8→S9):** דפוס סוכם + אישור משתמש.",
+    "S9": "**Gate (S9→S10):** 2+ רווחים, 2+ הפסדים.",
+    "S10": "**Gate (S10→S11):** 2+ ערכים, 2+ יכולות.",
+    "S11": "**Gate (S11→S12):** בחירה ברורה.",
+    "S12": "**Gate (S12→S13):** חזון ברור.",
+    "S13": "**Gate (S13→סיום):** מחויבות קונקרטית.",
+}
+STAGE_GATES_EN: Dict[str, str] = {
+    "S0": "**Gate (S0→S1):** Explicit permission to start (yes/okay/let's go).",
+    "S1": "**Gate (S1→S2):** Clear topic after 2–3 turns.",
+    "S2": "**Gate (S2→S3):** Specific event with when/where/who/what.",
+    "S3": "**Gate (S3→S4):** 3–4 emotions with experiential depth.",
+    "S4": "**Gate (S4→S5):** Clear thought sentence in that moment.",
+    "S5": "**Gate (S5→S6):** Clear actual action.",
+    "S6": "**Gate (S6→S7):** Desired (action+emotion+thought) + confirmed summary.",
+    "S7": "**Gate (S7→S8):** Gap name + 1–10 score.",
+    "S8": "**Gate (S8→S9):** Pattern summarized + user confirmation.",
+    "S9": "**Gate (S9→S10):** 2+ gains, 2+ losses.",
+    "S10": "**Gate (S10→S11):** 2+ values, 2+ abilities.",
+    "S11": "**Gate (S11→S12):** Clear choice.",
+    "S12": "**Gate (S12→S13):** Clear vision.",
+    "S13": "**Gate (S13→End):** Specific commitment.",
+}
+
 
 @lru_cache(maxsize=256)
 def _load_file(file_path: str) -> str:
@@ -66,7 +100,6 @@ def assemble_system_prompt(current_step: str, language: str = "he", user_gender:
         "persona.md",
         "process_map.md",
         "meta_questions.md",
-        "gates.md",
         "response_format.md",
     ]
 
@@ -74,6 +107,13 @@ def assemble_system_prompt(current_step: str, language: str = "he", user_gender:
     for core_file in core_files:
         resolved = _resolve_prompt_file(core_dir, lang, core_file)
         core_sections.append(_load_file(str(resolved)).strip())
+
+    # Inject only the gate relevant for THIS stage
+    gates_dict = STAGE_GATES_HE if lang == "he" else STAGE_GATES_EN
+    gate_content = gates_dict.get(current_step, "")
+    safety_he = "**Safety:** אל תחזור על שאלות. \"אמרתי כבר\" → התנצל ועבור. שאל בלבד."
+    safety_en = "**Safety:** No repeated questions. \"I already said\" → Apologize and move on. Questions only."
+    gate_section = f"\n\n{gate_content}\n\n---\n\n{safety_he if lang == 'he' else safety_en}"
 
     stage_file = STAGE_FILES.get(current_step, "s1_topic.md")
     stage_path = _resolve_prompt_file(stages_dir, lang, stage_file)
@@ -95,10 +135,9 @@ def assemble_system_prompt(current_step: str, language: str = "he", user_gender:
         elif user_gender == "male":
             gender_suffix = "\n\n**Gender:** The coachee is male."
 
-    # Inject JSON format right after stage title (in every stage) so model always sees it
-    return f"""{'\n\n---\n\n'.join(core_sections[:-1])}{gender_suffix}
-
----
+    # Core: persona + process_map + meta_questions, then stage-specific gate only
+    core_text = "\n\n---\n\n".join(core_sections[:-1])
+    return f"""{core_text}{gender_suffix}{gate_section}
 
 {stage_title}
 
