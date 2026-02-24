@@ -23,6 +23,7 @@ azure-cognitiveservices-speech==1.36.0
 openai==2.15.0
 langchain-core==1.2.7
 langchain-openai==1.1.7
+langchain-google-genai>=2.0.0
 langgraph==1.0.6
 langgraph-checkpoint==4.0.0
 langsmith==0.6.4

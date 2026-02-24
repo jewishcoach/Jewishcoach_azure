@@ -29,6 +29,8 @@ logger = logging.getLogger(__name__)
 BSD_DEBUG = os.getenv("BSD_DEBUG", "0").strip() in ("1", "true", "yes")
 # Temporary: set BSD_V2_SAFETY_NET_DISABLED=1 to bypass all Safety Net logic
 SAFETY_NET_DISABLED = os.getenv("BSD_V2_SAFETY_NET_DISABLED", "0").strip() in ("1", "true", "yes")
+# A/B test: USE_GEMINI=1 uses Google Gemini instead of Azure OpenAI (optimized for coaching)
+USE_GEMINI = os.getenv("USE_GEMINI", "0").strip() in ("1", "true", "yes")
 
 
 def _bsd_log(tag: str, **kwargs: Any) -> None:
@@ -1874,54 +1876,86 @@ So feel free to share an event from any area where you interacted with people an
         
         # 3. Call LLM
         t3 = time.time()
-        use_structured = os.getenv("BSD_V2_STRUCTURED_OUTPUT", "1").strip() in ("1", "true", "yes")
         coach_message = ""
         internal_state: Dict[str, Any] = {}
 
-        if use_structured:
-            llm = get_azure_chat_llm(purpose="talker")
-            try:
-                strict = os.getenv("BSD_V2_STRUCTURED_STRICT", "1").strip() in ("1", "true", "yes")
-                structured_llm = llm.with_structured_output(
-                    CoachResponseSchema, method="json_schema", strict=strict
-                )
-                response_obj = await structured_llm.ainvoke(messages)
-                coach_message = (response_obj.coach_message or "").strip()
-                internal_state = response_obj.internal_state.model_dump()
-                _bsd_log("LLM_DECISION", step=internal_state.get("current_step"),
-                         saturation=internal_state.get("saturation_score"),
-                         collected_data_keys=list((internal_state.get("collected_data") or {}).keys()),
-                         coach_preview=(coach_message or "")[:60])
-            except Exception as e:
-                logger.warning(f"[BSD V2] Structured output failed ({e}), falling back to JSON mode")
-                use_structured = False
+        if USE_GEMINI:
+            from langchain_google_genai import ChatGoogleGenerativeAI, HarmCategory, HarmBlockThreshold
+            logger.info("[BSD V2] Using Google Gemini Engine (Optimized for Coaching)")
 
-        if not use_structured:
-            llm = get_azure_chat_llm(purpose="talker")
-            if os.getenv("BSD_V2_JSON_MODE", "1").strip() in ("1", "true", "yes"):
-                llm = llm.bind(response_format={"type": "json_object"})
-            cache_key_prefix = os.getenv("AZURE_OPENAI_PROMPT_CACHE_KEY_PREFIX", "bsd_v2_markdown_prompt")
-            cache_key = f"{cache_key_prefix}:main_coach:{language}:{current_step}"
-            response = await _ainvoke_with_prompt_cache(llm, messages, cache_key=cache_key)
-            response_text = response.content.strip()
-            token_usage = getattr(response, "response_metadata", {}).get("token_usage", {})
-            prompt_token_details = token_usage.get("prompt_tokens_details", {})
-            cached_tokens = prompt_token_details.get("cached_tokens")
-            if cached_tokens is not None:
-                logger.info(f"[PERF] Prompt cache hit tokens: {cached_tokens}")
-            try:
-                coach_message, internal_state = _parse_json_response(response_text, state, user_message, language)
-            except json.JSONDecodeError as e:
-                logger.error(f"[BSD V2] Failed to parse JSON: {e}")
-                coach_message = (response_text or "").strip()
-                current_step = state.get("current_step", "S1")
-                if current_step == "S0" and user_message and len(user_message.strip()) >= 2:
-                    msg_count = len([m for m in state.get("messages", []) if m.get("sender") == "user"])
-                    if msg_count >= 1:
-                        current_step = "S1"
-                internal_state = {"current_step": current_step, "saturation_score": state.get("saturation_score", 0.3), "reflection": "Failed to parse"}
-                if not coach_message:
-                    coach_message = get_next_step_question(current_step, language)
+            # Critical for coaching: Disable safety blocks to allow users to express negative emotions/hardship freely
+            safety_settings = {
+                HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+            }
+
+            gemini_llm = ChatGoogleGenerativeAI(
+                model="gemini-1.5-flash",
+                temperature=0.2,
+                max_retries=2,
+                safety_settings=safety_settings
+            )
+
+            structured_llm = gemini_llm.with_structured_output(CoachResponseSchema)
+            response = await structured_llm.ainvoke(messages)
+
+            coach_message = response.coach_message
+            internal_state = response.internal_state.model_dump()
+            llm = gemini_llm
+            _bsd_log("LLM_DECISION", step=internal_state.get("current_step"),
+                     saturation=internal_state.get("saturation_score"),
+                     collected_data_keys=list((internal_state.get("collected_data") or {}).keys()),
+                     coach_preview=(coach_message or "")[:60])
+        else:
+            # Azure OpenAI path (existing logic)
+            use_structured = os.getenv("BSD_V2_STRUCTURED_OUTPUT", "1").strip() in ("1", "true", "yes")
+
+            if use_structured:
+                llm = get_azure_chat_llm(purpose="talker")
+                try:
+                    strict = os.getenv("BSD_V2_STRUCTURED_STRICT", "1").strip() in ("1", "true", "yes")
+                    structured_llm = llm.with_structured_output(
+                        CoachResponseSchema, method="json_schema", strict=strict
+                    )
+                    response_obj = await structured_llm.ainvoke(messages)
+                    coach_message = (response_obj.coach_message or "").strip()
+                    internal_state = response_obj.internal_state.model_dump()
+                    _bsd_log("LLM_DECISION", step=internal_state.get("current_step"),
+                             saturation=internal_state.get("saturation_score"),
+                             collected_data_keys=list((internal_state.get("collected_data") or {}).keys()),
+                             coach_preview=(coach_message or "")[:60])
+                except Exception as e:
+                    logger.warning(f"[BSD V2] Structured output failed ({e}), falling back to JSON mode")
+                    use_structured = False
+
+            if not use_structured:
+                llm = get_azure_chat_llm(purpose="talker")
+                if os.getenv("BSD_V2_JSON_MODE", "1").strip() in ("1", "true", "yes"):
+                    llm = llm.bind(response_format={"type": "json_object"})
+                cache_key_prefix = os.getenv("AZURE_OPENAI_PROMPT_CACHE_KEY_PREFIX", "bsd_v2_markdown_prompt")
+                cache_key = f"{cache_key_prefix}:main_coach:{language}:{current_step}"
+                response = await _ainvoke_with_prompt_cache(llm, messages, cache_key=cache_key)
+                response_text = response.content.strip()
+                token_usage = getattr(response, "response_metadata", {}).get("token_usage", {})
+                prompt_token_details = token_usage.get("prompt_tokens_details", {})
+                cached_tokens = prompt_token_details.get("cached_tokens")
+                if cached_tokens is not None:
+                    logger.info(f"[PERF] Prompt cache hit tokens: {cached_tokens}")
+                try:
+                    coach_message, internal_state = _parse_json_response(response_text, state, user_message, language)
+                except json.JSONDecodeError as e:
+                    logger.error(f"[BSD V2] Failed to parse JSON: {e}")
+                    coach_message = (response_text or "").strip()
+                    current_step = state.get("current_step", "S1")
+                    if current_step == "S0" and user_message and len(user_message.strip()) >= 2:
+                        msg_count = len([m for m in state.get("messages", []) if m.get("sender") == "user"])
+                        if msg_count >= 1:
+                            current_step = "S1"
+                    internal_state = {"current_step": current_step, "saturation_score": state.get("saturation_score", 0.3), "reflection": "Failed to parse"}
+                    if not coach_message:
+                        coach_message = get_next_step_question(current_step, language)
 
         t4 = time.time()
         logger.info(f"[PERF] LLM call: {(t4-t3)*1000:.0f}ms")

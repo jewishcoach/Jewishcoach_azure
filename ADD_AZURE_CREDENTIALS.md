@@ -79,4 +79,17 @@ az webapp config appsettings set \
 
 ---
 
+## A/B Testing: Google Gemini (USE_GEMINI=1)
+
+כדי להפעיל את מנוע Gemini במקום Azure OpenAI:
+
+| משתנה | ערך | הסבר |
+|-------|-----|------|
+| `USE_GEMINI` | `1` | מפעיל את מנוע Google Gemini (gemini-1.5-flash) במקום Azure. |
+| `GOOGLE_API_KEY` | `...` | **חובה** כש-USE_GEMINI=1. API key מ-[Google AI Studio](https://aistudio.google.com/apikey). |
+
+הגדרות Gemini מותאמות לאימון/בריאות נפשית: חסימת safety מושבתת כדי לאפשר למשתמשים להביע רגשות שליליים בחופשיות.
+
+---
+
 **הערה:** ה-secret לא מוצג שוב אחרי השמירה. אם צריך לעדכן – מחק את ה-secret הקיים ויצור חדש.
