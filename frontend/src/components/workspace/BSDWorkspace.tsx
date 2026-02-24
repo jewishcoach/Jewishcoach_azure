@@ -153,16 +153,13 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
   const isRTL = i18n.dir() === 'rtl';
   const onArchiveClick = useCallback(() => setArchiveOpen(true), []);
 
-  // Dashboard: full-screen + Vision Ladder sidebar. No chat HudPanel.
+  // Dashboard: full-screen only. No HudPanel, no Vision Ladder.
   if (showDashboard) {
     return (
       <>
         <div className="flex-1 flex overflow-hidden bg-[#F8FAFC]">
           <div className="flex-1 min-w-0 overflow-hidden">
             <Dashboard onBack={onCloseDashboard} />
-          </div>
-          <div className="w-[280px] flex-shrink-0 border-r border-white/[0.08] overflow-hidden hidden md:block">
-            <VisionLadder currentStep={currentPhase} />
           </div>
         </div>
         <ArchiveDrawer

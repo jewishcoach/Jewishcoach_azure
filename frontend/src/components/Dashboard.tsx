@@ -3,11 +3,14 @@ import { useAuth } from '@clerk/clerk-react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import {
-  User, Award, Settings, Save, X, ArrowRight, Target, History
+  User, Award, Settings, Save, X, ArrowRight, Target, History,
+  MessageSquare, Calendar, TrendingUp
 } from 'lucide-react';
 import { CoachingCalendar } from './CoachingCalendar';
 import { RemindersManager } from './RemindersManager';
 import { GoalsManager } from './GoalsManager';
+import { ActivityBarChart } from './dashboard/ActivityBarChart';
+import { PhaseDonutChart } from './dashboard/PhaseDonutChart';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -131,7 +134,7 @@ export const Dashboard = ({ onBack }: DashboardProps) => {
   const isNewUser = stats.total_conversations === 0;
 
   return (
-    <div className="flex h-full overflow-hidden" dir="rtl" style={{ background: COLORS.bg }}>
+    <div className="flex h-full overflow-hidden dashboard-container" dir="rtl" style={{ background: COLORS.bg }}>
       {/* Left Sidebar - MatDash style */}
       <aside className="w-56 flex-shrink-0 flex flex-col py-6 px-3" style={{ background: COLORS.card, boxShadow: COLORS.shadow }}>
         {onBack && (
@@ -220,7 +223,7 @@ export const Dashboard = ({ onBack }: DashboardProps) => {
             <div className="flex flex-wrap justify-center gap-2">
               {profile.gender && (
                 <span className="text-xs px-2.5 py-1 rounded-full" style={{ background: COLORS.accentBlueLight, color: COLORS.accentBlue }}>
-                  {profile.gender === 'male' ? `👨 ${t('dashboard.male')}` : `👩 ${t('dashboard.female')}`}
+                  {profile.gender === 'male' ? t('dashboard.male') : t('dashboard.female')}
                 </span>
               )}
               <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ background: COLORS.accentYellowLight, color: '#B45309' }}>
@@ -242,6 +245,54 @@ export const Dashboard = ({ onBack }: DashboardProps) => {
                   <p className="text-sm" style={{ color: COLORS.text }}>{t('dashboard.newUserWelcome')}</p>
                 </motion.div>
               )}
+
+              {/* Charts row */}
+              <div className="grid md:grid-cols-2 gap-5">
+                <motion.div
+                  className="rounded-xl p-5"
+                  style={{ background: COLORS.card, boxShadow: COLORS.shadow }}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <h3 className="text-base font-semibold mb-4" style={{ color: COLORS.text }}>{t('dashboard.stats')}</h3>
+                  <ActivityBarChart
+                    data={[
+                      { label: t('dashboard.conversations'), value: stats.total_conversations, max: 10 },
+                      { label: t('dashboard.messages'), value: stats.total_messages, max: 50 },
+                      { label: t('dashboard.daysActive'), value: stats.days_active, max: 30 },
+                      { label: t('dashboard.thisMonth'), value: stats.messages_this_month, max: 50 },
+                    ]}
+                  />
+                </motion.div>
+                <motion.div
+                  className="rounded-xl p-5"
+                  style={{ background: COLORS.card, boxShadow: COLORS.shadow }}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.05 }}
+                >
+                  <h3 className="text-base font-semibold mb-4" style={{ color: COLORS.text }}>התפלגות שלבים</h3>
+                  {recent_conversations.length > 0 ? (
+                    <PhaseDonutChart
+                      data={(() => {
+                        const byPhase: Record<string, number> = {};
+                        recent_conversations.forEach((c) => {
+                          const p = c.current_phase || 'S0';
+                          byPhase[p] = (byPhase[p] || 0) + 1;
+                        });
+                        return Object.entries(byPhase)
+                          .map(([phase, count]) => ({ phase, label: translatePhase(phase), count }))
+                          .sort((a, b) => b.count - a.count)
+                          .slice(0, 6);
+                      })()}
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center py-12 text-sm" style={{ color: COLORS.textMuted }}>
+                      אין עדיין שיחות
+                    </div>
+                  )}
+                </motion.div>
+              </div>
 
               {/* Two-column content cards */}
               <div className="grid md:grid-cols-2 gap-5">
@@ -343,7 +394,7 @@ export const Dashboard = ({ onBack }: DashboardProps) => {
                   </div>
                 </motion.div>
 
-                {/* Achievements - full width */}
+                {/* Achievements - full width, icons only */}
                 <motion.div
                   className="md:col-span-2 rounded-xl p-5"
                   style={{ background: COLORS.card, boxShadow: COLORS.shadow }}
@@ -356,10 +407,10 @@ export const Dashboard = ({ onBack }: DashboardProps) => {
                     {t('dashboard.achievements')}
                   </h3>
                   <div className="flex flex-wrap gap-4">
-                    {stats.total_conversations >= 5 && <AchievementBadge emoji="🎯" text={t('dashboard.achievement5Conversations')} />}
-                    {stats.total_messages >= 50 && <AchievementBadge emoji="💬" text={t('dashboard.achievement50Messages')} />}
-                    {stats.days_active >= 7 && <AchievementBadge emoji="📅" text={t('dashboard.achievement7Days')} />}
-                    {stats.longest_conversation_messages >= 20 && <AchievementBadge emoji="🏆" text={t('dashboard.achievement20Messages')} />}
+                    {stats.total_conversations >= 5 && <AchievementBadge icon={<MessageSquare className="w-4 h-4" />} text={t('dashboard.achievement5Conversations')} />}
+                    {stats.total_messages >= 50 && <AchievementBadge icon={<MessageSquare className="w-4 h-4" />} text={t('dashboard.achievement50Messages')} />}
+                    {stats.days_active >= 7 && <AchievementBadge icon={<Calendar className="w-4 h-4" />} text={t('dashboard.achievement7Days')} />}
+                    {stats.longest_conversation_messages >= 20 && <AchievementBadge icon={<TrendingUp className="w-4 h-4" />} text={t('dashboard.achievement20Messages')} />}
                     {stats.total_conversations < 5 && stats.total_messages < 50 && stats.days_active < 7 && stats.longest_conversation_messages < 20 && (
                       <p className="text-sm italic" style={{ color: COLORS.textMuted }}>{t('dashboard.noAchievements')}</p>
                     )}
@@ -436,10 +487,10 @@ export const Dashboard = ({ onBack }: DashboardProps) => {
   );
 };
 
-function AchievementBadge({ emoji, text }: { emoji: string; text: string }) {
+function AchievementBadge({ icon, text }: { icon: React.ReactNode; text: string }) {
   return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: COLORS.accentBlueLight }}>
-      <span className="text-lg">{emoji}</span>
+    <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: COLORS.accentBlueLight, color: COLORS.accentBlue }}>
+      {icon}
       <span className="text-sm" style={{ color: COLORS.text }}>{text}</span>
     </div>
   );

@@ -39,6 +39,12 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Dashboard - Rubik for Hebrew (modern, clean, readable) */
+.dashboard-container,
+.dashboard-container * {
+  font-family: 'Rubik', 'Heebo', 'Inter', system-ui, sans-serif !important;
+}
+
 /* Workspace display fonts - Heebo for Hebrew, Cormorant for Latin */
 .workspace-ladder,
 .workspace-ladder *,
