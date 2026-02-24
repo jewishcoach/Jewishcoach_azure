@@ -10,6 +10,7 @@ on:
       - main
     paths:
       - 'backend/**'
+      - '.github/workflows/azure-backend-deploy.yml'
   workflow_dispatch:
 
 env:
@@ -59,7 +60,7 @@ jobs:
           ls -la deploy.zip
 
       - name: Wait for any previous deployment to finish
-        run: sleep 45
+        run: sleep 90
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
