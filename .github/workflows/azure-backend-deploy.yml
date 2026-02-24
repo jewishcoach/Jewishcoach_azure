@@ -6,6 +6,11 @@
 
 name: Deploy Backend to Azure Web App
 
+# Prevent overlapping deploys (409 Conflict often from concurrent deployments)
+concurrency:
+  group: backend-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches:
@@ -75,7 +80,7 @@ jobs:
         continue-on-error: true
 
       - name: Wait for any previous deployment to finish
-        run: sleep 90
+        run: sleep 120
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
