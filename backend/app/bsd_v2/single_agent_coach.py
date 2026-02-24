@@ -979,10 +979,14 @@ def count_turns_in_step(state: Dict[str, Any], step: str) -> int:
     return count
 
 
-def detect_stage_question_mismatch(coach_message: str, current_step: str, language: str = "he") -> Optional[str]:
+def detect_stage_question_mismatch(
+    coach_message: str, current_step: str, language: str = "he", state: Optional[Dict[str, Any]] = None
+) -> Optional[str]:
     """
     Detect if coach asked a question from a different stage than current_step.
     This happens when LLM moves forward in content but forgets to update current_step in JSON.
+    
+    CRITICAL: Do NOT advance S1/S2→S3 when no event - would skip S2 (event) entirely.
     
     Returns:
         The correct stage if mismatch detected, None otherwise
@@ -990,7 +994,7 @@ def detect_stage_question_mismatch(coach_message: str, current_step: str, langua
     if language == "he":
         stage_indicators = {
             "S2": ["מה קרה", "מתי זה היה", "מי היה שם", "מי עוד היה"],
-            "S3": ["מה הרגשת", "איזה רגש", "איפה הרגשת", "מה עבר בך"],
+            "S3": ["מה הרגשת", "איזה רגש", "איפה הרגשת", "מה עבר בך", "להתעמק ברגשות"],
             "S4": ["מה עבר לך בראש", "מה חשבת", "מה אמרת לעצמך"],
             "S5": ["מה עשית", "איך הגבת", "מה עשית בפועל"],
             "S6": ["מה היית רוצה", "איך היית רוצה להרגיש", "מה לומר לעצמך"],
@@ -1020,6 +1024,13 @@ def detect_stage_question_mismatch(coach_message: str, current_step: str, langua
     for stage, indicators in stage_indicators.items():
         if any(ind in coach_lower for ind in indicators):
             if stage != current_step:
+                # CRITICAL: Don't advance S1/S2→S3+ when no event - would skip event collection!
+                if current_step in ("S1", "S2") and stage in ("S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11"):
+                    if state:
+                        has_event, _ = has_sufficient_event_details(state)
+                        if not has_event:
+                            logger.warning(f"[Stage Mismatch!] Coach asked {stage} but current_step={current_step} and NO EVENT - BLOCKING advance")
+                            return None
                 logger.error(f"[Stage Mismatch!] Coach asked {stage} question but current_step={current_step}")
                 logger.error(f"[Stage Mismatch!] Question: {coach_message[:100]}")
                 return stage  # Return the correct stage
@@ -1240,8 +1251,8 @@ def check_repeated_question(coach_message: str, history: list, current_step: str
         if msg.get("sender") == "user"
     ]
     
-    # === CRITICAL: S1/S2 + emotions question without event = wrong! Block immediately ===
-    if current_step in ("S1", "S2"):
+    # === CRITICAL: S0/S1/S2 + emotions question without event = wrong! Block immediately ===
+    if current_step in ("S0", "S1", "S2"):
         emotions_indicators_he = [
             "מה הרגשת", "איזה רגש", "להתעמק ברגשות", "מה עבר בך", "איפה הרגשת",
             "עכשיו אני רוצה להתעמק ברגשות", "מה הרגשת באותו רגע"  # exact phrases from bug
@@ -1326,7 +1337,10 @@ def check_repeated_question(coach_message: str, history: list, current_step: str
         user_asked_clarification = user_message and any(
             p in user_message.strip().lower() for p in clarification_phrases_he
         )
-        if not user_asked_clarification:
+        # SKIP override if coach already asks for event - that's progression, not a loop!
+        event_asking_he = ["אירוע ספציפי", "ספר לי על אירוע", "פעם אחת ספציפית", "רגע מסוים שבו", "מתי זה היה", "עם מי זה היה"]
+        coach_asks_for_event = any(p in coach_message for p in event_asking_he)
+        if not user_asked_clarification and not coach_asks_for_event:
             generic_patterns = [
                 "ספר לי עוד על הרגע הזה",
                 "מה בדיוק קרה",
@@ -1393,7 +1407,10 @@ def check_repeated_question(coach_message: str, history: list, current_step: str
         user_asked_clarification = user_message and any(
             p in user_message.strip().lower() for p in clarification_phrases_en
         )
-        if not user_asked_clarification:
+        # SKIP override if coach already asks for event
+        event_asking_en = ["specific event", "tell me about a time", "when was it", "who was there", "one specific time"]
+        coach_asks_for_event = any(p in coach_message.lower() for p in event_asking_en)
+        if not user_asked_clarification and not coach_asks_for_event:
             generic_patterns_en = [
                 "tell me more about",
                 "can you tell me more",
@@ -2619,7 +2636,7 @@ So feel free to share an event from any area where you interacted with people an
         
         # 6. Safety Net: Check for stage/question mismatch
         t9 = time.time()
-        mismatch_stage = detect_stage_question_mismatch(coach_message, state["current_step"], language)
+        mismatch_stage = detect_stage_question_mismatch(coach_message, state["current_step"], language, state=state)
         t10 = time.time()
         logger.info(f"[PERF] Stage mismatch check: {(t10-t9)*1000:.0f}ms")
         

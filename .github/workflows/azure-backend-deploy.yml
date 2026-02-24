@@ -58,8 +58,14 @@ jobs:
           "
           ls -la deploy.zip
 
+      - name: Wait for any previous deployment to finish
+        run: sleep 45
+
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
+        retry:
+          max-attempts: 3
+          when: failure()
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           package: backend/deploy.zip
