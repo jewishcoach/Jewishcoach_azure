@@ -6,10 +6,10 @@
 
 name: Deploy Backend to Azure Web App
 
-# Queue deploys - do NOT cancel. Cancelling leaves Azure in locked state → 409 on next deploy.
+# One deploy at a time. New runs cancel in-progress (may cause 409 if previous was mid-deploy).
 concurrency:
   group: backend-deploy-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 on:
   push:
@@ -28,6 +28,7 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     name: Build and Deploy Backend
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
@@ -80,7 +81,7 @@ jobs:
         continue-on-error: true
 
       - name: Wait for any previous deployment to finish
-        run: sleep 180
+        run: sleep 90
 
       - name: Deploy to Azure Web App
         id: deploy
@@ -96,13 +97,14 @@ jobs:
     if: failure()
     runs-on: ubuntu-latest
     name: Retry Deploy (on 409)
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: echo "First deploy failed (likely 409). Waiting 3 min before retry..."
-      - run: sleep 180
+      - run: echo "First deploy failed (likely 409). Waiting 90s before retry..."
+      - run: sleep 90
       - name: Create deploy zip
         run: |
           cd backend
@@ -130,7 +132,7 @@ jobs:
 
       - name: Second retry (if first retry failed)
         if: steps.retry1.outcome == 'failure'
-        run: sleep 120
+        run: sleep 60
       - name: Final Deploy
         if: steps.retry1.outcome == 'failure'
         uses: azure/webapps-deploy@v2
