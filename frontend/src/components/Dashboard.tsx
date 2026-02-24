@@ -42,6 +42,8 @@ interface DashboardProps {
   onBack?: () => void;
 }
 
+type DashboardTab = 'summary' | 'goals' | 'history';
+
 export const Dashboard = ({ onBack }: DashboardProps) => {
   const { getToken } = useAuth();
   const { t, i18n } = useTranslation();
@@ -50,6 +52,7 @@ export const Dashboard = ({ onBack }: DashboardProps) => {
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({ display_name: '', gender: '' });
   const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState<DashboardTab>('summary');
 
   useEffect(() => {
     loadDashboard();
@@ -112,12 +115,19 @@ export const Dashboard = ({ onBack }: DashboardProps) => {
   if (!data) return <div className="flex-1 flex items-center justify-center bg-[#0F172A] text-[#F5F5F0] p-8">שגיאה בטעינת נתונים</div>;
 
   const { profile, stats, recent_conversations } = data;
+  const isNewUser = stats.total_conversations === 0;
+
+  const tabs: { id: DashboardTab; labelKey: string }[] = [
+    { id: 'summary', labelKey: 'dashboard.tab.summary' },
+    { id: 'goals', labelKey: 'dashboard.tab.goalsReminders' },
+    { id: 'history', labelKey: 'dashboard.tab.history' },
+  ];
 
   return (
     <div className="flex-1 w-full bg-[#0F172A] overflow-y-auto custom-scrollbar" dir="rtl">
       <div className="max-w-7xl mx-auto p-8">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6">
           {onBack && (
             <button
               onClick={onBack}
@@ -127,10 +137,30 @@ export const Dashboard = ({ onBack }: DashboardProps) => {
               <span>{t('chat.button')}</span>
             </button>
           )}
-          <h1 className="text-4xl font-bold text-[#F5F5F0] mb-2">{t('dashboard.title')}</h1>
-          <p className="text-[#F5F5F0]/70">{t('dashboard.subtitle')}</p>
+          <h1 className="text-3xl font-bold text-[#F5F5F0] mb-2">{t('dashboard.title')}</h1>
+          <p className="text-[#F5F5F0]/70 text-sm mb-6">{t('dashboard.subtitle')}</p>
+
+          {/* Tabs */}
+          <div className="flex gap-2 border-b border-white/[0.08] pb-2">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  activeTab === tab.id
+                    ? 'bg-[#FCF6BA]/15 text-[#FCF6BA]'
+                    : 'text-[#F5F5F0]/70 hover:text-[#F5F5F0] hover:bg-white/5'
+                }`}
+              >
+                {t(tab.labelKey)}
+              </button>
+            ))}
+          </div>
         </div>
 
+        {/* Tab: Summary */}
+        {activeTab === 'summary' && (
+          <div className="space-y-8">
         {/* Profile Card */}
         <motion.div
           className="bg-white/[0.04] rounded-2xl p-6 border border-white/[0.08] mb-8"
@@ -222,8 +252,21 @@ export const Dashboard = ({ onBack }: DashboardProps) => {
           )}
         </motion.div>
 
+        {/* New User Welcome */}
+        {isNewUser && (
+          <motion.div
+            className="bg-[#FCF6BA]/10 rounded-2xl p-6 border border-[#FCF6BA]/20"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <p className="text-[#F5F5F0]/90 text-center" style={{ fontFamily: 'Inter, sans-serif' }}>
+              {t('dashboard.newUserWelcome')}
+            </p>
+          </motion.div>
+        )}
+
         {/* Stats Grid */}
-        <div className="grid md:grid-cols-4 gap-6 mb-8">
+        <div className="grid md:grid-cols-4 gap-6">
           <StatCard
             icon={<MessageSquare className="w-6 h-6" />}
             title={t('dashboard.conversations')}
@@ -247,7 +290,7 @@ export const Dashboard = ({ onBack }: DashboardProps) => {
         </div>
 
         {/* Additional Stats */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
+        <div className="grid md:grid-cols-2 gap-6">
           <motion.div
             className="bg-white/[0.04] rounded-2xl p-6 border border-white/[0.08]"
             initial={{ opacity: 0, x: -20 }}
@@ -308,30 +351,56 @@ export const Dashboard = ({ onBack }: DashboardProps) => {
                   <span>{t('dashboard.achievement20Messages')}</span>
                 </div>
               )}
+              {stats.total_conversations < 5 && stats.total_messages < 50 && stats.days_active < 7 && stats.longest_conversation_messages < 20 && (
+                <p className="text-sm text-[#F5F5F0]/50 italic">{t('dashboard.noAchievements')}</p>
+              )}
             </div>
           </motion.div>
         </div>
+          </div>
+        )}
 
-        {/* Calendar Section with Goals & Reminders */}
-        <div className="grid lg:grid-cols-2 gap-8 mb-8">
-          {/* Left Column: Calendar + Recent Conversations */}
-          <div className="space-y-6">
-            {recent_conversations.length > 0 && (
-              <CoachingCalendar conversations={recent_conversations} />
-            )}
-            
-            {/* Recent Conversations */}
+        {/* Tab: Goals & Reminders */}
+        {activeTab === 'goals' && (
+          <div className="grid md:grid-cols-2 gap-6">
             <motion.div
               className="bg-white/[0.04] rounded-2xl p-6 border border-white/[0.08]"
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <GoalsManager />
+            </motion.div>
+            <motion.div
+              className="bg-white/[0.04] rounded-2xl p-6 border border-white/[0.08]"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+            >
+              <RemindersManager />
+            </motion.div>
+          </div>
+        )}
+
+        {/* Tab: History */}
+        {activeTab === 'history' && (
+          <div className="grid lg:grid-cols-2 gap-8">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <CoachingCalendar conversations={recent_conversations} />
+            </motion.div>
+            <motion.div
+              className="bg-white/[0.04] rounded-2xl p-6 border border-white/[0.08]"
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
             >
               <h3 className="text-lg font-bold mb-4 text-[#F5F5F0]">{t('dashboard.recentConversations')}</h3>
               {recent_conversations.length === 0 ? (
-                <p className="text-[#F5F5F0]/50 text-center py-4">{t('dashboard.noConversations')}</p>
+                <p className="text-[#F5F5F0]/50 text-center py-8">{t('dashboard.noConversations')}</p>
               ) : (
                 <div className="space-y-2">
-                  {recent_conversations.slice(0, 5).map((conv) => (
+                  {recent_conversations.slice(0, 10).map((conv) => (
                     <div
                       key={conv.id}
                       className="flex justify-between items-center p-3 rounded-lg hover:bg-white/5 transition-colors"
@@ -351,27 +420,7 @@ export const Dashboard = ({ onBack }: DashboardProps) => {
               )}
             </motion.div>
           </div>
-
-          {/* Right Column: Goals & Reminders */}
-          <div className="space-y-6">
-            <motion.div
-              className="bg-white/[0.04] rounded-2xl p-6 border border-white/[0.08]"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-            >
-              <GoalsManager />
-            </motion.div>
-
-            <motion.div
-              className="bg-white/[0.04] rounded-2xl p-6 border border-white/[0.08]"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 }}
-            >
-              <RemindersManager />
-            </motion.div>
-          </div>
-        </div>
+        )}
 
       </div>
     </div>

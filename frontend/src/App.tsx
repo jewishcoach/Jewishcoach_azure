@@ -6,6 +6,7 @@ import { Sparkles, Shield, CreditCard, BarChart3 } from 'lucide-react';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { BSDWorkspace } from './components/workspace/BSDWorkspace';
 import { LandingPage } from './components/LandingPage';
+import { OnboardingFlow, hasSeenOnboarding, setOnboardingComplete } from './components/OnboardingFlow';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { BillingPageSimple as BillingPage } from './components/BillingPageSimple';
 import { apiClient } from './services/api';
@@ -148,17 +149,46 @@ function SignedInContent() {
   );
 }
 
+// Wrapper: show onboarding for first-time users, then main app
+function SignedInWithOnboarding() {
+  const [showOnboarding, setShowOnboarding] = useState(!hasSeenOnboarding());
+
+  if (showOnboarding) {
+    return (
+      <OnboardingFlow
+        onComplete={() => {
+          setOnboardingComplete();
+          setShowOnboarding(false);
+        }}
+      />
+    );
+  }
+  return <SignedInContent />;
+}
+
 // Demo Mode Component (for tunnel testing without Clerk)
 function DemoModeContent() {
   const { t } = useTranslation();
   const [showDashboard, setShowDashboard] = useState(false);
   const [showBilling, setShowBilling] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(!hasSeenOnboarding());
 
   useEffect(() => {
     // Set demo token for API client (backend will recognize this)
     apiClient.setToken('demo_tunnel_token');
     console.log('🎭 [DEMO MODE] Running in tunnel demo mode - authentication bypassed');
   }, []);
+
+  if (showOnboarding) {
+    return (
+      <OnboardingFlow
+        onComplete={() => {
+          setOnboardingComplete();
+          setShowOnboarding(false);
+        }}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen bg-[#0F172A]">
@@ -238,9 +268,9 @@ function App() {
         <LandingPage onGetStarted={handleGetStarted} />
       </SignedOut>
 
-      {/* Signed In - Chat Interface */}
+      {/* Signed In - Onboarding (first time) or Chat Interface */}
       <SignedIn>
-        <SignedInContent />
+        <SignedInWithOnboarding />
       </SignedIn>
     </>
   );
