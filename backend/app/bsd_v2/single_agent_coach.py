@@ -21,6 +21,7 @@ from ..bsd.llm import get_azure_chat_llm
 from .state_schema_v2 import add_message, get_conversation_history
 from .prompt_compact import SYSTEM_PROMPT_COMPACT_HE, SYSTEM_PROMPT_COMPACT_EN
 from .prompts.prompt_manager import assemble_system_prompt
+from .response_schema import CoachResponseSchema
 
 logger = logging.getLogger(__name__)
 
@@ -272,6 +273,72 @@ async def _ainvoke_with_prompt_cache(llm, messages, cache_key: str):
             )
             return await llm.ainvoke(messages)
         raise
+
+
+def _parse_json_response(
+    response_text: str, state: Dict[str, Any], user_message: Optional[str], language: str
+) -> Tuple[str, Dict[str, Any]]:
+    """Parse JSON from LLM response (fallback when Structured Output not used)."""
+    if response_text.startswith("```"):
+        response_text = response_text.split("```")[1]
+        if response_text.startswith("json"):
+            response_text = response_text[4:]
+        response_text = response_text.strip()
+
+    parsed = None
+    trailing_text = ""
+    try:
+        raw = json.loads(response_text)
+        parsed = raw if isinstance(raw, dict) else None
+        if parsed is None and isinstance(raw, str):
+            parsed = {
+                "coach_message": raw,
+                "internal_state": {"current_step": state.get("current_step", "S1"), "saturation_score": state.get("saturation_score", 0.3), "reflection": "Parsed as string"}
+            }
+    except json.JSONDecodeError:
+        decoder = json.JSONDecoder()
+        for start_idx, ch in enumerate(response_text):
+            if ch != "{":
+                continue
+            try:
+                candidate, end_idx = decoder.raw_decode(response_text[start_idx:])
+                if isinstance(candidate, dict):
+                    parsed = candidate
+                    trailing_text = response_text[start_idx + end_idx :].strip().strip('"')
+                    break
+            except json.JSONDecodeError:
+                continue
+
+    if parsed is None and response_text.strip():
+        plain = response_text.strip()
+        if not plain.startswith("{"):
+            inferred_step = state.get("current_step", "S1")
+            if inferred_step == "S0" and user_message and len(user_message.strip()) >= 2:
+                inferred_step = "S1"
+            parsed = {
+                "coach_message": plain,
+                "internal_state": {"current_step": inferred_step, "saturation_score": state.get("saturation_score", 0.3), "reflection": "Synthetic from plain text"}
+            }
+    if parsed is None:
+        raise json.JSONDecodeError("Could not parse model JSON payload", response_text, 0)
+
+    if isinstance(parsed, str):
+        parsed = {"coach_message": parsed, "internal_state": {"current_step": state.get("current_step", "S1"), "saturation_score": state.get("saturation_score", 0.3), "reflection": "Parsed as string"}}
+
+    coach_message = parsed.get("coach_message", "") or parsed.get("response", "") or parsed.get("question", "") or trailing_text
+    internal_state = parsed.get("internal_state", {})
+
+    if not internal_state:
+        stage = parsed.get("stage", state["current_step"])
+        saturation = parsed.get("saturation_score", parsed.get("Saturation Score", state["saturation_score"]))
+        internal_state = {"current_step": stage if isinstance(stage, str) else state["current_step"], "saturation_score": float(saturation) if isinstance(saturation, (int, float)) else state["saturation_score"], "reflection": "Parsed legacy metadata payload"}
+
+    if isinstance(coach_message, str) and coach_message.strip().startswith("{"):
+        coach_message = trailing_text or ""
+    if not coach_message:
+        coach_message = get_next_step_question(state.get("current_step", "S1"), language)
+
+    return coach_message, internal_state
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -668,6 +735,7 @@ def check_repeated_question(coach_message: str, history: list, current_step: str
                 "תוכל לספר לי יותר על",
                 "מה בדיוק ב", "מה בדיוק היית", "מה בדיוק",
                 "מה בזה מעסיק", "מה בזה מעסיק אותך",  # S1 drilling loop
+                "על איזה היבט", "מה בדיוק היית רוצה",  # S1 drilling variants
             ]
             
             generic_count = sum(
@@ -675,12 +743,14 @@ def check_repeated_question(coach_message: str, history: list, current_step: str
                 if any(pattern in msg_content for pattern in generic_patterns)
             )
             
-            # S1: trigger after 2 (not 3) - catch loop earlier
+            # S1: trigger after 2 (not 3) - catch loop earlier. Advance to S2 when topic is clear.
             threshold = 2 if current_step == "S1" else 3
             if generic_count >= threshold:
                 _bsd_log("REPETITION_RULE", rule="generic_patterns", count=generic_count, threshold=threshold, step=current_step)
                 logger.warning(f"[Safety Net] Too many generic questions ({generic_count})")
-                return (get_next_step_question(current_step, language), None)
+                # In S1: advance to S2 (ask for event) to break the drilling loop
+                step_override = "S2" if current_step == "S1" and len(recent_user_messages) >= 2 else None
+                return (get_next_step_question(current_step, language), step_override)
     
     else:  # English
         # Check if user said they're done
@@ -1804,151 +1874,57 @@ So feel free to share an event from any area where you interacted with people an
         
         # 3. Call LLM
         t3 = time.time()
-        llm = get_azure_chat_llm(purpose="talker")  # Higher temperature for natural conversation
-        # JSON Mode: force valid JSON output (gpt-4o, gpt-4-turbo, gpt-3.5-turbo-1106+)
-        # Requires "JSON" in system prompt - response_format.md provides that.
-        if os.getenv("BSD_V2_JSON_MODE", "1").strip() in ("1", "true", "yes"):
-            llm = llm.bind(response_format={"type": "json_object"})
-        # Azure prompt caching is enabled by default for supported models.
-        # prompt_cache_key improves cache hit routing for repeated BSD system-prefix.
-        cache_key_prefix = os.getenv("AZURE_OPENAI_PROMPT_CACHE_KEY_PREFIX", "bsd_v2_markdown_prompt")
-        cache_key = f"{cache_key_prefix}:main_coach:{language}:{current_step}"
-        response = await _ainvoke_with_prompt_cache(llm, messages, cache_key=cache_key)
-        t4 = time.time()
-        
-        response_text = response.content.strip()
-        
-        logger.info(f"[PERF] LLM call: {(t4-t3)*1000:.0f}ms")
-        logger.info(f"[BSD V2] LLM response ({len(response_text)} chars)")
-        logger.info(f"[BSD V2] LLM response preview: {response_text[:500]}...")
-        token_usage = getattr(response, "response_metadata", {}).get("token_usage", {})
-        prompt_token_details = token_usage.get("prompt_tokens_details", {})
-        cached_tokens = prompt_token_details.get("cached_tokens")
-        if cached_tokens is not None:
-            logger.info(f"[PERF] Prompt cache hit tokens: {cached_tokens}")
-        
-        # 4. Parse JSON response
-        t5 = time.time()
-        try:
-            # Clean markdown code blocks if present
-            if response_text.startswith("```"):
-                response_text = response_text.split("```")[1]
-                if response_text.startswith("json"):
-                    response_text = response_text[4:]
-                response_text = response_text.strip()
+        use_structured = os.getenv("BSD_V2_STRUCTURED_OUTPUT", "1").strip() in ("1", "true", "yes")
+        coach_message = ""
+        internal_state: Dict[str, Any] = {}
 
-            parsed = None
-            trailing_text = ""
-
-            # 1) Preferred path: full JSON payload
+        if use_structured:
+            llm = get_azure_chat_llm(purpose="talker")
             try:
-                raw = json.loads(response_text)
-                parsed = raw if isinstance(raw, dict) else None
-                if parsed is None and isinstance(raw, str):
-                    # LLM returned a bare string like "question?"
-                    parsed = {
-                        "coach_message": raw,
-                        "internal_state": {"current_step": state.get("current_step", "S1"), "saturation_score": state.get("saturation_score", 0.3), "reflection": "Parsed as string"}
-                    }
-            except json.JSONDecodeError:
-                # 2) Fallback: JSON prefix + trailing natural-language line
-                decoder = json.JSONDecoder()
-                for start_idx, ch in enumerate(response_text):
-                    if ch != "{":
-                        continue
-                    try:
-                        candidate, end_idx = decoder.raw_decode(response_text[start_idx:])
-                        if isinstance(candidate, dict):
-                            parsed = candidate
-                            trailing_text = response_text[start_idx + end_idx :].strip().strip('"')
-                            break
-                    except json.JSONDecodeError:
-                        continue
-
-            # 3) Last resort: wrap plain text as valid structure (avoids crash, enables safety nets)
-            if parsed is None and response_text.strip():
-                plain = response_text.strip()
-                if not plain.startswith("{"):
-                    logger.warning(f"[BSD V2] Wrapping plain text as synthetic JSON")
-                    inferred_step = state.get("current_step", "S1")
-                    if inferred_step == "S0" and user_message and len(user_message.strip()) >= 2:
-                        inferred_step = "S1"
-                    parsed = {
-                        "coach_message": plain,
-                        "internal_state": {
-                            "current_step": inferred_step,
-                            "saturation_score": state.get("saturation_score", 0.3),
-                            "reflection": "Synthetic from plain text"
-                        }
-                    }
-            if parsed is None:
-                raise json.JSONDecodeError("Could not parse model JSON payload", response_text, 0)
-
-            # Guard: parsed can be str in edge cases (e.g. json.loads('"text"'))
-            if isinstance(parsed, str):
-                parsed = {"coach_message": parsed, "internal_state": {"current_step": state.get("current_step", "S1"), "saturation_score": state.get("saturation_score", 0.3), "reflection": "Parsed as string"}}
-
-            # Try both field names for backwards compatibility
-            coach_message = (
-                parsed.get("coach_message", "")
-                or parsed.get("response", "")
-                or parsed.get("question", "")
-                or trailing_text
-            )
-            internal_state = parsed.get("internal_state", {})
-
-            # Log LLM decision for debugging transitions
-            llm_step = internal_state.get("current_step", parsed.get("stage"))
-            llm_sat = internal_state.get("saturation_score")
-            cd = internal_state.get("collected_data") or {}
-            cd_keys = [k for k, v in cd.items() if v is not None and v != [] and v != {}]
-            _bsd_log("LLM_DECISION", step=llm_step, saturation=llm_sat,
-                     collected_data_keys=cd_keys, coach_preview=(coach_message or "")[:60])
-
-            # Backward compatibility for metadata-style payloads returned by the model
-            if not internal_state:
-                stage = parsed.get("stage", state["current_step"])
-                saturation = parsed.get(
-                    "saturation_score",
-                    parsed.get("Saturation Score", state["saturation_score"])
+                strict = os.getenv("BSD_V2_STRUCTURED_STRICT", "1").strip() in ("1", "true", "yes")
+                structured_llm = llm.with_structured_output(
+                    CoachResponseSchema, method="json_schema", strict=strict
                 )
-                internal_state = {
-                    "current_step": stage if isinstance(stage, str) else state["current_step"],
-                    "saturation_score": float(saturation) if isinstance(saturation, (int, float)) else state["saturation_score"],
-                    "reflection": "Parsed legacy metadata payload",
-                }
+                response_obj = await structured_llm.ainvoke(messages)
+                coach_message = (response_obj.coach_message or "").strip()
+                internal_state = response_obj.internal_state.model_dump()
+                _bsd_log("LLM_DECISION", step=internal_state.get("current_step"),
+                         saturation=internal_state.get("saturation_score"),
+                         collected_data_keys=list((internal_state.get("collected_data") or {}).keys()),
+                         coach_preview=(coach_message or "")[:60])
+            except Exception as e:
+                logger.warning(f"[BSD V2] Structured output failed ({e}), falling back to JSON mode")
+                use_structured = False
 
-            # Never expose raw metadata JSON to end users
-            if isinstance(coach_message, str) and coach_message.strip().startswith("{"):
-                coach_message = trailing_text or ""
+        if not use_structured:
+            llm = get_azure_chat_llm(purpose="talker")
+            if os.getenv("BSD_V2_JSON_MODE", "1").strip() in ("1", "true", "yes"):
+                llm = llm.bind(response_format={"type": "json_object"})
+            cache_key_prefix = os.getenv("AZURE_OPENAI_PROMPT_CACHE_KEY_PREFIX", "bsd_v2_markdown_prompt")
+            cache_key = f"{cache_key_prefix}:main_coach:{language}:{current_step}"
+            response = await _ainvoke_with_prompt_cache(llm, messages, cache_key=cache_key)
+            response_text = response.content.strip()
+            token_usage = getattr(response, "response_metadata", {}).get("token_usage", {})
+            prompt_token_details = token_usage.get("prompt_tokens_details", {})
+            cached_tokens = prompt_token_details.get("cached_tokens")
+            if cached_tokens is not None:
+                logger.info(f"[PERF] Prompt cache hit tokens: {cached_tokens}")
+            try:
+                coach_message, internal_state = _parse_json_response(response_text, state, user_message, language)
+            except json.JSONDecodeError as e:
+                logger.error(f"[BSD V2] Failed to parse JSON: {e}")
+                coach_message = (response_text or "").strip()
+                current_step = state.get("current_step", "S1")
+                if current_step == "S0" and user_message and len(user_message.strip()) >= 2:
+                    msg_count = len([m for m in state.get("messages", []) if m.get("sender") == "user"])
+                    if msg_count >= 1:
+                        current_step = "S1"
+                internal_state = {"current_step": current_step, "saturation_score": state.get("saturation_score", 0.3), "reflection": "Failed to parse"}
+                if not coach_message:
+                    coach_message = get_next_step_question(current_step, language)
 
-            if not coach_message:
-                coach_message = get_next_step_question(state.get("current_step", "S1"), language)
-
-        except json.JSONDecodeError as e:
-            logger.error(f"[BSD V2] Failed to parse JSON: {e}")
-            logger.error(f"[BSD V2] Response text: {response_text}")
-            
-            # Fallback: treat entire response as coach message
-            coach_message = (response_text or "").strip()
-            current_step = state.get("current_step", "S1")
-            
-            # When JSON fails: S0→S1 if user has engaged (prevents stuck at S0)
-            if current_step == "S0":
-                msg_count = len([m for m in state.get("messages", []) if m.get("sender") == "user"])
-                if msg_count >= 1 and user_message and len(user_message.strip()) >= 2:
-                    current_step = "S1"
-                    logger.info(f"[BSD V2] JSON failed but user engaged → inferring S0→S1")
-            
-            internal_state = {
-                "current_step": current_step,
-                "saturation_score": state.get("saturation_score", 0.3),
-                "reflection": "Failed to parse structured output"
-            }
-            if not coach_message:
-                coach_message = get_next_step_question(current_step, language)
-        t6 = time.time()
-        logger.info(f"[PERF] Parse JSON: {(t6-t5)*1000:.0f}ms")
+        t4 = time.time()
+        logger.info(f"[PERF] LLM call: {(t4-t3)*1000:.0f}ms")
 
         coach_message = _sanitize_coach_message(coach_message)
         

@@ -27,7 +27,7 @@ If the condition is not met – **stay in S1**.
 
 - Questions about current or desired state (come in S2–S6).
 - "What did you feel?" – No event yet. Emotions in S3.
-- Drilling after 2–3 turns: "can you tell me more", "what exactly", "how is it now".
+- Drilling after 2–3 turns: "can you tell me more", "what exactly", "which aspect", "how is it now". **After 2+ user messages with clear topic – move to S2 immediately.**
 
 ---
 

@@ -34,6 +34,9 @@ async def get_version():
         prompts_status = f"❌ JSON prompts failed: {str(e)}"
         num_stages = 0
 
+    json_mode_val = os.getenv("BSD_V2_JSON_MODE", "1").strip().lower()
+    json_mode_enabled = json_mode_val in ("1", "true", "yes")
+
     return {
         "version": "2.0.0",
         "deploy_fingerprint": DEPLOY_FINGERPRINT,
@@ -41,4 +44,5 @@ async def get_version():
         "azure_optimized_prompts": azure_optimized,
         "prompts_system": prompts_status,
         "num_stages": num_stages,
+        "json_mode_enabled": json_mode_enabled,
     }
