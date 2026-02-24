@@ -1321,27 +1321,33 @@ def check_repeated_question(coach_message: str, history: list, current_step: str
             return (get_next_step_question(current_step, language), None)
         
         # === Generic patterns (S1 loop: "תוכל לספר לי יותר" etc.) ===
-        generic_patterns = [
-            "ספר לי עוד על הרגע הזה",
-            "מה בדיוק קרה",
-            "ספר לי יותר על",
-            "תוכל לספר לי יותר",
-            "תוכל לספר לי יותר על",
-            "מה בדיוק ב", "מה בדיוק היית", "מה בדיוק",
-            "מה בזה מעסיק", "מה בזה מעסיק אותך",  # S1 drilling loop
-        ]
-        
-        generic_count = sum(
-            1 for msg_content in recent_coach_messages
-            if any(pattern in msg_content for pattern in generic_patterns)
+        # SKIP override if user asked for clarification - coach's response is explanation, not a loop
+        clarification_phrases_he = ["מה כוונה", "מה הכוונה", "לא הבנתי", "להבין", "להסביר", "מה את מתכוונת", "מה אתה מתכוון"]
+        user_asked_clarification = user_message and any(
+            p in user_message.strip().lower() for p in clarification_phrases_he
         )
-        
-        # S1: trigger after 2 (not 3) - catch loop earlier
-        threshold = 2 if current_step == "S1" else 3
-        if generic_count >= threshold:
-            _bsd_log("REPETITION_RULE", rule="generic_patterns", count=generic_count, threshold=threshold, step=current_step)
-            logger.warning(f"[Safety Net] Too many generic questions ({generic_count})")
-            return (get_next_step_question(current_step, language), None)
+        if not user_asked_clarification:
+            generic_patterns = [
+                "ספר לי עוד על הרגע הזה",
+                "מה בדיוק קרה",
+                "ספר לי יותר על",
+                "תוכל לספר לי יותר",
+                "תוכל לספר לי יותר על",
+                "מה בדיוק ב", "מה בדיוק היית", "מה בדיוק",
+                "מה בזה מעסיק", "מה בזה מעסיק אותך",  # S1 drilling loop
+            ]
+            
+            generic_count = sum(
+                1 for msg_content in recent_coach_messages
+                if any(pattern in msg_content for pattern in generic_patterns)
+            )
+            
+            # S1: trigger after 2 (not 3) - catch loop earlier
+            threshold = 2 if current_step == "S1" else 3
+            if generic_count >= threshold:
+                _bsd_log("REPETITION_RULE", rule="generic_patterns", count=generic_count, threshold=threshold, step=current_step)
+                logger.warning(f"[Safety Net] Too many generic questions ({generic_count})")
+                return (get_next_step_question(current_step, language), None)
     
     else:  # English
         # Check if user said they're done
@@ -1382,20 +1388,26 @@ def check_repeated_question(coach_message: str, history: list, current_step: str
             return (get_next_step_question(current_step, language), None)
         
         # === Generic patterns (English S1 loop) ===
-        generic_patterns_en = [
-            "tell me more about",
-            "can you tell me more",
-            "what exactly about",
-            "what specifically"
-        ]
-        generic_count = sum(
-            1 for msg_content in recent_coach_messages
-            if any(pattern in msg_content.lower() for pattern in generic_patterns_en)
+        # SKIP override if user asked for clarification
+        clarification_phrases_en = ["what do you mean", "what do you mean by", "i don't understand", "can you explain", "clarify", "what are you asking"]
+        user_asked_clarification = user_message and any(
+            p in user_message.strip().lower() for p in clarification_phrases_en
         )
-        threshold = 2 if current_step == "S1" else 3
-        if generic_count >= threshold:
-            logger.warning(f"[Safety Net] Too many generic questions ({generic_count})")
-            return (get_next_step_question(current_step, language), None)
+        if not user_asked_clarification:
+            generic_patterns_en = [
+                "tell me more about",
+                "can you tell me more",
+                "what exactly about",
+                "what specifically"
+            ]
+            generic_count = sum(
+                1 for msg_content in recent_coach_messages
+                if any(pattern in msg_content.lower() for pattern in generic_patterns_en)
+            )
+            threshold = 2 if current_step == "S1" else 3
+            if generic_count >= threshold:
+                logger.warning(f"[Safety Net] Too many generic questions ({generic_count})")
+                return (get_next_step_question(current_step, language), None)
     
     return None
 
