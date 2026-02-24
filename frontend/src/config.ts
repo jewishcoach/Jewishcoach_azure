@@ -14,11 +14,17 @@
  */
 export const BSD_VERSION = (localStorage.getItem('bsd_version') || 'v2') as 'v1' | 'v2';
 
+/** Normalize API base URL - backend expects /api prefix. Exported for api.ts */
+export function getApiBase(): string {
+  const base = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+  return base.endsWith('/api') ? base : `${base.replace(/\/$/, '')}/api`;
+}
+
 /**
  * Get BSD API endpoint based on version
  */
 export function getBsdEndpoint(conversationId: number, version: 'v1' | 'v2' = BSD_VERSION): string {
-  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+  const baseUrl = getApiBase();
   
   if (version === 'v2') {
     return `${baseUrl}/chat/v2/message`;
@@ -32,7 +38,7 @@ export function getBsdEndpoint(conversationId: number, version: 'v1' | 'v2' = BS
  * Get BSD streaming endpoint based on version
  */
 export function getBsdStreamEndpoint(conversationId: number, version: 'v1' | 'v2' = BSD_VERSION): string {
-  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+  const baseUrl = getApiBase();
 
   if (version === 'v2') {
     return `${baseUrl}/chat/v2/message/stream`;

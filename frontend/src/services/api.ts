@@ -1,11 +1,12 @@
 import axios from 'axios';
 import type { AxiosInstance } from 'axios';
+import { getApiBase } from '../config';
 
 class ApiClient {
   private client: AxiosInstance;
   private token: string | null = null;
 
-  constructor(baseURL: string = import.meta.env.VITE_API_URL || 'http://localhost:8000/api') {
+  constructor(baseURL: string = getApiBase()) {
     console.log('🔧 [API CLIENT] Initializing with baseURL:', baseURL);
     console.log('🔧 [API CLIENT] VITE_API_URL env:', import.meta.env.VITE_API_URL);
     
