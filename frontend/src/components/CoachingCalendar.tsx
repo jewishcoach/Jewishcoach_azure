@@ -20,10 +20,10 @@ interface CoachingCalendarProps {
 
 const LIGHT = {
   card: 'bg-white rounded-2xl p-6 border border-gray-200 shadow-sm',
-  title: 'text-[#1E293B]',
-  muted: 'text-[#64748B]',
-  accent: 'text-[#0EA5E9]',
-  accentBg: 'bg-[#E0F2FE]',
+  title: 'text-[#2E3A56]',
+  muted: 'text-[#5A6B8A]',
+  accent: 'text-[#E02C26]',
+  accentBg: 'bg-[rgba(224,44,38,0.08)]',
   item: 'bg-gray-50 border border-gray-200',
 };
 const DARK = {
@@ -110,7 +110,7 @@ export const CoachingCalendar = ({ conversations, variant = 'dark' }: CoachingCa
 
         {/* Legend */}
         <div className={`flex items-center gap-2 mt-4 text-sm ${theme.muted}`}>
-          <div className={`w-2 h-2 rounded-full ${variant === 'light' ? 'bg-[#0EA5E9]' : 'bg-[#FCF6BA]'}`}></div>
+          <div className={`w-2 h-2 rounded-full ${variant === 'light' ? 'bg-[#E02C26]' : 'bg-[#FCF6BA]'}`}></div>
           <span>{t('calendar.daysWithCoaching')}</span>
         </div>
       </motion.div>
@@ -172,7 +172,7 @@ export const CoachingCalendar = ({ conversations, variant = 'dark' }: CoachingCa
 
       {/* Stats Summary */}
       <motion.div
-        className={`${theme.accentBg} rounded-2xl p-6 border ${variant === 'light' ? 'border-[#0EA5E9]/30' : 'border-[#FCF6BA]/20'}`}
+        className={`${theme.accentBg} rounded-2xl p-6 border ${variant === 'light' ? 'border-[#E02C26]/30' : 'border-[#FCF6BA]/20'}`}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >

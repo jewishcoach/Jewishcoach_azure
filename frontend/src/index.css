@@ -39,10 +39,10 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Dashboard - Rubik for Hebrew (modern, clean, readable) */
+/* Dashboard - Heebo for Hebrew (clean sans-serif, supports Nikkud) */
 .dashboard-container,
 .dashboard-container * {
-  font-family: 'Rubik', 'Heebo', 'Inter', system-ui, sans-serif !important;
+  font-family: 'Heebo', 'Rubik', 'Inter', system-ui, sans-serif !important;
 }
 
 /* Workspace display fonts - Heebo for Hebrew, Cormorant for Latin */
@@ -232,35 +232,35 @@ body {
 }
 
 .coaching-calendar-light .react-calendar__month-view__weekdays {
-  color: #64748b;
+  color: #5A6B8A;
 }
 
 .coaching-calendar-light .react-calendar__tile {
-  color: #1E293B;
+  color: #2E3A56;
 }
 
 .coaching-calendar-light .react-calendar__tile:hover {
-  background-color: rgba(14, 165, 233, 0.1);
+  background-color: rgba(224, 44, 38, 0.1);
 }
 
 .coaching-calendar-light .react-calendar__tile--active {
-  background-color: #0EA5E9 !important;
+  background-color: #E02C26 !important;
   color: white;
 }
 
 .coaching-calendar-light .react-calendar__tile.has-coaching {
-  color: #0EA5E9;
+  color: #E02C26;
   font-weight: 600;
 }
 
 .coaching-calendar-light .react-calendar__navigation button {
-  color: #1E293B;
+  color: #2E3A56;
 }
 
 .coaching-calendar-light .react-calendar__navigation button:hover {
-  background-color: rgba(14, 165, 233, 0.1);
+  background-color: rgba(224, 44, 38, 0.1);
 }
 
 .coaching-calendar-light .react-calendar__month-view__days__day--weekend {
-  color: #0EA5E9;
+  color: #E02C26;
 }

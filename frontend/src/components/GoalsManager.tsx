@@ -21,7 +21,7 @@ interface Goal {
   is_completed: boolean;
 }
 
-const LIGHT = { text: 'text-[#1E293B]', muted: 'text-[#64748B]', accent: 'text-[#0EA5E9]', card: 'bg-gray-50 border border-gray-200', input: 'border-gray-200 bg-white text-[#1E293B] placeholder-gray-400', btn: 'bg-[#0EA5E9] text-white', btnSecondary: 'bg-gray-200 text-[#1E293B]', progress: 'from-[#0EA5E9] to-[#38BDF8]' };
+const LIGHT = { text: 'text-[#2E3A56]', muted: 'text-[#64748B]', accent: 'text-[#E02C26]', card: 'bg-gray-50 border border-gray-200', input: 'border-gray-200 bg-white text-[#2E3A56] placeholder-gray-400', btn: 'bg-[#E02C26] text-white', btnSecondary: 'bg-gray-200 text-[#2E3A56]', progress: 'from-[#E02C26] to-[#E85C58]' };
 const DARK = { text: 'text-[#F5F5F0]', muted: 'text-[#F5F5F0]/70', card: 'bg-white/[0.06] border border-white/[0.1]', input: 'border-white/10 bg-white/[0.04] text-[#F5F5F0] placeholder-[#F5F5F0]/40', btn: '', btnSecondary: 'bg-white/10 text-[#F5F5F0]', progress: 'from-[#BF953F] to-[#FCF6BA]' };
 
 interface GoalsManagerProps { variant?: 'light' | 'dark'; }
@@ -165,20 +165,20 @@ export const GoalsManager = ({ variant = 'dark' }: GoalsManagerProps) => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <Target className={`w-5 h-5 ${variant === 'light' ? 'text-[#0EA5E9]' : 'text-[#FCF6BA]'}`} />
+          <Target className={`w-5 h-5 ${variant === 'light' ? 'text-[#E02C26]' : 'text-[#FCF6BA]'}`} />
           <h3 className={`text-lg font-bold ${theme.text}`}>{t('goals.title')}</h3>
         </div>
         <div className="flex gap-2">
           <button
             onClick={quickSetWeekly}
-            className={`px-4 py-2 rounded-lg transition-colors text-sm ${variant === 'light' ? 'bg-gray-200 text-[#1E293B] hover:bg-gray-300' : 'bg-white/10 text-[#F5F5F0] hover:bg-white/15'}`}
+            className={`px-4 py-2 rounded-lg transition-colors text-sm ${variant === 'light' ? 'bg-gray-200 text-[#2E3A56] hover:bg-gray-300' : 'bg-white/10 text-[#F5F5F0] hover:bg-white/15'}`}
           >
             {t('goals.weekly')}
           </button>
           <button
             onClick={() => setShowAddForm(!showAddForm)}
             className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors"
-            style={variant === 'light' ? { background: '#0EA5E9', color: 'white' } : { background: 'linear-gradient(45deg, #BF953F, #FCF6BA)', color: '#020617' }}
+            style={variant === 'light' ? { background: '#E02C26', color: 'white' } : { background: 'linear-gradient(45deg, #BF953F, #FCF6BA)', color: '#020617' }}
           >
             {showAddForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
             {showAddForm ? t('goals.cancel') : t('goals.new')}
@@ -205,7 +205,7 @@ export const GoalsManager = ({ variant = 'dark' }: GoalsManagerProps) => {
                   onChange={(e) => setFormData({...formData, title: e.target.value})}
                   placeholder={t('goals.title_placeholder')}
                   required
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#0EA5E9]/30 focus:outline-none ${variant === 'light' ? 'border-gray-200 bg-white text-[#1E293B] placeholder-gray-400' : 'border-white/10 bg-white/[0.04] text-[#F5F5F0] placeholder-[#F5F5F0]/40 focus:ring-[#FCF6BA]/30'}`}
+                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#E02C26]/30 focus:outline-none ${variant === 'light' ? 'border-gray-200 bg-white text-[#2E3A56] placeholder-gray-400' : 'border-white/10 bg-white/[0.04] text-[#F5F5F0] placeholder-[#F5F5F0]/40 focus:ring-[#FCF6BA]/30'}`}
                 />
               </div>
 
@@ -215,7 +215,7 @@ export const GoalsManager = ({ variant = 'dark' }: GoalsManagerProps) => {
                   <select
                     value={formData.goal_type}
                     onChange={(e) => setFormData({...formData, goal_type: e.target.value})}
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none ${variant === 'light' ? 'border-gray-200 bg-white text-[#1E293B] focus:ring-[#0EA5E9]/30' : 'border-white/10 bg-white/[0.04] text-[#F5F5F0] focus:ring-[#FCF6BA]/30'}`}
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none ${variant === 'light' ? 'border-gray-200 bg-white text-[#2E3A56] focus:ring-[#E02C26]/30' : 'border-white/10 bg-white/[0.04] text-[#F5F5F0] focus:ring-[#FCF6BA]/30'}`}
                   >
                     <option value="weekly">{t('goals.weekly')}</option>
                     <option value="monthly">{t('goals.monthly')}</option>
@@ -231,7 +231,7 @@ export const GoalsManager = ({ variant = 'dark' }: GoalsManagerProps) => {
                     onChange={(e) => setFormData({...formData, target_count: parseInt(e.target.value)})}
                     min="1"
                     required
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none ${variant === 'light' ? 'border-gray-200 bg-white text-[#1E293B] focus:ring-[#0EA5E9]/30' : 'border-white/10 bg-white/[0.04] text-[#F5F5F0] focus:ring-[#FCF6BA]/30'}`}
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none ${variant === 'light' ? 'border-gray-200 bg-white text-[#2E3A56] focus:ring-[#E02C26]/30' : 'border-white/10 bg-white/[0.04] text-[#F5F5F0] focus:ring-[#FCF6BA]/30'}`}
                   />
                 </div>
               </div>
@@ -244,7 +244,7 @@ export const GoalsManager = ({ variant = 'dark' }: GoalsManagerProps) => {
                     value={formData.start_date}
                     onChange={(e) => setFormData({...formData, start_date: e.target.value})}
                     required
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none ${variant === 'light' ? 'border-gray-200 bg-white text-[#1E293B] focus:ring-[#0EA5E9]/30' : 'border-white/10 bg-white/[0.04] text-[#F5F5F0] focus:ring-[#FCF6BA]/30'}`}
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none ${variant === 'light' ? 'border-gray-200 bg-white text-[#2E3A56] focus:ring-[#E02C26]/30' : 'border-white/10 bg-white/[0.04] text-[#F5F5F0] focus:ring-[#FCF6BA]/30'}`}
                   />
                 </div>
 
@@ -255,7 +255,7 @@ export const GoalsManager = ({ variant = 'dark' }: GoalsManagerProps) => {
                     value={formData.end_date}
                     onChange={(e) => setFormData({...formData, end_date: e.target.value})}
                     required
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none ${variant === 'light' ? 'border-gray-200 bg-white text-[#1E293B] focus:ring-[#0EA5E9]/30' : 'border-white/10 bg-white/[0.04] text-[#F5F5F0] focus:ring-[#FCF6BA]/30'}`}
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none ${variant === 'light' ? 'border-gray-200 bg-white text-[#2E3A56] focus:ring-[#E02C26]/30' : 'border-white/10 bg-white/[0.04] text-[#F5F5F0] focus:ring-[#FCF6BA]/30'}`}
                   />
                 </div>
               </div>
@@ -264,7 +264,7 @@ export const GoalsManager = ({ variant = 'dark' }: GoalsManagerProps) => {
                 <button
                   type="submit"
                   className="flex items-center gap-2 px-6 py-2 rounded-lg transition-colors"
-                  style={variant === 'light' ? { background: '#0EA5E9', color: 'white' } : { background: 'linear-gradient(45deg, #BF953F, #FCF6BA)', color: '#020617' }}
+                  style={variant === 'light' ? { background: '#E02C26', color: 'white' } : { background: 'linear-gradient(45deg, #BF953F, #FCF6BA)', color: '#020617' }}
                 >
                   <Save className="w-4 h-4" />
                   {t('goals.save')}
@@ -272,7 +272,7 @@ export const GoalsManager = ({ variant = 'dark' }: GoalsManagerProps) => {
                 <button
                   type="button"
                   onClick={resetForm}
-                  className={`px-6 py-2 rounded-lg transition-colors ${variant === 'light' ? 'bg-gray-200 text-[#1E293B] hover:bg-gray-300' : 'bg-white/10 text-[#F5F5F0] hover:bg-white/15'}`}
+                  className={`px-6 py-2 rounded-lg transition-colors ${variant === 'light' ? 'bg-gray-200 text-[#2E3A56] hover:bg-gray-300' : 'bg-white/10 text-[#F5F5F0] hover:bg-white/15'}`}
                 >
                   {t('goals.cancel')}
                 </button>
@@ -299,7 +299,7 @@ export const GoalsManager = ({ variant = 'dark' }: GoalsManagerProps) => {
             >
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-2">
-                  <Target className={`w-5 h-5 ${variant === 'light' ? 'text-[#0EA5E9]' : 'text-[#FCF6BA]'}`} />
+                  <Target className={`w-5 h-5 ${variant === 'light' ? 'text-[#E02C26]' : 'text-[#FCF6BA]'}`} />
                   <h4 className={`font-bold ${theme.text}`}>{goal.title}</h4>
                 </div>
                 <button
@@ -320,7 +320,7 @@ export const GoalsManager = ({ variant = 'dark' }: GoalsManagerProps) => {
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${goal.progress_percentage || 0}%` }}
-                    className={`bg-gradient-to-r h-3 rounded-full ${variant === 'light' ? 'from-[#0EA5E9] to-[#38BDF8]' : 'from-[#BF953F] to-[#FCF6BA]'}`}
+                    className={`bg-gradient-to-r h-3 rounded-full ${variant === 'light' ? 'from-[#E02C26] to-[#E85C58]' : 'from-[#BF953F] to-[#FCF6BA]'}`}
                   />
                 </div>
               </div>
@@ -337,14 +337,14 @@ export const GoalsManager = ({ variant = 'dark' }: GoalsManagerProps) => {
                 </div>
 
                 {goal.is_completed ? (
-                  <span className={`flex items-center gap-1 font-bold ${variant === 'light' ? 'text-[#0EA5E9]' : 'text-[#FCF6BA]'}`}>
+                  <span className={`flex items-center gap-1 font-bold ${variant === 'light' ? 'text-[#E02C26]' : 'text-[#FCF6BA]'}`}>
                     <Check className="w-4 h-4" />
                     {t('goals.completed')}
                   </span>
                 ) : goal.current_count >= (goal.target_count || 0) ? (
                   <button
                     onClick={() => handleComplete(goal.id)}
-                    className={`px-3 py-1 rounded-lg transition-colors text-sm ${variant === 'light' ? 'bg-[#0EA5E9]/20 text-[#0EA5E9] hover:bg-[#0EA5E9]/30' : 'bg-[#FCF6BA]/20 text-[#FCF6BA] hover:bg-[#FCF6BA]/30'}`}
+                    className={`px-3 py-1 rounded-lg transition-colors text-sm ${variant === 'light' ? 'bg-[#E02C26]/20 text-[#E02C26] hover:bg-[#E02C26]/30' : 'bg-[#FCF6BA]/20 text-[#FCF6BA] hover:bg-[#FCF6BA]/30'}`}
                   >
                     {t('goals.complete')}
                   </button>

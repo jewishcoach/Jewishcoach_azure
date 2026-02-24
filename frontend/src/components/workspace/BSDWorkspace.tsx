@@ -157,7 +157,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
   if (showDashboard) {
     return (
       <>
-        <div className="flex-1 flex overflow-hidden bg-[#F8FAFC]">
+        <div className="flex-1 flex overflow-hidden bg-[#F0F1F3]">
           <div className="flex-1 min-w-0 overflow-hidden">
             <Dashboard onBack={onCloseDashboard} />
           </div>

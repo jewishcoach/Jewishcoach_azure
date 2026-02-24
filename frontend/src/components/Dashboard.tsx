@@ -14,18 +14,19 @@ import { PhaseDonutChart } from './dashboard/PhaseDonutChart';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
+// BSD Logo palette: dark blue #2E3A56, light gray #EBEBEB, red accent #E02C26
 const COLORS = {
-  bg: '#F8FAFC',
+  bg: '#F0F1F3',
   card: '#FFFFFF',
-  text: '#1E293B',
-  textMuted: '#64748B',
-  accentBlue: '#0EA5E9',
-  accentBlueLight: '#E0F2FE',
-  accentYellow: '#FACC15',
-  accentYellowLight: '#FEF9C3',
-  border: '#F1F5F9',
-  shadow: '0 1px 2px rgba(0,0,0,0.04)',
-  shadowSm: '0 2px 8px rgba(0,0,0,0.06)',
+  text: '#2E3A56',
+  textMuted: '#5A6B8A',
+  accent: '#E02C26',
+  accentLight: 'rgba(224, 44, 38, 0.12)',
+  primary: '#2E3A56',
+  primaryLight: 'rgba(46, 58, 86, 0.08)',
+  border: '#E2E4E8',
+  shadow: '0 1px 2px rgba(46, 58, 86, 0.06)',
+  shadowSm: '0 2px 8px rgba(46, 58, 86, 0.08)',
 };
 
 interface Profile {
@@ -121,7 +122,7 @@ export const Dashboard = ({ onBack }: DashboardProps) => {
     return (
       <div className="flex-1 flex items-center justify-center" style={{ background: COLORS.bg }}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-2 border-t-transparent mx-auto" style={{ borderColor: COLORS.accentBlue }} />
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-t-transparent mx-auto" style={{ borderColor: COLORS.accent }} />
           <p className="mt-3 text-sm" style={{ color: COLORS.textMuted }}>טוען נתונים...</p>
         </div>
       </div>
@@ -154,7 +155,7 @@ export const Dashboard = ({ onBack }: DashboardProps) => {
               onClick={() => setActiveTab(item.id)}
               className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
               style={{
-                background: activeTab === item.id ? COLORS.accentBlue : 'transparent',
+                background: activeTab === item.id ? COLORS.accent : 'transparent',
                 color: activeTab === item.id ? '#FFFFFF' : COLORS.textMuted,
               }}
             >
@@ -178,7 +179,7 @@ export const Dashboard = ({ onBack }: DashboardProps) => {
             <div
               className="h-36 w-full"
               style={{
-                background: `linear-gradient(135deg, ${COLORS.accentBlueLight} 0%, ${COLORS.accentBlue} 50%, ${COLORS.accentYellowLight} 100%)`,
+                background: `linear-gradient(135deg, ${COLORS.primaryLight} 0%, ${COLORS.primary} 40%, ${COLORS.accent} 100%)`,
               }}
             />
             <div className="absolute bottom-0 right-1/2 translate-x-1/2 translate-y-1/2">
@@ -186,7 +187,7 @@ export const Dashboard = ({ onBack }: DashboardProps) => {
                 className="w-20 h-20 rounded-full flex items-center justify-center border-4"
                 style={{ background: COLORS.card, borderColor: COLORS.card, boxShadow: COLORS.shadowSm }}
               >
-                <User className="w-10 h-10" style={{ color: COLORS.accentBlue }} />
+                <User className="w-10 h-10" style={{ color: COLORS.accent }} />
               </div>
             </div>
           </motion.div>
@@ -222,11 +223,11 @@ export const Dashboard = ({ onBack }: DashboardProps) => {
             {/* Badges */}
             <div className="flex flex-wrap justify-center gap-2">
               {profile.gender && (
-                <span className="text-xs px-2.5 py-1 rounded-full" style={{ background: COLORS.accentBlueLight, color: COLORS.accentBlue }}>
+                <span className="text-xs px-2.5 py-1 rounded-full" style={{ background: COLORS.accentLight, color: COLORS.accent }}>
                   {profile.gender === 'male' ? t('dashboard.male') : t('dashboard.female')}
                 </span>
               )}
-              <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ background: COLORS.accentYellowLight, color: '#B45309' }}>
+              <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ background: COLORS.accentLight, color: COLORS.accent }}>
                 {profile.current_plan.toUpperCase()}
               </span>
             </div>
@@ -238,7 +239,7 @@ export const Dashboard = ({ onBack }: DashboardProps) => {
               {isNewUser && (
                 <motion.div
                   className="rounded-xl py-4 px-5 text-center"
-                  style={{ background: COLORS.accentYellowLight }}
+                  style={{ background: COLORS.accentLight }}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                 >
@@ -343,7 +344,7 @@ export const Dashboard = ({ onBack }: DashboardProps) => {
                           onClick={handleSaveProfile}
                           disabled={saving}
                           className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg text-white disabled:opacity-50"
-                          style={{ background: COLORS.accentBlue }}
+                          style={{ background: COLORS.accent }}
                         >
                           <Save className="w-4 h-4" />
                           {saving ? t('dashboard.saving') : t('dashboard.save')}
@@ -378,7 +379,7 @@ export const Dashboard = ({ onBack }: DashboardProps) => {
                     {stats.current_phase && (
                       <div className="flex justify-between">
                         <span style={{ color: COLORS.textMuted }}>{t('dashboard.currentStage')}</span>
-                        <span className="font-medium" style={{ color: COLORS.accentBlue }}>{translatePhase(stats.current_phase)}</span>
+                        <span className="font-medium" style={{ color: COLORS.accent }}>{translatePhase(stats.current_phase)}</span>
                       </div>
                     )}
                     {stats.favorite_coaching_phase && (
@@ -403,7 +404,7 @@ export const Dashboard = ({ onBack }: DashboardProps) => {
                   transition={{ delay: 0.1 }}
                 >
                   <h3 className="text-base font-semibold mb-4 flex items-center gap-2" style={{ color: COLORS.text }}>
-                    <Award className="w-4 h-4" style={{ color: COLORS.accentYellow }} />
+                    <Award className="w-4 h-4" style={{ color: COLORS.accent }} />
                     {t('dashboard.achievements')}
                   </h3>
                   <div className="flex flex-wrap gap-4">
@@ -489,7 +490,7 @@ export const Dashboard = ({ onBack }: DashboardProps) => {
 
 function AchievementBadge({ icon, text }: { icon: React.ReactNode; text: string }) {
   return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: COLORS.accentBlueLight, color: COLORS.accentBlue }}>
+    <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: COLORS.accentLight, color: COLORS.accent }}>
       {icon}
       <span className="text-sm" style={{ color: COLORS.text }}>{text}</span>
     </div>

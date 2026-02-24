@@ -1,10 +1,10 @@
 import { motion } from 'framer-motion';
 
 const COLORS = {
-  bar: '#0EA5E9',
-  barMuted: '#E0F2FE',
-  text: '#1E293B',
-  textMuted: '#64748B',
+  bar: '#E02C26',
+  barMuted: 'rgba(224, 44, 38, 0.15)',
+  text: '#2E3A56',
+  textMuted: '#5A6B8A',
 };
 
 interface DataPoint {
