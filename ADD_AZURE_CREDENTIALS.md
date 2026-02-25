@@ -86,9 +86,15 @@ az webapp config appsettings set \
 | משתנה | ערך | הסבר |
 |-------|-----|------|
 | `USE_GEMINI` | `1` | מפעיל את מנוע Google Gemini (gemini-1.5-flash) במקום Azure. |
-| `GOOGLE_API_KEY` | `...` | **חובה** כש-USE_GEMINI=1. API key מ-[Google AI Studio](https://aistudio.google.com/apikey). |
+| `GOOGLE_API_KEY` | `...` | **חובה** כש-USE_GEMINI=1 (AI Studio). API key מ-[Google AI Studio](https://aistudio.google.com/apikey). |
+| `USE_VERTEX_AI` | `1` | אופציונלי. משתמש ב-Vertex AI במקום AI Studio. |
+| `VERTEX_AI_API_KEY` | `...` | **חובה** כש-USE_VERTEX_AI=1. API key מ-[Vertex AI](https://cloud.google.com/vertex-ai/generative-ai/docs/start/api-keys). |
+| `VERTEX_AI_PROJECT` | `...` | **חובה** כש-USE_VERTEX_AI=1. מזהה פרויקט GCP. |
+| `GEMINI_MODEL` | `gemini-2.0-flash` | מודל ברירת מחדל. `gemini-1.5-flash` לא נתמך יותר (404). |
 
 הגדרות Gemini מותאמות לאימון/בריאות נפשית: חסימת safety מושבתת כדי לאפשר למשתמשים להביע רגשות שליליים בחופשיות.
+
+**בדיקה:** `cd backend && USE_GEMINI=1 python test_gemini_quick.py`
 
 ---
 

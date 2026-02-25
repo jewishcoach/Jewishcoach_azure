@@ -31,6 +31,8 @@ BSD_DEBUG = os.getenv("BSD_DEBUG", "0").strip() in ("1", "true", "yes")
 SAFETY_NET_DISABLED = os.getenv("BSD_V2_SAFETY_NET_DISABLED", "0").strip() in ("1", "true", "yes")
 # A/B test: USE_GEMINI=1 uses Google Gemini instead of Azure OpenAI (optimized for coaching)
 USE_GEMINI = os.getenv("USE_GEMINI", "0").strip() in ("1", "true", "yes")
+# USE_VERTEX_AI=1 uses Vertex AI (needs VERTEX_AI_API_KEY + VERTEX_AI_PROJECT) instead of AI Studio (GOOGLE_API_KEY)
+USE_VERTEX_AI = os.getenv("USE_VERTEX_AI", "0").strip() in ("1", "true", "yes")
 
 
 def _bsd_log(tag: str, **kwargs: Any) -> None:
@@ -1357,10 +1359,11 @@ def validate_stage_transition(
     ]
     
     if language == "he":
+        # NOTE: "לא" removed - too generic, matched "לא לוותר" (I don't want to give up)
         move_on_keywords = [
             "מסכם", "זה הכל", "זהו", "נתקדם", "הלאה", "די", "די לי",
             "כל הרגשות", "כבר כתבתי", "בוא נתקדם", "מה הלאה",
-            "אמרתי כבר", "כבר אמרתי", "עניתי", "זה מספיק", "לא"
+            "אמרתי כבר", "כבר אמרתי", "עניתי", "זה מספיק"
         ]
     else:
         move_on_keywords = [
@@ -1976,7 +1979,13 @@ So feel free to share an event from any area where you interacted with people an
 
         if USE_GEMINI:
             from langchain_google_genai import ChatGoogleGenerativeAI, HarmCategory, HarmBlockThreshold
-            logger.info("[BSD V2] Using Google Gemini Engine (Optimized for Coaching)")
+            vertex_key = os.getenv("VERTEX_AI_API_KEY", "").strip()
+            vertex_project = os.getenv("VERTEX_AI_PROJECT", os.getenv("GOOGLE_CLOUD_PROJECT", "")).strip()
+            use_vertex = USE_VERTEX_AI and vertex_key and vertex_project
+            if use_vertex:
+                logger.info("[BSD V2] Using Google Vertex AI (Gemini) Engine")
+            else:
+                logger.info("[BSD V2] Using Google Gemini Engine (AI Studio)")
 
             # Critical for coaching: Disable safety blocks to allow users to express negative emotions/hardship freely
             safety_settings = {
@@ -1986,12 +1995,17 @@ So feel free to share an event from any area where you interacted with people an
                 HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
             }
 
-            gemini_llm = ChatGoogleGenerativeAI(
-                model="gemini-1.5-flash",
+            gemini_kw: Dict[str, Any] = dict(
+                model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
                 temperature=0.2,
                 max_retries=2,
-                safety_settings=safety_settings
+                safety_settings=safety_settings,
             )
+            if use_vertex:
+                gemini_kw["google_api_key"] = vertex_key
+                gemini_kw["vertexai"] = True
+                gemini_kw["project"] = vertex_project
+            gemini_llm = ChatGoogleGenerativeAI(**gemini_kw)
 
             structured_llm = gemini_llm.with_structured_output(CoachResponseSchema)
             response = await structured_llm.ainvoke(messages)
