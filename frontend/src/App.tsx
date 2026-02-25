@@ -85,8 +85,14 @@ function SignedInContent() {
         transition={{ type: "spring", stiffness: 120, damping: 14 }}
         className="relative z-20 flex justify-between items-center p-6 bg-[#0f172a] backdrop-blur-[25px] border-b border-white/[0.08]"
       >
-        <img src="/bsd-logo.png" alt="BSD אימון יהודי" className="h-10 object-contain" />
-        <div className="flex items-center gap-4">
+        <img src="/bsd-logo.png" alt="BSD אימון יהודי" className="h-10 object-contain flex-shrink-0" />
+        <p
+          className="flex-1 text-center text-white font-bold text-xl md:text-2xl tracking-wide mx-4"
+          style={{ fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.4 }}
+        >
+          אִם יֵשׁ לְךָ שָׁמַיִם, נִתַּן לְךָ כְּנָפַיִם
+        </p>
+        <div className="flex items-center gap-4 flex-shrink-0">
           {user && (
             <span className="text-white/80 text-sm font-light tracking-[0.02em]" style={{ fontFamily: 'Inter, sans-serif' }}>
               {t('app.welcome')}, {displayName || user.firstName || user.emailAddresses[0].emailAddress}!
@@ -195,13 +201,19 @@ function DemoModeContent() {
         animate={{ y: 0 }}
         className="sticky top-0 z-50 flex items-center justify-between p-4 bg-[#0F172A]/95 backdrop-blur-sm border-b border-white/10"
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-shrink-0">
           <img src="/bsd-logo.png" alt="BSD אימון יהודי" className="h-10 object-contain" />
           <span className="px-2 py-1 bg-yellow-500/20 text-yellow-300 text-xs rounded-full border border-yellow-500/30">
             DEMO MODE
           </span>
         </div>
-        <div className="flex items-center gap-3">
+        <p
+          className="flex-1 text-center text-white font-bold text-lg md:text-xl tracking-wide mx-4"
+          style={{ fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.4 }}
+        >
+          אִם יֵשׁ לְךָ שָׁמַיִם, נִתַּן לְךָ כְּנָפַיִם
+        </p>
+        <div className="flex items-center gap-3 flex-shrink-0">
           <button
             onClick={() => {
               setShowDashboard(!showDashboard);
