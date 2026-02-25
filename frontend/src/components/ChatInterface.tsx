@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Send, Sparkles, Mic } from 'lucide-react';
+import { Send, Mic } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@clerk/clerk-react';
 import { useChat } from '../hooks/useChat';
@@ -284,12 +284,7 @@ export const ChatInterface = ({ displayName }: ChatInterfaceProps) => {
               animate={{ opacity: 1, y: 0 }}
               className="flex flex-col items-center justify-center h-full text-center py-20"
             >
-              <div className="w-16 h-16 bg-gradient-to-br from-accent-light to-accent rounded-full flex items-center justify-center mb-6 shadow-glow">
-                <Sparkles className="w-8 h-8 text-white" />
-              </div>
-              <h2 className="text-2xl font-serif font-bold text-primary mb-2">
-                {t('app.title')}
-              </h2>
+              <img src="/bsd-logo.png" alt="BSD אימון יהודי" className="h-20 mb-4 object-contain" />
               <p className="text-gray-600 max-w-md">
                 {i18n.language === 'he' 
                   ? 'שלום! אני כאן כדי להוביל אותך במסע של גילוי עצמי וצמיחה אישית. מה תרצה לחקור היום?'

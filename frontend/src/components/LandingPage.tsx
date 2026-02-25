@@ -54,14 +54,14 @@ export const LandingPage = ({ onGetStarted }: Props) => {
           </motion.div>
 
           {/* Title */}
-          <motion.h1
+          <motion.img
+            src="/bsd-logo.png"
+            alt="BSD אימון יהודי - פשטות. הנאה. תוצאות."
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
-            className="text-5xl md:text-6xl font-serif font-bold text-white mb-4"
-          >
-            {i18n.language === 'he' ? 'המאמן היהודי' : 'Jewish Coach AI'}
-          </motion.h1>
+            className="h-24 md:h-28 mb-4 object-contain mx-auto"
+          />
 
           <motion.p
             initial={{ opacity: 0 }}

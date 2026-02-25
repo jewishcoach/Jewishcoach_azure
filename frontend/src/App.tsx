@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { SignedIn, SignedOut, UserButton, useUser, useClerk, useAuth } from '@clerk/clerk-react';
-import { Sparkles, Shield, CreditCard, BarChart3 } from 'lucide-react';
+import { Shield, CreditCard, BarChart3 } from 'lucide-react';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { BSDWorkspace } from './components/workspace/BSDWorkspace';
 import { LandingPage } from './components/LandingPage';
@@ -85,10 +85,7 @@ function SignedInContent() {
         transition={{ type: "spring", stiffness: 120, damping: 14 }}
         className="relative z-20 flex justify-between items-center p-6 bg-[#0f172a] backdrop-blur-[25px] border-b border-white/[0.08]"
       >
-        <h1 className="text-xl font-light text-white flex items-center gap-2 tracking-[0.1em]" style={{ fontFamily: 'Cormorant Garamond, Playfair Display, serif' }}>
-          <Sparkles className="w-5 h-5" style={{ filter: 'drop-shadow(0 0 6px rgba(212, 175, 55, 0.5))', color: '#FCF6BA' }} />
-          {t('app.title')}
-        </h1>
+        <img src="/bsd-logo.png" alt="BSD אימון יהודי" className="h-10 object-contain" />
         <div className="flex items-center gap-4">
           {user && (
             <span className="text-white/80 text-sm font-light tracking-[0.02em]" style={{ fontFamily: 'Inter, sans-serif' }}>
@@ -199,8 +196,7 @@ function DemoModeContent() {
         className="sticky top-0 z-50 flex items-center justify-between p-4 bg-[#0F172A]/95 backdrop-blur-sm border-b border-white/10"
       >
         <div className="flex items-center gap-3">
-          <Sparkles className="w-8 h-8 text-accent" />
-          <h1 className="text-2xl font-bold text-white">{t('app.title')}</h1>
+          <img src="/bsd-logo.png" alt="BSD אימון יהודי" className="h-10 object-contain" />
           <span className="px-2 py-1 bg-yellow-500/20 text-yellow-300 text-xs rounded-full border border-yellow-500/30">
             DEMO MODE
           </span>

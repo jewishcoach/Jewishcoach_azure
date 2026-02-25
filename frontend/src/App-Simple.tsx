@@ -12,9 +12,7 @@ function App() {
       {/* Header */}
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold text-amber-500">
-            ✨ {t('app.title')}
-          </h1>
+          <img src="/bsd-logo.png" alt="BSD אימון יהודי" className="h-14 object-contain" />
           <LanguageSwitcher />
         </div>
 
