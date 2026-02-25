@@ -70,9 +70,9 @@ app.include_router(billing.router)
 app.include_router(profile.router)
 app.include_router(calendar.router)
 
-@app.get("/api/chat/v2/ping")
-def chat_v2_ping():
-    """Health check for V2 routes - no auth, verifies deployment."""
+@app.get("/ping-v2")
+def ping_v2():
+    """Debug: verify deployment - no path prefix."""
     return {"status": "ok", "v2": True}
 
 
