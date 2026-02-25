@@ -277,6 +277,85 @@ async def _ainvoke_with_prompt_cache(llm, messages, cache_key: str):
         raise
 
 
+def _safe_get_topic_from_collected(collected_data: Any) -> str:
+    """Safely extract topic from collected_data - handles dict, str, or invalid types."""
+    if collected_data is None:
+        return ""
+    if isinstance(collected_data, str):
+        return collected_data
+    if isinstance(collected_data, dict):
+        return collected_data.get("topic") or ""
+    return ""
+
+
+def _safe_collected_dict(collected_data: Any) -> Dict[str, Any]:
+    """Return collected_data as dict - handles str/invalid by returning empty dict."""
+    if collected_data is None:
+        return {}
+    if isinstance(collected_data, dict):
+        return collected_data
+    if isinstance(collected_data, str):
+        return {"topic": collected_data}
+    return {}
+
+
+def _infer_step_from_coach_message(coach_message: str, language: str) -> Optional[str]:
+    """
+    Infer current_step from coach message content when model returns plain text (no JSON).
+    Uses same indicators as detect_stage_question_mismatch - if coach asks S2 question, we're in S2.
+    """
+    if not coach_message or not isinstance(coach_message, str):
+        return None
+    coach_lower = coach_message.lower()
+    if language == "he":
+        indicators = [
+            ("S2", ["מה קרה", "מתי זה היה", "מי היה שם", "ספר לי על אירוע", "סיפור אחד ספציפי", "עם מי זה היה"]),
+            ("S3", ["מה הרגשת", "איזה רגש", "איפה הרגשת", "מה עבר בך", "להתעמק ברגשות"]),
+            ("S4", ["מה עבר לך בראש", "מה חשבת", "מה אמרת לעצמך"]),
+            ("S5", ["מה עשית", "איך הגבת", "מה עשית בפועל"]),
+            ("S6", ["מה היית רוצה", "איך היית רוצה להרגיש", "מה לומר לעצמך"]),
+            ("S7", ["איך תקרא לפער", "בסולם", "כמה חזק הפער"]),
+            ("S8", ["איפה עוד", "מאיפה עוד", "האם אתה מזהה"]),
+            ("S9", ["מה אתה מרוויח", "מה אתה מפסיד", "מה ההפסד"]),
+            ("S10", ["איזה ערך", "איזו יכולת", "מה חשוב לך"]),
+            ("S11", ["איזו עמדה", "מה אתה בוחר", "איזו בחירה"]),
+        ]
+    else:
+        indicators = [
+            ("S2", ["what happened", "when was", "who was there", "specific event", "one time"]),
+            ("S3", ["what did you feel", "what emotion", "where did you feel"]),
+            ("S4", ["what went through", "what did you think", "what did you tell yourself"]),
+            ("S5", ["what did you do", "how did you respond"]),
+            ("S6", ["what would you want", "how would you want to feel"]),
+            ("S7", ["what would you call", "on a scale", "how strong"]),
+            ("S8", ["where else", "do you recognize", "does this happen"]),
+            ("S9", ["what do you gain", "what do you lose"]),
+            ("S10", ["what value", "what ability", "what's important"]),
+            ("S11", ["what stance", "what do you choose"]),
+        ]
+    for step, phrases in indicators:
+        if any(p in coach_lower for p in phrases):
+            return step
+    return None
+
+
+def _extract_topic_from_conversation(state: Dict[str, Any], user_message: Optional[str], language: str) -> str:
+    """Extract topic from conversation when model doesn't return JSON (collected_data empty)."""
+    skip = ("מה שמך", "שלום", "היי", "what's your name", "hello", "hi")
+    meta = ("הסביר", "מה חסר", "מה כוונתך", "לא הבנתי", "can you explain", "what do you mean")
+    candidates = []
+    for msg in reversed(state.get("messages", [])):
+        if msg.get("sender") == "user":
+            c = (msg.get("content") or "").strip()
+            if len(c) >= 10 and not any(s in c.lower() for s in skip) and not any(m in c.lower() for m in meta):
+                candidates.append(c[:80])
+    if user_message and len(user_message.strip()) >= 10:
+        um = user_message.strip()
+        if not any(s in um.lower() for s in skip) and not any(m in um.lower() for m in meta):
+            candidates.insert(0, um[:80])
+    return candidates[0] if candidates else ""
+
+
 def _parse_json_response(
     response_text: str, state: Dict[str, Any], user_message: Optional[str], language: str
 ) -> Tuple[str, Dict[str, Any]]:
@@ -314,12 +393,23 @@ def _parse_json_response(
     if parsed is None and response_text.strip():
         plain = response_text.strip()
         if not plain.startswith("{"):
-            inferred_step = state.get("current_step", "S1")
+            # Model returned plain text - infer step from message content so we can progress
+            inferred_step = _infer_step_from_coach_message(plain, language) or state.get("current_step", "S1")
             if inferred_step == "S0" and user_message and len(user_message.strip()) >= 2:
                 inferred_step = "S1"
+            collected = _safe_collected_dict(state.get("collected_data"))
+            if not collected.get("topic") and state.get("current_step") in ("S0", "S1"):
+                topic = _extract_topic_from_conversation(state, user_message, language)
+                if topic:
+                    collected["topic"] = topic
             parsed = {
                 "coach_message": plain,
-                "internal_state": {"current_step": inferred_step, "saturation_score": state.get("saturation_score", 0.3), "reflection": "Synthetic from plain text"}
+                "internal_state": {
+                    "current_step": inferred_step,
+                    "saturation_score": state.get("saturation_score", 0.3),
+                    "reflection": "Synthetic from plain text (inferred step from content)",
+                    "collected_data": collected,
+                }
             }
     if parsed is None:
         raise json.JSONDecodeError("Could not parse model JSON payload", response_text, 0)
@@ -1118,13 +1208,13 @@ def _check_event_criteria_bsd(state: Dict[str, Any], language: str = "he") -> Tu
     BSD methodology: אירוע מפורט = מתי + איפה + מי + מה קרה.
     Returns (has_sufficient, list of missing: "מתי"|"איפה"|"מי"|"מה").
     """
-    collected = state.get("collected_data") or {}
+    collected = _safe_collected_dict(state.get("collected_data"))
     event_desc = collected.get("event_description") or ""
     messages = state.get("messages", [])
     recent_user = [
         msg.get("content", "")
         for msg in messages[-10:]
-        if (msg.get("sender") == "user" or msg.get("role") == "user") and msg.get("content")
+        if isinstance(msg, dict) and (msg.get("sender") == "user" or msg.get("role") == "user") and msg.get("content")
     ]
     all_text = " ".join(recent_user).lower() if recent_user else ""
 
@@ -1315,18 +1405,21 @@ def validate_stage_transition(
             logger.info(f"[Safety Net] User already gave event (state or current msg) → allowing S1→S3")
             return True, None
         logger.error(f"[Safety Net] 🚫 BLOCKED S1→S3: Cannot skip S2 (event)!")
-        topic = (state.get("collected_data") or {}).get("topic") or ""
+        topic = _safe_get_topic_from_collected(state.get("collected_data"))
         # Sanitize: LLM might copy placeholder "[נושא]" from prompt
         if topic and ("[" in topic or "]" in topic or topic.strip() in ("[נושא]", "[topic]")):
             topic = ""
         if not topic:
             # Fallback: use first substantial user message as topic hint (e.g. "לומר לא", "נאמנות לעצמי")
+            # Skip greetings/meta: "מה שמך?", "שלום" - prefer topic messages (len >= 10)
+            skip_for_topic = ("מה שמך", "שלום", "היי", "what's your name", "hello", "hi")
             for msg in (state.get("messages") or []):
                 if msg.get("sender") == "user":
                     content = (msg.get("content") or "").strip()
-                    if len(content) >= 5 and len(content) <= 80:
-                        topic = content
-                        break
+                    if len(content) >= 10 and len(content) <= 80:
+                        if not any(skip in content.lower() for skip in skip_for_topic):
+                            topic = content
+                            break
         if language == "he":
             if topic:
                 msg = f"בוא ניקח **אירוע ספציפי אחד** שקרה לאחרונה. ספר לי על פעם אחת ש{topic} - מתי זה היה? עם מי?"
@@ -1659,6 +1752,8 @@ def build_conversation_context(
     # New message
     context_parts.append("\n# הודעה חדשה" if language == "he" else "\n# New Message")
     context_parts.append(f"משתמש: {user_message}" if language == "he" else f"User: {user_message}")
+    # Strong JSON instruction (last thing model sees) - helps when API doesn't enforce format
+    context_parts.append("\n\n🚨 **חובה:** החזר רק אובייקט JSON תקין עם coach_message ו-internal_state. בלי טקסט חופשי." if language == "he" else "\n\n🚨 **Required:** Return ONLY a valid JSON object with coach_message and internal_state. No free text.")
     
     context = "\n".join(context_parts)
     logger.info(
@@ -1772,7 +1867,7 @@ So feel free to share an event from any area where you interacted with people an
             explanation = "אני שואל עוד כי הנושא צריך להיות מוגדר היטב לפני שנמשיך. כדי לאמן אותך, אני צריך להבין במדויק על מה אתה רוצה להתאמן."
             has_topic, _ = has_clear_topic_for_s2(state)
             if has_topic:
-                topic_hint = (state.get("collected_data") or {}).get("topic") or ""
+                topic_hint = _safe_get_topic_from_collected(state.get("collected_data"))
                 for msg in reversed(state.get("messages", [])):
                     if msg.get("sender") == "user":
                         c = (msg.get("content") or "").strip()
@@ -1906,7 +2001,7 @@ So feel free to share an event from any area where you interacted with people an
             llm = gemini_llm
             _bsd_log("LLM_DECISION", step=internal_state.get("current_step"),
                      saturation=internal_state.get("saturation_score"),
-                     collected_data_keys=list((internal_state.get("collected_data") or {}).keys()),
+                     collected_data_keys=list(_safe_collected_dict(internal_state.get("collected_data")).keys()),
                      coach_preview=(coach_message or "")[:60])
         else:
             # Azure OpenAI path (existing logic)
@@ -1924,7 +2019,7 @@ So feel free to share an event from any area where you interacted with people an
                     internal_state = response_obj.internal_state.model_dump()
                     _bsd_log("LLM_DECISION", step=internal_state.get("current_step"),
                              saturation=internal_state.get("saturation_score"),
-                             collected_data_keys=list((internal_state.get("collected_data") or {}).keys()),
+                             collected_data_keys=list(_safe_collected_dict(internal_state.get("collected_data")).keys()),
                              coach_preview=(coach_message or "")[:60])
                 except Exception as e:
                     logger.warning(f"[BSD V2] Structured output failed ({e}), falling back to JSON mode")
@@ -1947,13 +2042,25 @@ So feel free to share an event from any area where you interacted with people an
                     coach_message, internal_state = _parse_json_response(response_text, state, user_message, language)
                 except json.JSONDecodeError as e:
                     logger.error(f"[BSD V2] Failed to parse JSON: {e}")
+                    logger.error(f"[BSD V2] Response (first 200 chars): {repr((response_text or '')[:200])}")
                     coach_message = (response_text or "").strip()
-                    current_step = state.get("current_step", "S1")
+                    # Infer step from coach message content - allows progression even without JSON
+                    current_step = _infer_step_from_coach_message(coach_message, language) or state.get("current_step", "S1")
                     if current_step == "S0" and user_message and len(user_message.strip()) >= 2:
-                        msg_count = len([m for m in state.get("messages", []) if m.get("sender") == "user"])
+                        msg_count = len([m for m in state.get("messages", []) if isinstance(m, dict) and m.get("sender") == "user"])
                         if msg_count >= 1:
                             current_step = "S1"
-                    internal_state = {"current_step": current_step, "saturation_score": state.get("saturation_score", 0.3), "reflection": "Failed to parse"}
+                    collected = _safe_collected_dict(state.get("collected_data"))
+                    if not collected.get("topic") and state.get("current_step") in ("S0", "S1"):
+                        topic = _extract_topic_from_conversation(state, user_message, language)
+                        if topic:
+                            collected["topic"] = topic
+                    internal_state = {
+                        "current_step": current_step,
+                        "saturation_score": state.get("saturation_score", 0.3),
+                        "reflection": "Failed to parse (inferred step from content)",
+                        "collected_data": collected,
+                    }
                     if not coach_message:
                         coach_message = get_next_step_question(current_step, language)
 
@@ -2041,21 +2148,22 @@ So feel free to share an event from any area where you interacted with people an
             internal_state["current_step"] = old_step
         
         # 6b. Replace placeholder [נושא] in coach_message with actual topic
-        topic_for_msg = (internal_state.get("collected_data") or {}).get("topic") or ""
+        topic_for_msg = _safe_get_topic_from_collected(internal_state.get("collected_data"))
         if topic_for_msg and ("[" in topic_for_msg or topic_for_msg.strip() in ("[נושא]", "[topic]")):
             topic_for_msg = ""
         if "[נושא]" in coach_message or "[topic]" in coach_message:
-            # Don't use meta-questions (הסביר, מה חסר) as topic - extract from history
+            # Don't use meta-questions (הסביר, מה חסר) or greetings as topic - extract from history
             meta_patterns = ("הסביר", "מה חסר", "מה כוונתך", "לא הבנתי", "מה כוונה", "can you explain", "what do you mean")
+            skip_for_topic = ("מה שמך", "שלום", "היי", "what's your name", "hello", "hi")
             is_meta = user_message and any(p in (user_message or "").lower() for p in meta_patterns)
             if not topic_for_msg:
                 for msg in reversed(state.get("messages", [])):
-                    if msg.get("sender") == "user":
+                    if isinstance(msg, dict) and msg.get("sender") == "user":
                         c = (msg.get("content") or "").strip()
-                        if c and not any(p in c.lower() for p in meta_patterns) and len(c) > 3:
-                            topic_for_msg = topic_for_msg or (c[:50] + "..." if len(c) > 50 else c)
+                        if c and len(c) >= 10 and not any(p in c.lower() for p in meta_patterns) and not any(s in c.lower() for s in skip_for_topic):
+                            topic_for_msg = c[:50] + "..." if len(c) > 50 else c
                             break
-            replacement = topic_for_msg or ((user_message[:50] + "..." if len(user_message) > 50 else user_message) if user_message and not is_meta else "הנושא")
+            replacement = topic_for_msg or ((user_message[:50] + "..." if len(user_message) > 50 else user_message) if user_message and not is_meta and len((user_message or "").strip()) >= 10 else "הנושא")
             coach_message = coach_message.replace("[נושא]", replacement).replace("[topic]", replacement)
         
         # 7. Update state
@@ -2075,7 +2183,7 @@ So feel free to share an event from any area where you interacted with people an
         logger.info(f"[BSD V2] Total messages now: {len(state['messages'])}")
         logger.info(f"[PERF] ⏱️  TOTAL TIME: {total_ms:.0f}ms ({total_ms/1000:.1f}s)")
         _bsd_log("TURN_END", final_step=state['current_step'], overrides=overrides_applied,
-                 collected_data_keys=[k for k, v in state.get('collected_data', {}).items() if v])
+                 collected_data_keys=[k for k, v in _safe_collected_dict(state.get('collected_data')).items() if v])
 
         return coach_message, state
         

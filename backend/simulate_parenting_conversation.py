@@ -23,6 +23,7 @@ from app.bsd_v2.single_agent_coach import (
     validate_stage_transition,
     get_next_step_question,
 )
+from app.bsd_v2.response_schema import CoachResponseSchema, InternalStateSchema
 
 
 # === תגובות "בעייתיות" שהמודל עלול להחזיר (מחקות את הבאג) ===
@@ -74,6 +75,28 @@ def make_llm_response(obj: dict) -> str:
     return json.dumps(obj, ensure_ascii=False)
 
 
+class MockLLM:
+    """Mock LLM that returns MOCK_RESPONSES - supports with_structured_output and bind."""
+
+    def __init__(self, get_index):
+        self.get_index = get_index
+
+    def with_structured_output(self, schema, method="json_schema", strict=True):
+        return self
+
+    def bind(self, response_format=None):
+        return self
+
+    async def ainvoke(self, messages, prompt_cache_key=None):
+        r = MOCK_RESPONSES[self.get_index()]
+        ist = r["internal_state"]
+        ist.setdefault("collected_data", {})
+        return CoachResponseSchema(
+            coach_message=r["coach_message"],
+            internal_state=InternalStateSchema(**ist),
+        )
+
+
 async def run_simulation_with_mock():
     """מריץ את הסימולציה עם mock ל-LLM."""
     state = create_initial_state("sim-1", "user-1", "he")
@@ -82,15 +105,8 @@ async def run_simulation_with_mock():
 
     response_index = [0]  # mutable for closure
 
-    async def mock_invoke(llm, messages, cache_key=""):
-        class FakeResponse:
-            content = make_llm_response(MOCK_RESPONSES[response_index[0]])
-            response_metadata = {}
-
-        return FakeResponse()
-
     def mock_get_llm(purpose=""):
-        return object()  # fake LLM, we mock the invoke
+        return MockLLM(lambda: min(response_index[0], len(MOCK_RESPONSES) - 1))
 
     errors = []
     coach_responses = []
@@ -98,9 +114,6 @@ async def run_simulation_with_mock():
     with patch(
         "app.bsd_v2.single_agent_coach.get_azure_chat_llm",
         side_effect=mock_get_llm,
-    ), patch(
-        "app.bsd_v2.single_agent_coach._ainvoke_with_prompt_cache",
-        side_effect=mock_invoke,
     ):
         for i, user_msg in enumerate(USER_MESSAGES):
             response_index[0] = min(i, len(MOCK_RESPONSES) - 1)
