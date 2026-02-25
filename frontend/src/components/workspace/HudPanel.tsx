@@ -22,6 +22,7 @@ interface CognitiveData {
 interface HudPanelProps {
   conversationId: number | null;
   currentPhase?: string;
+  loading?: boolean;
   onArchiveClick?: () => void;
 }
 
@@ -40,12 +41,30 @@ const InsightTag = ({ label, value }: { label: string; value: string }) => (
   </div>
 );
 
-export const HudPanel = memo(({ conversationId, currentPhase = 'S0', onArchiveClick }: HudPanelProps) => {
+export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = false, onArchiveClick }: HudPanelProps) => {
   const [data, setData] = useState<CognitiveData | null>(null);
+  const [insightsPhase, setInsightsPhase] = useState<string>(currentPhase);
+  const [wasLoading, setWasLoading] = useState(false);
+
+  // Track loading transition to trigger immediate refetch when message send completes
+  useEffect(() => {
+    if (wasLoading && !loading && conversationId) {
+      setWasLoading(false);
+      apiClient.getConversationInsights(conversationId).then((res) => {
+        if (res.exists !== false && res.cognitive_data) {
+          setData(res.cognitive_data);
+          if (res.current_stage) setInsightsPhase(res.current_stage);
+        }
+      }).catch(() => {});
+    } else if (loading) {
+      setWasLoading(true);
+    }
+  }, [loading, wasLoading, conversationId]);
 
   useEffect(() => {
     if (!conversationId) {
       setData(null);
+      setInsightsPhase('S0');
       return;
     }
     let interval: NodeJS.Timeout | null = null;
@@ -54,6 +73,10 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', onArchiveCl
         const res = await apiClient.getConversationInsights(conversationId);
         if (res.exists === false) return;
         const next = res.cognitive_data || {};
+        if (res.current_stage) setInsightsPhase(res.current_stage);
+        if (import.meta.env.DEV && Object.keys(next).length > 0) {
+          console.log('[HudPanel] Insights:', { currentPhase, insightsPhase: res.current_stage, cognitive_data: next });
+        }
         setData((prev) => {
           if (prev && JSON.stringify(prev) === JSON.stringify(next)) return prev;
           return next;
@@ -75,7 +98,9 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', onArchiveCl
   const pattern = data?.pattern ?? data?.pattern_id?.name;
 
   const stepIndex = (s: string) => parseInt(s.replace('S', ''), 10) || 0;
-  const currentIdx = stepIndex(currentPhase);
+  // Use the more advanced of currentPhase (from last message) or insightsPhase (from API) for display
+  const phaseForDisplay = currentPhase && currentPhase !== 'S0' ? currentPhase : insightsPhase;
+  const currentIdx = stepIndex(phaseForDisplay);
 
   const insightTags: { label: string; value: string }[] = [];
 

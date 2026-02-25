@@ -1,19 +1,18 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Send, Mic } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Send, Mic, Square } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useAuth } from '@clerk/clerk-react';
 import { useChat } from '../../hooks/useChat';
+import { useVoiceRecord } from '../../hooks/useVoiceRecord';
 import { VisionLadder } from './VisionLadder';
 import { ArchiveDrawer } from './ArchiveDrawer';
 import { HudPanel } from './HudPanel';
 import { ShehiyaProgress } from './ShehiyaProgress';
 import { WorkspaceMessageBubble } from './WorkspaceMessageBubble';
-import { VoiceControlBar } from '../VoiceControlBar';
 import { Dashboard } from '../Dashboard';
 import { apiClient } from '../../services/api';
-import type { Conversation, ToolCall } from '../../types';
-import type { VoiceGender } from '../../constants/voices';
+import type { Conversation } from '../../types';
 
 interface BSDWorkspaceProps {
   displayName?: string | null;
@@ -27,13 +26,10 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
   const [inputValue, setInputValue] = useState('');
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [archiveOpen, setArchiveOpen] = useState(false);
-  const [isVoiceMode, setIsVoiceMode] = useState(false);
-  const [voiceGender, setVoiceGender] = useState<VoiceGender>('female');
-  const { messages, loading, currentPhase, conversationId, activeTool, sendMessage, loadConversation, startNewConversation } = useChat(displayName);
+  const { messages, loading, currentPhase, conversationId, sendMessage, loadConversation, startNewConversation } = useChat(displayName);
+  const { isRecording, startRecording, stopRecording } = useVoiceRecord(i18n.language);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const speakFunctionRef = useRef<((text: string) => Promise<void>) | null>(null);
-  const stopVoiceSessionRef = useRef<(() => void) | null>(null);
   const isSendingRef = useRef(false);
 
   useEffect(() => {
@@ -82,20 +78,24 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
   };
 
   const handleSelectConversation = async (id: number) => {
-    if (isVoiceMode && stopVoiceSessionRef.current) {
-      stopVoiceSessionRef.current();
-      setIsVoiceMode(false);
-    }
     await loadConversation(id);
   };
 
   const handleNewChat = async () => {
-    if (isVoiceMode && stopVoiceSessionRef.current) {
-      stopVoiceSessionRef.current();
-      setIsVoiceMode(false);
-    }
     await startNewConversation();
   };
+
+  const handleMicClick = useCallback(async () => {
+    if (isRecording) {
+      const transcript = await stopRecording();
+      if (transcript.trim()) {
+        setInputValue((prev) => (prev ? `${prev} ${transcript}` : transcript));
+        inputRef.current?.focus();
+      }
+    } else {
+      await startRecording();
+    }
+  }, [isRecording, startRecording, stopRecording]);
 
   const handleDeleteConversation = async (id: number) => {
     const confirmMessage = i18n.language === 'he' ? 'למחוק את השיחה הזו?' : 'Delete this conversation?';
@@ -126,22 +126,6 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
       console.error('Error sharing:', error);
     }
   };
-
-  const handleVoiceMessage = useCallback(async (role: 'user' | 'assistant', content: string) => {
-    if (role !== 'user' || isSendingRef.current) return;
-    const token = await getToken();
-    if (!token) return;
-    isSendingRef.current = true;
-    try {
-      await sendMessage(content, i18n.language, token, (responseText) => {
-        if (speakFunctionRef.current) speakFunctionRef.current(responseText);
-      });
-    } catch (error) {
-      console.error('Error in voice message:', error);
-    } finally {
-      setTimeout(() => { isSendingRef.current = false; }, 300);
-    }
-  }, [getToken, i18n.language, sendMessage]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -184,7 +168,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
     >
       {/* RIGHT in RTL: Cognitive HUD - Mekor, Teva, Archive, Videos. On mobile: below chat */}
       <div className="order-2 md:order-1 w-full md:w-64 lg:w-72 flex-shrink-0 border-t md:border-t-0 md:border-r border-white/[0.08] bg-[#1e293b] overflow-hidden min-h-0 max-h-[45vh] md:max-h-none">
-        <HudPanel conversationId={conversationId} currentPhase={currentPhase} onArchiveClick={() => setArchiveOpen(true)} />
+        <HudPanel conversationId={conversationId} currentPhase={currentPhase} loading={loading} onArchiveClick={() => setArchiveOpen(true)} />
       </div>
 
       {/* Archive Drawer */}
@@ -246,20 +230,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
         </div>
 
         {/* Input */}
-        <AnimatePresence mode="wait">
-          {isVoiceMode ? (
-            <VoiceControlBar
-              key="voice-bar"
-              language={i18n.language as 'he' | 'en'}
-              voiceGender={voiceGender}
-              onVoiceGenderChange={setVoiceGender}
-              onMessageSync={handleVoiceMessage}
-              onAIResponseReady={(fn) => { speakFunctionRef.current = fn; }}
-              onStopSessionReady={(fn) => { stopVoiceSessionRef.current = fn; }}
-              onStop={() => setIsVoiceMode(false)}
-            />
-          ) : (
-            <div key="text-input" className="p-9 border-t border-[#E2E4E8] bg-[#F5F5F0]">
+        <div className="p-9 border-t border-[#E2E4E8] bg-[#F5F5F0]">
               <form onSubmit={handleSubmit} className="flex items-end gap-5">
                 <textarea
                   ref={inputRef}
@@ -282,10 +253,16 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
                 />
                 <button
                   type="button"
-                  onClick={() => setIsVoiceMode(true)}
-                  className="p-4 rounded-xl bg-white border border-[#E2E4E8] hover:bg-[#F0F1F3] text-[#2E3A56]/80 transition-colors shadow-sm"
+                  onClick={handleMicClick}
+                  disabled={loading}
+                  title={isRecording ? (i18n.language === 'he' ? 'עצור הקלטה' : 'Stop recording') : (i18n.language === 'he' ? 'הקלט קול' : 'Record voice')}
+                  className={`p-4 rounded-xl border transition-colors shadow-sm ${
+                    isRecording
+                      ? 'bg-[#2E3A56]/15 border-[#2E3A56]/40 text-[#2E3A56] hover:bg-[#2E3A56]/25'
+                      : 'bg-white border-[#E2E4E8] hover:bg-[#F0F1F3] text-[#2E3A56]/80'
+                  }`}
                 >
-                  <Mic size={18} strokeWidth={1.5} />
+                  {isRecording ? <Square size={18} strokeWidth={2} fill="currentColor" /> : <Mic size={18} strokeWidth={1.5} />}
                 </button>
                 <button
                   type="submit"
@@ -298,10 +275,8 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
                 >
                   <Send size={18} strokeWidth={1.5} />
                 </button>
-              </form>
-            </div>
-          )}
-        </AnimatePresence>
+            </form>
+        </div>
       </div>
 
       {/* LEFT in RTL: Vision Ladder. On mobile: last (scroll to see) */}

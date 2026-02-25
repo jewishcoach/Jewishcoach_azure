@@ -309,6 +309,11 @@ def get_conversation_insights_safe(
             
             # Transform V2 collected_data to frontend CognitiveData schema
             cognitive_data = _v2_collected_data_to_cognitive_data(collected_data, messages)
+            logger.info(
+                f"[Insights] conv={conversation_id} step={current_stage} "
+                f"collected_keys={list(collected_data.keys()) if collected_data else []} "
+                f"cognitive_keys={list(cognitive_data.keys()) if cognitive_data else []}"
+            )
             return {
                 "exists": True,
                 "current_stage": current_stage,

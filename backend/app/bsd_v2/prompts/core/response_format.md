@@ -19,4 +19,4 @@
 **חובה:**
 - התשובה כולה אובייקט JSON אחד. אין טקסט לפני או אחרי.
 - `current_step` – השלב הנוכחי (S0, S1, S2...).
-- `collected_data.topic` – עדכן ב-S1 כשהנושא ברור.
+- `collected_data` – **חשוב!** עדכן בכל תור עם הנתונים החדשים שהמשתמש נתן. ב-S1: topic. ב-S3: emotions. ב-S4: thought. ב-S5: action_actual, action_desired. ב-S6: gap_name, gap_score. ב-S7: pattern. התובנות מוצגות למשתמש בלייב – אל תחזיר collected_data ריק.
