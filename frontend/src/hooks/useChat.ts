@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Message, Conversation, ToolCall } from '../types';
 import { apiClient } from '../services/api';
-import { BSD_VERSION, getBsdEndpoint, getBsdStreamEndpoint } from '../config';
+import { BSD_VERSION, getBsdEndpoint } from '../config';
 
 export const useChat = (displayName?: string | null) => {
   const { t, i18n } = useTranslation();
@@ -171,38 +171,18 @@ export const useChat = (displayName?: string | null) => {
 
     try {
       // ═══════════════════════════════════════════════════════════════════
-      // V2: Single-agent conversational coach (real streaming via SSE)
+      // V2: Single-agent conversational coach (non-streaming)
       // ═══════════════════════════════════════════════════════════════════
       if (BSD_VERSION === 'v2') {
         console.log('🆕 [BSD V2] Sending message...');
 
-        const streamUrl = getBsdStreamEndpoint(currentConvId!, 'v2');
-        const nonStreamUrl = getBsdEndpoint(currentConvId!, 'v2');
-        const reqBody = JSON.stringify({ message: content, conversation_id: currentConvId, language });
-        const reqHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
-        const reqOpts = { method: 'POST' as const, credentials: 'include' as const, headers: reqHeaders, body: reqBody };
-
-        let response = await fetch(streamUrl, reqOpts);
-
-        // Fallback to non-streaming if stream endpoint returns 404 (not yet deployed)
-        if (response.status === 404) {
-          console.warn('🔄 [BSD V2] Stream endpoint not available, falling back to non-streaming');
-          response = await fetch(nonStreamUrl, reqOpts);
-          if (response.ok) {
-            const data = await response.json();
-            const assistantMessageId = Date.now() + 1;
-            setMessages(prev => [...prev, {
-              id: assistantMessageId,
-              role: 'assistant',
-              content: data.coach_message,
-              timestamp: new Date().toISOString(),
-            }]);
-            if (data.current_step) setCurrentPhase(data.current_step);
-            if (onResponseComplete && data.coach_message?.trim()) onResponseComplete(data.coach_message.trim());
-            setLoading(false);
-            return;
-          }
-        }
+        const url = getBsdEndpoint(currentConvId!, 'v2');
+        const response = await fetch(url, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ message: content, conversation_id: currentConvId, language }),
+        });
 
         if (!response.ok) {
           const errBody = await response.text();
@@ -210,83 +190,16 @@ export const useChat = (displayName?: string | null) => {
           throw new Error(`Failed to send message (V2): ${response.status} ${errBody.slice(0, 100)}`);
         }
 
-        const reader = response.body?.getReader();
-        const decoder = new TextDecoder();
-        let assistantContent = '';
+        const data = await response.json();
         const assistantMessageId = Date.now() + 1;
-        let doneReceived = false;
-        let firstChunkReceived = false;
-        let sseBuffer = '';
-
-        if (reader) {
-          while (!doneReceived) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            sseBuffer += decoder.decode(value, { stream: true });
-
-            const events = sseBuffer.split('\n\n');
-            sseBuffer = events.pop() || '';
-
-            for (const eventChunk of events) {
-              const dataLine = eventChunk
-                .split('\n')
-                .find((line) => line.startsWith('data: '));
-
-              if (!dataLine) continue;
-
-              try {
-                const payload = JSON.parse(dataLine.slice(6));
-
-                if (payload.type === 'content' && payload.chunk) {
-                  assistantContent += payload.chunk;
-
-                  if (!firstChunkReceived) {
-                    firstChunkReceived = true;
-                    setLoading(false);
-                  }
-
-                  setMessages(prev => {
-                    const newMessages = [...prev];
-                    const existingIndex = newMessages.findIndex(
-                      msg => msg.role === 'assistant' && msg.id === assistantMessageId
-                    );
-
-                    const nextMessage = {
-                      id: assistantMessageId,
-                      role: 'assistant' as const,
-                      content: assistantContent,
-                      timestamp: new Date().toISOString(),
-                    };
-
-                    if (existingIndex !== -1) {
-                      newMessages[existingIndex] = nextMessage;
-                    } else {
-                      newMessages.push(nextMessage);
-                    }
-
-                    return newMessages;
-                  });
-                } else if (payload.type === 'done') {
-                  if (payload.state?.current_step) {
-                    setCurrentPhase(payload.state.current_step);
-                  }
-                  doneReceived = true;
-                } else if (payload.type === 'error') {
-                  throw new Error(payload.message || 'V2 stream error');
-                }
-              } catch (e) {
-                console.error('Error parsing V2 SSE payload:', e, eventChunk);
-              }
-            }
-          }
-        }
-
-        // Call completion callback
-        if (onResponseComplete && assistantContent.trim() && doneReceived) {
-          onResponseComplete(assistantContent.trim());
-        }
-
+        setMessages(prev => [...prev, {
+          id: assistantMessageId,
+          role: 'assistant',
+          content: data.coach_message,
+          timestamp: new Date().toISOString(),
+        }]);
+        if (data.current_step) setCurrentPhase(data.current_step);
+        if (onResponseComplete && data.coach_message?.trim()) onResponseComplete(data.coach_message.trim());
         setLoading(false);
         return;
       }

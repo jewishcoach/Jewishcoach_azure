@@ -35,20 +35,6 @@ export function getBsdEndpoint(conversationId: number, version: 'v1' | 'v2' = BS
 }
 
 /**
- * Get BSD streaming endpoint based on version
- */
-export function getBsdStreamEndpoint(conversationId: number, version: 'v1' | 'v2' = BSD_VERSION): string {
-  const baseUrl = getApiBase();
-
-  if (version === 'v2') {
-    return `${baseUrl}/chat/v2/message/stream`;
-  }
-
-  // V1 (streaming)
-  return `${baseUrl}/chat/conversations/${conversationId}/messages`;
-}
-
-/**
  * Toggle BSD version (for testing)
  */
 export function setBsdVersion(version: 'v1' | 'v2') {
