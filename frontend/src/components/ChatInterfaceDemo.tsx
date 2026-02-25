@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Send, Sparkles, Mic } from 'lucide-react';
+import { Send, Mic } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useChat } from '../hooks/useChat';
 import { MessageBubble } from './MessageBubble';
@@ -9,7 +9,7 @@ import { Sidebar } from './Sidebar';
 import { VoiceControlBar } from './VoiceControlBar';
 import { InsightHub } from './InsightHub/InsightHub';
 import { apiClient } from '../services/api';
-import type { Conversation, ToolCall } from '../types';
+import type { Conversation } from '../types';
 import type { VoiceGender } from '../constants/voices';
 
 // HARDCODED NGROK URL FOR DEMO MODE

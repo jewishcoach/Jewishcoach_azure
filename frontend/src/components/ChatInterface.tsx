@@ -10,7 +10,7 @@ import { Sidebar } from './Sidebar';
 import { VoiceControlBar } from './VoiceControlBar';
 import { InsightHub } from './InsightHub/InsightHub';
 import { apiClient } from '../services/api';
-import type { Conversation, ToolCall } from '../types';
+import type { Conversation } from '../types';
 import type { VoiceGender } from '../constants/voices';
 
 interface ChatInterfaceProps {
@@ -157,11 +157,11 @@ export const ChatInterface = ({ displayName }: ChatInterfaceProps) => {
       const createdAt = conv.created_at ? new Date(conv.created_at).toLocaleString() : '';
       const lines = [`${title}`, createdAt ? `(${createdAt})` : ''];
 
-      const messagesText = (conv.messages || []).map((msg: any) => {
+      const messagesText = (conv.messages || []).map((msg: { role: string; content?: string }) => {
         const roleLabel = msg.role === 'assistant'
           ? (i18n.language === 'he' ? 'מאמן' : 'Coach')
           : (i18n.language === 'he' ? 'אני' : 'User');
-        const content = msg.role === 'assistant' ? cleanAssistantContent(msg.content) : msg.content;
+        const content = msg.role === 'assistant' ? cleanAssistantContent(msg.content ?? '') : (msg.content ?? '');
         return `${roleLabel}: ${content}`;
       });
 
@@ -234,7 +234,7 @@ export const ChatInterface = ({ displayName }: ChatInterfaceProps) => {
     }
   }, [getToken, i18n.language, sendMessage]);
 
-  const handleToolSubmit = async (submission: { tool_type: string; data: any }) => {
+  const handleToolSubmit = async (submission: { tool_type: string; data: Record<string, unknown> }) => {
     if (!conversationId) return;
 
     try {

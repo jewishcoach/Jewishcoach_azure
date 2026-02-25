@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { motion } from 'framer-motion';
 import { Check, Sparkles, Zap, Crown, Gift, Loader2 } from 'lucide-react';
@@ -11,7 +11,7 @@ interface Plan {
   currency: string;
   messages_per_month: number;
   speech_minutes_per_month: number;
-  features: any;
+  features: { coaching_phases?: string; journal_access?: boolean; priority_support?: boolean };
 }
 
 interface Usage {
@@ -39,13 +39,7 @@ export const BillingPage = () => {
   const [loading, setLoading] = useState(true);
   const [couponCode, setCouponCode] = useState('');
   const [couponMessage, setCouponMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
-  const language = 'he'; // Get from context/i18n
-
-  useEffect(() => {
-    loadBillingData();
-  }, []);
-
-  const loadBillingData = async () => {
+  const loadBillingData = useCallback(async () => {
     try {
       const token = await getToken();
       const response = await fetch(`${API_URL}/api/billing/overview`, {
@@ -55,12 +49,16 @@ export const BillingPage = () => {
       });
       const data = await response.json();
       setOverview(data);
-    } catch (error) {
-      console.error('Error loading billing data:', error);
+    } catch (err) {
+      console.error('Error loading billing data:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [getToken]);
+
+  useEffect(() => {
+    loadBillingData();
+  }, [loadBillingData]);
 
   const handleRedeemCoupon = async () => {
     if (!couponCode.trim()) return;
@@ -85,7 +83,7 @@ export const BillingPage = () => {
       } else {
         setCouponMessage({ type: 'error', text: data.detail });
       }
-    } catch (error) {
+    } catch {
       setCouponMessage({ type: 'error', text: 'שגיאה בהפעלת הקופון' });
     }
   };
