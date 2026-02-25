@@ -9,7 +9,6 @@ import logging
 import time
 from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, Depends
-from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from ..dependencies import get_current_user
@@ -105,51 +104,6 @@ async def warmup_cache(
     return {"status": "warmup_started"}
 
 
-# NOTE: /message/stream must be registered before /message (more specific path first)
-@router.post("/message/stream")
-async def chat_v2_stream(
-    request: ChatRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """BSD V2 Chat with Streaming Response (SSE)."""
-    try:
-        state = load_v2_state(request.conversation_id, db)
-        from ..bsd_v2.single_agent_coach_streaming import handle_conversation_stream
-
-        async def generate():
-            try:
-                final_state = None
-                async for chunk in handle_conversation_stream(
-                    user_message=request.message,
-                    state=state,
-                    language=request.language
-                ):
-                    if chunk.startswith("\n__STATE_UPDATE__:"):
-                        state_json = chunk.replace("\n__STATE_UPDATE__:", "")
-                        final_state = json.loads(state_json)
-                        save_v2_state(request.conversation_id, final_state, db)
-                        db.commit()
-                        yield f"data: {json.dumps({'type': 'done', 'state': {'current_step': final_state.get('current_step', 'S1'), 'saturation_score': final_state.get('saturation_score', 0)}})}\n\n"
-                    elif chunk.startswith("\n__ERROR__:"):
-                        error_msg = chunk.replace("\n__ERROR__:", "")
-                        yield f"data: {json.dumps({'type': 'error', 'message': error_msg})}\n\n"
-                    else:
-                        yield f"data: {json.dumps({'type': 'content', 'chunk': chunk})}\n\n"
-            except Exception as e:
-                logger.error(f"Error in stream generation: {e}")
-                yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
-
-        return StreamingResponse(
-            generate(),
-            media_type="text/event-stream",
-            headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"}
-        )
-    except Exception as e:
-        logger.error(f"Error in streaming endpoint: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 @router.post("/message", response_model=ChatResponse)
 async def send_message_v2(
     request: ChatRequest,
@@ -205,7 +159,8 @@ async def send_message_v2(
             user_message=request.message,
             state=state,
             language=request.language,
-            user_gender=user_gender
+            user_gender=user_gender,
+            conversation_id=request.conversation_id,
         )
         t4 = time.time()
         logger.info(f"[PERF API] handle_conversation: {(t4-t3)*1000:.0f}ms")
@@ -275,6 +230,11 @@ async def send_message_v2(
         logger.error(f"[BSD V2 API] Error: {e}")
         import traceback
         traceback.print_exc()
+        try:
+            from ..bsd_v2.error_buffer import capture_error
+            capture_error("chat_v2_api", e, {"conv_id": request.conversation_id})
+        except Exception:
+            pass
         # Return fallback instead of 500 - user gets friendly message, not network error
         fallback_he = "הייתה לי בעיה טכנית. תוכל לחזור על זה?"
         fallback_en = "I had a technical issue. Could you try again?"
@@ -294,6 +254,22 @@ async def send_message_v2(
             current_step=state.get("current_step", "S1"),
             saturation_score=state.get("saturation_score", 0.3),
         )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# DEBUG: Recent errors (in-memory, last 20)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/debug/errors")
+async def get_recent_errors_debug(
+    current_user: User = Depends(get_current_user)
+):
+    """Return recent BSD V2 errors for debugging. Requires auth."""
+    try:
+        from ..bsd_v2.error_buffer import get_recent_errors
+        return {"errors": get_recent_errors(), "count": len(get_recent_errors())}
+    except Exception as e:
+        return {"errors": [], "count": 0, "error": str(e)}
 
 
 # ══════════════════════════════════════════════════════════════════════════════

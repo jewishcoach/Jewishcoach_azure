@@ -22,8 +22,28 @@ TEMPERATURE_MAP = {
 }
 
 
+def _build_azure_llm(*, deployment: str, temperature: float = 0.2) -> AzureChatOpenAI:
+    """Build Azure LLM with given deployment (for A/B test)."""
+    api_key = os.getenv("AZURE_OPENAI_API_KEY")
+    endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+    api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-08-01-preview")
+    timeout_seconds = int(os.getenv("AZURE_OPENAI_TIMEOUT_SECONDS", "90"))
+    max_retries = int(os.getenv("AZURE_OPENAI_MAX_RETRIES", "2"))
+    if not api_key or not endpoint:
+        raise RuntimeError("Missing Azure OpenAI configuration.")
+    return AzureChatOpenAI(
+        azure_endpoint=endpoint,
+        api_key=api_key,
+        api_version=api_version,
+        azure_deployment=deployment,
+        temperature=temperature,
+        request_timeout=timeout_seconds,
+        max_retries=max_retries,
+    )
+
+
 @lru_cache(maxsize=8)
-def get_azure_chat_llm(*, purpose: str) -> AzureChatOpenAI:
+def get_azure_chat_llm(*, purpose: str, deployment: str | None = None) -> AzureChatOpenAI:
     """
     Get an Azure OpenAI LLM client configured for a specific purpose.
     
@@ -71,9 +91,12 @@ def get_azure_chat_llm(*, purpose: str) -> AzureChatOpenAI:
             "Set AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT."
         )
 
-    # Check for purpose-specific deployment override
-    per_purpose_key = f"AZURE_OPENAI_DEPLOYMENT_NAME_{purpose.upper()}"
-    deployment = os.getenv(per_purpose_key, default_deployment)
+    # Explicit deployment override (e.g. for A/B test)
+    if deployment:
+        deployment_name = deployment
+    else:
+        per_purpose_key = f"AZURE_OPENAI_DEPLOYMENT_NAME_{purpose.upper()}"
+        deployment_name = os.getenv(per_purpose_key, default_deployment)
 
     # Get temperature for this purpose (default to reasoner temp if unknown)
     temperature = TEMPERATURE_MAP.get(purpose.lower(), 0.1)
@@ -86,11 +109,18 @@ def get_azure_chat_llm(*, purpose: str) -> AzureChatOpenAI:
         azure_endpoint=endpoint,
         api_key=api_key,
         api_version=api_version,
-        azure_deployment=deployment,
+        azure_deployment=deployment_name,
         temperature=temperature,
         request_timeout=timeout_seconds,
         max_retries=max_retries,
     )
+
+
+@lru_cache(maxsize=1)
+def get_azure_chat_llm_4o_mini() -> AzureChatOpenAI:
+    """Get Azure LLM for gpt-4o-mini (A/B test variant)."""
+    deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME_4O_MINI", "gpt-4o-mini")
+    return _build_azure_llm(deployment=deployment, temperature=0.2)
 
 
 # Google Gemini support removed - Azure OpenAI only
@@ -118,4 +148,4 @@ def get_chat_llm(*, purpose: str) -> AzureChatOpenAI:
 
 
 # Public API
-__all__ = ["get_azure_chat_llm", "get_chat_llm"]
+__all__ = ["get_azure_chat_llm", "get_chat_llm", "get_azure_chat_llm_4o_mini"]

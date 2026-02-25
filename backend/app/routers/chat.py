@@ -209,9 +209,9 @@ async def run_quality_check(
 
 @router.post("/conversations", response_model=ConversationResponse)
 def create_conversation(
+    background_tasks: BackgroundTasks,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    background_tasks: BackgroundTasks = Depends(),
 ):
     """Create a new conversation for authenticated user"""
     title = f"New Conversation - {datetime.now().strftime('%b %d')}"

@@ -33,6 +33,8 @@ SAFETY_NET_DISABLED = os.getenv("BSD_V2_SAFETY_NET_DISABLED", "0").strip() in ("
 USE_GEMINI = os.getenv("USE_GEMINI", "0").strip() in ("1", "true", "yes")
 # USE_VERTEX_AI=1 uses Vertex AI (needs VERTEX_AI_API_KEY + VERTEX_AI_PROJECT) instead of AI Studio (GOOGLE_API_KEY)
 USE_VERTEX_AI = os.getenv("USE_VERTEX_AI", "0").strip() in ("1", "true", "yes")
+# A/B test: BSD_V2_AB_TEST=1 assigns each conversation to Gemini | gpt-4o | gpt-4o-mini (~33% each)
+AB_TEST_ENABLED = os.getenv("BSD_V2_AB_TEST", "0").strip() in ("1", "true", "yes")
 
 
 def _bsd_log(tag: str, **kwargs: Any) -> None:
@@ -1775,7 +1777,8 @@ async def handle_conversation(
     user_message: str,
     state: Dict[str, Any],
     language: str = "he",
-    user_gender: Optional[str] = None
+    user_gender: Optional[str] = None,
+    conversation_id: Optional[int] = None,
 ) -> Tuple[str, Dict[str, Any]]:
     """
     Handle single conversation turn in V2.
@@ -1979,7 +1982,19 @@ So feel free to share an event from any area where you interacted with people an
         coach_message = ""
         internal_state: Dict[str, Any] = {}
 
-        if USE_GEMINI:
+        # A/B test: assign variant by conversation_id (Gemini | 4o | 4o-mini)
+        if AB_TEST_ENABLED and conversation_id is not None:
+            from .ab_test import assign_variant
+            variant = assign_variant(conversation_id)
+            use_gemini = variant == "gemini"
+            use_4o_mini = variant == "4o-mini"
+            logger.info(f"[AB_TEST] variant={variant} conv_id={conversation_id}")
+        else:
+            use_gemini = USE_GEMINI
+            use_4o_mini = False
+            variant = "gemini" if use_gemini else "4o"
+
+        if use_gemini:
             from langchain_google_genai import ChatGoogleGenerativeAI, HarmCategory, HarmBlockThreshold
             vertex_key = os.getenv("VERTEX_AI_API_KEY", "").strip()
             vertex_project = os.getenv("VERTEX_AI_PROJECT", os.getenv("GOOGLE_CLOUD_PROJECT", "")).strip()
@@ -2019,8 +2034,46 @@ So feel free to share an event from any area where you interacted with people an
                      saturation=internal_state.get("saturation_score"),
                      collected_data_keys=list(_safe_collected_dict(internal_state.get("collected_data")).keys()),
                      coach_preview=(coach_message or "")[:60])
+        elif use_4o_mini:
+            # Azure gpt-4o-mini (A/B variant - faster, cheaper)
+            from ..bsd.llm import get_azure_chat_llm_4o_mini
+            llm = get_azure_chat_llm_4o_mini()
+            use_structured = os.getenv("BSD_V2_STRUCTURED_OUTPUT", "1").strip() in ("1", "true", "yes")
+            if use_structured:
+                try:
+                    strict = os.getenv("BSD_V2_STRUCTURED_STRICT", "1").strip() in ("1", "true", "yes")
+                    structured_llm = llm.with_structured_output(
+                        CoachResponseSchema, method="json_schema", strict=strict
+                    )
+                    response_obj = await structured_llm.ainvoke(messages)
+                    coach_message = (response_obj.coach_message or "").strip()
+                    internal_state = response_obj.internal_state.model_dump()
+                    _bsd_log("LLM_DECISION", step=internal_state.get("current_step"),
+                             saturation=internal_state.get("saturation_score"),
+                             collected_data_keys=list(_safe_collected_dict(internal_state.get("collected_data")).keys()),
+                             coach_preview=(coach_message or "")[:60])
+                except Exception as e:
+                    logger.warning(f"[BSD V2] 4o-mini structured output failed ({e}), falling back to JSON")
+                    use_structured = False
+            if not use_structured:
+                if os.getenv("BSD_V2_JSON_MODE", "1").strip() in ("1", "true", "yes"):
+                    llm = llm.bind(response_format={"type": "json_object"})
+                response = await llm.ainvoke(messages)
+                response_text = response.content.strip()
+                try:
+                    coach_message, internal_state = _parse_json_response(response_text, state, user_message, language)
+                except json.JSONDecodeError as e:
+                    logger.error(f"[BSD V2] 4o-mini JSON parse failed: {e}")
+                    coach_message = (response_text or "").strip()
+                    current_step = _infer_step_from_coach_message(coach_message, language) or state.get("current_step", "S1")
+                    internal_state = {
+                        "current_step": current_step,
+                        "saturation_score": state.get("saturation_score", 0.3),
+                        "reflection": "Parse failed",
+                        "collected_data": _safe_collected_dict(state.get("collected_data")),
+                    }
         else:
-            # Azure OpenAI path (existing logic)
+            # Azure OpenAI gpt-4o (default)
             use_structured = os.getenv("BSD_V2_STRUCTURED_OUTPUT", "1").strip() in ("1", "true", "yes")
 
             if use_structured:
@@ -2039,6 +2092,11 @@ So feel free to share an event from any area where you interacted with people an
                              coach_preview=(coach_message or "")[:60])
                 except Exception as e:
                     logger.warning(f"[BSD V2] Structured output failed ({e}), falling back to JSON mode")
+                    try:
+                        from .error_buffer import capture_error
+                        capture_error("structured_output_fail", e)
+                    except Exception:
+                        pass
                     use_structured = False
 
             if not use_structured:
@@ -2059,6 +2117,11 @@ So feel free to share an event from any area where you interacted with people an
                 except json.JSONDecodeError as e:
                     logger.error(f"[BSD V2] Failed to parse JSON: {e}")
                     logger.error(f"[BSD V2] Response (first 200 chars): {repr((response_text or '')[:200])}")
+                    try:
+                        from .error_buffer import capture_error
+                        capture_error("json_parse", e, {"response_preview": (response_text or "")[:200]})
+                    except Exception:
+                        pass
                     coach_message = (response_text or "").strip()
                     # Infer step from coach message content - allows progression even without JSON
                     current_step = _infer_step_from_coach_message(coach_message, language) or state.get("current_step", "S1")
@@ -2081,7 +2144,8 @@ So feel free to share an event from any area where you interacted with people an
                         coach_message = get_next_step_question(current_step, language)
 
         t4 = time.time()
-        logger.info(f"[PERF] LLM call: {(t4-t3)*1000:.0f}ms")
+        llm_ms = (t4 - t3) * 1000
+        logger.info(f"[PERF] LLM call: {llm_ms:.0f}ms variant={variant}")
 
         coach_message = _sanitize_coach_message(coach_message)
         
@@ -2207,6 +2271,11 @@ So feel free to share an event from any area where you interacted with people an
         logger.error(f"[BSD V2] Error handling conversation: {e}")
         import traceback
         traceback.print_exc()
+        try:
+            from .error_buffer import capture_error
+            capture_error("handle_conversation", e, {"user_msg_preview": (user_message or "")[:80]})
+        except Exception:
+            pass
 
         # Graceful fallback for provider rate limiting
         err_text = str(e)

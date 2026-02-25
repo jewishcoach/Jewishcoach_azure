@@ -70,12 +70,6 @@ app.include_router(billing.router)
 app.include_router(profile.router)
 app.include_router(calendar.router)
 
-@app.get("/ping-v2")
-def ping_v2():
-    """Debug: verify deployment - no path prefix."""
-    return {"status": "ok", "v2": True}
-
-
 @app.get("/")
 def root():
     return {
