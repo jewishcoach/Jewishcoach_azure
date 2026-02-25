@@ -42,7 +42,7 @@ export const VisionLadder = ({ currentStep }: VisionLadderProps) => {
   const activePhaseIndex = STEP_TO_PHASE[currentStep] ?? 0;
 
   return (
-    <div className="w-full min-w-[240px] flex flex-col h-full bg-[#020617] py-8 px-5 workspace-ladder" dir="rtl">
+    <div className="w-full min-w-[240px] flex flex-col h-full bg-[#1e293b] py-8 px-5 workspace-ladder" dir="rtl">
       <div className="flex-1 overflow-y-auto overflow-x-visible custom-scrollbar flex flex-col gap-0">
         {PHASES.map((phase, i) => {
           const isActive = i === activePhaseIndex;

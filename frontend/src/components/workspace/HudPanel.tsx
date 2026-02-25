@@ -101,7 +101,7 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', onArchiveCl
   }
 
   return (
-    <div className="w-full md:w-72 flex flex-col h-full bg-[#020617]/50 min-h-0">
+    <div className="w-full md:w-72 flex flex-col h-full bg-[#1e293b] min-h-0">
       {/* Archive button - top corner */}
       {onArchiveClick && (
         <div className="p-5 border-b border-white/[0.06] flex justify-end">

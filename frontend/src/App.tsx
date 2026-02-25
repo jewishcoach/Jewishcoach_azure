@@ -83,7 +83,7 @@ function SignedInContent() {
         initial={{ opacity: 0, y: -50 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 120, damping: 14 }}
-        className="relative z-20 flex justify-between items-center p-6 bg-[#020617]/95 backdrop-blur-[25px] border-b border-white/[0.08]"
+        className="relative z-20 flex justify-between items-center p-6 bg-[#0f172a] backdrop-blur-[25px] border-b border-white/[0.08]"
       >
         <h1 className="text-xl font-light text-white flex items-center gap-2 tracking-[0.1em]" style={{ fontFamily: 'Cormorant Garamond, Playfair Display, serif' }}>
           <Sparkles className="w-5 h-5" style={{ filter: 'drop-shadow(0 0 6px rgba(212, 175, 55, 0.5))', color: '#FCF6BA' }} />

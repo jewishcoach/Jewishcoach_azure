@@ -183,7 +183,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
       dir={i18n.dir()}
     >
       {/* RIGHT in RTL: Cognitive HUD - Mekor, Teva, Archive, Videos. On mobile: below chat */}
-      <div className="order-2 md:order-1 w-full md:w-64 lg:w-72 flex-shrink-0 border-t md:border-t-0 md:border-r border-white/[0.08] bg-[#020617]/80 overflow-hidden min-h-0 max-h-[45vh] md:max-h-none">
+      <div className="order-2 md:order-1 w-full md:w-64 lg:w-72 flex-shrink-0 border-t md:border-t-0 md:border-r border-white/[0.08] bg-[#1e293b] overflow-hidden min-h-0 max-h-[45vh] md:max-h-none">
         <HudPanel conversationId={conversationId} currentPhase={currentPhase} onArchiveClick={() => setArchiveOpen(true)} />
       </div>
 
@@ -311,7 +311,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
       </div>
 
       {/* LEFT in RTL: Vision Ladder. On mobile: last (scroll to see) */}
-      <div className="order-3 w-[280px] min-w-[280px] flex-shrink-0 h-full min-h-[400px] border-t md:border-t-0 md:border-l border-white/[0.08] overflow-hidden">
+      <div className="order-3 w-[280px] min-w-[280px] flex-shrink-0 h-full min-h-[400px] border-t md:border-t-0 md:border-l border-white/[0.08] bg-[#1e293b] overflow-hidden">
         <VisionLadder currentStep={currentPhase} />
       </div>
     </div>
