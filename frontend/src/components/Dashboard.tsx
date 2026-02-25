@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import {
   User, Award, Settings, Save, X, ArrowRight, Target, History,
-  MessageSquare, Calendar, TrendingUp
+  MessageSquare, Calendar, TrendingUp, Loader2
 } from 'lucide-react';
 import { CoachingCalendar } from './CoachingCalendar';
 import { RemindersManager } from './RemindersManager';
@@ -121,10 +121,10 @@ export const Dashboard = ({ onBack }: DashboardProps) => {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center" style={{ background: COLORS.bg }}>
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-2 border-t-transparent mx-auto" style={{ borderColor: COLORS.accent }} />
-          <p className="mt-3 text-sm" style={{ color: COLORS.textMuted }}>טוען נתונים...</p>
+      <div className="flex-1 min-h-0 flex items-center justify-center" style={{ background: COLORS.bg }}>
+        <div className="flex flex-col items-center justify-center gap-3">
+          <Loader2 className="h-12 w-12 animate-spin" style={{ color: COLORS.accent }} />
+          <p className="text-sm" style={{ color: COLORS.textMuted }}>{t('chat.loading')}</p>
         </div>
       </div>
     );
