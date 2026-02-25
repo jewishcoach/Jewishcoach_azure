@@ -200,18 +200,18 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
         isRTL={isRTL}
       />
 
-      {/* CENTER: Resonance Workspace - Obsidian Black. On mobile: first */}
-      <div className="order-1 md:order-2 flex flex-col min-w-0 relative overflow-hidden bg-[#020617] flex-1">
+      {/* CENTER: Chat area - cream background. On mobile: first */}
+      <div className="order-1 md:order-2 flex flex-col min-w-0 relative overflow-hidden bg-[#F5F5F0] flex-1">
         <ShehiyaProgress loading={loading} />
 
-        <div className="flex-1 overflow-y-auto px-10 py-10 custom-scrollbar bg-[#020617]">
+        <div className="flex-1 overflow-y-auto px-10 py-10 custom-scrollbar bg-[#F5F5F0]">
           {messages.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="flex flex-col items-center justify-center h-full text-center py-24 px-10"
             >
-              <p className="text-[#F5F5F0]/85 text-[16px] max-w-md" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 300, lineHeight: 1.6 }}>
+              <p className="text-[#2E3A56]/90 text-[16px] max-w-md" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 300, lineHeight: 1.6 }}>
                 {i18n.language === 'he'
                   ? 'שלום! על מה תרצה להתאמן היום?'
                   : 'Hello! What would you like to work on today?'}
@@ -227,20 +227,14 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
               {loading && (
                 <div className="flex justify-start">
                   <div
-                    className="rounded-[4px] px-6 py-4 flex items-center gap-3"
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.03)',
-                      backdropFilter: 'blur(25px)',
-                      WebkitBackdropFilter: 'blur(25px)',
-                      border: '0.5px solid rgba(255, 255, 255, 0.1)',
-                    }}
+                    className="rounded-[4px] px-6 py-4 flex items-center gap-3 bg-white/80 border border-[#E2E4E8] shadow-sm"
                   >
                     <div className="flex gap-1">
-                      <span className="w-2 h-2 rounded-full bg-[#FCF6BA]/70 animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <span className="w-2 h-2 rounded-full bg-[#FCF6BA]/70 animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <span className="w-2 h-2 rounded-full bg-[#FCF6BA]/70 animate-bounce" style={{ animationDelay: '300ms' }} />
+                      <span className="w-2 h-2 rounded-full bg-[#B38728] animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-2 h-2 rounded-full bg-[#B38728] animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-2 h-2 rounded-full bg-[#B38728] animate-bounce" style={{ animationDelay: '300ms' }} />
                     </div>
-                    <span className="text-[14px] font-light text-[#F5F5F0]/80" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <span className="text-[14px] font-light text-[#2E3A56]/80" style={{ fontFamily: 'Inter, sans-serif' }}>
                       {i18n.language === 'he' ? 'המאמן חושב...' : 'Coach is thinking...'}
                     </span>
                   </div>
@@ -265,7 +259,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
               onStop={() => setIsVoiceMode(false)}
             />
           ) : (
-            <div key="text-input" className="p-9 border-t border-white/[0.06]">
+            <div key="text-input" className="p-9 border-t border-[#E2E4E8] bg-[#F5F5F0]">
               <form onSubmit={handleSubmit} className="flex items-end gap-5">
                 <textarea
                   ref={inputRef}
@@ -274,22 +268,22 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
                   onKeyDown={handleKeyDown}
                   placeholder={t('chat.placeholder')}
                   disabled={loading}
-                  className="flex-1 resize-none rounded-[4px] px-6 py-5 text-[16px] max-h-28 placeholder-[rgba(245,245,240,0.35)] focus:border-[#FCF6BA]/40 focus:ring-2 focus:ring-[#FCF6BA]/20 focus:outline-none"
+                  className="flex-1 resize-none rounded-[4px] px-6 py-5 text-[16px] max-h-28 placeholder-[#5A6B8A]/60 focus:border-[#B38728]/50 focus:ring-2 focus:ring-[#B38728]/20 focus:outline-none"
                   style={{
                     fontFamily: 'Inter, sans-serif',
                     fontWeight: 300,
                     lineHeight: 1.6,
                     minHeight: '48px',
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '0.5px solid rgba(255,255,255,0.1)',
-                    color: '#F5F5F0',
+                    background: '#FFFFFF',
+                    border: '1px solid #E2E4E8',
+                    color: '#2E3A56',
                   }}
                   rows={1}
                 />
                 <button
                   type="button"
                   onClick={() => setIsVoiceMode(true)}
-                  className="p-4 rounded-[4px] bg-white/[0.06] hover:bg-white/[0.1] text-[#F5F5F0]/80 transition-colors"
+                  className="p-4 rounded-[4px] bg-white border border-[#E2E4E8] hover:bg-[#F0F1F3] text-[#2E3A56]/80 transition-colors shadow-sm"
                 >
                   <Mic size={18} strokeWidth={1.5} />
                 </button>

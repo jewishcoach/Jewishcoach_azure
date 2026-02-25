@@ -14,7 +14,7 @@ export const ShehiyaProgress = ({ loading }: ShehiyaProgressProps) => {
         animate={{ opacity: 1, height: 2 }}
         exit={{ opacity: 0, height: 0 }}
         className="rounded-b overflow-hidden"
-        style={{ background: 'rgba(255,255,255,0.06)' }}
+        style={{ background: 'rgba(46, 58, 86, 0.12)' }}
       >
         <motion.div
           className="h-full"
