@@ -51,7 +51,7 @@ export const VisionLadder = ({ currentStep }: VisionLadderProps) => {
           return (
             <div key={phase.id} className="flex flex-col items-stretch">
               <div
-                className="group relative rounded-[4px] px-4 py-3 border transition-all duration-300 cursor-default"
+                className="group relative rounded-xl px-4 py-3 border transition-all duration-300 cursor-default"
                 style={{
                   background: isActive ? 'rgba(212, 175, 55, 0.12)' : 'rgba(255, 255, 255, 0.03)',
                   borderColor: isActive ? 'rgba(212, 175, 55, 0.4)' : 'rgba(255, 255, 255, 0.08)',

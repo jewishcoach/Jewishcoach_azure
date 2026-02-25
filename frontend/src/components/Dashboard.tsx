@@ -14,16 +14,17 @@ import { PhaseDonutChart } from './dashboard/PhaseDonutChart';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-// BSD Logo palette: dark blue #2E3A56, light gray #EBEBEB, red accent #E02C26
+// BSD palette: navy primary, minimal red - gold for soft accents
 const COLORS = {
   bg: '#F0F1F3',
   card: '#FFFFFF',
   text: '#2E3A56',
   textMuted: '#5A6B8A',
-  accent: '#E02C26',
-  accentLight: 'rgba(224, 44, 38, 0.12)',
+  accent: '#2E3A56',
+  accentLight: 'rgba(46, 58, 86, 0.12)',
   primary: '#2E3A56',
   primaryLight: 'rgba(46, 58, 86, 0.08)',
+  gold: '#B38728',
   border: '#E2E4E8',
   shadow: '0 1px 2px rgba(46, 58, 86, 0.06)',
   shadowSm: '0 2px 8px rgba(46, 58, 86, 0.08)',
@@ -179,7 +180,7 @@ export const Dashboard = ({ onBack }: DashboardProps) => {
             <div
               className="h-36 w-full"
               style={{
-                background: `linear-gradient(135deg, ${COLORS.primaryLight} 0%, ${COLORS.primary} 40%, ${COLORS.accent} 100%)`,
+                background: `linear-gradient(135deg, ${COLORS.primaryLight} 0%, ${COLORS.primary} 60%, ${COLORS.gold} 100%)`,
               }}
             />
             <div className="absolute bottom-0 right-1/2 translate-x-1/2 translate-y-1/2">
@@ -187,7 +188,7 @@ export const Dashboard = ({ onBack }: DashboardProps) => {
                 className="w-20 h-20 rounded-full flex items-center justify-center border-4"
                 style={{ background: COLORS.card, borderColor: COLORS.card, boxShadow: COLORS.shadowSm }}
               >
-                <User className="w-10 h-10" style={{ color: COLORS.accent }} />
+                <User className="w-10 h-10" style={{ color: COLORS.gold }} />
               </div>
             </div>
           </motion.div>

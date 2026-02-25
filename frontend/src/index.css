@@ -240,16 +240,16 @@ body {
 }
 
 .coaching-calendar-light .react-calendar__tile:hover {
-  background-color: rgba(224, 44, 38, 0.1);
+  background-color: rgba(46, 58, 86, 0.1);
 }
 
 .coaching-calendar-light .react-calendar__tile--active {
-  background-color: #E02C26 !important;
+  background-color: #2E3A56 !important;
   color: white;
 }
 
 .coaching-calendar-light .react-calendar__tile.has-coaching {
-  color: #E02C26;
+  color: #2E3A56;
   font-weight: 600;
 }
 
@@ -258,9 +258,9 @@ body {
 }
 
 .coaching-calendar-light .react-calendar__navigation button:hover {
-  background-color: rgba(224, 44, 38, 0.1);
+  background-color: rgba(46, 58, 86, 0.1);
 }
 
 .coaching-calendar-light .react-calendar__month-view__days__day--weekend {
-  color: #E02C26;
+  color: #5A6B8A;
 }

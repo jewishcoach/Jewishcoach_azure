@@ -55,7 +55,7 @@ export const ArchiveDrawer = ({
               <h3 className="text-sm font-medium text-white/90">ארכיון שיחות</h3>
               <button
                 onClick={onClose}
-                className="p-2 rounded-[4px] text-white/60 hover:text-white hover:bg-white/5"
+                className="p-2 rounded-xl text-white/60 hover:text-white hover:bg-white/5"
               >
                 <X size={18} />
               </button>
@@ -65,7 +65,7 @@ export const ArchiveDrawer = ({
                 onNewChat();
                 onClose();
               }}
-              className="w-full mx-4 mt-4 py-2.5 rounded-[4px] bg-white/10 hover:bg-white/15 text-white text-sm font-medium transition-colors"
+              className="w-full mx-4 mt-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-sm font-medium transition-colors"
             >
               שיחה חדשה
             </button>
@@ -77,7 +77,7 @@ export const ArchiveDrawer = ({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="חיפוש שיחות..."
-                  className={`w-full py-2 rounded-[4px] bg-white/5 border border-white/10 text-white placeholder-white/40 text-sm focus:outline-none focus:border-[#FCF6BA]/40 ${isRTL ? 'pr-9 pl-3' : 'pl-9 pr-3'}`}
+                  className={`w-full py-2 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 text-sm focus:outline-none focus:border-[#FCF6BA]/40 ${isRTL ? 'pr-9 pl-3' : 'pl-9 pr-3'}`}
                   dir="rtl"
                 />
               </div>
@@ -103,7 +103,7 @@ export const ArchiveDrawer = ({
                         onClose();
                       }}
                       className={`
-                        px-3 py-2.5 rounded-[4px] cursor-pointer transition-colors
+                        px-3 py-2.5 rounded-xl cursor-pointer transition-colors
                         ${activeId === conv.id ? 'bg-[#FCF6BA]/15 text-[#FCF6BA]' : 'text-white/80 hover:bg-white/5'}
                       `}
                     >

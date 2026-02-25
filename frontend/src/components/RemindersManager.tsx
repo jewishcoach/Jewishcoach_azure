@@ -23,7 +23,7 @@ export const RemindersManager = ({ variant = 'dark' }: RemindersManagerProps) =>
   const { getToken } = useAuth();
   const { t } = useTranslation();
   const isLight = variant === 'light';
-  const inputCls = isLight ? 'border-gray-200 bg-white text-[#1E293B] placeholder-gray-400 focus:ring-[#E02C26]/30' : 'border-white/10 bg-white/[0.04] text-[#F5F5F0] placeholder-[#F5F5F0]/40 focus:ring-[#FCF6BA]/30';
+  const inputCls = isLight ? 'border-gray-200 bg-white text-[#1E293B] placeholder-gray-400 focus:ring-[#2E3A56]/30' : 'border-white/10 bg-white/[0.04] text-[#F5F5F0] placeholder-[#F5F5F0]/40 focus:ring-[#FCF6BA]/30';
   const cardCls = isLight ? 'bg-gray-50 border border-gray-200' : 'bg-white/[0.06] border border-white/[0.1]';
   const textCls = isLight ? 'text-[#1E293B]' : 'text-[#F5F5F0]';
   const mutedCls = isLight ? 'text-[#64748B]' : 'text-[#F5F5F0]/70';
@@ -150,13 +150,13 @@ export const RemindersManager = ({ variant = 'dark' }: RemindersManagerProps) =>
       {/* Header */}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <Bell className={`w-5 h-5 ${isLight ? 'text-[#E02C26]' : 'text-[#FCF6BA]'}`} />
+          <Bell className={`w-5 h-5 ${isLight ? 'text-[#2E3A56]' : 'text-[#FCF6BA]'}`} />
           <h3 className={`text-lg font-bold ${textCls}`}>{t('reminders.title')}</h3>
         </div>
         <button
           onClick={() => setShowAddForm(!showAddForm)}
           className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors"
-          style={isLight ? { background: '#E02C26', color: 'white' } : { background: 'linear-gradient(45deg, #BF953F, #FCF6BA)', color: '#020617' }}
+          style={isLight ? { background: '#2E3A56', color: 'white' } : { background: 'linear-gradient(45deg, #BF953F, #FCF6BA)', color: '#020617' }}
         >
           {showAddForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
           {showAddForm ? t('reminders.cancel') : t('reminders.new')}
@@ -217,7 +217,7 @@ export const RemindersManager = ({ variant = 'dark' }: RemindersManagerProps) =>
                         onClick={() => toggleRepeatDay(index)}
                         className={`w-10 h-10 rounded-full transition-colors ${
                           formData.repeat_days.includes(index)
-                            ? isLight ? 'bg-[#E02C26]/30 text-[#E02C26]' : 'bg-[#FCF6BA]/30 text-[#FCF6BA]'
+                            ? isLight ? 'bg-[#2E3A56]/30 text-[#2E3A56]' : 'bg-[#FCF6BA]/30 text-[#FCF6BA]'
                             : isLight ? 'bg-gray-200 text-[#1E293B] hover:bg-gray-300' : 'bg-white/10 text-[#F5F5F0] hover:bg-white/15'
                         }`}
                       >
@@ -229,7 +229,7 @@ export const RemindersManager = ({ variant = 'dark' }: RemindersManagerProps) =>
               )}
 
               <div className="flex gap-2">
-                <button type="submit" className="flex items-center gap-2 px-6 py-2 rounded-lg transition-colors" style={isLight ? { background: '#E02C26', color: 'white' } : { background: 'linear-gradient(45deg, #BF953F, #FCF6BA)', color: '#020617' }}>
+                <button type="submit" className="flex items-center gap-2 px-6 py-2 rounded-lg transition-colors" style={isLight ? { background: '#2E3A56', color: 'white' } : { background: 'linear-gradient(45deg, #BF953F, #FCF6BA)', color: '#020617' }}>
                   <Save className="w-4 h-4" />
                   {editingId ? t('reminders.update') : t('reminders.save')}
                 </button>
@@ -252,7 +252,7 @@ export const RemindersManager = ({ variant = 'dark' }: RemindersManagerProps) =>
               <div className="flex justify-between items-start">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <Bell className={`w-4 h-4 ${isLight ? 'text-[#E02C26]' : 'text-[#FCF6BA]'}`} />
+                    <Bell className={`w-4 h-4 ${isLight ? 'text-[#2E3A56]' : 'text-[#FCF6BA]'}`} />
                     <h4 className={`font-bold ${textCls}`}>{reminder.title}</h4>
                   </div>
                   {reminder.description && <p className={`text-sm mt-1 ${mutedCls}`}>{reminder.description}</p>}
@@ -262,13 +262,13 @@ export const RemindersManager = ({ variant = 'dark' }: RemindersManagerProps) =>
                       {new Date(reminder.reminder_date).toLocaleDateString('he-IL')}
                       {reminder.reminder_time && ` • ${reminder.reminder_time}`}
                     </div>
-                    <span className={`px-2 py-1 rounded text-xs ${isLight ? 'bg-[#E02C26]/15 text-[#E02C26]' : 'bg-[#FCF6BA]/15 text-[#FCF6BA]'}`}>
+                    <span className={`px-2 py-1 rounded text-xs ${isLight ? 'bg-[#2E3A56]/15 text-[#2E3A56]' : 'bg-[#FCF6BA]/15 text-[#FCF6BA]'}`}>
                       {getRepeatLabel(reminder.repeat_type, t)}
                     </span>
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => handleEdit(reminder)} className={`p-2 ${mutedCls} hover:opacity-100 transition-colors ${isLight ? 'hover:text-[#E02C26]' : 'hover:text-[#FCF6BA]'}`}>
+                  <button onClick={() => handleEdit(reminder)} className={`p-2 ${mutedCls} hover:opacity-100 transition-colors ${isLight ? 'hover:text-[#2E3A56]' : 'hover:text-[#FCF6BA]'}`}>
                     <Edit2 className="w-4 h-4" />
                   </button>
                   <button onClick={() => handleDelete(reminder.id)} className={`p-2 ${mutedCls} hover:text-red-400 transition-colors`}>

@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion';
 
 const COLORS = {
-  bar: '#E02C26',
-  barMuted: 'rgba(224, 44, 38, 0.15)',
+  bar: '#2E3A56',
+  barMuted: 'rgba(46, 58, 86, 0.15)',
   text: '#2E3A56',
   textMuted: '#5A6B8A',
 };

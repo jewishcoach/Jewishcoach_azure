@@ -17,7 +17,7 @@ export const BsdScale = ({ currentStep, onArchiveClick }: BsdScaleProps) => {
       {/* Archive button */}
       <motion.button
         onClick={onArchiveClick}
-        className="mt-4 p-2 rounded-[4px] text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+        className="mt-4 p-2 rounded-xl text-white/60 hover:text-white hover:bg-white/5 transition-colors"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         aria-label="Archive"

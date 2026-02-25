@@ -227,7 +227,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
               {loading && (
                 <div className="flex justify-start">
                   <div
-                    className="rounded-[4px] px-6 py-4 flex items-center gap-3 bg-white/80 border border-[#E2E4E8] shadow-sm"
+                    className="rounded-xl px-6 py-4 flex items-center gap-3 bg-white/80 border border-[#E2E4E8] shadow-sm"
                   >
                     <div className="flex gap-1">
                       <span className="w-2 h-2 rounded-full bg-[#B38728] animate-bounce" style={{ animationDelay: '0ms' }} />
@@ -268,7 +268,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
                   onKeyDown={handleKeyDown}
                   placeholder={t('chat.placeholder')}
                   disabled={loading}
-                  className="flex-1 resize-none rounded-[4px] px-6 py-5 text-[16px] max-h-28 placeholder-[#5A6B8A]/60 focus:border-[#B38728]/50 focus:ring-2 focus:ring-[#B38728]/20 focus:outline-none"
+                  className="flex-1 resize-none rounded-xl px-6 py-5 text-[16px] max-h-28 placeholder-[#5A6B8A]/60 focus:border-[#B38728]/50 focus:ring-2 focus:ring-[#B38728]/20 focus:outline-none"
                   style={{
                     fontFamily: 'Inter, sans-serif',
                     fontWeight: 300,
@@ -283,14 +283,14 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
                 <button
                   type="button"
                   onClick={() => setIsVoiceMode(true)}
-                  className="p-4 rounded-[4px] bg-white border border-[#E2E4E8] hover:bg-[#F0F1F3] text-[#2E3A56]/80 transition-colors shadow-sm"
+                  className="p-4 rounded-xl bg-white border border-[#E2E4E8] hover:bg-[#F0F1F3] text-[#2E3A56]/80 transition-colors shadow-sm"
                 >
                   <Mic size={18} strokeWidth={1.5} />
                 </button>
                 <button
                   type="submit"
                   disabled={!inputValue.trim() || loading}
-                  className="p-4 rounded-[4px] text-[#020617] font-light disabled:opacity-50 transition-all"
+                  className="p-4 rounded-xl text-[#020617] font-light disabled:opacity-50 transition-all"
                   style={{
                     background: 'linear-gradient(45deg, #BF953F, #FCF6BA, #B38728, #FBF5B7, #AA771C)',
                     filter: 'drop-shadow(0 0 5px rgba(212, 175, 55, 0.5))',

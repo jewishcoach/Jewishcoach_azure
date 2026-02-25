@@ -101,7 +101,7 @@ function SignedInContent() {
               setShowBilling(false);
               setShowAdmin(false);
             }}
-            className="flex items-center gap-2 px-4 py-2 rounded-[4px] bg-white/[0.06] hover:bg-white/[0.1] text-white text-sm font-light transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white text-sm font-light transition-colors"
             style={{ fontFamily: 'Inter, sans-serif' }}
           >
             <BarChart3 className="w-4 h-4" />
@@ -113,7 +113,7 @@ function SignedInContent() {
               setShowDashboard(false);
               setShowAdmin(false);
             }}
-            className="flex items-center gap-2 px-4 py-2 rounded-[4px] text-sm font-light transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-light transition-colors"
             style={{ background: 'rgba(212,175,55,0.12)', color: '#FCF6BA', fontFamily: 'Inter, sans-serif' }}
           >
             <CreditCard className="w-4 h-4" />
@@ -126,7 +126,7 @@ function SignedInContent() {
                 setShowBilling(false);
                 setShowDashboard(false);
               }}
-              className="flex items-center gap-2 px-4 py-2 rounded-[4px] bg-white/[0.06] hover:bg-white/[0.1] text-white text-sm font-light transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white text-sm font-light transition-colors"
               style={{ fontFamily: 'Inter, sans-serif' }}
             >
               <Shield className="w-4 h-4" />

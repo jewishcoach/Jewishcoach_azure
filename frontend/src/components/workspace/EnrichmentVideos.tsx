@@ -45,7 +45,7 @@ export const EnrichmentVideos = ({ currentPhase }: EnrichmentVideosProps) => {
               {videos.map((v, i) => (
                 <div
                   key={`${v.videoId}-${i}`}
-                  className="rounded-[4px] overflow-hidden"
+                  className="rounded-xl overflow-hidden"
                   style={{
                     background: 'rgba(255,255,255,0.03)',
                     border: '0.5px solid rgba(255,255,255,0.1)',

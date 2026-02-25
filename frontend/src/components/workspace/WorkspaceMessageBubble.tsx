@@ -18,7 +18,7 @@ export const WorkspaceMessageBubble = ({ message }: Props) => {
     >
       <div
         className={`
-          max-w-[85%] rounded-[4px] px-9 py-6 shadow-sm
+          max-w-[85%] rounded-xl px-9 py-6 shadow-sm
           ${isUser ? '' : ''}
         `}
         style={{

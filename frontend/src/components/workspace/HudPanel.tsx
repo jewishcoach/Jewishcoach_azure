@@ -28,7 +28,7 @@ interface HudPanelProps {
 /** Compact tag for insight - appears at top of right panel */
 const InsightTag = ({ label, value }: { label: string; value: string }) => (
   <div
-    className="px-3 py-2 rounded-[4px] border"
+    className="px-3 py-2 rounded-xl border"
     style={{
       background: 'rgba(255, 255, 255, 0.04)',
       borderColor: 'rgba(252, 246, 186, 0.2)',
@@ -107,7 +107,7 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', onArchiveCl
         <div className="p-5 border-b border-white/[0.06] flex justify-end">
           <button
             onClick={onArchiveClick}
-            className="p-3 rounded-[4px] text-white/40 hover:text-[#FCF6BA]/95 hover:bg-white/5 hover:[filter:drop-shadow(0_0_6px_rgba(212,175,55,0.4))] transition-colors"
+            className="p-3 rounded-xl text-white/40 hover:text-[#FCF6BA]/95 hover:bg-white/5 hover:[filter:drop-shadow(0_0_6px_rgba(212,175,55,0.4))] transition-colors"
             aria-label="ארכיון"
           >
             <Archive size={18} strokeWidth={1.5} />
