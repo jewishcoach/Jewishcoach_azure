@@ -37,8 +37,12 @@ cd backend
 
 ### 6. שגיאת 409 Conflict בפריסה
 - **סיבה:** פריסה קודמת עדיין רצה, או נעילות ב-Kudu
-- **פתרון:** ה-workflow מנסה שוב אוטומטית אחרי 2 דקות
-- **ידני:** Restart ב-Azure Portal, או `az webapp restart --name jewishcoach-api --resource-group jewish-coach-rg`
+- **פתרון אוטומטי:** ה-workflow מחכה 2 דקות בהתחלה, ואז 3 ניסיונות פריסה (המתנה 3 דקות בין ניסיונות)
+- **פתרון ידני (מומלץ):**
+  1. **Restart:** Azure Portal → jewishcoach-api → Overview → **Restart**
+  2. חכה 2–3 דקות
+  3. GitHub → Actions → **Re-run** את ה-workflow
+- **פתרון קבוע:** הוסף secret `AZURE_CREDENTIALS` (Service Principal) – ה-workflow יריץ Restart אוטומטית לפני כל פריסה. [הוראות](https://github.com/Azure/login#configure-a-service-principal-with-a-secret)
 
 ## Fallback – הצ'אט עובד בלי streaming
 - `/api/chat/v2/message` (POST) קיים ומחזיר 401 כשאין auth

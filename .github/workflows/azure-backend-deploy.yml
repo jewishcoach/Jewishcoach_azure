@@ -1,7 +1,8 @@
 # Deploy backend (FastAPI) to Azure Web App
 # Required: AZURE_WEBAPP_PUBLISH_PROFILE (from Azure Portal → jewishcoach-api → Get publish profile)
+# Optional: AZURE_CREDENTIALS (service principal JSON) - enables restart before deploy to fix 409
 #
-# Lean workflow ~2-3 min. If 409: re-run manually from Actions tab.
+# If 409 persists: add AZURE_CREDENTIALS secret or manually restart in Azure Portal → jewishcoach-api → Restart
 
 name: Deploy Backend to Azure Web App
 
@@ -26,10 +27,14 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     name: Build and Deploy Backend
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
+
+      # Wait for any previous deployment to release locks (409 often from concurrent/cancelled deploys)
+      - name: Wait for deployment slot
+        run: echo "Waiting 2 min for any previous deployment to finish..." && sleep 120
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -46,6 +51,16 @@ jobs:
           python3 test_prompt_manager.py
           python3 test_prompt_pipeline_local.py
           python3 test_prompts_simple.py
+
+      # Optional: Restart app to clear 409 locks. Add AZURE_CREDENTIALS secret to enable.
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+        continue-on-error: true
+      - name: Restart webapp (clears 409)
+        run: az webapp restart --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }}
+        continue-on-error: true
 
       - name: Create deploy zip
         run: |
@@ -74,12 +89,26 @@ jobs:
           package: backend/deploy.zip
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
 
-      - name: Wait 2 min (clear 409 locks from previous deployment)
+      - name: Wait 3 min before retry
         if: steps.deploy1.outcome == 'failure'
-        run: echo "First deploy failed (often 409). Waiting 2 min before retry..." && sleep 120
+        run: echo "Deploy 1 failed (often 409). Waiting 3 min..." && sleep 180
 
       - name: Deploy to Azure Web App (attempt 2)
+        id: deploy2
         if: steps.deploy1.outcome == 'failure'
+        uses: azure/webapps-deploy@v2
+        continue-on-error: true
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          package: backend/deploy.zip
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+
+      - name: Wait 3 min before final retry
+        if: steps.deploy2.outcome == 'failure'
+        run: echo "Deploy 2 failed. Final retry in 3 min..." && sleep 180
+
+      - name: Deploy to Azure Web App (attempt 3)
+        if: steps.deploy2.outcome == 'failure'
         uses: azure/webapps-deploy@v2
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
