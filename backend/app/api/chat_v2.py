@@ -178,9 +178,10 @@ async def send_message_v2(
             "saturation_score": 0.5
         }
     """
+    state: Dict[str, Any] = {}
     try:
         api_start = time.time()
-        
+
         print(f"\n{'='*80}")
         print(f"[BSD V2 API] ✅ REQUEST RECEIVED")
         print(f"[BSD V2 API] User: {current_user.id}")
@@ -266,7 +267,7 @@ async def send_message_v2(
         logger.info(f"[PERF API] 🏁 TOTAL API TIME: {api_total_ms:.0f}ms ({api_total_ms/1000:.1f}s)")
         
         return response
-        
+
     except HTTPException:
         # Re-raise HTTPException (404, 401, etc.) without wrapping in 500
         raise
@@ -274,7 +275,25 @@ async def send_message_v2(
         logger.error(f"[BSD V2 API] Error: {e}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        # Return fallback instead of 500 - user gets friendly message, not network error
+        fallback_he = "הייתה לי בעיה טכנית. תוכל לחזור על זה?"
+        fallback_en = "I had a technical issue. Could you try again?"
+        fallback_msg = fallback_he if (request.language or "he") == "he" else fallback_en
+        try:
+            from datetime import datetime
+            user_msg = Message(conversation_id=request.conversation_id, role="user", content=request.message, timestamp=datetime.utcnow())
+            coach_msg = Message(conversation_id=request.conversation_id, role="assistant", content=fallback_msg, timestamp=datetime.utcnow())
+            db.add(user_msg)
+            db.add(coach_msg)
+            db.commit()
+        except Exception as db_err:
+            logger.warning(f"[BSD V2 API] Could not save fallback messages: {db_err}")
+        return ChatResponse(
+            coach_message=fallback_msg,
+            conversation_id=request.conversation_id,
+            current_step=state.get("current_step", "S1"),
+            saturation_score=state.get("saturation_score", 0.3),
+        )
 
 
 # ══════════════════════════════════════════════════════════════════════════════

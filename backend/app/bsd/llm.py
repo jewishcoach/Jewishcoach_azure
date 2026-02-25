@@ -14,9 +14,10 @@ Enterprise-grade: Timeouts, retries, and purpose-specific temperature tuning.
 
 
 # Temperature mapping per purpose
+# talker: 0.2 max for JSON/Structured Output stability (0.35 caused free text before JSON)
 TEMPERATURE_MAP = {
     "reasoner": 0.1,   # Colder for logical validation (deterministic)
-    "talker": 0.35,    # Warmer for empathetic, varied responses (was 0.25)
+    "talker": 0.2,     # Low for JSON stability; still natural for coaching
     "judge": 0.15,     # Cold for quality evaluation
 }
 

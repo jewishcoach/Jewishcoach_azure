@@ -65,7 +65,21 @@ jobs:
           "
           ls -la deploy.zip
 
-      - name: Deploy to Azure Web App
+      - name: Deploy to Azure Web App (attempt 1)
+        id: deploy1
+        uses: azure/webapps-deploy@v2
+        continue-on-error: true
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          package: backend/deploy.zip
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+
+      - name: Wait 2 min (clear 409 locks from previous deployment)
+        if: steps.deploy1.outcome == 'failure'
+        run: echo "First deploy failed (often 409). Waiting 2 min before retry..." && sleep 120
+
+      - name: Deploy to Azure Web App (attempt 2)
+        if: steps.deploy1.outcome == 'failure'
         uses: azure/webapps-deploy@v2
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}

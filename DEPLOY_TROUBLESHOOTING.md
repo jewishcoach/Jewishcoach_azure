@@ -35,6 +35,11 @@ cd backend
 ./deploy_to_azure.sh
 ```
 
+### 6. שגיאת 409 Conflict בפריסה
+- **סיבה:** פריסה קודמת עדיין רצה, או נעילות ב-Kudu
+- **פתרון:** ה-workflow מנסה שוב אוטומטית אחרי 2 דקות
+- **ידני:** Restart ב-Azure Portal, או `az webapp restart --name jewishcoach-api --resource-group jewish-coach-rg`
+
 ## Fallback – הצ'אט עובד בלי streaming
 - `/api/chat/v2/message` (POST) קיים ומחזיר 401 כשאין auth
 - כשמחוברים – הצ'אט עובד ב-non-streaming mode

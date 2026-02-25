@@ -1744,6 +1744,8 @@ def build_conversation_context(
             content_value = msg.get("content", "")
             if not content_value:  # Skip empty messages
                 continue
+            # Sanitize: replace double quotes with single to avoid breaking JSON when model echoes
+            content_value = content_value.replace('"', "'")
             # Keep only the informative head of long turns to reduce repeated token cost.
             if len(content_value) > max_msg_chars:
                 content_value = content_value[:max_msg_chars] + " ...[truncated]"
@@ -1752,12 +1754,12 @@ def build_conversation_context(
                 sender = "User" if sender_value == "user" else "Coach"
             context_parts.append(f"{sender}: {content_value}")
     
-    # New message
+    # New message (sanitize quotes to avoid JSON breakage when model echoes)
+    user_msg_safe = (user_message or "").replace('"', "'")
     context_parts.append("\n# הודעה חדשה" if language == "he" else "\n# New Message")
-    context_parts.append(f"משתמש: {user_message}" if language == "he" else f"User: {user_message}")
-    # Strong JSON instruction (last thing model sees) - helps when API doesn't enforce format
-    context_parts.append("\n\n🚨 **חובה:** החזר רק אובייקט JSON תקין עם coach_message ו-internal_state. בלי טקסט חופשי." if language == "he" else "\n\n🚨 **Required:** Return ONLY a valid JSON object with coach_message and internal_state. No free text.")
-    
+    context_parts.append(f"משתמש: {user_msg_safe}" if language == "he" else f"User: {user_msg_safe}")
+    # No JSON instruction here - Structured Outputs / JSON Mode enforce format
+
     context = "\n".join(context_parts)
     logger.info(
         f"[PERF] Context size chars={len(context)}, history_msgs={len(history)}, step={state.get('current_step')}"
