@@ -204,8 +204,12 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
           ) : (
             <div className="space-y-9">
               <AnimatePresence>
-                {messages.map((message) => (
-                  <WorkspaceMessageBubble key={message.id} message={message} />
+                {messages.map((message, idx) => (
+                  <WorkspaceMessageBubble
+                    key={message.id}
+                    message={message}
+                    animateTyping={idx === 0 && message.role === 'assistant' && messages.length === 1}
+                  />
                 ))}
               </AnimatePresence>
               {loading && (

@@ -1,13 +1,37 @@
+import { useState, useEffect } from 'react';
 import type { Message } from '../../types';
 import ReactMarkdown from 'react-markdown';
 import { motion } from 'framer-motion';
 
+const TYPING_MS_PER_WORD = 28;
+
 interface Props {
   message: Message;
+  animateTyping?: boolean;
 }
 
-export const WorkspaceMessageBubble = ({ message }: Props) => {
+export const WorkspaceMessageBubble = ({ message, animateTyping = false }: Props) => {
   const isUser = message.role === 'user';
+  const fullContent = message.content || '';
+  const [displayedContent, setDisplayedContent] = useState(
+    animateTyping ? '' : fullContent
+  );
+
+  useEffect(() => {
+    if (!animateTyping || !fullContent) return;
+    const words = fullContent.split(/(\s+)/);
+    let i = 0;
+    const next = () => {
+      if (i >= words.length) return;
+      setDisplayedContent((prev) => prev + words[i]);
+      i++;
+      if (i < words.length) setTimeout(next, TYPING_MS_PER_WORD);
+    };
+    const t = setTimeout(next, 50);
+    return () => clearTimeout(t);
+  }, [animateTyping, fullContent]);
+
+  const contentToRender = animateTyping ? displayedContent : fullContent;
 
   return (
     <motion.div
@@ -37,7 +61,7 @@ export const WorkspaceMessageBubble = ({ message }: Props) => {
               strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
             }}
           >
-            {message.content}
+            {contentToRender}
           </ReactMarkdown>
         </div>
         <div className={`text-[11px] mt-2 ${isUser ? 'text-[#5A6B8A]/70' : 'text-[#5A6B8A]/60'}`}>
