@@ -28,30 +28,25 @@ export const useChat = (displayName?: string | null) => {
 
       // Add welcome message with animation delay
       setTimeout(() => {
-        // Get user's display name, fall back to Clerk name
-        const userName = displayName || user?.firstName || '';
-        
-        // Create greeting with name
+        // Get user's display name (avoid undefined string from API)
+        const rawName = displayName ?? user?.firstName ?? '';
+        const userName = (typeof rawName === 'string' && rawName !== 'undefined') ? rawName : '';
+        const welcomeText = t('welcome_message') || '';
+
+        // Create greeting: welcome_message already contains "שלום רב!" / "Hello!" - don't duplicate
         let greeting: string;
-        if (userName) {
-          if (i18n.language === 'he') {
-            greeting = `שלום ${userName} ${t('welcome_message')}`;
-          } else {
-            greeting = `Hello ${userName} ${t('welcome_message')}`;
-          }
+        if (userName && i18n.language === 'he') {
+          greeting = welcomeText.replace(/^שלום רב! /, `שלום ${userName}! `);
+        } else if (userName && i18n.language !== 'he') {
+          greeting = welcomeText.replace(/^Hello! /, `Hello ${userName}! `);
         } else {
-          // Fallback if no name available
-          if (i18n.language === 'he') {
-            greeting = `שלום ${t('welcome_message')}`;
-          } else {
-            greeting = `Hello ${t('welcome_message')}`;
-          }
+          greeting = welcomeText;
         }
         
         const welcomeMessage: Message = {
           id: Date.now(),
           role: 'assistant',
-          content: greeting,
+          content: String(greeting).replace(/\s*undefined\s*$/g, '').trim(),
           timestamp: new Date().toISOString(),
         };
         setMessages([welcomeMessage]);
@@ -82,10 +77,11 @@ export const useChat = (displayName?: string | null) => {
           cleanContent = cleanContent.replace(/\n\n__METADATA__:.*$/s, '');
           cleanContent = cleanContent.replace(/__SOURCES__:.*$/s, '');
           cleanContent = cleanContent.replace(/\n\n\{.*"sources".*\}$/s, '');
+          cleanContent = cleanContent.replace(/\s*undefined\s*$/g, '').trim();
           
           return {
             ...msg,
-            content: cleanContent.trim()
+            content: cleanContent
           };
         }
         return msg;
@@ -106,31 +102,26 @@ export const useChat = (displayName?: string | null) => {
   const startNewConversation = async () => {
     setLoading(false); // Clear any loading state when starting new chat
     
-    // Get user's display name, fall back to Clerk name
-    const userName = displayName || user?.firstName || '';
-    
-    // Create greeting with name
+    // Get user's display name (avoid undefined string from API)
+    const rawName = displayName ?? user?.firstName ?? '';
+    const userName = (typeof rawName === 'string' && rawName !== 'undefined') ? rawName : '';
+    const welcomeText = t('welcome_message') || '';
+
+    // Create greeting: welcome_message already contains "שלום רב!" / "Hello!" - don't duplicate
     let greeting: string;
-    if (userName) {
-      if (i18n.language === 'he') {
-        greeting = `שלום ${userName} ${t('welcome_message')}`;
-      } else {
-        greeting = `Hello ${userName} ${t('welcome_message')}`;
-      }
+    if (userName && i18n.language === 'he') {
+      greeting = welcomeText.replace(/^שלום רב! /, `שלום ${userName}! `);
+    } else if (userName && i18n.language !== 'he') {
+      greeting = welcomeText.replace(/^Hello! /, `Hello ${userName}! `);
     } else {
-      // Fallback if no name available
-      if (i18n.language === 'he') {
-        greeting = `שלום ${t('welcome_message')}`;
-      } else {
-        greeting = `Hello ${t('welcome_message')}`;
-      }
+      greeting = welcomeText;
     }
     
     // Add welcome message immediately to prevent visual "jump"
     const welcomeMessage: Message = {
       id: Date.now(),
       role: 'assistant',
-      content: greeting,
+      content: String(greeting).replace(/\s*undefined\s*$/g, '').trim(),
       timestamp: new Date().toISOString(),
     };
     
@@ -192,10 +183,11 @@ export const useChat = (displayName?: string | null) => {
 
         const data = await response.json();
         const assistantMessageId = Date.now() + 1;
+        const coachContent = String(data.coach_message ?? '').replace(/\s*undefined\s*$/g, '').trim();
         setMessages(prev => [...prev, {
           id: assistantMessageId,
           role: 'assistant',
-          content: data.coach_message,
+          content: coachContent,
           timestamp: new Date().toISOString(),
         }]);
         if (data.current_step) setCurrentPhase(data.current_step);
