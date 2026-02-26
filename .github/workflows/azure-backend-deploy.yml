@@ -32,9 +32,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Wait for any previous deployment to release locks (409 often from concurrent/cancelled deploys)
+      # Brief wait to avoid 409 from concurrent/cancelled deploys
       - name: Wait for deployment slot
-        run: echo "Waiting 1 min for any previous deployment to finish..." && sleep 60
+        run: echo "Waiting 30s for any previous deployment..." && sleep 30
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -80,37 +80,36 @@ jobs:
           "
           ls -la deploy.zip
 
-      - name: Deploy to Azure Web App (attempt 1)
-        id: deploy1
-        uses: azure/webapps-deploy@v2
-        continue-on-error: true
-        with:
-          app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          package: backend/deploy.zip
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-
-      - name: Wait 2 min before retry
-        if: steps.deploy1.outcome == 'failure'
-        run: echo "Deploy 1 failed (often 409). Waiting 2 min..." && sleep 120
-
-      - name: Deploy to Azure Web App (attempt 2)
-        id: deploy2
-        if: steps.deploy1.outcome == 'failure'
-        uses: azure/webapps-deploy@v2
-        continue-on-error: true
-        with:
-          app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          package: backend/deploy.zip
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-
-      - name: Wait 2 min before final retry
-        if: steps.deploy2.outcome == 'failure'
-        run: echo "Deploy 2 failed. Final retry in 2 min..." && sleep 120
-
-      - name: Deploy to Azure Web App (attempt 3)
-        if: steps.deploy2.outcome == 'failure'
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          package: backend/deploy.zip
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+      # Use zipdeploy with isAsync=true - returns ~immediately after upload (~3 min total)
+      # Azure runs pip install in background; app ready in ~5-10 min. No 12+ min wait.
+      - name: Deploy to Azure (zipdeploy async)
+        env:
+          PUBLISH_PROFILE: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        run: |
+          python3 << 'SCRIPT'
+          import os, xml.etree.ElementTree as ET, subprocess, sys
+          pf = os.environ.get("PUBLISH_PROFILE", "")
+          if not pf:
+            print("::error::AZURE_WEBAPP_PUBLISH_PROFILE secret missing"); sys.exit(1)
+          root = ET.fromstring(pf)
+          prof = root.find(".//publishProfile") or (list(root)[0] if len(root) else None)
+          if prof is None:
+            print("::error::No publishProfile in XML"); sys.exit(1)
+          user = (prof.get("userName") or "").replace("\\", "")
+          pwd = prof.get("userPWD", "")
+          if not user or not pwd:
+            print("::error::Could not parse publish profile credentials"); sys.exit(1)
+          url = "https://jewishcoach-api.scm.azurewebsites.net/api/zipdeploy?isAsync=true"
+          r = subprocess.run(
+            ["curl", "-s", "-w", "%{http_code}", "-o", "/tmp/deploy_out.txt",
+             "-X", "POST", url, "-u", f"{user}:{pwd}",
+             "-H", "Content-Type: application/octet-stream",
+             "--data-binary", "@backend/deploy.zip"],
+            capture_output=True, text=True, timeout=300
+          )
+          code = r.stdout.strip() or "0"
+          if code in ("200", "202"):
+            print("✅ Zip uploaded. Deployment runs in background (~5-10 min for pip install).")
+          else:
+            print(f"::error::zipdeploy HTTP {code}"); sys.exit(1)
+          SCRIPT
