@@ -46,7 +46,7 @@ export const useChat = (displayName?: string | null) => {
         const welcomeMessage: Message = {
           id: Date.now(),
           role: 'assistant',
-          content: String(greeting).replace(/\s*undefined\s*/g, ' ').replace(/\s+/g, ' ').trim(),
+          content: String(greeting).replace(/undefined/g, '').replace(/  +/g, ' ').trim(),
           timestamp: new Date().toISOString(),
         };
         setMessages([welcomeMessage]);
@@ -77,7 +77,7 @@ export const useChat = (displayName?: string | null) => {
           cleanContent = cleanContent.replace(/\n\n__METADATA__:.*$/s, '');
           cleanContent = cleanContent.replace(/__SOURCES__:.*$/s, '');
           cleanContent = cleanContent.replace(/\n\n\{.*"sources".*\}$/s, '');
-          cleanContent = cleanContent.replace(/\s*undefined\s*/g, ' ').replace(/\s+/g, ' ').trim();
+          cleanContent = cleanContent.replace(/undefined/g, '').replace(/  +/g, ' ').trim();
           
           return {
             ...msg,
@@ -121,7 +121,7 @@ export const useChat = (displayName?: string | null) => {
     const welcomeMessage: Message = {
       id: Date.now(),
       role: 'assistant',
-      content: String(greeting).replace(/\s*undefined\s*/g, ' ').replace(/\s+/g, ' ').trim(),
+      content: String(greeting).replace(/undefined/g, '').replace(/  +/g, ' ').trim(),
       timestamp: new Date().toISOString(),
     };
     
@@ -183,7 +183,7 @@ export const useChat = (displayName?: string | null) => {
 
         const data = await response.json();
         const assistantMessageId = Date.now() + 1;
-        const coachContent = String(data.coach_message ?? '').replace(/\s*undefined\s*/g, ' ').replace(/\s+/g, ' ').trim();
+        const coachContent = String(data.coach_message ?? '').replace(/undefined/g, '').replace(/  +/g, ' ').trim();
         setMessages(prev => [...prev, {
           id: assistantMessageId,
           role: 'assistant',

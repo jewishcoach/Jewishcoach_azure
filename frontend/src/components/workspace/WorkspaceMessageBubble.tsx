@@ -12,7 +12,7 @@ interface Props {
 
 export const WorkspaceMessageBubble = ({ message, animateTyping = false }: Props) => {
   const isUser = message.role === 'user';
-  const fullContent = message.content || '';
+  const fullContent = (message.content || '').replace(/undefined/g, '');
   const [displayedContent, setDisplayedContent] = useState(
     animateTyping ? '' : fullContent
   );

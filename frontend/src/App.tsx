@@ -85,8 +85,8 @@ function SignedInContent() {
         transition={{ type: "spring", stiffness: 120, damping: 14 }}
         className="relative z-20 flex justify-between items-center p-6 bg-[#0f172a] backdrop-blur-[25px] border-b border-white/[0.08]"
       >
-        <div className="flex items-center gap-3 flex-shrink-0">
-          <img src="/bsd-logo.png" alt="BSD אימון יהודי" className="h-[60px] object-contain" />
+        <div className="flex items-center gap-[1.2em] flex-shrink-0">
+          <img src="/bsd-logo.png" alt="BSD אימון יהודי" className="h-[69px] object-contain" />
           <p
             className="text-white font-bold text-2xl md:text-[1.8rem] tracking-wide"
             style={{ fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.4 }}
@@ -204,8 +204,8 @@ function DemoModeContent() {
         animate={{ y: 0 }}
         className="sticky top-0 z-50 flex items-center justify-between p-4 bg-[#0F172A]/95 backdrop-blur-sm border-b border-white/10"
       >
-        <div className="flex items-center gap-3 flex-shrink-0">
-          <img src="/bsd-logo.png" alt="BSD אימון יהודי" className="h-[60px] object-contain" />
+        <div className="flex items-center gap-[1.2em] flex-shrink-0">
+          <img src="/bsd-logo.png" alt="BSD אימון יהודי" className="h-[69px] object-contain" />
           <p
             className="text-white font-bold text-2xl md:text-[1.8rem] tracking-wide"
             style={{ fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.4 }}

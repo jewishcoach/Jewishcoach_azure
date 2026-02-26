@@ -57,12 +57,21 @@ export const EnrichmentVideos = ({ currentPhase }: EnrichmentVideosProps) => {
                   <div className="relative w-full aspect-video max-h-[140px] sm:max-h-[180px]">
                     <iframe
                       title={isHe ? v.titleHe : v.titleEn}
-                      src={`https://www.youtube.com/embed/${v.videoId}?rel=0`}
+                      src={`https://www.youtube-nocookie.com/embed/${v.videoId}?rel=0`}
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
+                      referrerPolicy="strict-origin-when-cross-origin"
                       className="absolute inset-0 w-full h-full"
                     />
                   </div>
+                  <a
+                    href={`https://www.youtube.com/watch?v=${v.videoId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block py-2 px-2 text-[11px] text-[#FCF6BA]/80 hover:text-[#FCF6BA] transition-colors"
+                  >
+                    {isHe ? 'צפה ביוטיוב' : 'Watch on YouTube'}
+                  </a>
                 </div>
               ))}
             </div>
