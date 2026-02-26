@@ -27,14 +27,14 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     name: Build and Deploy Backend
-    timeout-minutes: 15
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@v4
 
       # Wait for any previous deployment to release locks (409 often from concurrent/cancelled deploys)
       - name: Wait for deployment slot
-        run: echo "Waiting 2 min for any previous deployment to finish..." && sleep 120
+        run: echo "Waiting 1 min for any previous deployment to finish..." && sleep 60
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -89,9 +89,9 @@ jobs:
           package: backend/deploy.zip
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
 
-      - name: Wait 3 min before retry
+      - name: Wait 2 min before retry
         if: steps.deploy1.outcome == 'failure'
-        run: echo "Deploy 1 failed (often 409). Waiting 3 min..." && sleep 180
+        run: echo "Deploy 1 failed (often 409). Waiting 2 min..." && sleep 120
 
       - name: Deploy to Azure Web App (attempt 2)
         id: deploy2
@@ -103,9 +103,9 @@ jobs:
           package: backend/deploy.zip
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
 
-      - name: Wait 3 min before final retry
+      - name: Wait 2 min before final retry
         if: steps.deploy2.outcome == 'failure'
-        run: echo "Deploy 2 failed. Final retry in 3 min..." && sleep 180
+        run: echo "Deploy 2 failed. Final retry in 2 min..." && sleep 120
 
       - name: Deploy to Azure Web App (attempt 3)
         if: steps.deploy2.outcome == 'failure'
