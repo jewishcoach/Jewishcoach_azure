@@ -103,11 +103,16 @@ def add_message(
     if internal_state and sender == "coach":
         state["current_step"] = internal_state.get("current_step", state["current_step"])
         
-        # Merge collected_data
+        # Merge collected_data (don't overwrite topic with empty - preserve from S1)
         if "collected_data" in internal_state:
             for key, value in internal_state["collected_data"].items():
-                if value is not None:
-                    state["collected_data"][key] = value
+                if value is None:
+                    continue
+                if key == "topic":
+                    v = str(value).strip() if value else ""
+                    if not v or v in ("[נושא]", "[topic]"):
+                        continue  # don't overwrite topic with empty/placeholder
+                state["collected_data"][key] = value
         
         # Update saturation score
         if "saturation_score" in internal_state:

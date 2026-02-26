@@ -23,10 +23,12 @@ def _infer_topic_from_messages(messages: list) -> str:
     """
     Fallback: infer coaching topic from first user messages (like previous system).
     Used when LLM does not populate collected_data.topic in S1.
+    V2 messages use "sender", V1 may use "role".
     """
     if not messages:
         return ""
-    for msg in messages[:6]:
+    skip_phrases = ("מה שמך", "שלום", "היי", "כן", "בסדר", "what's your name", "hello", "hi", "yes", "ok")
+    for msg in messages[:10]:
         if not isinstance(msg, dict):
             continue
         sender = msg.get("sender") or msg.get("role")
@@ -35,7 +37,9 @@ def _infer_topic_from_messages(messages: list) -> str:
         content = (msg.get("content") or "").strip()
         if not content or content.startswith("{"):
             continue
-        if 5 <= len(content) <= 80:
+        if any(s in content.lower() for s in skip_phrases) and len(content) < 15:
+            continue
+        if 3 <= len(content) <= 80:
             return content
         if len(content) > 80:
             return content[:77] + "..."

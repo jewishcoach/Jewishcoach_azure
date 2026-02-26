@@ -609,7 +609,7 @@ def get_next_step_question(current_step: str, language: str = "he") -> str:
     if language == "he":
         step_questions = {
             "S0": "על מה תרצה להתאמן?",
-            "S1": "עכשיו כדי שנוכל להבין לעומק, אני מבקש שתשתף אותי בסיפור אחד ספציפי – שיחה או אינטראקציה שהתרחשה לאחרונה, עם אנשים נוספים, שבה הרגשת סערה רגשית. ספר לי: עם מי זה היה? מתי? מה קרה שם?",  # Move to S2!
+            "S1": "עכשיו כדי שנוכל להבין לעומק, אני מבקש שתשתף אותי בסיפור אחד ספציפי – שיחה או אינטראקציה שהתרחשה לאחרונה, עם אנשים נוספים, שבה הייתה סערה רגשית. ספר לי: עם מי זה היה? מתי? מה קרה שם?",  # Move to S2! (avoid "הרגשת" - triggers S3 mismatch)
             "S2": "ספר לי על רגע אחד ספציפי שבו זה קרה - מתי זה היה?",
             "S3": "אני מבין. עכשיו אני רוצה לשמוע - מה עבר לך בראש באותו רגע?",
             "S4": "מה עשית באותו רגע?",
@@ -2106,7 +2106,16 @@ So feel free to share an event from any area where you interacted with people an
         # 7. Update state
         logger.info(f"[BSD V2] Parsed coach_message: {coach_message[:100]}...")
         logger.info(f"[BSD V2] Parsed internal_state: {json.dumps(internal_state, ensure_ascii=False)[:200]}...")
-        
+
+        # Ensure topic is populated when past S0 (LLM may omit it in later stages)
+        cd = state.get("collected_data") or {}
+        if not cd.get("topic") and state.get("current_step") not in ("S0",):
+            inferred = _extract_topic_from_conversation(state, user_message, language)
+            if inferred:
+                cd = {**cd, "topic": inferred}
+                state["collected_data"] = cd
+                internal_state["collected_data"] = {**internal_state.get("collected_data", {}), "topic": inferred}
+
         # Add user message
         state = add_message(state, "user", user_message)
         
