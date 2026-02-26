@@ -36,9 +36,9 @@ export const useChat = (displayName?: string | null) => {
         // Create greeting: welcome_message already contains "שלום רב!" / "Hello!" - don't duplicate
         let greeting: string;
         if (userName && i18n.language === 'he') {
-          greeting = welcomeText.replace(/^שלום רב! /, 'שלום ' + userName + '! ');
-        } else if (userName && i18n.language !== 'he') {
-          greeting = welcomeText.replace(/^Hello! /, 'Hello ' + userName + '! ');
+          greeting = welcomeText.replace(/^שלום רב! /, 'שלום\u00A0' + userName + '! ');
+        } else         if (userName && i18n.language !== 'he') {
+          greeting = welcomeText.replace(/^Hello! /, 'Hello\u00A0' + userName + '! ');
         } else {
           greeting = welcomeText;
         }
@@ -111,8 +111,8 @@ export const useChat = (displayName?: string | null) => {
     let greeting: string;
     if (userName && i18n.language === 'he') {
       greeting = welcomeText.replace(/^שלום רב! /, 'שלום ' + userName + '! ');
-    } else if (userName && i18n.language !== 'he') {
-      greeting = welcomeText.replace(/^Hello! /, 'Hello ' + userName + '! ');
+    } else         if (userName && i18n.language !== 'he') {
+          greeting = welcomeText.replace(/^Hello! /, 'Hello\u00A0' + userName + '! ');
     } else {
       greeting = welcomeText;
     }
