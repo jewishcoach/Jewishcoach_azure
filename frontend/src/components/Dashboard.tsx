@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import {
   User, Award, Settings, Save, X, ArrowRight, Target, History,
-  MessageSquare, Calendar, TrendingUp, Loader2
+  MessageSquare, Calendar, TrendingUp, Loader2, CreditCard, FileText, ExternalLink
 } from 'lucide-react';
 import { CoachingCalendar } from './CoachingCalendar';
 import { RemindersManager } from './RemindersManager';
@@ -58,6 +58,7 @@ interface DashboardData {
 
 interface DashboardProps {
   onBack?: () => void;
+  onShowBilling?: () => void;
 }
 
 type DashboardTab = 'summary' | 'goals' | 'history';
@@ -68,7 +69,9 @@ const NAV_ITEMS: { id: DashboardTab; labelKey: string; icon: React.ReactNode }[]
   { id: 'history', labelKey: 'dashboard.tab.history', icon: <History className="w-5 h-5" /> },
 ];
 
-export const Dashboard = ({ onBack }: DashboardProps) => {
+const BSD_WEBSITE_URL = 'https://bsdcoach.com';
+
+export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
   const { getToken } = useAuth();
   const { t, i18n } = useTranslation();
   const [data, setData] = useState<DashboardData | null>(null);
@@ -149,7 +152,7 @@ export const Dashboard = ({ onBack }: DashboardProps) => {
             {t('chat.button')}
           </button>
         )}
-        <nav className="flex flex-col gap-1">
+        <nav className="flex flex-col gap-1 flex-1">
           {NAV_ITEMS.map((item) => (
             <button
               key={item.id}
@@ -165,6 +168,40 @@ export const Dashboard = ({ onBack }: DashboardProps) => {
             </button>
           ))}
         </nav>
+
+        {/* Links: Billing, Policy, Website */}
+        <div className="mt-auto pt-4 border-t" style={{ borderColor: COLORS.border }}>
+          {onShowBilling && (
+            <button
+              onClick={onShowBilling}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full transition-colors hover:bg-gray-50"
+              style={{ color: COLORS.textMuted }}
+            >
+              <CreditCard className="w-4 h-4" />
+              {t('billing.button')}
+            </button>
+          )}
+          <a
+            href={`${BSD_WEBSITE_URL}/privacy`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full transition-colors hover:bg-gray-50"
+            style={{ color: COLORS.textMuted }}
+          >
+            <FileText className="w-4 h-4" />
+            {t('sidebar.policy')}
+          </a>
+          <a
+            href={BSD_WEBSITE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full transition-colors hover:bg-gray-50"
+            style={{ color: COLORS.textMuted }}
+          >
+            <ExternalLink className="w-4 h-4" />
+            {t('sidebar.website')}
+          </a>
+        </div>
       </aside>
 
       {/* Main Content */}

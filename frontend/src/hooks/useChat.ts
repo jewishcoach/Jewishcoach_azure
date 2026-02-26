@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { Message, Conversation, ToolCall } from '../types';
 import { apiClient } from '../services/api';
 import { BSD_VERSION, getBsdEndpoint } from '../config';
+import { stripUndefined } from '../utils/messageContent';
 
 export const useChat = (displayName?: string | null) => {
   const { t, i18n } = useTranslation();
@@ -30,23 +31,23 @@ export const useChat = (displayName?: string | null) => {
       setTimeout(() => {
         // Get user's display name (avoid undefined string from API)
         const rawName = displayName ?? user?.firstName ?? '';
-        const userName = (typeof rawName === 'string' && rawName !== 'undefined') ? rawName : '';
-        const welcomeText = t('welcome_message') || '';
+        const userName = (typeof rawName === 'string' && rawName !== 'undefined' && rawName.trim()) ? rawName.trim() : '';
+        const welcomeText = (t('welcome_message') ?? '') || '';
 
         // Create greeting: welcome_message already contains "שלום רב!" / "Hello!" - don't duplicate
         let greeting: string;
         if (userName && i18n.language === 'he') {
           greeting = welcomeText.replace(/^שלום רב! /, 'שלום\u00A0' + userName + '! ');
-        } else         if (userName && i18n.language !== 'he') {
+        } else if (userName && i18n.language !== 'he') {
           greeting = welcomeText.replace(/^Hello! /, 'Hello\u00A0' + userName + '! ');
         } else {
           greeting = welcomeText;
         }
-        
+
         const welcomeMessage: Message = {
           id: Date.now(),
           role: 'assistant',
-          content: String(greeting).replace(/undefined/g, '').replace(/  +/g, ' ').trim(),
+          content: stripUndefined(String(greeting ?? '')),
           timestamp: new Date().toISOString(),
         };
         setMessages([welcomeMessage]);
@@ -69,20 +70,14 @@ export const useChat = (displayName?: string | null) => {
       
       // Filter out metadata from message content
       const cleanMessages = (conv.messages || []).map((msg: Message) => {
-        // Clean metadata from assistant messages
+        // Clean metadata and undefined from assistant messages
         if (msg.role === 'assistant') {
-          let cleanContent = msg.content;
-          
-          // Remove metadata patterns
+          let cleanContent = msg.content ?? '';
           cleanContent = cleanContent.replace(/\n\n__METADATA__:.*$/s, '');
           cleanContent = cleanContent.replace(/__SOURCES__:.*$/s, '');
           cleanContent = cleanContent.replace(/\n\n\{.*"sources".*\}$/s, '');
-          cleanContent = cleanContent.replace(/undefined/g, '').replace(/  +/g, ' ').trim();
-          
-          return {
-            ...msg,
-            content: cleanContent
-          };
+          cleanContent = stripUndefined(cleanContent);
+          return { ...msg, content: cleanContent };
         }
         return msg;
       });
@@ -104,24 +99,24 @@ export const useChat = (displayName?: string | null) => {
     
     // Get user's display name (avoid undefined string from API)
     const rawName = displayName ?? user?.firstName ?? '';
-    const userName = (typeof rawName === 'string' && rawName !== 'undefined') ? rawName : '';
-    const welcomeText = t('welcome_message') || '';
+    const userName = (typeof rawName === 'string' && rawName !== 'undefined' && rawName.trim()) ? rawName.trim() : '';
+    const welcomeText = (t('welcome_message') ?? '') || '';
 
     // Create greeting: welcome_message already contains "שלום רב!" / "Hello!" - don't duplicate
     let greeting: string;
     if (userName && i18n.language === 'he') {
-      greeting = welcomeText.replace(/^שלום רב! /, 'שלום ' + userName + '! ');
-    } else         if (userName && i18n.language !== 'he') {
-          greeting = welcomeText.replace(/^Hello! /, 'Hello\u00A0' + userName + '! ');
+      greeting = welcomeText.replace(/^שלום רב! /, 'שלום\u00A0' + userName + '! ');
+    } else if (userName && i18n.language !== 'he') {
+      greeting = welcomeText.replace(/^Hello! /, 'Hello\u00A0' + userName + '! ');
     } else {
       greeting = welcomeText;
     }
-    
+
     // Add welcome message immediately to prevent visual "jump"
     const welcomeMessage: Message = {
       id: Date.now(),
       role: 'assistant',
-      content: String(greeting).replace(/undefined/g, '').replace(/  +/g, ' ').trim(),
+      content: stripUndefined(String(greeting ?? '')),
       timestamp: new Date().toISOString(),
     };
     
@@ -183,7 +178,7 @@ export const useChat = (displayName?: string | null) => {
 
         const data = await response.json();
         const assistantMessageId = Date.now() + 1;
-        const coachContent = String(data.coach_message ?? '').replace(/undefined/g, '').replace(/  +/g, ' ').trim();
+        const coachContent = stripUndefined(String(data.coach_message ?? ''));
         setMessages(prev => [...prev, {
           id: assistantMessageId,
           role: 'assistant',
@@ -272,13 +267,13 @@ export const useChat = (displayName?: string | null) => {
                     setMessages(prev => {
                       const newMessages = [...prev];
                       
-                      // Clean the content before displaying (remove any metadata that might have slipped through)
+                      // Clean the content before displaying (remove metadata + undefined)
                       let displayContent = assistantContent;
                       displayContent = displayContent.replace(/\n\nMETADATA:.*$/s, '');
                       displayContent = displayContent.replace(/\n\n__METADATA__:.*$/s, '');
                       displayContent = displayContent.replace(/__SOURCES__:.*$/s, '');
                       displayContent = displayContent.replace(/METADATA:.*$/s, '');
-                      displayContent = displayContent.trim();
+                      displayContent = stripUndefined(displayContent);
                       
                       // Find if we already have this streaming message
                       const existingIndex = newMessages.findIndex(

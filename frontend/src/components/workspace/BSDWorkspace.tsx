@@ -18,9 +18,10 @@ interface BSDWorkspaceProps {
   displayName?: string | null;
   showDashboard?: boolean;
   onCloseDashboard?: () => void;
+  onShowBilling?: () => void;
 }
 
-export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashboard }: BSDWorkspaceProps) => {
+export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashboard, onShowBilling }: BSDWorkspaceProps) => {
   const { t, i18n } = useTranslation();
   const { getToken } = useAuth();
   const [inputValue, setInputValue] = useState('');
@@ -143,7 +144,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
       <>
         <div className="flex-1 flex overflow-hidden bg-[#F0F1F3] min-h-0">
           <div className="flex-1 min-w-0 min-h-0 overflow-hidden flex flex-col">
-            <Dashboard onBack={onCloseDashboard} />
+            <Dashboard onBack={onCloseDashboard} onShowBilling={onShowBilling} />
           </div>
         </div>
         <ArchiveDrawer

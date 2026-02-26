@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { SignedIn, SignedOut, UserButton, useUser, useClerk, useAuth } from '@clerk/clerk-react';
-import { Shield, CreditCard, BarChart3 } from 'lucide-react';
+import { Shield, BarChart3 } from 'lucide-react';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { BSDWorkspace } from './components/workspace/BSDWorkspace';
 import { LandingPage } from './components/LandingPage';
@@ -113,18 +113,6 @@ function SignedInContent() {
             <BarChart3 className="w-4 h-4" />
             {showDashboard ? t('chat.button') : t('dashboard.button')}
           </button>
-          <button
-            onClick={() => {
-              setShowBilling(!showBilling);
-              setShowDashboard(false);
-              setShowAdmin(false);
-            }}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-light transition-colors"
-            style={{ background: 'rgba(212,175,55,0.12)', color: '#FCF6BA', fontFamily: 'Inter, sans-serif' }}
-          >
-            <CreditCard className="w-4 h-4" />
-            {showBilling ? t('chat.button') : t('billing.button')}
-          </button>
           {isAdmin && !checkingAdmin && (
             <button
               onClick={() => {
@@ -149,6 +137,10 @@ function SignedInContent() {
             displayName={displayName}
             showDashboard={showDashboard}
             onCloseDashboard={() => setShowDashboard(false)}
+            onShowBilling={() => {
+              setShowBilling(true);
+              setShowDashboard(false);
+            }}
           />
         )}
       </main>
@@ -228,16 +220,6 @@ function DemoModeContent() {
             <BarChart3 className="w-4 h-4" />
             {showDashboard ? t('chat.button') : t('dashboard.button')}
           </button>
-          <button
-            onClick={() => {
-              setShowBilling(!showBilling);
-              setShowDashboard(false);
-            }}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent hover:bg-accent-dark text-white transition-colors"
-          >
-            <CreditCard className="w-4 h-4" />
-            {showBilling ? t('chat.button') : t('billing.button')}
-          </button>
           <LanguageSwitcher />
         </div>
       </motion.header>
@@ -247,6 +229,10 @@ function DemoModeContent() {
             displayName="Demo User"
             showDashboard={showDashboard}
             onCloseDashboard={() => setShowDashboard(false)}
+            onShowBilling={() => {
+              setShowBilling(true);
+              setShowDashboard(false);
+            }}
           />
         )}
       </main>

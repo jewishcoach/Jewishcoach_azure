@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import type { Message } from '../../types';
 import ReactMarkdown from 'react-markdown';
 import { motion } from 'framer-motion';
+import { stripUndefined } from '../../utils/messageContent';
 
 const TYPING_MS_PER_WORD = 28;
 
@@ -12,7 +13,7 @@ interface Props {
 
 export const WorkspaceMessageBubble = ({ message, animateTyping = false }: Props) => {
   const isUser = message.role === 'user';
-  const fullContent = (message.content || '').replace(/undefined/g, '');
+  const fullContent = stripUndefined(message.content ?? '');
   const [displayedContent, setDisplayedContent] = useState(
     animateTyping ? '' : fullContent
   );
