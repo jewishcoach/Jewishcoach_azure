@@ -67,15 +67,16 @@ function SignedInContent() {
           if (token) {
             apiClient.setToken(token);
             const userData = await apiClient.getCurrentUser();
-            setDisplayName(userData.display_name);
+            setDisplayName(userData?.display_name ?? user?.firstName ?? null);
           }
-        } catch (error) {
-          console.error('Failed to reload display name:', error);
+        } catch {
+          // Fallback: use Clerk user when API fails (CORS, 401, etc.)
+          setDisplayName(user?.firstName ?? null);
         }
       };
       reloadDisplayName();
     }
-  }, [showDashboard, showBilling, showAdmin, getToken]);
+  }, [showDashboard, showBilling, showAdmin, getToken, user]);
 
   return (
     <div className="h-screen flex flex-col bg-[#020617] workspace-root">
@@ -91,14 +92,18 @@ function SignedInContent() {
             className="text-white font-bold text-2xl md:text-[1.8rem] tracking-wide"
             style={{ fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.4 }}
           >
-            אִם יֵשׁ לְךָ שָׁמַיִם, נִתַּן לְךָ כְּנָפַיִם
+            אִם יֵשׁ לְךָ שָׁמַיִם, נִתֵּן לְךָ כְּנָפַיִם
           </p>
         </div>
         <div className="flex-1" />
         <div className="flex items-center gap-4 flex-shrink-0">
           {user && (
             <span className="text-white/80 text-sm font-light tracking-[0.02em]" style={{ fontFamily: 'Inter, sans-serif' }}>
-              {t('app.welcome')}, {displayName || user.firstName || user.emailAddresses[0].emailAddress}!
+              {(() => {
+                const raw = displayName ?? user?.firstName ?? user?.emailAddresses?.[0]?.emailAddress ?? '';
+                const name = (typeof raw === 'string' ? raw : '').replace(/^undefined$/i, '').trim();
+                return name ? `${t('app.welcome')}, ${name}!` : `${t('app.welcome')}!`;
+              })()}
             </span>
           )}
           <button
@@ -202,7 +207,7 @@ function DemoModeContent() {
             className="text-white font-bold text-2xl md:text-[1.8rem] tracking-wide"
             style={{ fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.4 }}
           >
-            אִם יֵשׁ לְךָ שָׁמַיִם, נִתַּן לְךָ כְּנָפַיִם
+            אִם יֵשׁ לְךָ שָׁמַיִם, נִתֵּן לְךָ כְּנָפַיִם
           </p>
           <span className="px-2 py-1 bg-yellow-500/20 text-yellow-300 text-xs rounded-full border border-yellow-500/30">
             DEMO MODE
