@@ -5,7 +5,7 @@
  */
 export const STAGE_VIDEOS: Record<string, { videoId: string; titleHe: string; titleEn: string }[]> = {
   S0: [
-    { videoId: 'dQw4w9WgXcQ', titleHe: 'קבלת רשות לאימון', titleEn: 'Getting permission for coaching' },
+    { videoId: 'vVOMK8CpZbw', titleHe: 'קבלת רשות לאימון', titleEn: 'Getting permission for coaching' },
   ],
   S1: [
     { videoId: 'dQw4w9WgXcQ', titleHe: 'מצוי - נושא ואירוע', titleEn: 'Actual - topic and event' },

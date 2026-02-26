@@ -140,8 +140,8 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
         </div>
       )}
       <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col min-h-0">
-        {/* תובנות - תגיות למעלה, מצטברות לפי שלב */}
-        {insightTags.length > 0 && (
+        {/* תובנות - תגיות למעלה */}
+        {insightTags.length > 0 ? (
           <section className="p-5 border-b border-white/[0.06] flex-shrink-0">
             <div className="flex items-center gap-2 mb-3">
               <Sparkles size={16} className="text-[#FCF6BA]/80" />
@@ -153,8 +153,19 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
               ))}
             </div>
           </section>
+        ) : conversationId && (
+          <section className="p-5 border-b border-white/[0.06] flex-shrink-0">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles size={16} className="text-[#FCF6BA]/50" />
+              <h4 className="text-[12px] font-light uppercase tracking-[0.15em]" style={{ color: 'rgba(245,245,240,0.5)' }}>תובנות</h4>
+            </div>
+            <p className="text-[11px] text-[#F5F5F0]/50" style={{ fontFamily: 'Inter, sans-serif' }}>
+              התובנות יופיעו כאן במהלך השיחה
+            </p>
+          </section>
         )}
-        <div className="flex-1 overflow-y-auto p-5">
+        {/* סרטוני העשרה - צד ימין למטה */}
+        <div className="mt-auto flex-shrink-0 p-5">
           <EnrichmentVideos currentPhase={currentPhase} />
         </div>
       </div>

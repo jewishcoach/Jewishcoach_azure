@@ -75,15 +75,28 @@ def _v2_collected_data_to_cognitive_data(collected: dict, messages: list = None)
             out["event_actual"]["action_content"] = action_actual
         if action_desired:
             out["event_actual"]["action_desired"] = action_desired
+    # Flat keys for HudPanel compatibility
+    if emotions:
+        out["emotions"] = emotions if isinstance(emotions, list) else [emotions]
+    if thought:
+        out["thought"] = thought
+    if action_actual:
+        out["action_actual"] = action_actual
+    if action_desired:
+        out["action_desired"] = action_desired
         if emotion_desired:
             out["event_actual"]["emotion_desired"] = emotion_desired
         if thought_desired:
             out["event_actual"]["thought_desired"] = thought_desired
-    # gap_analysis
+    # gap_analysis + flat keys for HudPanel
     gap_name = collected.get("gap_name")
     gap_score = collected.get("gap_score")
     if gap_name is not None or gap_score is not None:
         out["gap_analysis"] = {"name": gap_name, "score": gap_score}
+        if gap_name is not None:
+            out["gap_name"] = gap_name
+        if gap_score is not None:
+            out["gap_score"] = gap_score
     # pattern_id: V2 has flat "pattern" - use as name
     pattern = collected.get("pattern")
     stance = collected.get("stance") or {}
@@ -92,6 +105,7 @@ def _v2_collected_data_to_cognitive_data(collected: dict, messages: list = None)
     if pattern:
         paradigm = (stance.get("gains") or [""])[0] if stance.get("gains") else ""
         out["pattern_id"] = {"name": pattern, "paradigm": paradigm}
+        out["pattern"] = pattern
     # being_desire: V2 has stance.gains/losses, renewal, vision - map identity from renewal
     renewal = collected.get("renewal")
     vision = collected.get("vision")

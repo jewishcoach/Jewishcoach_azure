@@ -36,9 +36,9 @@ export const useChat = (displayName?: string | null) => {
         // Create greeting: welcome_message already contains "שלום רב!" / "Hello!" - don't duplicate
         let greeting: string;
         if (userName && i18n.language === 'he') {
-          greeting = welcomeText.replace(/^שלום רב! /, `שלום ${userName}! `);
+          greeting = welcomeText.replace(/^שלום רב! /, 'שלום ' + userName + '! ');
         } else if (userName && i18n.language !== 'he') {
-          greeting = welcomeText.replace(/^Hello! /, `Hello ${userName}! `);
+          greeting = welcomeText.replace(/^Hello! /, 'Hello ' + userName + '! ');
         } else {
           greeting = welcomeText;
         }
@@ -46,7 +46,7 @@ export const useChat = (displayName?: string | null) => {
         const welcomeMessage: Message = {
           id: Date.now(),
           role: 'assistant',
-          content: String(greeting).replace(/\s*undefined\s*$/g, '').trim(),
+          content: String(greeting).replace(/\s*undefined\s*/g, ' ').replace(/\s+/g, ' ').trim(),
           timestamp: new Date().toISOString(),
         };
         setMessages([welcomeMessage]);
@@ -77,7 +77,7 @@ export const useChat = (displayName?: string | null) => {
           cleanContent = cleanContent.replace(/\n\n__METADATA__:.*$/s, '');
           cleanContent = cleanContent.replace(/__SOURCES__:.*$/s, '');
           cleanContent = cleanContent.replace(/\n\n\{.*"sources".*\}$/s, '');
-          cleanContent = cleanContent.replace(/\s*undefined\s*$/g, '').trim();
+          cleanContent = cleanContent.replace(/\s*undefined\s*/g, ' ').replace(/\s+/g, ' ').trim();
           
           return {
             ...msg,
@@ -110,9 +110,9 @@ export const useChat = (displayName?: string | null) => {
     // Create greeting: welcome_message already contains "שלום רב!" / "Hello!" - don't duplicate
     let greeting: string;
     if (userName && i18n.language === 'he') {
-      greeting = welcomeText.replace(/^שלום רב! /, `שלום ${userName}! `);
+      greeting = welcomeText.replace(/^שלום רב! /, 'שלום ' + userName + '! ');
     } else if (userName && i18n.language !== 'he') {
-      greeting = welcomeText.replace(/^Hello! /, `Hello ${userName}! `);
+      greeting = welcomeText.replace(/^Hello! /, 'Hello ' + userName + '! ');
     } else {
       greeting = welcomeText;
     }
@@ -121,7 +121,7 @@ export const useChat = (displayName?: string | null) => {
     const welcomeMessage: Message = {
       id: Date.now(),
       role: 'assistant',
-      content: String(greeting).replace(/\s*undefined\s*$/g, '').trim(),
+      content: String(greeting).replace(/\s*undefined\s*/g, ' ').replace(/\s+/g, ' ').trim(),
       timestamp: new Date().toISOString(),
     };
     
@@ -183,7 +183,7 @@ export const useChat = (displayName?: string | null) => {
 
         const data = await response.json();
         const assistantMessageId = Date.now() + 1;
-        const coachContent = String(data.coach_message ?? '').replace(/\s*undefined\s*$/g, '').trim();
+        const coachContent = String(data.coach_message ?? '').replace(/\s*undefined\s*/g, ' ').replace(/\s+/g, ' ').trim();
         setMessages(prev => [...prev, {
           id: assistantMessageId,
           role: 'assistant',
