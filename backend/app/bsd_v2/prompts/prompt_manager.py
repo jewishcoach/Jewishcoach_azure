@@ -99,7 +99,6 @@ def assemble_system_prompt(current_step: str, language: str = "he", user_gender:
     core_files: List[str] = [
         "persona.md",
         "process_map.md",
-        "meta_questions.md",
         "response_format.md",
     ]
 
@@ -135,7 +134,7 @@ def assemble_system_prompt(current_step: str, language: str = "he", user_gender:
         elif user_gender == "male":
             gender_suffix = "\n\n**Gender:** The coachee is male."
 
-    # Core: persona + process_map + meta_questions, then stage-specific gate only
+    # Core: persona + process_map, then stage-specific gate only
     core_text = "\n\n---\n\n".join(core_sections[:-1])
     return f"""{core_text}{gender_suffix}{gate_section}
 
