@@ -81,30 +81,36 @@ jobs:
           python3 << 'EOF'
           import os, sys, xml.etree.ElementTree as ET, subprocess
 
-          pf = os.environ.get("PUBLISH_PROFILE", "")
+          pf = os.environ.get("PUBLISH_PROFILE", "").strip()
           if not pf:
               print("::error::AZURE_WEBAPP_PUBLISH_PROFILE secret is missing")
               sys.exit(1)
 
           # Parse credentials from publish profile XML
-          try:
-              root = ET.fromstring(pf)
-          except ET.ParseError as e:
-              print(f"::error::Invalid publish profile XML: {e}")
-              sys.exit(1)
+          # Handle malformed XML: extract just the first publishProfile element
+          import re
+          user, pwd = "", ""
 
-          prof = next(
-              (e for e in root.iter() if e.tag.endswith("publishProfile") or e.tag == "publishProfile"),
-              list(root)[0] if len(root) > 0 else None
-          )
-          if prof is None:
-              print("::error::No publishProfile element found in XML")
-              sys.exit(1)
+          # Try regex first (most robust against malformed XML)
+          m_user = re.search(r'userName="([^"]*)"', pf)
+          m_pwd  = re.search(r'userPWD="([^"]*)"', pf)
+          if m_user and m_pwd:
+              user = m_user.group(1).replace("\\", "").strip()
+              pwd  = m_pwd.group(1).strip()
+          else:
+              # Fallback: try XML parse on just the first element
+              try:
+                  first_elem = re.search(r'<publishProfile[^/]*/>', pf) or re.search(r'<publishProfile[^>]*>', pf)
+                  if first_elem:
+                      root = ET.fromstring(first_elem.group(0) + ('' if first_elem.group(0).endswith('/>') else '</publishProfile>'))
+                      user = (root.get("userName") or "").replace("\\", "").strip()
+                      pwd  = (root.get("userPWD") or "").strip()
+              except Exception as e:
+                  print(f"::error::Could not parse publish profile: {e}")
+                  sys.exit(1)
 
-          user = (prof.get("userName") or "").replace("\\", "").strip()
-          pwd  = (prof.get("userPWD") or "").strip()
           if not user or not pwd:
-              print("::error::Could not parse userName/userPWD from publish profile")
+              print("::error::Could not extract userName/userPWD from publish profile")
               sys.exit(1)
 
           zip_path = "backend/deploy.zip"
