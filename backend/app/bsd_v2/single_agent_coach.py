@@ -1978,12 +1978,40 @@ So feel free to share an event from any area where you interacted with people an
 
         from ..bsd.llm import get_azure_chat_llm_4o_mini
         llm = get_azure_chat_llm_4o_mini()
+        # Use json_mode (not json_schema) — Azure OpenAI rejects json_schema when
+        # nested Pydantic models have optional fields not included in 'required'.
+        # json_mode simply tells the model to return valid JSON; Pydantic validates locally.
         structured_llm = llm.with_structured_output(
-            CoachResponseSchema, method="json_schema", strict=True
+            CoachResponseSchema,
+            method="json_mode",
+            include_raw=True,
         )
-        response_obj = await structured_llm.ainvoke(messages)
-        coach_message = (response_obj.coach_message or "").strip()
-        internal_state = response_obj.internal_state.model_dump()
+        response_dict = await structured_llm.ainvoke(messages)
+        raw_message = response_dict.get("raw")
+        raw_text = (raw_message.content if raw_message else "") or ""
+        parsed_obj = response_dict.get("parsed")
+
+        logger.info(f"[BSD V2] Raw LLM response length: {len(raw_text)} chars")
+
+        if parsed_obj:
+            coach_message = (parsed_obj.coach_message or "").strip()
+            internal_state = parsed_obj.internal_state.model_dump()
+        else:
+            logger.error("[BSD V2] Model failed to return matching JSON Schema.")
+            logger.error(f"[BSD V2] RAW OUTPUT PREVIEW: {raw_text[:500]}...")
+            logger.info("[BSD V2] Initiating manual fallback parsing (_parse_json_response)...")
+            try:
+                coach_message, internal_state = _parse_json_response(raw_text, state, user_message, language)
+                logger.info("[BSD V2] Manual fallback parsing succeeded.")
+            except (json.JSONDecodeError, Exception) as parse_err:
+                logger.error(f"[BSD V2] Manual fallback parsing also failed: {parse_err}")
+                coach_message = get_next_step_question(state.get("current_step", "S1"), language)
+                internal_state = {
+                    "current_step": state.get("current_step", "S1"),
+                    "saturation_score": state.get("saturation_score", 0.3),
+                    "reflection": "Fallback after both structured and manual parse failed",
+                }
+
         # Fallback: ensure collected_data has topic when LLM omits it (S1)
         cd = internal_state.get("collected_data") or {}
         if not cd.get("topic") and state.get("current_step") in ("S0", "S1") and user_message.strip():
