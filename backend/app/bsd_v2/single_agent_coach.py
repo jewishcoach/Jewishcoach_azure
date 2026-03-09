@@ -1978,12 +1978,12 @@ So feel free to share an event from any area where you interacted with people an
 
         from ..bsd.llm import get_azure_chat_llm_4o_mini
         llm = get_azure_chat_llm_4o_mini()
-        # Use json_mode (not json_schema) — Azure OpenAI rejects json_schema when
-        # nested Pydantic models have optional fields not included in 'required'.
-        # json_mode simply tells the model to return valid JSON; Pydantic validates locally.
+        # Use function_calling — most reliable for structured output with Azure OpenAI.
+        # json_schema fails with optional nested fields; json_mode requires "JSON" in prompt.
+        # function_calling sends schema as a tool definition and is universally supported.
         structured_llm = llm.with_structured_output(
             CoachResponseSchema,
-            method="json_mode",
+            method="function_calling",
             include_raw=True,
         )
         response_dict = await structured_llm.ainvoke(messages)

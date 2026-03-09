@@ -74,73 +74,9 @@ jobs:
           "
           echo "deploy.zip size: $(du -sh deploy.zip | cut -f1)"
 
-      - name: Deploy via OneDeploy (fast — no remote pip install)
-        env:
-          PUBLISH_PROFILE: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-        run: |
-          python3 << 'EOF'
-          import os, sys, xml.etree.ElementTree as ET, subprocess
-
-          pf = os.environ.get("PUBLISH_PROFILE", "").strip()
-          if not pf:
-              print("::error::AZURE_WEBAPP_PUBLISH_PROFILE secret is missing")
-              sys.exit(1)
-
-          # Parse credentials from publish profile XML
-          # Handle malformed XML: extract just the first publishProfile element
-          import re
-          user, pwd = "", ""
-
-          # Try regex first (most robust against malformed XML)
-          m_user = re.search(r'userName="([^"]*)"', pf)
-          m_pwd  = re.search(r'userPWD="([^"]*)"', pf)
-          if m_user and m_pwd:
-              user = m_user.group(1).replace("\\", "").strip()
-              pwd  = m_pwd.group(1).strip()
-          else:
-              # Fallback: try XML parse on just the first element
-              try:
-                  first_elem = re.search(r'<publishProfile[^/]*/>', pf) or re.search(r'<publishProfile[^>]*>', pf)
-                  if first_elem:
-                      root = ET.fromstring(first_elem.group(0) + ('' if first_elem.group(0).endswith('/>') else '</publishProfile>'))
-                      user = (root.get("userName") or "").replace("\\", "").strip()
-                      pwd  = (root.get("userPWD") or "").strip()
-              except Exception as e:
-                  print(f"::error::Could not parse publish profile: {e}")
-                  sys.exit(1)
-
-          if not user or not pwd:
-              print("::error::Could not extract userName/userPWD from publish profile")
-              sys.exit(1)
-
-          zip_path = "backend/deploy.zip"
-          if not os.path.isfile(zip_path):
-              print(f"::error::deploy.zip not found at {zip_path}")
-              sys.exit(1)
-
-          # OneDeploy — replaces files directly, no Oryx build, ~30s
-          url = "https://jewishcoach-api.scm.azurewebsites.net/api/publish?type=zip&restart=true"
-          print(f"Deploying to {url} ...")
-
-          result = subprocess.run(
-              ["curl", "-s", "-w", "\n%{http_code}",
-               "-X", "POST", url,
-               "-u", f"{user}:{pwd}",
-               "-H", "Content-Type: application/zip",
-               "--data-binary", f"@{zip_path}",
-               "--max-time", "120"],
-              capture_output=True, text=True
-          )
-
-          output = result.stdout.strip()
-          lines  = output.splitlines()
-          http   = lines[-1] if lines else "0"
-          body   = "\n".join(lines[:-1])
-
-          if http in ("200", "202", "204"):
-              print(f"✅ Deployed successfully (HTTP {http})")
-          else:
-              print(f"::error::OneDeploy failed with HTTP {http}")
-              print(body[:500])
-              sys.exit(1)
-          EOF
+      - name: Deploy via Azure Web Apps Deploy Action
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: backend/deploy.zip
