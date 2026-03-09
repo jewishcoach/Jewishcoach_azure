@@ -28,7 +28,12 @@ export const MessageBubble = ({ message }: Props) => {
         <div className={`prose prose-sm max-w-none ${isUser ? 'prose-invert' : ''}`}>
           <ReactMarkdown
             components={{
-              p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
+              p: ({ children }) => {
+                const safe = Array.isArray(children)
+                  ? children.filter((c: unknown) => c != null && String(c) !== 'undefined')
+                  : (children != null ? [children] : []);
+                return <p className="mb-2 last:mb-0 leading-relaxed">{safe.length ? safe : null}</p>;
+              },
               ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
               ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
               li: ({ children }) => <li className="mb-1">{children}</li>,
