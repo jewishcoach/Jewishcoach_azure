@@ -1,8 +1,14 @@
 # Deploy backend (FastAPI) to Azure Web App
-# Required: AZURE_WEBAPP_PUBLISH_PROFILE (from Azure Portal → jewishcoach-api → Get publish profile)
-# Optional: AZURE_CREDENTIALS (service principal JSON) - enables restart before deploy to fix 409
 #
-# If 409 persists: add AZURE_CREDENTIALS secret or manually restart in Azure Portal → jewishcoach-api → Restart
+# Uses OneDeploy (/api/publish) — deploys code files directly, NO remote pip install.
+# Total deploy time: ~1-2 minutes.
+#
+# Required secrets:
+#   AZURE_WEBAPP_PUBLISH_PROFILE  — from Azure Portal → jewishcoach-api → Get publish profile
+#
+# When requirements.txt changes:
+#   The next deploy will take longer (~10 min) because Azure rebuilds the venv.
+#   This happens automatically via SCM_DO_BUILD_DURING_DEPLOYMENT on the server.
 
 name: Deploy Backend to Azure Web App
 
@@ -21,20 +27,16 @@ on:
 
 env:
   AZURE_WEBAPP_NAME: jewishcoach-api
-  RESOURCE_GROUP: jewish-coach-rg
+  SCM_URL: https://jewishcoach-api.scm.azurewebsites.net
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
-    name: Build and Deploy Backend
-    timeout-minutes: 30
+    name: Test & Deploy Backend
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
-
-      # Brief wait to avoid 409 from concurrent/cancelled deploys
-      - name: Wait for deployment slot
-        run: echo "Waiting 30s for any previous deployment..." && sleep 30
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -43,26 +45,16 @@ jobs:
           cache: 'pip'
           cache-dependency-path: backend/requirements.txt
 
-      - name: Install backend dependencies
+      - name: Install dependencies (for tests only)
         run: pip install -r backend/requirements.txt
 
-      - name: Validate prompt pipeline
+      - name: Run prompt pipeline tests
         run: |
           python3 test_prompt_manager.py
           python3 test_prompt_pipeline_local.py
           python3 test_prompts_simple.py
 
-      # Optional: Restart app to clear 409 locks. Add AZURE_CREDENTIALS secret to enable.
-      - name: Login to Azure
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-        continue-on-error: true
-      - name: Restart webapp (clears 409)
-        run: az webapp restart --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }}
-        continue-on-error: true
-
-      - name: Create deploy zip
+      - name: Create deploy zip (code only, no venv)
         run: |
           cd backend
           python3 -c "
@@ -72,65 +64,77 @@ jobs:
                   if os.path.isdir(path):
                       for r, d, f in os.walk(path):
                           for fn in f:
-                              if '__pycache__' in r or fn.endswith('.pyc') or 'antenv' in r or 'test_venv' in r:
+                              if any(skip in r for skip in ['__pycache__', 'antenv', 'test_venv', '.venv', 'venv']):
+                                  continue
+                              if fn.endswith('.pyc'):
                                   continue
                               z.write(os.path.join(r, fn))
                   elif os.path.isfile(path):
                       z.write(path)
           "
-          ls -la deploy.zip
+          echo "deploy.zip size: $(du -sh deploy.zip | cut -f1)"
 
-      # Try zipdeploy async first (~3 min). Fallback to webapps-deploy if it fails.
-      - name: Deploy to Azure (zipdeploy async)
-        id: deploy
+      - name: Deploy via OneDeploy (fast — no remote pip install)
         env:
           PUBLISH_PROFILE: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
         run: |
-          python3 << 'SCRIPT'
-          import os, xml.etree.ElementTree as ET, subprocess, sys
+          python3 << 'EOF'
+          import os, sys, xml.etree.ElementTree as ET, subprocess
+
           pf = os.environ.get("PUBLISH_PROFILE", "")
           if not pf:
-            print("::error::AZURE_WEBAPP_PUBLISH_PROFILE secret missing"); sys.exit(1)
+              print("::error::AZURE_WEBAPP_PUBLISH_PROFILE secret is missing")
+              sys.exit(1)
+
+          # Parse credentials from publish profile XML
           try:
-            root = ET.fromstring(pf)
+              root = ET.fromstring(pf)
           except ET.ParseError as e:
-            print(f"::error::Invalid publish profile XML: {e}"); sys.exit(1)
-          prof = None
-          for elem in root.iter():
-            if elem.tag.endswith("publishProfile") or elem.tag == "publishProfile":
-              prof = elem; break
-          if prof is None and len(root) > 0:
-            prof = list(root)[0]
+              print(f"::error::Invalid publish profile XML: {e}")
+              sys.exit(1)
+
+          prof = next(
+              (e for e in root.iter() if e.tag.endswith("publishProfile") or e.tag == "publishProfile"),
+              list(root)[0] if len(root) > 0 else None
+          )
           if prof is None:
-            print("::error::No publishProfile in XML"); sys.exit(1)
+              print("::error::No publishProfile element found in XML")
+              sys.exit(1)
+
           user = (prof.get("userName") or "").replace("\\", "").strip()
-          pwd = (prof.get("userPWD") or "").strip()
+          pwd  = (prof.get("userPWD") or "").strip()
           if not user or not pwd:
-            print("::error::Could not parse userName/userPWD from publish profile"); sys.exit(1)
+              print("::error::Could not parse userName/userPWD from publish profile")
+              sys.exit(1)
+
           zip_path = "backend/deploy.zip"
           if not os.path.isfile(zip_path):
-            print(f"::error::deploy zip not found: {zip_path}"); sys.exit(1)
-          url = "https://jewishcoach-api.scm.azurewebsites.net/api/zipdeploy?isAsync=true"
-          r = subprocess.run(
-            ["curl", "-s", "-w", "%{http_code}", "-o", "/tmp/deploy_out.txt",
-             "-X", "POST", url, "-u", f"{user}:{pwd}",
-             "-H", "Content-Type: application/octet-stream",
-             "--data-binary", f"@{zip_path}"],
-            capture_output=True, text=True, timeout=300
-          )
-          code = (r.stdout or "").strip() or "0"
-          if code in ("200", "202"):
-            print("✅ Zip uploaded. Deployment runs in background (~5-10 min for pip install).")
-          else:
-            err = open("/tmp/deploy_out.txt").read()[:500] if os.path.isfile("/tmp/deploy_out.txt") else ""
-            print(f"::error::zipdeploy HTTP {code}"); print(err); sys.exit(1)
-          SCRIPT
-        continue-on-error: true
+              print(f"::error::deploy.zip not found at {zip_path}")
+              sys.exit(1)
 
-      - name: Deploy to Azure (fallback webapps-deploy)
-        if: steps.deploy.outcome == 'failure'
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          package: backend/deploy.zip
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          # OneDeploy — replaces files directly, no Oryx build, ~30s
+          url = "https://jewishcoach-api.scm.azurewebsites.net/api/publish?type=zip&restart=true"
+          print(f"Deploying to {url} ...")
+
+          result = subprocess.run(
+              ["curl", "-s", "-w", "\n%{http_code}",
+               "-X", "POST", url,
+               "-u", f"{user}:{pwd}",
+               "-H", "Content-Type: application/zip",
+               "--data-binary", f"@{zip_path}",
+               "--max-time", "120"],
+              capture_output=True, text=True
+          )
+
+          output = result.stdout.strip()
+          lines  = output.splitlines()
+          http   = lines[-1] if lines else "0"
+          body   = "\n".join(lines[:-1])
+
+          if http in ("200", "202", "204"):
+              print(f"✅ Deployed successfully (HTTP {http})")
+          else:
+              print(f"::error::OneDeploy failed with HTTP {http}")
+              print(body[:500])
+              sys.exit(1)
+          EOF

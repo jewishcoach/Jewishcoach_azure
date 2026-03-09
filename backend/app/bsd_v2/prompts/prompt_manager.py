@@ -54,7 +54,6 @@ STAGE_GATES_EN: Dict[str, str] = {
 }
 
 
-@lru_cache(maxsize=256)
 def _load_file(file_path: str) -> str:
     with open(file_path, 'r', encoding='utf-8') as f:
         return f.read()
