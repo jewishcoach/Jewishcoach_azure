@@ -4,11 +4,13 @@ BSD V2 Chat API Endpoint
 Side-by-side with V1 - experimental single-agent architecture.
 """
 
+import asyncio
 import json
 import logging
 import time
 from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, Depends
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from ..dependencies import get_current_user
@@ -38,6 +40,21 @@ class ChatResponse(BaseModel):
     conversation_id: int
     current_step: str
     saturation_score: float
+    tool_call: dict | None = None  # Interactive tool to activate in InsightHub
+
+
+# Defines which tool to activate when the coach first enters each stage.
+# Only stages with interactive input cards are listed here.
+_STAGE_TOOL_TRIGGERS: dict[str, dict] = {
+    "S8": {
+        "type": "tool",
+        "tool_type": "profit_loss",
+        "title_he": "טבלת רווח והפסד",
+        "title_en": "Gain / Loss Table",
+        "instruction_he": "מה אתה מרוויח מהדפוס הזה? ומה אתה מפסיד? מלא את הטבלה.",
+        "instruction_en": "What do you gain from this pattern? And what do you lose? Fill in the table.",
+    },
+}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -199,11 +216,20 @@ async def send_message_v2(
         t8 = time.time()
         logger.info(f"[PERF API] Save messages to DB: {(t8-t7)*1000:.0f}ms")
         
+        # Detect stage entry: if the coach just moved into a new stage, activate its tool
+        prev_step = state.get("current_step", "S0")
+        new_step = updated_state.get("current_step", "S0")
+        tool_call = None
+        if new_step != prev_step and new_step in _STAGE_TOOL_TRIGGERS:
+            tool_call = _STAGE_TOOL_TRIGGERS[new_step]
+            logger.info(f"[BSD V2 API] Activating tool for stage {new_step}: {tool_call['tool_type']}")
+
         response = ChatResponse(
             coach_message=coach_message,
             conversation_id=request.conversation_id,
             current_step=updated_state["current_step"],
-            saturation_score=updated_state["saturation_score"]
+            saturation_score=updated_state["saturation_score"],
+            tool_call=tool_call,
         )
         
         api_end = time.time()

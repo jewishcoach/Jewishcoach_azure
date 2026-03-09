@@ -6,6 +6,9 @@ from ..dependencies import get_current_user
 from pydantic import BaseModel
 from typing import Dict, Any, List
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/tools", tags=["tools"])
 
@@ -52,19 +55,35 @@ async def submit_tool_response(
     )
     db.add(tool_response)
     
-    # Optionally: Create a system message summarizing the tool submission
-    # This makes the tool data visible to the coach in the conversation history
+    # Create a summary message so the V1 messages table stays in sync
     summary = _generate_tool_summary(request.tool_type, request.data)
     if summary:
         system_message = Message(
             conversation_id=conversation_id,
-            role="user",  # Or "system" if you want to distinguish it
+            role="user",
             content=summary,
             timestamp=datetime.utcnow(),
             meta={"tool_submission": True, "tool_type": request.tool_type}
         )
         db.add(system_message)
-    
+
+    # Also inject the summary into the V2 state so handle_conversation sees it
+    if summary and conversation.v2_state and isinstance(conversation.v2_state, dict):
+        try:
+            v2_state = dict(conversation.v2_state)
+            messages = list(v2_state.get("messages", []))
+            messages.append({
+                "sender": "user",
+                "content": summary,
+                "timestamp": datetime.utcnow().isoformat(),
+                "internal_state": None,
+            })
+            v2_state["messages"] = messages
+            conversation.v2_state = v2_state
+            logger.info(f"[Tools] Injected {request.tool_type} submission into V2 state for conv {conversation_id}")
+        except Exception as e:
+            logger.warning(f"[Tools] Could not inject tool submission into V2 state: {e}")
+
     db.commit()
     db.refresh(tool_response)
     

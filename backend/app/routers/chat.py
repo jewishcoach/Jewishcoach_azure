@@ -46,29 +46,138 @@ def _infer_topic_from_messages(messages: list) -> str:
     return ""
 
 
-def _v2_collected_data_to_cognitive_data(collected: dict, messages: list = None) -> dict:
+def _collect_gap_from_messages(messages: list) -> tuple:
+    """
+    Fallback: extract gap_name/gap_score from coach messages' internal_state when
+    state.collected_data is sparse (LLM sometimes omits collected_data in S6).
+    """
+    for msg in reversed(messages or []):
+        if not isinstance(msg, dict):
+            continue
+        internal = msg.get("internal_state") or msg.get("metadata", {}).get("internal_state", {})
+        cd = internal.get("collected_data") or {}
+        if not cd:
+            continue
+        gap_name = cd.get("gap_name") or (isinstance(cd.get("gap_analysis"), dict) and cd.get("gap_analysis", {}).get("name"))
+        gap_score = cd.get("gap_score")
+        if gap_score is None and isinstance(cd.get("gap_analysis"), dict):
+            gap_score = cd.get("gap_analysis", {}).get("score")
+        if gap_name or gap_score is not None:
+            return (gap_name, gap_score)
+    return (None, None)
+
+
+def _enrich_collected_from_messages(collected: dict, messages: list, current_stage: str) -> dict:
+    """
+    When collected_data is sparse at S6/S7, merge from coach messages' internal_state.
+    """
+    merged = dict(collected) if collected else {}
+    step_idx = int(current_stage.replace("S", "")) if current_stage else 0
+    if step_idx < 6:
+        return merged
+    # Need gap/pattern - try to get from messages
+    for msg in reversed(messages or []):
+        if not isinstance(msg, dict):
+            continue
+        internal = msg.get("internal_state") or msg.get("metadata", {}).get("internal_state", {})
+        cd = internal.get("collected_data") or {}
+        for key in ("gap_name", "gap_score", "pattern", "topic", "emotions", "thought", "action_actual", "action_desired"):
+            if key not in cd:
+                continue
+            v = cd[key]
+            if v is None or v == [] or v == {}:
+                continue
+            if key == "topic" and (not v or str(v).strip() in ("[נושא]", "[topic]")):
+                continue
+            if merged.get(key) is None or merged.get(key) == [] or merged.get(key) == {}:
+                merged[key] = v
+        if isinstance(cd.get("gap_analysis"), dict):
+            ga = cd["gap_analysis"]
+            if merged.get("gap_name") is None and ga.get("name"):
+                merged["gap_name"] = ga["name"]
+            if merged.get("gap_score") is None and ga.get("score") is not None:
+                merged["gap_score"] = ga["score"]
+    return merged
+
+
+def _stage_idx(stage: str) -> int:
+    """Return numeric index of a stage string like 'S3' → 3. Returns 0 for unknown."""
+    try:
+        return int(stage.lstrip("Ss"))
+    except (ValueError, AttributeError):
+        return 0
+
+
+# Minimum stage index required before a field is shown in the insights panel.
+# A field is visible only once we have moved PAST the stage that produced it
+# (stage advancement = the LLM's implicit validation that the data is complete).
+#
+# Actual stage mapping (from prompt files + simulation evidence):
+#   S1: topic · S2: event · S3: emotions · S4: thought
+#   S5: action (actual + desired) · S6: desired state
+#   S7: gap (gap_name, gap_score) · S8: pattern + stance (gains/losses)
+#   S9: forces (values/abilities) · S10: renewal/choice
+#   S11: vision · S12: commitment
+_FIELD_VISIBLE_FROM_STAGE: Dict[str, int] = {
+    "topic":           2,   # S1 data → visible from S2
+    "event_description": 3, # S2 data → visible from S3
+    "emotions":        4,   # S3 data → visible from S4
+    "thought":         5,   # S4 data → visible from S5
+    "action_actual":   6,   # S5 data → visible from S6
+    "action_desired":  6,
+    "emotion_desired": 6,
+    "thought_desired": 6,
+    "gap_name":        8,   # S7 data → visible from S8 (after gap work completes)
+    "gap_score":       8,
+    "pattern":         9,   # S8 data → visible from S9 (after pattern confirmed)
+    "stance":          9,   # S8 data (gains/losses) → visible from S9
+    "forces":         10,   # S9 data → visible from S10
+    "renewal":        11,   # S10 data → visible from S11
+    "vision":         12,   # S11 data → visible from S12
+    "commitment":     13,   # S12 data → visible from S13
+}
+
+
+def _field_validated(field: str, current_stage: str) -> bool:
+    """Return True if the current stage is advanced enough to show this field."""
+    min_idx = _FIELD_VISIBLE_FROM_STAGE.get(field, 0)
+    return _stage_idx(current_stage) >= min_idx
+
+
+def _v2_collected_data_to_cognitive_data(
+    collected: dict, messages: list = None, current_stage: str = "S13"
+) -> dict:
     """
     Transform V2 collected_data schema to frontend CognitiveData format.
     SmartInsightsPanel expects: event_actual, gap_analysis, pattern_id, kmz_forces, etc.
     V2 has: emotions, thought, action_actual, gap_name, gap_score, pattern, forces, etc.
+
+    Fields are only included once the conversation has advanced past the stage that
+    produced them — stage advancement serves as implicit LLM validation.
+    Pass current_stage="S13" to bypass gating (e.g. for admin/debug views).
     """
     if not collected:
         collected = {}
     out = {}
-    topic = collected.get("topic") or ""
-    if topic and str(topic).strip() and topic not in ("[נושא]", "[topic]"):
-        out["topic"] = str(topic).strip()
-    elif messages and len(messages) >= 2:
-        inferred = _infer_topic_from_messages(messages)
-        if inferred:
-            out["topic"] = inferred
-    # event_actual: emotions_list, thought_content, action_content, action_desired, emotion_desired, thought_desired
-    emotions = collected.get("emotions") or []
-    thought = collected.get("thought")
-    action_actual = collected.get("action_actual")
-    action_desired = collected.get("action_desired")
-    emotion_desired = collected.get("emotion_desired")
-    thought_desired = collected.get("thought_desired")
+
+    # --- Topic (S1) ---
+    if _field_validated("topic", current_stage):
+        topic = collected.get("topic") or ""
+        if topic and str(topic).strip() and topic not in ("[נושא]", "[topic]"):
+            out["topic"] = str(topic).strip()
+        elif messages and len(messages) >= 2:
+            inferred = _infer_topic_from_messages(messages)
+            if inferred:
+                out["topic"] = inferred
+
+    # --- Emotions / Thought / Actions (S3-S5) ---
+    emotions      = collected.get("emotions") or []      if _field_validated("emotions",      current_stage) else []
+    thought       = collected.get("thought")              if _field_validated("thought",       current_stage) else None
+    action_actual = collected.get("action_actual")        if _field_validated("action_actual", current_stage) else None
+    action_desired= collected.get("action_desired")       if _field_validated("action_desired",current_stage) else None
+    emotion_desired= collected.get("emotion_desired")     if _field_validated("emotion_desired",current_stage) else None
+    thought_desired= collected.get("thought_desired")     if _field_validated("thought_desired",current_stage) else None
+
     if emotions or thought or action_actual or action_desired or emotion_desired or thought_desired:
         out["event_actual"] = {}
         if emotions:
@@ -79,6 +188,11 @@ def _v2_collected_data_to_cognitive_data(collected: dict, messages: list = None)
             out["event_actual"]["action_content"] = action_actual
         if action_desired:
             out["event_actual"]["action_desired"] = action_desired
+        if emotion_desired:
+            out["event_actual"]["emotion_desired"] = emotion_desired
+        if thought_desired:
+            out["event_actual"]["thought_desired"] = thought_desired
+
     # Flat keys for HudPanel compatibility
     if emotions:
         out["emotions"] = emotions if isinstance(emotions, list) else [emotions]
@@ -88,49 +202,63 @@ def _v2_collected_data_to_cognitive_data(collected: dict, messages: list = None)
         out["action_actual"] = action_actual
     if action_desired:
         out["action_desired"] = action_desired
-        if emotion_desired:
-            out["event_actual"]["emotion_desired"] = emotion_desired
-        if thought_desired:
-            out["event_actual"]["thought_desired"] = thought_desired
-    # gap_analysis + flat keys for HudPanel
-    gap_name = collected.get("gap_name")
-    gap_score = collected.get("gap_score")
-    if gap_name is not None or gap_score is not None:
-        out["gap_analysis"] = {"name": gap_name, "score": gap_score}
-        if gap_name is not None:
-            out["gap_name"] = gap_name
-        if gap_score is not None:
-            out["gap_score"] = gap_score
-    # pattern_id: V2 has flat "pattern" - use as name
-    pattern = collected.get("pattern")
+
+    # --- Gap (S6) ---
+    if _field_validated("gap_name", current_stage):
+        gap_name = collected.get("gap_name")
+        gap_score = collected.get("gap_score")
+        ga = collected.get("gap_analysis")
+        if isinstance(ga, dict):
+            if gap_name is None and ga.get("name"):
+                gap_name = ga["name"]
+            if gap_score is None and ga.get("score") is not None:
+                gap_score = ga["score"]
+        if gap_name is not None or gap_score is not None:
+            out["gap_analysis"] = {"name": gap_name, "score": gap_score}
+            if gap_name is not None:
+                out["gap_name"] = gap_name
+            if gap_score is not None:
+                out["gap_score"] = gap_score
+
+    # --- Pattern (S7) ---
     stance = collected.get("stance") or {}
     if not isinstance(stance, dict):
         stance = {}
-    if pattern:
-        paradigm = (stance.get("gains") or [""])[0] if stance.get("gains") else ""
-        out["pattern_id"] = {"name": pattern, "paradigm": paradigm}
-        out["pattern"] = pattern
-    # being_desire: V2 has stance.gains/losses, renewal, vision - map identity from renewal
-    renewal = collected.get("renewal")
-    vision = collected.get("vision")
-    if renewal or vision or stance.get("gains") or stance.get("losses"):
-        out["being_desire"] = {"identity": renewal or vision or (stance.get("gains") or [""])[0] if stance.get("gains") else ""}
-    # kmz_forces: V2 has forces.source, forces.nature
-    forces = collected.get("forces") or {}
-    if not isinstance(forces, dict):
-        forces = {}
-    if forces.get("source") or forces.get("nature"):
-        out["kmz_forces"] = {
-            "source_forces": forces.get("source") or [],
-            "nature_forces": forces.get("nature") or []
-        }
-    # commitment: V2 has flat "commitment" - could be string or dict
-    commitment = collected.get("commitment")
-    if commitment:
-        if isinstance(commitment, dict):
-            out["commitment"] = commitment
-        else:
-            out["commitment"] = {"difficulty": str(commitment), "result": ""}
+    if _field_validated("pattern", current_stage):
+        pattern = collected.get("pattern")
+        if pattern:
+            paradigm = (stance.get("gains") or [""])[0] if stance.get("gains") else ""
+            out["pattern_id"] = {"name": pattern, "paradigm": paradigm}
+            out["pattern"] = pattern
+
+    # --- Stance / being_desire (S8) ---
+    if _field_validated("stance", current_stage):
+        renewal = collected.get("renewal")
+        vision  = collected.get("vision")   if _field_validated("vision", current_stage)   else None
+        if renewal or vision or stance.get("gains") or stance.get("losses"):
+            identity = renewal or vision or (stance["gains"][0] if stance.get("gains") else "")
+            out["being_desire"] = {"identity": identity}
+
+    # --- KaMaZ Forces (S9) ---
+    if _field_validated("forces", current_stage):
+        forces = collected.get("forces") or {}
+        if not isinstance(forces, dict):
+            forces = {}
+        if forces.get("source") or forces.get("nature"):
+            out["kmz_forces"] = {
+                "source_forces": forces.get("source") or [],
+                "nature_forces": forces.get("nature") or []
+            }
+
+    # --- Commitment (S12) ---
+    if _field_validated("commitment", current_stage):
+        commitment = collected.get("commitment")
+        if commitment:
+            if isinstance(commitment, dict):
+                out["commitment"] = commitment
+            else:
+                out["commitment"] = {"difficulty": str(commitment), "result": ""}
+
     return out
 
 # OpenAI client for title generation
@@ -313,20 +441,26 @@ def get_conversation_insights_safe(
             saturation_score = state.get("saturation_score", 0.0)
             collected_data = state.get("collected_data", {})
             messages = state.get("messages", [])
+            # Enrich from coach messages when collected_data is sparse (e.g. S6 gap missing)
+            collected_data = _enrich_collected_from_messages(collected_data, messages, current_stage)
             
             turns_in_current_stage = 0
             try:
                 turns_in_current_stage = sum(
                     1 for msg in messages 
                     if isinstance(msg, dict) and 
-                    msg.get("role") == "user" and 
-                    msg.get("metadata", {}).get("step") == current_stage
+                    (msg.get("role") or msg.get("sender")) == "user" and 
+                    (msg.get("metadata", {}) or msg.get("internal_state") or {}).get("step") == current_stage
                 )
             except Exception as e:
                 logger.warning(f"Could not count turns: {e}")
             
-            # Transform V2 collected_data to frontend CognitiveData schema
-            cognitive_data = _v2_collected_data_to_cognitive_data(collected_data, messages)
+            # Transform V2 collected_data to frontend CognitiveData schema.
+            # Pass current_stage so insights are gated: only fields whose producing
+            # stage has been completed (advanced past) are included.
+            cognitive_data = _v2_collected_data_to_cognitive_data(
+                collected_data, messages, current_stage=current_stage
+            )
             logger.info(
                 f"[Insights] conv={conversation_id} step={current_stage} "
                 f"collected_keys={list(collected_data.keys()) if collected_data else []} "
@@ -464,7 +598,9 @@ def get_conversation_insights(
                 logger.warning(f"Could not count turns: {e}")
                 turns_in_current_stage = 0
             
-            cognitive_data = _v2_collected_data_to_cognitive_data(collected_data, messages)
+            cognitive_data = _v2_collected_data_to_cognitive_data(
+                collected_data, messages, current_stage=current_stage
+            )
             return {
                 "current_stage": current_stage,
                 "saturation_score": saturation_score,

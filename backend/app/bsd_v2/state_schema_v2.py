@@ -69,6 +69,7 @@ def create_initial_state(
         
         # V2-specific metadata
         "saturation_score": 0.0,  # How deeply user engaged in current step
+        "stage_saturation": {},   # Peak saturation recorded per stage: {"S1": 0.9, "S2": 0.85, ...}
         "gate_status": {},  # Track which gates passed (e.g., {"S3_emotions": 4})
         "reflection_notes": [],  # Internal coach observations
     }
@@ -101,18 +102,33 @@ def add_message(
     
     # Update top-level state from internal_state
     if internal_state and sender == "coach":
+        # Track peak saturation per stage BEFORE advancing (the score belongs to the stage we were in)
+        old_step = state.get("current_step", "S0")
+        new_score = internal_state.get("saturation_score")
+        if isinstance(new_score, (int, float)):
+            stage_sat = state.setdefault("stage_saturation", {})
+            stage_sat[old_step] = max(stage_sat.get(old_step, 0.0), float(new_score))
+
         state["current_step"] = internal_state.get("current_step", state["current_step"])
         
-        # Merge collected_data (don't overwrite topic with empty - preserve from S1)
+        # Merge collected_data (don't overwrite existing values with empty/null)
         if "collected_data" in internal_state:
             for key, value in internal_state["collected_data"].items():
-                if value is None:
+                # Skip None and empty containers (model_dump returns [] for unused List fields)
+                if value is None or value == [] or value == {}:
                     continue
                 if key == "topic":
                     v = str(value).strip() if value else ""
                     if not v or v in ("[נושא]", "[topic]"):
                         continue  # don't overwrite topic with empty/placeholder
-                state["collected_data"][key] = value
+                # For nested dicts (stance, forces): merge instead of overwrite
+                if isinstance(value, dict) and isinstance(state["collected_data"].get(key), dict):
+                    existing = state["collected_data"][key]
+                    for sub_k, sub_v in value.items():
+                        if sub_v is not None and sub_v != []:
+                            existing[sub_k] = sub_v
+                else:
+                    state["collected_data"][key] = value
         
         # Update saturation score
         if "saturation_score" in internal_state:

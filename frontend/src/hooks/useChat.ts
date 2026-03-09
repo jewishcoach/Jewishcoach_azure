@@ -184,6 +184,10 @@ export const useChat = (displayName?: string | null) => {
           timestamp: new Date().toISOString(),
         }]);
         if (data.current_step) setCurrentPhase(data.current_step);
+        if (data.tool_call) {
+          console.log('🛠️ [BSD V2] Activating tool:', data.tool_call);
+          setActiveTool(data.tool_call);
+        }
         if (onResponseComplete && data.coach_message?.trim()) onResponseComplete(data.coach_message.trim());
         setLoading(false);
         return;
