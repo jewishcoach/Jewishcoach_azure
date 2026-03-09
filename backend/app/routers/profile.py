@@ -4,8 +4,9 @@ User profile and dashboard endpoints
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from collections import Counter
+import json
 
 from ..database import get_db
 from ..models import User, Conversation, Message
@@ -137,4 +138,168 @@ def get_dashboard(
     )
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# INSIGHTS — Deep psychological profile analysis
+# ══════════════════════════════════════════════════════════════════════════════
 
+MIN_USER_WORDS = 150   # minimum words across all conversations to unlock analysis
+CACHE_TTL_DAYS = 7     # days before re-analysis is recommended
+
+
+@router.post("/insights/consent")
+def grant_insights_consent(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Store user's explicit consent to analyze their conversations."""
+    prefs: dict = dict(user.preferences or {})
+    prefs["analysis_consent"] = {
+        "granted": True,
+        "granted_at": datetime.now(timezone.utc).isoformat(),
+    }
+    user.preferences = prefs
+    db.commit()
+    return {"status": "consent_granted"}
+
+
+@router.delete("/insights/consent")
+def revoke_insights_consent(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Revoke consent and wipe any cached analysis."""
+    prefs: dict = dict(user.preferences or {})
+    prefs["analysis_consent"] = {"granted": False}
+    prefs.pop("last_analysis", None)
+    user.preferences = prefs
+    db.commit()
+    return {"status": "consent_revoked"}
+
+
+@router.get("/insights/status")
+def get_insights_status(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Return whether the user can request an analysis and if a cached one exists.
+    Frontend uses this to decide which screen to show.
+    """
+    prefs: dict = user.preferences or {}
+    consent = prefs.get("analysis_consent", {})
+    has_consent = consent.get("granted", False)
+
+    # Count user words across all conversations
+    user_messages = (
+        db.query(Message)
+        .join(Conversation)
+        .filter(
+            Conversation.user_id == user.id,
+            Message.role == "user",
+        )
+        .all()
+    )
+    total_words = sum(len(m.content.split()) for m in user_messages if m.content)
+    n_conversations = (
+        db.query(Conversation).filter(Conversation.user_id == user.id).count()
+    )
+
+    cached = prefs.get("last_analysis")
+    cache_stale = False
+    if cached:
+        try:
+            generated_at = datetime.fromisoformat(cached.get("generated_at", ""))
+            age_days = (datetime.now(timezone.utc) - generated_at.replace(tzinfo=timezone.utc)).days
+            cache_stale = age_days >= CACHE_TTL_DAYS
+        except Exception:
+            cache_stale = True
+
+    return {
+        "has_consent": has_consent,
+        "total_user_words": total_words,
+        "n_conversations": n_conversations,
+        "unlocked": total_words >= MIN_USER_WORDS,
+        "min_words_required": MIN_USER_WORDS,
+        "has_cached_analysis": cached is not None,
+        "cache_stale": cache_stale,
+    }
+
+
+@router.get("/insights")
+async def get_profile_insights(
+    refresh: bool = False,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Return deep psychological insights for the current user.
+
+    - Returns cached analysis if fresh (< CACHE_TTL_DAYS old) and refresh=False.
+    - Runs new LLM analysis otherwise.
+    - Requires consent + MIN_USER_WORDS.
+    """
+    from ..bsd_v2.deep_analyzer import run_deep_analysis
+
+    prefs: dict = dict(user.preferences or {})
+
+    # Check consent
+    consent = prefs.get("analysis_consent", {})
+    if not consent.get("granted", False):
+        raise HTTPException(status_code=403, detail="analysis_consent_required")
+
+    # Collect conversations with sufficient content
+    conversations = (
+        db.query(Conversation)
+        .filter(Conversation.user_id == user.id)
+        .order_by(Conversation.created_at.asc())
+        .all()
+    )
+
+    conversations_data = []
+    total_words = 0
+    for conv in conversations:
+        user_msgs = [m.content for m in conv.messages if m.role == "user" and m.content]
+        words = sum(len(t.split()) for t in user_msgs)
+        total_words += words
+        if words < 20:
+            continue
+        cd = {}
+        if conv.v2_state:
+            state = conv.v2_state if isinstance(conv.v2_state, dict) else {}
+            cd = state.get("collected_data") or {}
+        conversations_data.append({
+            "collected_data": cd,
+            "user_messages": user_msgs,
+            "message_count": len(conv.messages),
+        })
+
+    if total_words < MIN_USER_WORDS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"insufficient_data: {total_words}/{MIN_USER_WORDS} words",
+        )
+
+    if not conversations_data:
+        raise HTTPException(status_code=422, detail="no_qualifying_conversations")
+
+    # Return cache if fresh and not forced refresh
+    cached = prefs.get("last_analysis")
+    if cached and not refresh:
+        try:
+            generated_at = datetime.fromisoformat(cached.get("generated_at", ""))
+            age_days = (datetime.now(timezone.utc) - generated_at.replace(tzinfo=timezone.utc)).days
+            if age_days < CACHE_TTL_DAYS:
+                return cached
+        except Exception:
+            pass
+
+    # Run analysis
+    insights = await run_deep_analysis(conversations_data)
+    result = insights.model_dump()
+
+    # Cache in user preferences
+    prefs["last_analysis"] = result
+    user.preferences = prefs
+    db.commit()
+
+    return result

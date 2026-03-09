@@ -4,13 +4,15 @@ import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import {
   User, Award, Settings, Save, X, ArrowRight, Target, History,
-  MessageSquare, Calendar, TrendingUp, Loader2, CreditCard, FileText, ExternalLink
+  MessageSquare, Calendar, TrendingUp, Loader2, CreditCard, FileText, ExternalLink, BookOpen,
+  ScanEye
 } from 'lucide-react';
 import { CoachingCalendar } from './CoachingCalendar';
 import { RemindersManager } from './RemindersManager';
 import { GoalsManager } from './GoalsManager';
 import { ActivityBarChart } from './dashboard/ActivityBarChart';
 import { PhaseDonutChart } from './dashboard/PhaseDonutChart';
+import { InsightsTab } from './InsightsTab';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -61,15 +63,17 @@ interface DashboardProps {
   onShowBilling?: () => void;
 }
 
-type DashboardTab = 'summary' | 'goals' | 'history';
+type DashboardTab = 'summary' | 'goals' | 'history' | 'insights';
 
 const NAV_ITEMS: { id: DashboardTab; labelKey: string; icon: React.ReactNode }[] = [
   { id: 'summary', labelKey: 'dashboard.tab.summary', icon: <User className="w-5 h-5" /> },
   { id: 'goals', labelKey: 'dashboard.tab.goalsReminders', icon: <Target className="w-5 h-5" /> },
   { id: 'history', labelKey: 'dashboard.tab.history', icon: <History className="w-5 h-5" /> },
+  { id: 'insights', labelKey: 'dashboard.tab.insights', icon: <ScanEye className="w-5 h-5" /> },
 ];
 
 const BSD_WEBSITE_URL = 'https://bsdcoach.com';
+const BSD_BOOKS_URL = 'https://bsdcoach.com/%d7%94%d6%b7%d7%a1%d6%b0%d6%bc%d7%a4%d6%b8%d7%a8%d6%b4%d7%99%d7%9d/';
 
 export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
   const { getToken } = useAuth();
@@ -190,6 +194,16 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
           >
             <FileText className="w-4 h-4" />
             {t('sidebar.policy')}
+          </a>
+          <a
+            href={BSD_BOOKS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full transition-colors hover:bg-gray-50"
+            style={{ color: COLORS.textMuted }}
+          >
+            <BookOpen className="w-4 h-4" />
+            {t('sidebar.book')}
           </a>
           <a
             href={BSD_WEBSITE_URL}
@@ -481,6 +495,9 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
               </motion.div>
             </div>
           )}
+
+          {/* Tab: Insights */}
+          {activeTab === 'insights' && <InsightsTab />}
 
           {/* Tab: History */}
           {activeTab === 'history' && (
