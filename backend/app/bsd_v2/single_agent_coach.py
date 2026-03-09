@@ -461,18 +461,24 @@ def detect_stage_question_mismatch(
     """
     Detect if coach asked a question from a different stage than current_step.
     This happens when LLM moves forward in content but forgets to update current_step in JSON.
-    
-    CRITICAL: Do NOT advance S1/S2→S3 when no event - would skip S2 (event) entirely.
-    
+
+    Rules:
+    - Only allow advancing by ONE stage at a time (never skip stages).
+    - Never advance S1/S2 → S3+ when no event has been collected.
+    - S5 indicators require STRONG specificity (not just "איך הגבת" which can appear in S2 context).
+
     Returns:
-        The correct stage if mismatch detected, None otherwise
+        The correct next stage if mismatch detected (and it's safe to advance), None otherwise.
     """
+    stage_order = ["S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13"]
+
     if language == "he":
         stage_indicators = {
             "S2": ["מה קרה", "מתי זה היה", "מי היה שם", "מי עוד היה"],
             "S3": ["מה הרגשת", "איזה רגש", "איפה הרגשת", "מה עבר בך", "להתעמק ברגשות"],
             "S4": ["מה עבר לך בראש", "מה חשבת", "מה אמרת לעצמך"],
-            "S5": ["מה עשית", "איך הגבת", "מה עשית בפועל"],
+            # S5: require strong behavior indicators — avoid false positives from S2/S3 context
+            "S5": ["מה עשית בפועל", "מה היית עושה", "אם הייתי צופה מהצד מה הייתי רואה"],
             "S6": ["מה היית רוצה", "איך היית רוצה להרגיש", "מה לומר לעצמך"],
             "S7": ["איך תקרא לפער", "בסולם", "כמה חזק הפער"],
             "S8": ["איפה עוד", "מאיפה עוד", "האם אתה מזהה", "האם זה קורה"],
@@ -485,7 +491,7 @@ def detect_stage_question_mismatch(
             "S2": ["what happened", "when was", "who was there"],
             "S3": ["what did you feel", "what emotion", "where did you feel"],
             "S4": ["what went through", "what did you think", "what did you tell yourself"],
-            "S5": ["what did you do", "how did you respond"],
+            "S5": ["what did you do in practice", "what would you have done", "if i were watching"],
             "S6": ["what would you want", "how would you want to feel"],
             "S7": ["what would you call", "on a scale", "how strong"],
             "S8": ["where else", "do you recognize", "does this happen"],
@@ -493,24 +499,35 @@ def detect_stage_question_mismatch(
             "S10": ["what value", "what ability", "what's important"],
             "S11": ["what stance", "what do you choose"]
         }
-    
+
     coach_lower = coach_message.lower()
-    
+    current_idx = stage_order.index(current_step) if current_step in stage_order else -1
+
     # Check each stage's indicators
     for stage, indicators in stage_indicators.items():
         if any(ind in coach_lower for ind in indicators):
-            if stage != current_step:
-                # CRITICAL: Don't advance S1/S2→S3+ when no event - would skip event collection!
-                if current_step in ("S1", "S2") and stage in ("S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11"):
-                    if state:
-                        has_event, _ = has_sufficient_event_details(state)
-                        if not has_event:
-                            logger.warning(f"[Stage Mismatch!] Coach asked {stage} but current_step={current_step} and NO EVENT - BLOCKING advance")
-                            return None
-                logger.error(f"[Stage Mismatch!] Coach asked {stage} question but current_step={current_step}")
-                logger.error(f"[Stage Mismatch!] Question: {coach_message[:100]}")
-                return stage  # Return the correct stage
-    
+            if stage == current_step:
+                continue  # No mismatch — correct stage
+
+            detected_idx = stage_order.index(stage) if stage in stage_order else -1
+
+            # RULE 1: Never skip stages — only allow advancing by exactly 1
+            if detected_idx > current_idx + 1:
+                logger.warning(f"[Stage Mismatch!] Coach asked {stage} but current_step={current_step} — skipping stages, BLOCKING")
+                return None
+
+            # RULE 2: Don't advance S1/S2 → S3+ without an event
+            if current_step in ("S1", "S2") and stage in ("S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11"):
+                if state:
+                    has_event, _ = has_sufficient_event_details(state)
+                    if not has_event:
+                        logger.warning(f"[Stage Mismatch!] Coach asked {stage} but current_step={current_step} and NO EVENT - BLOCKING advance")
+                        return None
+
+            logger.warning(f"[Stage Mismatch!] Coach asked {stage} question but current_step={current_step}")
+            logger.warning(f"[Stage Mismatch!] Question: {coach_message[:100]}")
+            return stage  # Safe to advance by 1
+
     return None  # No mismatch detected
 
 
