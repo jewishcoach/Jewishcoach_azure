@@ -12,9 +12,9 @@ import { apiClient } from '../services/api';
 import type { Conversation } from '../types';
 import type { VoiceGender } from '../constants/voices';
 
-// HARDCODED NGROK URL FOR DEMO MODE
-const DEMO_API_URL = 'https://poorly-molecular-louie.ngrok-free.dev/api';
-const DEMO_FRONTEND_URL = 'https://74ba09cc388888.lhr.life';
+// Demo mode uses the real API (tunnel domains still need auth via demo token)
+const DEMO_API_URL = import.meta.env.VITE_API_URL || 'https://jewishcoach-api.azurewebsites.net/api';
+const DEMO_FRONTEND_URL = window.location.origin;
 
 interface ChatInterfaceDemoProps {
   displayName?: string | null;
