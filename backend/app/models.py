@@ -39,6 +39,7 @@ class Conversation(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     title = Column(String, default="New Conversation")
     created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=True)
     current_phase = Column(String, default="S0")  # Coaching phase tracking (S0-S10)
     phase_history = Column(JSON, default=[])  # Track phase transitions
     v2_state = Column(JSON, default=None)  # V2: Full conversation state (replaces phase tracking)

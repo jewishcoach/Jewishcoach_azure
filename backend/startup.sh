@@ -43,8 +43,11 @@ PORT="${PORT:-8000}"
 echo "🌐 Port: $PORT"
 echo "📚 PYTHONPATH: $PYTHONPATH"
 
-# Optional DB init (single process, checkfirst avoids duplicate table create)
+# DB init: create new tables if missing
 python -c "from app.database import engine, Base; Base.metadata.create_all(bind=engine, checkfirst=True)" 2>&1 || true
+
+# Column migrations: add new columns to existing tables (idempotent)
+python -m migrations.004_add_conversation_updated_at 2>&1 || true
 
 echo "🚀 Launching Gunicorn..."
 if [ -f "/home/site/wwwroot/gunicorn_conf.py" ]; then
