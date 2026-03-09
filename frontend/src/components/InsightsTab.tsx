@@ -33,7 +33,9 @@ import {
   ArrowRight,
 } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const RAW_API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// VITE_API_URL already ends with /api in production; strip trailing /api to get base, then re-add
+const API_BASE = RAW_API.endsWith('/api') ? RAW_API.slice(0, -4) : RAW_API.replace(/\/$/, '');
 
 const C = {
   bg: '#F0F1F3',
@@ -311,13 +313,14 @@ export function InsightsTab() {
     setLoadingStatus(true);
     try {
       const token = await getToken();
-      const res = await fetch(`${API_URL}/api/profile/insights/status`, {
+      const res = await fetch(`${API_BASE}/api/profile/insights/status`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error('Failed to load status');
+      if (!res.ok) throw new Error(`status ${res.status}`);
       const data = await res.json();
       setStatus(data);
-      if (data.has_consent && data.has_cached_analysis) {
+      // Auto-fetch analysis if consent granted (regardless of cache)
+      if (data.has_consent && data.unlocked) {
         fetchAnalysis(false);
       }
     } catch (e) {
@@ -331,7 +334,7 @@ export function InsightsTab() {
     setGrantingConsent(true);
     try {
       const token = await getToken();
-      await fetch(`${API_URL}/api/profile/insights/consent`, {
+      await fetch(`${API_BASE}/api/profile/insights/consent`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -346,7 +349,7 @@ export function InsightsTab() {
 
   const revokeConsent = async () => {
     const token = await getToken();
-    await fetch(`${API_URL}/api/profile/insights/consent`, {
+    await fetch(`${API_BASE}/api/profile/insights/consent`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -359,7 +362,7 @@ export function InsightsTab() {
     setError(null);
     try {
       const token = await getToken();
-      const url = `${API_URL}/api/profile/insights${forceRefresh ? '?refresh=true' : ''}`;
+      const url = `${API_BASE}/api/profile/insights${forceRefresh ? '?refresh=true' : ''}`;
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -381,7 +384,24 @@ export function InsightsTab() {
     );
   }
 
-  if (!status) return null;
+  // ── Error loading status ──
+  if (!status) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-3">
+        <AlertTriangle className="w-8 h-8" style={{ color: C.amber }} />
+        <p className="text-sm" style={{ color: C.muted }}>
+          {error || 'לא ניתן לטעון את נתוני הניתוח'}
+        </p>
+        <button
+          onClick={fetchStatus}
+          className="text-sm px-4 py-2 rounded-xl"
+          style={{ background: C.accentLight, color: C.accent }}
+        >
+          נסה שוב
+        </button>
+      </div>
+    );
+  }
 
   // ── Locked: not enough data ──
   if (!status.unlocked) {
@@ -489,7 +509,7 @@ export function InsightsTab() {
   }
 
   // ── Loading analysis ──
-  if (loadingAnalysis || (!analysis && !error)) {
+  if (loadingAnalysis) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <Loader2 className="w-8 h-8 animate-spin" style={{ color: C.accent }} />
@@ -500,7 +520,8 @@ export function InsightsTab() {
     );
   }
 
-  if (error) {
+  // ── Analysis error ──
+  if (error && !analysis) {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-3">
         <AlertTriangle className="w-8 h-8" style={{ color: C.amber }} />
