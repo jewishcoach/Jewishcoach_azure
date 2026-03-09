@@ -37,17 +37,18 @@ export const useChat = (displayName?: string | null) => {
         // Create greeting: welcome_message already contains "שלום רב!" / "Hello!" - don't duplicate
         let greeting: string;
         if (userName && i18n.language === 'he') {
-          greeting = welcomeText.replace(/^שלום רב! /, 'שלום\u00A0' + userName + '! ');
+          greeting = welcomeText.replace(/^שלום רב! /, 'שלום ' + userName + '! ');
         } else if (userName && i18n.language !== 'he') {
-          greeting = welcomeText.replace(/^Hello! /, 'Hello\u00A0' + userName + '! ');
+          greeting = welcomeText.replace(/^Hello! /, 'Hello ' + userName + '! ');
         } else {
           greeting = welcomeText;
         }
+        greeting = stripUndefined(String(greeting ?? ''));
 
         const welcomeMessage: Message = {
           id: Date.now(),
           role: 'assistant',
-          content: stripUndefined(String(greeting ?? '')),
+          content: greeting,
           timestamp: new Date().toISOString(),
         };
         setMessages([welcomeMessage]);
@@ -68,18 +69,14 @@ export const useChat = (displayName?: string | null) => {
       setLoading(false); // Clear any loading state when switching conversations
       const conv = await apiClient.getConversation(conversationId);
       
-      // Filter out metadata from message content
+      // Filter out metadata and undefined from all messages
       const cleanMessages = (conv.messages || []).map((msg: Message) => {
-        // Clean metadata and undefined from assistant messages
-        if (msg.role === 'assistant') {
-          let cleanContent = msg.content ?? '';
-          cleanContent = cleanContent.replace(/\n\n__METADATA__:.*$/s, '');
-          cleanContent = cleanContent.replace(/__SOURCES__:.*$/s, '');
-          cleanContent = cleanContent.replace(/\n\n\{.*"sources".*\}$/s, '');
-          cleanContent = stripUndefined(cleanContent);
-          return { ...msg, content: cleanContent };
-        }
-        return msg;
+        let cleanContent = msg.content ?? '';
+        cleanContent = cleanContent.replace(/\n\n__METADATA__:.*$/s, '');
+        cleanContent = cleanContent.replace(/__SOURCES__:.*$/s, '');
+        cleanContent = cleanContent.replace(/\n\n\{.*"sources".*\}$/s, '');
+        cleanContent = stripUndefined(cleanContent);
+        return { ...msg, content: cleanContent };
       });
       
       setMessages(cleanMessages);
@@ -105,18 +102,19 @@ export const useChat = (displayName?: string | null) => {
     // Create greeting: welcome_message already contains "שלום רב!" / "Hello!" - don't duplicate
     let greeting: string;
     if (userName && i18n.language === 'he') {
-      greeting = welcomeText.replace(/^שלום רב! /, 'שלום\u00A0' + userName + '! ');
+      greeting = welcomeText.replace(/^שלום רב! /, 'שלום ' + userName + '! ');
     } else if (userName && i18n.language !== 'he') {
-      greeting = welcomeText.replace(/^Hello! /, 'Hello\u00A0' + userName + '! ');
+      greeting = welcomeText.replace(/^Hello! /, 'Hello ' + userName + '! ');
     } else {
       greeting = welcomeText;
     }
+    greeting = stripUndefined(String(greeting ?? ''));
 
     // Add welcome message immediately to prevent visual "jump"
     const welcomeMessage: Message = {
       id: Date.now(),
       role: 'assistant',
-      content: stripUndefined(String(greeting ?? '')),
+      content: greeting,
       timestamp: new Date().toISOString(),
     };
     

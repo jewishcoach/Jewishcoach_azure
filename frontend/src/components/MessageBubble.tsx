@@ -29,9 +29,8 @@ export const MessageBubble = ({ message }: Props) => {
           <ReactMarkdown
             components={{
               p: ({ children }) => {
-                const safe = Array.isArray(children)
-                  ? children.filter((c: unknown) => c != null && String(c) !== 'undefined')
-                  : (children != null ? [children] : []);
+                const toArray = Array.isArray(children) ? children : (children != null ? [children] : []);
+                const safe = toArray.filter((c: unknown) => c != null && String(c) !== 'undefined');
                 return <p className="mb-2 last:mb-0 leading-relaxed">{safe.length ? safe : null}</p>;
               },
               ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
