@@ -47,7 +47,23 @@ echo "📚 PYTHONPATH: $PYTHONPATH"
 python -c "from app.database import engine, Base; Base.metadata.create_all(bind=engine, checkfirst=True)" 2>&1 || true
 
 # Column migrations: add new columns to existing tables (idempotent)
-python -m migrations.004_add_conversation_updated_at 2>&1 || true
+# Uses app.database.engine directly so it targets the same DB the app uses.
+python -c "
+from app.database import engine
+from sqlalchemy import text, inspect as sa_inspect
+try:
+    insp = sa_inspect(engine)
+    cols = [c['name'] for c in insp.get_columns('conversations')]
+    if 'updated_at' not in cols:
+        with engine.connect() as conn:
+            conn.execute(text('ALTER TABLE conversations ADD COLUMN updated_at TIMESTAMP'))
+            conn.commit()
+        print('✓ Added updated_at column to conversations')
+    else:
+        print('✓ updated_at column already present')
+except Exception as e:
+    print(f'⚠️  Column migration warning: {e}')
+" 2>&1 || true
 
 echo "🚀 Launching Gunicorn..."
 if [ -f "/home/site/wwwroot/gunicorn_conf.py" ]; then
