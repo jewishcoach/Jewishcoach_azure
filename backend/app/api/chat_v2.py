@@ -61,6 +61,25 @@ _STAGE_TOOL_TRIGGERS: dict[str, dict] = {
 # STATE PERSISTENCE (Simple JSON in DB)
 # ══════════════════════════════════════════════════════════════════════════════
 
+
+def _get_conversation_or_404(
+    conversation_id: int,
+    user_id: int,
+    db: Session,
+) -> ConversationModel:
+    """
+    Load conversation and verify ownership.
+    Raises HTTPException 404 if not found or not owned (avoids information disclosure).
+    """
+    conv = db.query(ConversationModel).filter(
+        ConversationModel.id == conversation_id,
+        ConversationModel.user_id == user_id,
+    ).first()
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return conv
+
+
 def load_v2_state(conversation_id: int, db: Session) -> Dict[str, Any]:
     """
     Load V2 state from database.
@@ -161,6 +180,9 @@ async def send_message_v2(
         print(f"{'='*80}\n", flush=True)
         
         logger.info(f"[BSD V2 API] User {current_user.id} sent message to conv {request.conversation_id}")
+        
+        # Verify conversation ownership before any load/save
+        _get_conversation_or_404(request.conversation_id, current_user.id, db)
         
         # Load state
         t1 = time.time()
@@ -348,12 +370,7 @@ async def get_conversation_debug(
     current_user: User = Depends(get_current_user)
 ):
     """Export a specific conversation for debugging (same format as last-conversation)."""
-    conv = db.query(ConversationModel).filter(
-        ConversationModel.id == conversation_id,
-        ConversationModel.user_id == current_user.id
-    ).first()
-    if not conv:
-        raise HTTPException(status_code=404, detail="Conversation not found")
+    conv = _get_conversation_or_404(conversation_id, current_user.id, db)
     if not conv.v2_state:
         return {"message": "Not a V2 conversation (no v2_state)", "conversation_id": conversation_id}
     
@@ -419,13 +436,7 @@ async def get_conversation_insights_v2(
         logger.info(f"[BSD V2 API] Getting insights for conversation {conversation_id}")
         
         # Verify conversation ownership
-        conv = db.query(ConversationModel).filter(
-            ConversationModel.id == conversation_id,
-            ConversationModel.user_id == current_user.id
-        ).first()
-        
-        if not conv:
-            raise HTTPException(status_code=404, detail="Conversation not found")
+        conv = _get_conversation_or_404(conversation_id, current_user.id, db)
         
         # Load V2 state
         state = load_v2_state(conversation_id, db)
