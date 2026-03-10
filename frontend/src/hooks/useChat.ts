@@ -32,18 +32,8 @@ export const useChat = (displayName?: string | null) => {
         // Get user's display name (avoid undefined string from API)
         const rawName = displayName ?? user?.firstName ?? '';
         const userName = (typeof rawName === 'string' && rawName !== 'undefined' && rawName.trim()) ? rawName.trim() : '';
-        const welcomeText = (t('welcome_message') ?? '') || '';
-
-        // Create greeting: welcome_message already contains "שלום רב!" / "Hello!" - don't duplicate
-        let greeting: string;
-        if (userName && i18n.language === 'he') {
-          greeting = welcomeText.replace(/^שלום רב! /, 'שלום ' + userName + '! ');
-        } else if (userName && i18n.language !== 'he') {
-          greeting = welcomeText.replace(/^Hello! /, 'Hello ' + userName + '! ');
-        } else {
-          greeting = welcomeText;
-        }
-        greeting = stripUndefined(String(greeting ?? ''));
+        const fallbackName = i18n.language === 'he' ? 'רב' : 'there';
+        const greeting = stripUndefined(String(t('welcome_message', { name: userName || fallbackName }) ?? ''));
 
         const welcomeMessage: Message = {
           id: Date.now(),
@@ -97,18 +87,8 @@ export const useChat = (displayName?: string | null) => {
     // Get user's display name (avoid undefined string from API)
     const rawName = displayName ?? user?.firstName ?? '';
     const userName = (typeof rawName === 'string' && rawName !== 'undefined' && rawName.trim()) ? rawName.trim() : '';
-    const welcomeText = (t('welcome_message') ?? '') || '';
-
-    // Create greeting: welcome_message already contains "שלום רב!" / "Hello!" - don't duplicate
-    let greeting: string;
-    if (userName && i18n.language === 'he') {
-      greeting = welcomeText.replace(/^שלום רב! /, 'שלום ' + userName + '! ');
-    } else if (userName && i18n.language !== 'he') {
-      greeting = welcomeText.replace(/^Hello! /, 'Hello ' + userName + '! ');
-    } else {
-      greeting = welcomeText;
-    }
-    greeting = stripUndefined(String(greeting ?? ''));
+    const fallbackName = i18n.language === 'he' ? 'רב' : 'there';
+    const greeting = stripUndefined(String(t('welcome_message', { name: userName || fallbackName }) ?? ''));
 
     // Add welcome message immediately to prevent visual "jump"
     const welcomeMessage: Message = {
