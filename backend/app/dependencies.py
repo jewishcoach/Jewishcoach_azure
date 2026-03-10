@@ -1,10 +1,51 @@
 from fastapi import Depends, HTTPException, Header
 from sqlalchemy.orm import Session
-from jose import jwt
+from jose import jwt as jose_jwt
 from .database import get_db, utc_now
 from .models import User
-from datetime import datetime
 import os
+
+# Optional: JWT verification with Clerk JWKS (set CLERK_JWKS_URL for production)
+_jwks_client = None
+
+
+def _get_jwks_client():
+    """Lazy-init PyJWKClient when CLERK_JWKS_URL is set."""
+    global _jwks_client
+    if _jwks_client is not None:
+        return _jwks_client
+    url = os.getenv("CLERK_JWKS_URL", "").strip()
+    if not url:
+        return None
+    try:
+        import jwt
+        _jwks_client = jwt.PyJWKClient(url, cache_keys=True)
+        return _jwks_client
+    except Exception:
+        return None
+
+
+def _verify_clerk_token(token: str) -> dict | None:
+    """
+    Verify Clerk JWT with JWKS if CLERK_JWKS_URL is set.
+    Returns payload on success, None if verification skipped (fallback to unverified).
+    """
+    client = _get_jwks_client()
+    if not client:
+        return None
+    try:
+        import jwt
+        header = jwt.get_unverified_header(token)
+        key = client.get_signing_key(header.get("kid"))
+        payload = jwt.decode(
+            token,
+            key.key,
+            algorithms=["RS256"],
+            options={"verify_aud": False, "verify_azp": False},
+        )
+        return payload
+    except Exception:
+        raise
 
 
 def _extract_email(payload: dict) -> str | None:
@@ -90,8 +131,12 @@ async def get_current_user(
     print(f"🎫 [AUTH DEBUG] JWT token (first 30 chars): {token[:30]}...")
     
     try:
-        # Decode token (unverified for MVP)
-        payload = jwt.get_unverified_claims(token)
+        # Verify with JWKS if CLERK_JWKS_URL is set; otherwise unverified (MVP/dev)
+        payload = None
+        if _get_jwks_client():
+            payload = _verify_clerk_token(token)
+        if payload is None:
+            payload = jose_jwt.get_unverified_claims(token)
         clerk_id = payload.get("sub")
         print(f"✅ [AUTH DEBUG] Decoded JWT, clerk_id: {clerk_id}")
         email = _extract_email(payload)

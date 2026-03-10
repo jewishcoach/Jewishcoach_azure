@@ -3,7 +3,7 @@ Billing and subscription management endpoints
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List
 import os
 
@@ -29,7 +29,7 @@ router = APIRouter(prefix="/api/billing", tags=["billing"])
 
 def get_or_create_current_usage(db: Session, user: User) -> UsageRecord:
     """Get or create usage record for current billing period"""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     
     # Find current period usage
     current_usage = db.query(UsageRecord).filter(
@@ -96,7 +96,7 @@ def increment_usage(db: Session, user: User, usage_type: str = "message", amount
 
 def get_active_coupon(db: Session, user: User) -> CouponRedemption | None:
     """Get user's active coupon redemption if exists"""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     return db.query(CouponRedemption).filter(
         CouponRedemption.user_id == user.id,
         CouponRedemption.is_active == True,
@@ -183,7 +183,7 @@ def redeem_coupon(
         raise HTTPException(status_code=404, detail="Coupon not found or inactive")
     
     # Check if coupon is expired
-    if coupon.expires_at and coupon.expires_at < datetime.utcnow():
+    if coupon.expires_at and coupon.expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Coupon has expired")
     
     # Check if max uses reached
@@ -202,7 +202,7 @@ def redeem_coupon(
     # Calculate expiration
     expires_at = None
     if coupon.duration_days:
-        expires_at = datetime.utcnow() + timedelta(days=coupon.duration_days)
+        expires_at = datetime.now(timezone.utc) + timedelta(days=coupon.duration_days)
     
     # Create redemption
     redemption = CouponRedemption(
@@ -236,7 +236,7 @@ def redeem_coupon(
             plan=coupon.plan_granted,
             status="active",
             coupon_code=coupon.code,
-            current_period_start=datetime.utcnow(),
+            current_period_start=datetime.now(timezone.utc),
             current_period_end=expires_at
         )
         db.add(subscription)

@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from ..database import get_db
 from ..dependencies import get_current_user
+from ..middleware.usage_limiter import require_message_quota
+from ..limiter import limiter
 from ..schemas import MessageCreate, ConversationResponse
 from ..models import Conversation, Message, User, ConversationFlag, BsdSessionState, BsdAuditLog
 from ..bsd.engine import BsdEngine
@@ -665,12 +667,15 @@ def delete_conversation(
     return {"status": "deleted"}
 
 @router.post("/conversations/{conversation_id}/messages")
+@limiter.limit("30/minute")
 async def send_message(
+    request: Request,
     conversation_id: int,
     message: MessageCreate,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    background_tasks: BackgroundTasks = BackgroundTasks()
+    _: None = Depends(require_message_quota),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
 ):
     """Send message with auto-title generation on first message"""
     

@@ -81,8 +81,12 @@ def get_dashboard(
     
     # Days active (since account creation)
     now_utc = datetime.now(timezone.utc)
-    created_at = user.created_at.replace(tzinfo=timezone.utc) if user.created_at.tzinfo is None else user.created_at
-    days_active = (now_utc - created_at).days
+    created_at = user.created_at
+    if created_at is None:
+        days_active = 0
+    else:
+        created_at = created_at.replace(tzinfo=timezone.utc) if created_at.tzinfo is None else created_at
+        days_active = (now_utc - created_at).days
     
     # Messages this month
     month_ago = now_utc - timedelta(days=30)

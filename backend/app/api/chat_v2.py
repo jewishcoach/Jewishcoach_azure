@@ -9,14 +9,16 @@ import json
 import logging
 import time
 from typing import Dict, Any
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from ..dependencies import get_current_user
+from ..middleware.usage_limiter import require_message_quota
 from ..bsd_v2.single_agent_coach import handle_conversation, warm_prompt_cache
 from ..bsd_v2.state_schema_v2 import create_initial_state
 from ..database import get_db
+from ..limiter import limiter
 from ..models import User, Conversation as ConversationModel, Message
 from sqlalchemy.orm import Session
 
@@ -141,10 +143,13 @@ async def warmup_cache(
 
 
 @router.post("/message", response_model=ChatResponse)
+@limiter.limit("30/minute")
 async def send_message_v2(
-    request: ChatRequest,
+    request: Request,
+    body: ChatRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _: None = Depends(require_message_quota),
 ):
     """
     BSD V2 chat endpoint - single-agent conversational coach.
@@ -175,18 +180,18 @@ async def send_message_v2(
         print(f"\n{'='*80}")
         print(f"[BSD V2 API] ✅ REQUEST RECEIVED")
         print(f"[BSD V2 API] User: {current_user.id}")
-        print(f"[BSD V2 API] Conversation: {request.conversation_id}")
-        print(f"[BSD V2 API] Message: {request.message[:50]}...")
+        print(f"[BSD V2 API] Conversation: {body.conversation_id}")
+        print(f"[BSD V2 API] Message: {body.message[:50]}...")
         print(f"{'='*80}\n", flush=True)
         
-        logger.info(f"[BSD V2 API] User {current_user.id} sent message to conv {request.conversation_id}")
+        logger.info(f"[BSD V2 API] User {current_user.id} sent message to conv {body.conversation_id}")
         
         # Verify conversation ownership before any load/save
-        _get_conversation_or_404(request.conversation_id, current_user.id, db)
+        _get_conversation_or_404(body.conversation_id, current_user.id, db)
         
         # Load state
         t1 = time.time()
-        state = load_v2_state(request.conversation_id, db)
+        state = load_v2_state(body.conversation_id, db)
         t2 = time.time()
         logger.info(f"[PERF API] Load state from DB: {(t2-t1)*1000:.0f}ms")
         logger.info(f"[BSD V2 API] Loaded state: step={state['current_step']}, messages={len(state.get('messages', []))}")
@@ -195,11 +200,11 @@ async def send_message_v2(
         t3 = time.time()
         user_gender = getattr(current_user, "gender", None) or None
         coach_message, updated_state = await handle_conversation(
-            user_message=request.message,
+            user_message=body.message,
             state=state,
-            language=request.language,
+            language=body.language,
             user_gender=user_gender,
-            conversation_id=request.conversation_id,
+            conversation_id=body.conversation_id,
         )
         t4 = time.time()
         logger.info(f"[PERF API] handle_conversation: {(t4-t3)*1000:.0f}ms")
@@ -207,7 +212,7 @@ async def send_message_v2(
         # Save state
         t5 = time.time()
         logger.info(f"[BSD V2 API] Saving state: step={updated_state['current_step']}, messages={len(updated_state.get('messages', []))}")
-        save_v2_state(request.conversation_id, updated_state, db)
+        save_v2_state(body.conversation_id, updated_state, db)
         t6 = time.time()
         logger.info(f"[PERF API] Save state to DB: {(t6-t5)*1000:.0f}ms")
         logger.info(f"[BSD V2 API] State saved successfully")
@@ -218,16 +223,16 @@ async def send_message_v2(
         
         # Save user message
         user_msg = Message(
-            conversation_id=request.conversation_id,
+            conversation_id=body.conversation_id,
             role="user",
-            content=request.message,
+            content=body.message,
             timestamp=utc_now()
         )
         db.add(user_msg)
         
         # Save coach message
         coach_msg = Message(
-            conversation_id=request.conversation_id,
+            conversation_id=body.conversation_id,
             role="assistant",
             content=coach_message,
             timestamp=utc_now()
@@ -248,7 +253,7 @@ async def send_message_v2(
 
         response = ChatResponse(
             coach_message=coach_message,
-            conversation_id=request.conversation_id,
+            conversation_id=body.conversation_id,
             current_step=updated_state["current_step"],
             saturation_score=updated_state["saturation_score"],
             tool_call=tool_call,
@@ -280,17 +285,17 @@ async def send_message_v2(
         traceback.print_exc()
         try:
             from ..bsd_v2.error_buffer import capture_error
-            capture_error("chat_v2_api", e, {"conv_id": request.conversation_id})
+            capture_error("chat_v2_api", e, {"conv_id": body.conversation_id})
         except Exception:
             pass
         # Return fallback instead of 500 - user gets friendly message, not network error
         fallback_he = "הייתה לי בעיה טכנית. תוכל לחזור על זה?"
         fallback_en = "I had a technical issue. Could you try again?"
-        fallback_msg = fallback_he if (request.language or "he") == "he" else fallback_en
+        fallback_msg = fallback_he if (body.language or "he") == "he" else fallback_en
         try:
             from app.database import utc_now
-            user_msg = Message(conversation_id=request.conversation_id, role="user", content=request.message, timestamp=utc_now())
-            coach_msg = Message(conversation_id=request.conversation_id, role="assistant", content=fallback_msg, timestamp=utc_now())
+            user_msg = Message(conversation_id=body.conversation_id, role="user", content=body.message, timestamp=utc_now())
+            coach_msg = Message(conversation_id=body.conversation_id, role="assistant", content=fallback_msg, timestamp=utc_now())
             db.add(user_msg)
             db.add(coach_msg)
             db.commit()
@@ -298,7 +303,7 @@ async def send_message_v2(
             logger.warning(f"[BSD V2 API] Could not save fallback messages: {db_err}")
         return ChatResponse(
             coach_message=fallback_msg,
-            conversation_id=request.conversation_id,
+            conversation_id=body.conversation_id,
             current_step=state.get("current_step", "S1"),
             saturation_score=state.get("saturation_score", 0.3),
         )

@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from app.database import get_db, Base, engine
 import app.models  # noqa: F401
 from app.dependencies import get_current_user
+from app.middleware.usage_limiter import require_message_quota
 from app.models import Conversation, User
 from app.main import app
 from sqlalchemy.orm import sessionmaker
@@ -82,8 +83,12 @@ class TestChatV2Ownership:
             u.id = user_b_id  # Current user is B, trying to access A's conv
             return u
 
+        async def override_require_message_quota():
+            pass  # Skip usage check for ownership test
+
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_current_user] = override_get_current_user
+        app.dependency_overrides[require_message_quota] = override_require_message_quota
 
         try:
             client = TestClient(app)

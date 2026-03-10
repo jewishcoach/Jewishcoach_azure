@@ -1,6 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+
 from .database import engine, Base
+from .limiter import limiter
 from .routers import chat, speech, feedback, users, journal, tools, admin, billing, profile, calendar
 from .api import chat_v2, debug_health, version, debug_logs  # BSD V2 + Debug + Version + Logs
 import os
@@ -17,6 +21,8 @@ app = FastAPI(
     description="AI Coaching platform with RAG and Voice support",
     version="1.0.0"
 )
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS Configuration
 # Support for local development AND Ngrok tunneling.
