@@ -4,7 +4,7 @@ Pydantic schemas.
 This package is the single import target for `from app.schemas import ...`.
 """
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr
 from typing import Optional, List
 from datetime import datetime
 
@@ -21,8 +21,7 @@ class MessageResponse(BaseModel):
     timestamp: datetime
     meta: dict = {}
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ConversationCreate(BaseModel):
@@ -37,8 +36,7 @@ class ConversationResponse(BaseModel):
     phase_history: list = []
     messages: List[MessageResponse] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class FeedbackCreate(BaseModel):
@@ -64,8 +62,7 @@ class UserResponse(BaseModel):
     created_at: datetime
     preferences: dict = {}
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class JournalEntryCreate(BaseModel):
@@ -78,7 +75,6 @@ class JournalEntryResponse(BaseModel):
     content: str
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 

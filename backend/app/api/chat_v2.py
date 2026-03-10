@@ -214,14 +214,14 @@ async def send_message_v2(
         
         # Also save messages to DB (for compatibility with UI)
         t7 = time.time()
-        from datetime import datetime
+        from app.database import utc_now
         
         # Save user message
         user_msg = Message(
             conversation_id=request.conversation_id,
             role="user",
             content=request.message,
-            timestamp=datetime.utcnow()
+            timestamp=utc_now()
         )
         db.add(user_msg)
         
@@ -230,7 +230,7 @@ async def send_message_v2(
             conversation_id=request.conversation_id,
             role="assistant",
             content=coach_message,
-            timestamp=datetime.utcnow()
+            timestamp=utc_now()
         )
         db.add(coach_msg)
         
@@ -288,9 +288,9 @@ async def send_message_v2(
         fallback_en = "I had a technical issue. Could you try again?"
         fallback_msg = fallback_he if (request.language or "he") == "he" else fallback_en
         try:
-            from datetime import datetime
-            user_msg = Message(conversation_id=request.conversation_id, role="user", content=request.message, timestamp=datetime.utcnow())
-            coach_msg = Message(conversation_id=request.conversation_id, role="assistant", content=fallback_msg, timestamp=datetime.utcnow())
+            from app.database import utc_now
+            user_msg = Message(conversation_id=request.conversation_id, role="user", content=request.message, timestamp=utc_now())
+            coach_msg = Message(conversation_id=request.conversation_id, role="assistant", content=fallback_msg, timestamp=utc_now())
             db.add(user_msg)
             db.add(coach_msg)
             db.commit()

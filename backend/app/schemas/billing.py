@@ -1,7 +1,7 @@
 """
 Pydantic schemas for billing and subscription management
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 from datetime import datetime
 from enum import Enum
@@ -107,8 +107,7 @@ class PlanInfo(BaseModel):
     speech_minutes_per_month: int
     features: dict
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SubscriptionResponse(BaseModel):
@@ -123,8 +122,7 @@ class SubscriptionResponse(BaseModel):
     coupon_code: Optional[str]
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UsageResponse(BaseModel):
@@ -137,8 +135,7 @@ class UsageResponse(BaseModel):
     speech_minutes_limit: int
     plan: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CouponResponse(BaseModel):
@@ -149,8 +146,7 @@ class CouponResponse(BaseModel):
     description: Optional[str]
     is_active: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class BillingOverviewResponse(BaseModel):
@@ -162,8 +158,7 @@ class BillingOverviewResponse(BaseModel):
     has_active_coupon: bool
     coupon_code: Optional[str]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 

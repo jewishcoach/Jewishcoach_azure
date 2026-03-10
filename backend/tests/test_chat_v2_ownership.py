@@ -5,7 +5,7 @@ Verifies that a user cannot send messages to another user's conversation.
 """
 
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import MagicMock
 from fastapi.testclient import TestClient
 
@@ -38,7 +38,7 @@ class TestChatV2Ownership:
         user_a = User(
             clerk_id="test_clerk_owner",
             email="owner@test.com",
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
         )
         db.add(user_a)
         db.commit()
@@ -48,7 +48,7 @@ class TestChatV2Ownership:
         user_b = User(
             clerk_id="test_clerk_attacker",
             email="attacker@test.com",
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
         )
         db.add(user_b)
         db.commit()
@@ -114,7 +114,7 @@ class TestChatV2Ownership:
         user_a = User(
             clerk_id="test_clerk_debug_owner",
             email="debug_owner@test.com",
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
         )
         db.add(user_a)
         db.commit()
@@ -123,7 +123,7 @@ class TestChatV2Ownership:
         user_b = User(
             clerk_id="test_clerk_debug_other",
             email="debug_other@test.com",
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
         )
         db.add(user_b)
         db.commit()
@@ -173,7 +173,7 @@ class TestChatV2Ownership:
         user_a = User(
             clerk_id="test_clerk_insights_owner",
             email="insights_owner@test.com",
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
         )
         db.add(user_a)
         db.commit()
@@ -182,7 +182,7 @@ class TestChatV2Ownership:
         user_b = User(
             clerk_id="test_clerk_insights_other",
             email="insights_other@test.com",
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
         )
         db.add(user_b)
         db.commit()

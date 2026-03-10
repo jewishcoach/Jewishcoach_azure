@@ -1,7 +1,7 @@
 from fastapi import Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from jose import jwt
-from .database import get_db
+from .database import get_db, utc_now
 from .models import User
 from datetime import datetime
 import os
@@ -53,7 +53,7 @@ async def get_current_user(
     
     # Demo mode for tunnel testing (TEMPORARY)
     allow_demo = os.getenv("ALLOW_DEMO_MODE", "true").lower() == "true"
-    is_tunnel_domain = origin and any(domain in origin for domain in ['.lhr.life', '.ngrok-free.app', '.localhost.run'])
+    is_tunnel_domain = origin and any(domain in origin for domain in ['.lhr.life', '.ngrok-free.app', '.localhost.run', 'azurestaticapps.net'])
     
     print(f"🔍 [AUTH] allow_demo={allow_demo}, is_tunnel_domain={is_tunnel_domain}")
     
@@ -70,7 +70,7 @@ async def get_current_user(
                 email="demo@tunnel.test",
                 display_name="Demo User",
                 is_admin=False,
-                created_at=datetime.utcnow()
+                created_at=utc_now()
             )
             db.add(user)
             db.commit()
@@ -112,7 +112,7 @@ async def get_current_user(
                 clerk_id=clerk_id,
                 email=email or f"{clerk_id}@clerk.temp",
                 is_admin=is_admin,
-                created_at=datetime.utcnow()
+                created_at=utc_now()
             )
             db.add(user)
             db.commit()

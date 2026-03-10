@@ -29,20 +29,30 @@ for o in ("http://localhost:5173", "http://localhost:5174"):
     if o not in origins_list:
         origins_list.append(o)
 
+# Azure Static Web Apps - add common deployment URLs (e.g. thankful-forest-*.azurestaticapps.net)
+for azure_origin in (
+    "https://thankful-forest-049e9550f.1.azurestaticapps.net",
+    "https://jewish-coach.azurestaticapps.net",
+):
+    if azure_origin not in origins_list:
+        origins_list.append(azure_origin)
+
 # Check if we should allow remote tunneling domains (useful for external testing)
 allow_tunnels = os.getenv("ALLOW_TUNNELS", "true").lower() == "true"
 
 if allow_tunnels:
-    # Add regex patterns to allow tunneling services: ngrok, localhost.run, etc.
+    # Add regex patterns to allow tunneling services: ngrok, localhost.run, azurestaticapps, etc.
+    # Note: Azure Static Web Apps use *.azurestaticapps.net (incl. subdomains like xxx.1.azurestaticapps.net)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins_list,
-        allow_origin_regex=r"https://.*\.(ngrok-free\.app|lhr\.life|localhost\.run|azurestaticapps\.net)",
+        allow_origin_regex=r"https://[^/]+\.(ngrok-free\.app|lhr\.life|localhost\.run|azurestaticapps\.net)",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        expose_headers=["*"],
     )
-    print("✅ CORS: Remote tunneling enabled (ngrok, localhost.run, etc.)")
+    print("✅ CORS: Remote tunneling enabled (ngrok, localhost.run, azurestaticapps.net)")
 else:
     # Standard CORS for specific origins only
     app.add_middleware(
@@ -86,11 +96,11 @@ def health_check():
     Returns detailed status of all critical services.
     """
     import sys
-    from datetime import datetime
+    from datetime import datetime, timezone
     
     health_status = {
         "status": "healthy",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "python_version": sys.version,
         "checks": {}
     }

@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from app.routers.chat import (
     _v2_collected_data_to_cognitive_data,
     _infer_topic_from_messages,
+    _enrich_collected_from_messages,
 )
 
 
@@ -70,6 +71,15 @@ class TestV2CollectedDataToCognitiveData:
         assert out["gap_analysis"]["name"] == "בריחה"
         assert out["gap_analysis"]["score"] == 7
 
+    def test_gap_analysis_nested(self):
+        """Gap from nested gap_analysis dict (LLM alternative format)."""
+        collected = {"gap_analysis": {"name": "הימנעות", "score": 8}}
+        out = _v2_collected_data_to_cognitive_data(collected)
+        assert out["gap_analysis"]["name"] == "הימנעות"
+        assert out["gap_analysis"]["score"] == 8
+        assert out["gap_name"] == "הימנעות"
+        assert out["gap_score"] == 8
+
     def test_pattern_id(self):
         """Pattern mapped to pattern_id."""
         collected = {"pattern": "הימנעות"}
@@ -109,6 +119,57 @@ class TestV2CollectedDataToCognitiveData:
         out = _v2_collected_data_to_cognitive_data(collected, messages)
         assert out["topic"] == "על הקשר עם האבא שלי"
 
+    def test_full_hudpanel_flow_s5_s6_s7(self):
+        """Full flow S5-S7: all keys HudPanel/SmartInsightsPanel expect for display."""
+        collected = {
+            "topic": "זוגיות",
+            "emotions": ["כעס", "עלבון"],
+            "thought": "אני לא מספיק טוב",
+            "action_actual": "התחבאתי בחדר",
+            "action_desired": "לשתף את הרגשות",
+            "gap_name": "בריחה",
+            "gap_score": 7,
+            "pattern": "הימנעות",
+        }
+        out = _v2_collected_data_to_cognitive_data(collected)
+        # HudPanel uses: topic, emotions/event_actual.emotions_list, thought, action_actual, gap_name, gap_score, pattern, action_desired
+        assert out["topic"] == "זוגיות"
+        assert out["event_actual"]["emotions_list"] == ["כעס", "עלבון"]
+        assert out["event_actual"]["thought_content"] == "אני לא מספיק טוב"
+        assert out["event_actual"]["action_content"] == "התחבאתי בחדר"
+        assert out["event_actual"]["action_desired"] == "לשתף את הרגשות"
+        assert out["gap_analysis"]["name"] == "בריחה"
+        assert out["gap_analysis"]["score"] == 7
+        assert out["gap_name"] == "בריחה"
+        assert out["gap_score"] == 7
+        assert out["pattern_id"]["name"] == "הימנעות"
+        assert out["pattern"] == "הימנעות"
+        assert out["action_desired"] == "לשתף את הרגשות"
+
+
+class TestEnrichCollectedFromMessages:
+    """Tests for _enrich_collected_from_messages fallback."""
+
+    def test_enriches_gap_from_coach_messages(self):
+        """When collected_data has no gap but coach messages have it, enrich."""
+        collected = {"topic": "זוגיות", "emotions": ["כעס"]}
+        messages = [
+            {"sender": "user", "content": "זוגיות"},
+            {"sender": "coach", "content": "...", "internal_state": {"collected_data": {"gap_name": "בריחה", "gap_score": 7}}},
+        ]
+        merged = _enrich_collected_from_messages(collected, messages, "S6")
+        assert merged["gap_name"] == "בריחה"
+        assert merged["gap_score"] == 7
+
+    def test_does_not_overwrite_existing(self):
+        """Existing collected_data is preserved."""
+        collected = {"topic": "זוגיות", "gap_name": "קיים"}
+        messages = [
+            {"sender": "coach", "internal_state": {"collected_data": {"gap_name": "חדש"}}},
+        ]
+        merged = _enrich_collected_from_messages(collected, messages, "S6")
+        assert merged["gap_name"] == "קיים"
+
 
 class TestInferTopicFromMessages:
     """Unit tests for topic inference."""
@@ -145,7 +206,7 @@ class TestInsightsEndpoint:
 
     def test_insights_returns_cognitive_data_for_v2(self):
         """Insights endpoint returns cognitive_data when v2_state has collected_data."""
-        from datetime import datetime
+        from datetime import datetime, timezone
         from app.database import get_db, Base, engine
         import app.models  # noqa: F401
         from app.dependencies import get_current_user
@@ -160,7 +221,7 @@ class TestInsightsEndpoint:
         user = User(
             clerk_id="test_clerk_insights",
             email="insights_test@test.com",
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
         )
         db.add(user)
         db.commit()
@@ -211,7 +272,7 @@ class TestInsightsEndpoint:
 
     def test_insights_not_found_returns_exists_false(self):
         """Non-existent conversation returns exists: false, not 404."""
-        from datetime import datetime
+        from datetime import datetime, timezone
         from app.database import get_db, Base, engine
         import app.models  # noqa: F401
         from app.dependencies import get_current_user
@@ -226,7 +287,7 @@ class TestInsightsEndpoint:
         user = User(
             clerk_id="test_clerk_404",
             email="404_insights@test.com",
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
         )
         db.add(user)
         db.commit()

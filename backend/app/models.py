@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from .database import Base
+from .database import Base, utc_now
 from typing import Optional
 
 class User(Base):
@@ -11,7 +11,7 @@ class User(Base):
     clerk_id = Column(String, unique=True, index=True, nullable=False)  # Clerk unique ID
     email = Column(String, unique=True, index=True, nullable=True)  # Make nullable
     is_admin = Column(Boolean, default=False, nullable=False)  # Admin privileges for RBAC
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
     preferences = Column(JSON, default={})  # e.g., {"tone": "warm", "voice": "he-IL-HilaNeural"}
     
     # Profile Information
@@ -38,8 +38,8 @@ class Conversation(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     title = Column(String, default="New Conversation")
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=True)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=True)
     current_phase = Column(String, default="S0")  # Coaching phase tracking (S0-S10)
     phase_history = Column(JSON, default=[])  # Track phase transitions
     v2_state = Column(JSON, default=None)  # V2: Full conversation state (replaces phase tracking)
@@ -56,7 +56,7 @@ class Message(Base):
     conversation_id = Column(Integer, ForeignKey("conversations.id"), nullable=False)
     role = Column(String, nullable=False)  # "user" or "assistant"
     content = Column(Text, nullable=False)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime, default=utc_now)
     meta = Column(JSON, default={})  # sources, tools_used, etc.
     
     conversation = relationship("Conversation", back_populates="messages")
@@ -70,7 +70,7 @@ class Feedback(Base):
     score = Column(Integer, nullable=False)  # 1 (positive) or -1 (negative)
     comment = Column(Text, nullable=True)
     category = Column(String, nullable=True)  # "accuracy", "tone", "relevance"
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
     
     message = relationship("Message", back_populates="feedback")
 
@@ -81,8 +81,8 @@ class JournalEntry(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     conversation_id = Column(Integer, ForeignKey("conversations.id"), nullable=False)
     content = Column(Text, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
     
     user = relationship("User", back_populates="journal_entries")
     conversation = relationship("Conversation", back_populates="journal_entries")
@@ -94,7 +94,7 @@ class ToolResponse(Base):
     conversation_id = Column(Integer, ForeignKey("conversations.id"), nullable=False)
     tool_type = Column(String, nullable=False)  # "profit_loss", "trait_picker", etc.
     data = Column(JSON, nullable=False)  # Tool-specific data
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
     
     conversation = relationship("Conversation", back_populates="tool_responses")
 
@@ -110,7 +110,7 @@ class ConversationFlag(Base):
     reasoning = Column(Text, nullable=False)  # Judge's explanation
     severity = Column(String, nullable=False)  # "High", "Medium", "Low"
     is_resolved = Column(Boolean, default=False, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
     
     conversation = relationship("Conversation", backref="flags")
     message = relationship("Message", backref="flags")
@@ -132,8 +132,8 @@ class Subscription(Base):
     current_period_start = Column(DateTime, nullable=True)
     current_period_end = Column(DateTime, nullable=True)
     cancel_at_period_end = Column(Boolean, default=False, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
     
     # Coupon relationship
     coupon_code = Column(String, nullable=True)  # If activated via coupon
@@ -150,8 +150,8 @@ class UsageRecord(Base):
     period_end = Column(DateTime, nullable=False)  # End of billing period
     messages_used = Column(Integer, default=0, nullable=False)
     speech_minutes_used = Column(Integer, default=0, nullable=False)  # In minutes
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
     
     user = relationship("User", back_populates="usage_records")
 
@@ -167,7 +167,7 @@ class Coupon(Base):
     current_uses = Column(Integer, default=0, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     expires_at = Column(DateTime, nullable=True)  # Coupon expiration
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
     
     # Metadata
     description = Column(Text, nullable=True)  # e.g., "BSD special launch offer"
@@ -179,7 +179,7 @@ class CouponRedemption(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     coupon_id = Column(Integer, ForeignKey("coupons.id"), nullable=False)
-    redeemed_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    redeemed_at = Column(DateTime, default=utc_now, nullable=False)
     expires_at = Column(DateTime, nullable=True)  # When the coupon benefit expires
     is_active = Column(Boolean, default=True, nullable=False)
     
@@ -213,8 +213,8 @@ class BsdSessionState(Base):
     # Process metrics (JSON): shehiya_depth_score, loop_count_in_stage, etc.
     metrics = Column(JSON, default=dict)
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
     conversation = relationship("Conversation", backref="bsd_state", uselist=False)
 
@@ -240,7 +240,7 @@ class BsdAuditLog(Base):
     extracted = Column(JSON, default=dict)  # structured extractions for this turn
     raw_user_message = Column(Text, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
 
     conversation = relationship("Conversation", backref="bsd_audit_logs")
 
@@ -261,8 +261,8 @@ class CoachingGoal(Base):
     start_date = Column(DateTime, nullable=False)
     end_date = Column(DateTime, nullable=False)
     status = Column(String, default="active")  # 'active', 'completed', 'cancelled'
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
     
     user = relationship("User", backref="coaching_goals")
 
@@ -283,7 +283,7 @@ class CoachingReminder(Base):
     repeat_days = Column(JSON, nullable=True)  # JSON array of weekday numbers [0-6]
     is_active = Column(Boolean, default=True)
     last_sent = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
     
     user = relationship("User", backref="coaching_reminders")
 

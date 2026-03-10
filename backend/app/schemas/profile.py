@@ -1,7 +1,7 @@
 """
 Profile and Dashboard schemas
 """
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import datetime
 
@@ -11,13 +11,12 @@ class ProfileUpdate(BaseModel):
     display_name: Optional[str] = None
     gender: Optional[str] = None  # "male", "female", or null
     
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "display_name": "דוד",
-                "gender": "male"
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "display_name": "דוד",
+            "gender": "male"
         }
+    })
 
 
 class ProfileResponse(BaseModel):
@@ -30,8 +29,7 @@ class ProfileResponse(BaseModel):
     current_plan: str
     created_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DashboardStats(BaseModel):
@@ -44,18 +42,17 @@ class DashboardStats(BaseModel):
     longest_conversation_messages: int
     favorite_coaching_phase: Optional[str]
     
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "total_conversations": 15,
-                "total_messages": 143,
-                "current_phase": "S8",
-                "days_active": 32,
-                "messages_this_month": 45,
-                "longest_conversation_messages": 28,
-                "favorite_coaching_phase": "Situation"
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "total_conversations": 15,
+            "total_messages": 143,
+            "current_phase": "S8",
+            "days_active": 32,
+            "messages_this_month": 45,
+            "longest_conversation_messages": 28,
+            "favorite_coaching_phase": "Situation"
         }
+    })
 
 
 class DashboardResponse(BaseModel):
@@ -64,7 +61,6 @@ class DashboardResponse(BaseModel):
     stats: DashboardStats
     recent_conversations: list
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 

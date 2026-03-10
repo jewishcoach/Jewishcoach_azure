@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from ..database import get_db
+from ..database import get_db, utc_now
 from ..models import ToolResponse, Conversation, Message, User
 from ..dependencies import get_current_user
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Dict, Any, List
 from datetime import datetime
 import logging
@@ -23,8 +23,7 @@ class ToolResponseModel(BaseModel):
     data: Dict[str, Any]
     created_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 @router.post("/{conversation_id}/submit", response_model=ToolResponseModel)
 async def submit_tool_response(
@@ -51,7 +50,7 @@ async def submit_tool_response(
         conversation_id=conversation_id,
         tool_type=request.tool_type,
         data=request.data,
-        created_at=datetime.utcnow()
+        created_at=utc_now()
     )
     db.add(tool_response)
     
@@ -62,7 +61,7 @@ async def submit_tool_response(
             conversation_id=conversation_id,
             role="user",
             content=summary,
-            timestamp=datetime.utcnow(),
+            timestamp=utc_now(),
             meta={"tool_submission": True, "tool_type": request.tool_type}
         )
         db.add(system_message)
@@ -75,7 +74,7 @@ async def submit_tool_response(
             messages.append({
                 "sender": "user",
                 "content": summary,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": utc_now().isoformat(),
                 "internal_state": None,
             })
             v2_state["messages"] = messages

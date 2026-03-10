@@ -1,7 +1,7 @@
 """
 Schemas for coaching calendar, goals, and reminders
 """
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 
@@ -19,17 +19,16 @@ class GoalCreate(BaseModel):
     start_date: datetime
     end_date: datetime
     
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "goal_type": "weekly",
-                "title": "3 אימונים בשבוע",
-                "description": "להגיע ל-3 שיחות אימון מלאות",
-                "target_count": 3,
-                "start_date": "2026-01-20T00:00:00",
-                "end_date": "2026-01-26T23:59:59"
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "goal_type": "weekly",
+            "title": "3 אימונים בשבוע",
+            "description": "להגיע ל-3 שיחות אימון מלאות",
+            "target_count": 3,
+            "start_date": "2026-01-20T00:00:00",
+            "end_date": "2026-01-26T23:59:59"
         }
+    })
 
 
 class GoalUpdate(BaseModel):
@@ -61,8 +60,7 @@ class GoalResponse(BaseModel):
     days_remaining: Optional[int] = None
     is_completed: bool = False
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============================================================================
@@ -78,17 +76,16 @@ class ReminderCreate(BaseModel):
     repeat_type: str = "once"  # 'once', 'daily', 'weekly', 'biweekly', 'monthly'
     repeat_days: Optional[List[int]] = None  # [0-6] for weekly reminders
     
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "title": "אימון שבועי",
-                "description": "זמן לשיחת אימון",
-                "reminder_date": "2026-01-22T00:00:00",
-                "reminder_time": "19:00",
-                "repeat_type": "weekly",
-                "repeat_days": [1, 3]  # Monday and Wednesday
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "title": "אימון שבועי",
+            "description": "זמן לשיחת אימון",
+            "reminder_date": "2026-01-22T00:00:00",
+            "reminder_time": "19:00",
+            "repeat_type": "weekly",
+            "repeat_days": [1, 3]  # Monday and Wednesday
         }
+    })
 
 
 class ReminderUpdate(BaseModel):
@@ -119,8 +116,7 @@ class ReminderResponse(BaseModel):
     # Computed fields
     next_reminder_date: Optional[datetime] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============================================================================

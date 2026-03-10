@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import JournalEntry, Conversation, User
 from ..dependencies import get_current_user
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 
 router = APIRouter(prefix="/api/journal", tags=["journal"])
@@ -17,8 +17,7 @@ class JournalResponse(BaseModel):
     content: str
     updated_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 @router.get("/{conversation_id}", response_model=JournalResponse)
 def get_journal(

@@ -3,7 +3,7 @@
 
 import logging
 from collections import deque
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Any
 
 _MAX_ERRORS = 20
@@ -18,7 +18,7 @@ def capture_error(tag: str, error: Exception, extra: Dict[str, Any] = None) -> N
             "message": str(error),
             "type": type(error).__name__,
             "extra": extra or {},
-            "ts": datetime.utcnow().isoformat() + "Z",
+            "ts": datetime.now(timezone.utc).isoformat() + "Z",
         })
     except Exception:
         pass

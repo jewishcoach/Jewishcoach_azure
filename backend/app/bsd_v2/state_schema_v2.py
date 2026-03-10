@@ -6,7 +6,7 @@ The LLM manages its own state through JSON responses.
 """
 
 from typing import Dict, Any, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def create_initial_state(
@@ -24,7 +24,7 @@ def create_initial_state(
         "conversation_id": conversation_id,
         "user_id": user_id,
         "language": language,
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
         
         # LLM-managed state (extracted from responses)
         "current_step": "S0",  # S0-S12
@@ -96,7 +96,7 @@ def add_message(
     state["messages"].append({
         "sender": sender,
         "content": content,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "internal_state": internal_state  # Only for coach messages
     })
     

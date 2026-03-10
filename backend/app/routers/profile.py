@@ -80,10 +80,12 @@ def get_dashboard(
         current_phase = latest_conv.current_phase
     
     # Days active (since account creation)
-    days_active = (datetime.utcnow() - user.created_at).days
+    now_utc = datetime.now(timezone.utc)
+    created_at = user.created_at.replace(tzinfo=timezone.utc) if user.created_at.tzinfo is None else user.created_at
+    days_active = (now_utc - created_at).days
     
     # Messages this month
-    month_ago = datetime.utcnow() - timedelta(days=30)
+    month_ago = now_utc - timedelta(days=30)
     messages_this_month = db.query(Message).join(Conversation).filter(
         Conversation.user_id == user.id,
         Message.timestamp >= month_ago

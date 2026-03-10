@@ -8,7 +8,7 @@ of coaching insights from source texts.
 
 from enum import Enum
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CoachingPhase(str, Enum):
@@ -85,20 +85,19 @@ class CoachingInsight(BaseModel):
         description="Model's confidence in the extraction (0.0 to 1.0)"
     )
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "phase": "Gap",
-                "original_term": "הפער",
-                "content_he": "הפער הוא המרחק בין המצוי לבין הרצוי. זיהוי הפער הוא ההזדמנות לשינוי.",
-                "summary_en": "The Gap is the distance between current reality and desired state. Identifying the gap is the opportunity for change.",
-                "key_question": "מה הפער בין איפה שאני נמצא לבין איפה שאני רוצה להיות?",
-                "tool_used": "Gap Analysis Exercise",
-                "source_file": "CoachBook.pdf",
-                "page_number": 15,
-                "confidence_score": 0.95
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "phase": "Gap",
+            "original_term": "הפער",
+            "content_he": "הפער הוא המרחק בין המצוי לבין הרצוי. זיהוי הפער הוא ההזדמנות לשינוי.",
+            "summary_en": "The Gap is the distance between current reality and desired state. Identifying the gap is the opportunity for change.",
+            "key_question": "מה הפער בין איפה שאני נמצא לבין איפה שאני רוצה להיות?",
+            "tool_used": "Gap Analysis Exercise",
+            "source_file": "CoachBook.pdf",
+            "page_number": 15,
+            "confidence_score": 0.95
         }
+    })
 
 
 class ExtractionBatch(BaseModel):
