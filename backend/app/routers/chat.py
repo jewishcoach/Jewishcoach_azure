@@ -263,12 +263,18 @@ def _v2_collected_data_to_cognitive_data(
 
     return out
 
-# OpenAI client for title generation
-openai_client = AzureOpenAI(
-    api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-    api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-15-preview"),
-    azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT")
-)
+# OpenAI client for title generation — lazy init to avoid import-time failures in test/CI environments
+_openai_client = None
+
+def _get_openai_client():
+    global _openai_client
+    if _openai_client is None:
+        _openai_client = AzureOpenAI(
+            api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+            api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-15-preview"),
+            azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT")
+        )
+    return _openai_client
 
 
 def generate_smart_title(content: str, language: str = "he") -> str:
@@ -287,7 +293,7 @@ The user said: "{content[:300]}"
 Generate a title that captures the main theme the user wants to work on.
 Reply ONLY with the title, nothing else. No quotes."""
 
-        response = openai_client.chat.completions.create(
+        response = _get_openai_client().chat.completions.create(
             model=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o"),
             messages=[
                 {"role": "system", "content": "You are a helpful assistant that creates concise conversation titles. Be specific and capture the essence." if language == "en" else "אתה עוזר שיוצר כותרות תמציתיות לשיחות. היה ספציפי ותפוס את המהות."},
