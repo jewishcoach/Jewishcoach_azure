@@ -55,7 +55,10 @@ export const WorkspaceMessageBubble = ({ message, animateTyping = false }: Props
         <div className={`prose prose-sm max-w-none ${isUser ? '' : ''}`} dir="rtl" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 300, lineHeight: 1.6, color: isUser ? '#2E3A56' : '#2E3A56', textAlign: 'justify' }}>
           <ReactMarkdown
             components={{
-              p: ({ children }) => <p className="mb-4 last:mb-0 leading-relaxed text-[16px]" style={{ lineHeight: 1.7, textAlign: 'justify' }}>{children}</p>,
+              p: ({ children }) => {
+                const safe = Array.isArray(children) ? children.filter((c: unknown) => c != null && String(c) !== 'undefined') : (children != null ? [children] : []);
+                return <p className="mb-4 last:mb-0 leading-relaxed text-[16px]" style={{ lineHeight: 1.7, textAlign: 'justify' }}>{safe.length ? safe : null}</p>;
+              },
               ul: ({ children }) => <ul className="list-disc list-inside mb-4 space-y-2 text-[16px]" style={{ lineHeight: 1.7 }}>{children}</ul>,
               ol: ({ children }) => <ol className="list-decimal list-inside mb-4 space-y-2 text-[16px]" style={{ lineHeight: 1.7 }}>{children}</ol>,
               li: ({ children }) => <li className="mb-1">{children}</li>,

@@ -44,11 +44,7 @@ class ApiClient {
 
   /** Pre-warm prompt cache for faster first response. Call when starting new chat. */
   async warmupCache() {
-    try {
-      await this.client.get('/chat/v2/warmup');
-    } catch {
-      // Ignore - warmup is best-effort
-    }
+    // Disabled - warmup endpoint was causing 404 in production
   }
 
   async getConversations() {
