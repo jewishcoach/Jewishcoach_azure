@@ -19,4 +19,5 @@
 **Required:**
 - The entire response is one JSON object. No text before or after.
 - `current_step` – Current stage (S0, S1, S2...).
-- `collected_data` – **Important!** Update every turn with new data the user provided. S1: topic. S3: emotions. S4: thought. S5: action_actual, action_desired. S6: gap_name, gap_score. S7: pattern. Insights are shown live to the user – never return empty collected_data.
+- `collected_data` – **Important!** Update every turn with new data the user provided. S1: topic. S3: emotions. S4: thought. S5: action_actual. S6: action_desired, emotion_desired, thought_desired. S7: gap_name, gap_score. S8: pattern. Insights are shown live to the user – never return empty collected_data.
+- `entities` – **Critical context memory!** Whenever the user mentions names, places, or specific examples — add them to `entities`. This allows you to reference real details ("boss Daniel", "the small meeting room") throughout the conversation without forgetting them.

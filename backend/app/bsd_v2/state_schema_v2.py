@@ -62,6 +62,12 @@ def create_initial_state(
             "vision": None,
             # S12: Commitment
             "commitment": None,  # מחויבות קונקרטית
+            # Context entities (updated throughout the whole conversation)
+            "entities": {
+                "people": [],       # שמות ותפקידי אנשים
+                "places": [],       # מקומות ספציפיים
+                "key_examples": []  # דוגמאות ספציפיות בלשון המתאמן
+            },
         },
         
         # Conversation history (for context)
@@ -109,8 +115,20 @@ def add_message(
             stage_sat = state.setdefault("stage_saturation", {})
             stage_sat[old_step] = max(stage_sat.get(old_step, 0.0), float(new_score))
 
-        state["current_step"] = internal_state.get("current_step", state["current_step"])
-        
+        new_step = internal_state.get("current_step", state["current_step"])
+        state["current_step"] = new_step
+
+        # Capture S2 anchor when transitioning away from S2 for the first time.
+        # The anchor preserves raw user messages (names, places, specific wording)
+        # that would otherwise be truncated from the rolling history window.
+        if old_step == "S2" and new_step not in ("S0", "S1", "S2") and "s2_anchor" not in state:
+            s2_user_msgs = [
+                m["content"] for m in state["messages"]
+                if m["sender"] == "user" and m["content"]
+            ]
+            # Keep last 3 user messages from S2 context (most relevant event descriptions)
+            state["s2_anchor"] = s2_user_msgs[-3:] if s2_user_msgs else []
+
         # Merge collected_data (don't overwrite existing values with empty/null)
         if "collected_data" in internal_state:
             for key, value in internal_state["collected_data"].items():
@@ -121,7 +139,21 @@ def add_message(
                     v = str(value).strip() if value else ""
                     if not v or v in ("[נושא]", "[topic]"):
                         continue  # don't overwrite topic with empty/placeholder
-                # For nested dicts (stance, forces): merge instead of overwrite
+                # entities: append new items to existing lists (never overwrite)
+                if key == "entities" and isinstance(value, dict):
+                    existing_entities = state["collected_data"].setdefault("entities", {
+                        "people": [], "places": [], "key_examples": []
+                    })
+                    for sub_k in ("people", "places", "key_examples"):
+                        new_items = value.get(sub_k) or []
+                        if new_items:
+                            seen = set(existing_entities.get(sub_k, []))
+                            for item in new_items:
+                                if item and item not in seen:
+                                    existing_entities.setdefault(sub_k, []).append(item)
+                                    seen.add(item)
+                    continue
+                # For other nested dicts (stance, forces): merge instead of overwrite
                 if isinstance(value, dict) and isinstance(state["collected_data"].get(key), dict):
                     existing = state["collected_data"][key]
                     for sub_k, sub_v in value.items():
@@ -129,7 +161,7 @@ def add_message(
                             existing[sub_k] = sub_v
                 else:
                     state["collected_data"][key] = value
-        
+
         # Update saturation score
         if "saturation_score" in internal_state:
             state["saturation_score"] = internal_state["saturation_score"]

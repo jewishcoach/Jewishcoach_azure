@@ -1591,12 +1591,11 @@ def validate_stage_transition(
             return True, None
         
         # If LLM hasn't moved to S4 yet, check turns count
+        # Keep the LLM's own phrasing — just block the stage advance.
+        # Returning coach_message as-is preserves natural language while staying in S3.
         if s3_turns < 3:
-            logger.warning(f"[Safety Net] Blocked S3→S4: only {s3_turns} turns in S3")
-            if language == "he":
-                return False, "מה עוד הרגשת באותו רגע?"
-            else:
-                return False, "What else did you feel in that moment?"
+            logger.warning(f"[Safety Net] Blocked S3→S4: only {s3_turns} turns in S3 — keeping LLM message, blocking advance")
+            return False, coach_message
     
     # S8→S9: Need pattern confirmation
     if old_step == "S8" and new_step == "S9":
@@ -1641,24 +1640,9 @@ def validate_stage_transition(
             return True, None
         
         if s8_turns < 3:
-            logger.warning(f"[Safety Net] Blocked S8→S9: only {s8_turns} turns and {example_count} examples")
-            if language == "he":
-                # GENERIC: Varied questions to explore pattern depth
-                pattern_questions = [
-                    "איפה עוד אתה מזהה את התגובה הזו שלך?",
-                    "האם זה קורה רק במצבים מסוימים, או גם במקומות אחרים?",
-                    "מה משותף לכל המצבים שתיארת? מה **אתה** עושה שחוזר?"
-                ]
-                question = pattern_questions[min(s8_turns, len(pattern_questions) - 1)]
-                return False, question
-            else:
-                pattern_questions = [
-                    "Where else do you recognize this response of yours?",
-                    "Does this happen only in certain situations, or in other places too?",
-                    "What's common to all the situations you described? What do **you** do that repeats?"
-                ]
-                question = pattern_questions[min(s8_turns, len(pattern_questions) - 1)]
-                return False, question
+            logger.warning(f"[Safety Net] Blocked S8→S9: only {s8_turns} turns and {example_count} examples — keeping LLM message, blocking advance")
+            # Keep the LLM's own phrasing — just block the stage advance.
+            return False, coach_message
     
     # All other transitions: trust the LLM
     return True, None
@@ -1712,8 +1696,47 @@ def build_conversation_context(
     context_parts.append(f"שלב: {state['current_step']}" if language == "he" else f"Stage: {state['current_step']}")
     context_parts.append(f"Saturation Score: {state['saturation_score']:.1f}")
     
-    # Collected data (non-null only)
-    collected = {k: v for k, v in state['collected_data'].items() if v is not None and v != [] and v != {}}
+    # Entities section — prominent placement so LLM uses real names/places throughout
+    entities = (state.get("collected_data") or {}).get("entities") or {}
+    has_entities = any(entities.get(k) for k in ("people", "places", "key_examples"))
+    if has_entities:
+        entity_header = "# 📌 פרטים אישיים — השתמש בהם בכל תגובה!" if language == "he" else "# 📌 Personal Context — Use in Every Response!"
+        context_parts.append(entity_header)
+        if entities.get("people"):
+            label = "אנשים" if language == "he" else "People"
+            context_parts.append(f"{label}: {', '.join(entities['people'])}")
+        if entities.get("places"):
+            label = "מקומות" if language == "he" else "Places"
+            context_parts.append(f"{label}: {', '.join(entities['places'])}")
+        if entities.get("key_examples"):
+            label = "דוגמאות שנתן" if language == "he" else "Examples given"
+            context_parts.append(f"{label}:")
+            for ex in entities["key_examples"]:
+                context_parts.append(f"  • {ex}")
+
+    # S2 anchor — raw event messages preserved as long-term memory
+    s2_anchor = state.get("s2_anchor") or []
+    if s2_anchor:
+        # Only inject if the anchor is not already fully covered by the recent history window
+        recent_contents = {m.get("content", "") for m in get_conversation_history(state, last_n=history_last_n)}
+        anchor_msgs_not_in_recent = [msg for msg in s2_anchor if msg not in recent_contents]
+        if anchor_msgs_not_in_recent:
+            anchor_header = "# 🔖 תיאור האירוע המקורי (S2 — עוגן)" if language == "he" else "# 🔖 Original Event Description (S2 Anchor)"
+            context_parts.append(anchor_header)
+            if language == "he":
+                context_parts.append("(זכור: השתמש בשמות ובפרטים אלה לאורך כל השיחה)")
+            else:
+                context_parts.append("(Remember: use these names and details throughout the conversation)")
+            for msg in anchor_msgs_not_in_recent:
+                label = "משתמש" if language == "he" else "User"
+                safe_msg = msg.replace('"', "'")
+                context_parts.append(f"{label}: {safe_msg}")
+
+    # Collected data (non-null only, excluding entities which are shown above)
+    collected = {
+        k: v for k, v in state['collected_data'].items()
+        if v is not None and v != [] and v != {} and k != "entities"
+    }
     if collected:
         context_parts.append("\nנתונים שנאספו:" if language == "he" else "\nCollected Data:")
         context_parts.append(json.dumps(collected, ensure_ascii=False, indent=2))

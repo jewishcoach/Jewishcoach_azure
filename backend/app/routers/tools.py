@@ -67,17 +67,46 @@ async def submit_tool_response(
         db.add(system_message)
 
     # Also inject the summary into the V2 state so handle_conversation sees it
-    if summary and conversation.v2_state and isinstance(conversation.v2_state, dict):
+    if conversation.v2_state and isinstance(conversation.v2_state, dict):
         try:
             v2_state = dict(conversation.v2_state)
-            messages = list(v2_state.get("messages", []))
-            messages.append({
-                "sender": "user",
-                "content": summary,
-                "timestamp": utc_now().isoformat(),
-                "internal_state": None,
-            })
-            v2_state["messages"] = messages
+
+            # Persist structured data directly into collected_data for insights panel
+            if request.tool_type == "profit_loss":
+                cd = dict(v2_state.get("collected_data") or {})
+                stance = dict(cd.get("stance") or {})
+                gains = request.data.get("gains", [])
+                losses = request.data.get("losses", [])
+                if gains:
+                    stance["gains"] = gains
+                if losses:
+                    stance["losses"] = losses
+                cd["stance"] = stance
+                v2_state["collected_data"] = cd
+
+            elif request.tool_type == "trait_picker":
+                cd = dict(v2_state.get("collected_data") or {})
+                forces = dict(cd.get("forces") or {})
+                source = request.data.get("source_forces") or request.data.get("source_traits") or []
+                nature = request.data.get("nature_forces") or request.data.get("nature_traits") or []
+                if source:
+                    forces["source"] = source
+                if nature:
+                    forces["nature"] = nature
+                cd["forces"] = forces
+                v2_state["collected_data"] = cd
+
+            # Inject summary as user message so the LLM gets context
+            if summary:
+                messages = list(v2_state.get("messages", []))
+                messages.append({
+                    "sender": "user",
+                    "content": summary,
+                    "timestamp": utc_now().isoformat(),
+                    "internal_state": None,
+                })
+                v2_state["messages"] = messages
+
             conversation.v2_state = v2_state
             logger.info(f"[Tools] Injected {request.tool_type} submission into V2 state for conv {conversation_id}")
         except Exception as e:
@@ -131,20 +160,20 @@ def _generate_tool_summary(tool_type: str, data: Dict[str, Any]) -> str:
         return summary.strip()
     
     elif tool_type == "trait_picker":
-        selected_traits = data.get("traits", [])
-        source_traits = data.get("source_traits", [])
-        nature_traits = data.get("nature_traits", [])
+        # Support both old keys (source_traits/nature_traits) and new keys (source_forces/nature_forces)
+        source = data.get("source_forces") or data.get("source_traits") or []
+        nature = data.get("nature_forces") or data.get("nature_traits") or []
         
-        summary = "🎯 **בחירת תכונות - התשובות שלי:**\n\n"
+        summary = "💎 **כוחות מקור וטבע (כמ\"ז) - התשובות שלי:**\n\n"
         
-        if source_traits:
-            summary += "**תכונות מקור:**\n"
-            for trait in source_traits:
+        if source:
+            summary += "**כוחות מקור (ערכים ואמונות):**\n"
+            for trait in source:
                 summary += f"- {trait}\n"
         
-        if nature_traits:
-            summary += "\n**תכונות טבע:**\n"
-            for trait in nature_traits:
+        if nature:
+            summary += "\n**כוחות טבע (יכולות וכישרונות):**\n"
+            for trait in nature:
                 summary += f"- {trait}\n"
         
         return summary.strip()

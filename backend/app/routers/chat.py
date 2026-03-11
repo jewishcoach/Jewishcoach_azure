@@ -114,29 +114,29 @@ def _stage_idx(stage: str) -> int:
 # A field is visible only once we have moved PAST the stage that produced it
 # (stage advancement = the LLM's implicit validation that the data is complete).
 #
-# Actual stage mapping (from prompt files + simulation evidence):
-#   S1: topic · S2: event · S3: emotions · S4: thought
-#   S5: action (actual + desired) · S6: desired state
-#   S7: gap (gap_name, gap_score) · S8: pattern + stance (gains/losses)
-#   S9: forces (values/abilities) · S10: renewal/choice
-#   S11: vision · S12: commitment
+# Stage → data mapping (from prompt file headers):
+#   S1: topic · S2: event_description · S3: emotions · S4: thought
+#   S5: action_actual (מצוי) · S6: action/emotion/thought_desired (רצוי)
+#   S7: gap_name, gap_score (פער) · S8: pattern (דפוס)
+#   S9: stance/gains/losses (עמדה) · S10: forces (כוחות — ערכים ויכולות)
+#   S11: renewal/choice (בחירה) · S12: vision (חזון) · S13: commitment (מחויבות)
 _FIELD_VISIBLE_FROM_STAGE: Dict[str, int] = {
-    "topic":           2,   # S1 data → visible from S2
-    "event_description": 3, # S2 data → visible from S3
-    "emotions":        4,   # S3 data → visible from S4
-    "thought":         5,   # S4 data → visible from S5
-    "action_actual":   6,   # S5 data → visible from S6
-    "action_desired":  6,
+    "topic":           2,   # S1 data → visible from S2 onward
+    "event_description": 3, # S2 data → visible from S3 onward
+    "emotions":        3,   # S3 data → visible as soon as collected (during S3)
+    "thought":         4,   # S4 data → visible as soon as collected (during S4)
+    "action_actual":   5,   # S5 (מצוי) → visible as soon as collected
+    "action_desired":  6,   # S6 (רצוי) → visible as soon as collected
     "emotion_desired": 6,
     "thought_desired": 6,
-    "gap_name":        8,   # S7 data → visible from S8 (after gap work completes)
-    "gap_score":       8,
-    "pattern":         9,   # S8 data → visible from S9 (after pattern confirmed)
-    "stance":          9,   # S8 data (gains/losses) → visible from S9
-    "forces":         10,   # S9 data → visible from S10
-    "renewal":        11,   # S10 data → visible from S11
-    "vision":         12,   # S11 data → visible from S12
-    "commitment":     13,   # S12 data → visible from S13
+    "gap_name":        7,   # S7 (פער) → visible as soon as collected
+    "gap_score":       7,
+    "pattern":         8,   # S8 (דפוס) → visible as soon as collected
+    "stance":          9,   # S9 (עמדה) → visible as soon as collected
+    "forces":         10,   # S10 (כוחות) → visible as soon as collected
+    "renewal":        11,   # S11 (בחירה) → visible as soon as collected
+    "vision":         12,   # S12 (חזון) → visible as soon as collected
+    "commitment":     13,   # S13 (מחויבות) → visible as soon as collected
 }
 
 

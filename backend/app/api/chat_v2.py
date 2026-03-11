@@ -48,13 +48,21 @@ class ChatResponse(BaseModel):
 # Defines which tool to activate when the coach first enters each stage.
 # Only stages with interactive input cards are listed here.
 _STAGE_TOOL_TRIGGERS: dict[str, dict] = {
-    "S8": {
+    "S9": {
         "type": "tool",
         "tool_type": "profit_loss",
         "title_he": "טבלת רווח והפסד",
         "title_en": "Gain / Loss Table",
         "instruction_he": "מה אתה מרוויח מהדפוס הזה? ומה אתה מפסיד? מלא את הטבלה.",
         "instruction_en": "What do you gain from this pattern? And what do you lose? Fill in the table.",
+    },
+    "S10": {
+        "type": "tool",
+        "tool_type": "trait_picker",
+        "title_he": "כוחות מקור וטבע (כמ\"ז)",
+        "title_en": "Source & Nature Forces (KMZ)",
+        "instruction_he": "מהם הערכים והאמונות שמניעים אותך (מקור)? ומהן היכולות והכישרונות הטבעיים שלך (טבע)?",
+        "instruction_en": "What are the values and beliefs that drive you (source)? And what are your natural abilities and talents (nature)?",
     },
 }
 
