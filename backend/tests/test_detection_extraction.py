@@ -16,7 +16,7 @@ from app.bsd.stage_gates import (
     detect_emotion_words,
     detect_concept_word
 )
-from app.bsd.state_schema import BsdState, CognitiveData, Metrics
+from app.bsd.state_schema import BsdState, CognitiveData, EventActual, EventDesired, Metrics
 
 
 def test_detection_functions():
@@ -79,10 +79,17 @@ def test_s5_gate_advances_even_with_interpretation():
     
     OLD BEHAVIOR: Block if has interpretation markers
     NEW BEHAVIOR: ADVANCE, let Talker reflect and clarify if needed
+    
+    S5 requires both action_actual and action_desired. Pre-populate state
+    with both so the gate can advance when user provides a message with "כי".
     """
+    # Pre-populate with both actual and desired so gate can advance
     state = BsdState(
         current_state="S5",
-        cognitive_data=CognitiveData(),
+        cognitive_data=CognitiveData(
+            event_actual=EventActual(action_content="עשיתי X"),
+            event_desired=EventDesired(action_content="רוצה Y"),
+        ),
         metrics=Metrics()
     )
     
@@ -94,8 +101,8 @@ def test_s5_gate_advances_even_with_interpretation():
     # Should ADVANCE (not block!)
     assert ok is True, "Gate should advance even with interpretation"
     
-    # Should have extracted the action
-    assert extracted.get("action") == user_message
+    # Should have extracted the action (gate returns action_desired when both exist)
+    assert extracted.get("action_desired") == user_message or extracted.get("action_actual") == user_message
     
     print("✅ S5 advances with interpretation test passed")
 

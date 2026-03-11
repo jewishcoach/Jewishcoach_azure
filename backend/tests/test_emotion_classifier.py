@@ -3,9 +3,11 @@ Tests for emotion_classifier.py - S3 emotion validation.
 """
 
 import asyncio
+import pytest
 from app.bsd.emotion_classifier import classify_emotion_token, EmotionClassification
 
 
+@pytest.mark.llm
 async def test_valid_emotions():
     """Test valid emotion tokens."""
     print("🧪 Testing valid emotions:")
@@ -26,6 +28,7 @@ async def test_valid_emotions():
     print("   ✅ All valid emotions classified correctly")
 
 
+@pytest.mark.llm
 async def test_invalid_emotions():
     """Test invalid (non-emotion) tokens."""
     print("\n🧪 Testing invalid (non-emotion) tokens:")

@@ -15,6 +15,7 @@ Test cases:
 """
 
 import asyncio
+import pytest
 from app.bsd.router import route_intent
 from app.bsd.state_schema import BsdState, CognitiveData, Metrics, EventActual
 from app.bsd.stage_defs import StageId
@@ -60,6 +61,7 @@ async def test_s0_clarify():
     assert result.critique == "S0_CLARIFY"
 
 
+@pytest.mark.llm
 async def test_s3_partial():
     """S3: Only 2 emotions → ANSWER_PARTIAL (need 2 more)"""
     state = BsdState(
@@ -104,6 +106,7 @@ async def test_s3_accumulation():
     assert result.next_stage == "S4"
 
 
+@pytest.mark.llm
 async def test_s3_offtrack():
     """S3: Numbers/gibberish → OFFTRACK"""
     state = BsdState(
@@ -123,6 +126,7 @@ async def test_s3_offtrack():
     assert result.decision == "loop"
 
 
+@pytest.mark.llm
 async def test_advice_request():
     """Any stage: Advice request → ADVICE_REQUEST → block"""
     state = BsdState(
@@ -143,6 +147,7 @@ async def test_advice_request():
     assert result.critique == "ADVICE_BLOCK"
 
 
+@pytest.mark.llm
 async def test_s1_valid_topic():
     """S1: Valid topic → ANSWER_OK"""
     state = BsdState(
@@ -163,6 +168,7 @@ async def test_s1_valid_topic():
     assert result.extracted.get("topic") is not None
 
 
+@pytest.mark.llm
 async def test_s1_truncated_topic():
     """S1: Truncated topic (e.g., 'הורו') → ANSWER_PARTIAL with confirm_topic"""
     state = BsdState(

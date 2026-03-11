@@ -231,7 +231,7 @@ class TestInsightsEndpoint:
             user_id=user.id,
             title="Insights Test",
             v2_state={
-                "current_step": "S1",
+                "current_step": "S2",  # S2+ required for topic to be visible in insights
                 "saturation_score": 0.5,
                 "collected_data": {"topic": "זוגיות"},
                 "messages": [],
@@ -263,7 +263,7 @@ class TestInsightsEndpoint:
             assert resp.status_code == 200
             data = resp.json()
             assert data["exists"] is True
-            assert data["current_stage"] == "S1"
+            assert data["current_stage"] == "S2"
             assert "cognitive_data" in data
             assert data["cognitive_data"]["topic"] == "זוגיות"
         finally:

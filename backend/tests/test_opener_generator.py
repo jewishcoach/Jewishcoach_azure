@@ -56,17 +56,19 @@ def test_is_interpretation():
 
 
 def test_enforce_rules_max_length():
-    """Test max length enforcement (12 words)."""
+    """Test max length enforcement (20 words - increased from 12 for richer expression)."""
+    # Use 25 words to trigger truncation
+    long_opener = " ".join(["מילה"] * 25)
     result = OpenerResult(
         use_opener=True,
-        opener="זה משפט ארוך מאוד שיש בו יותר מ-12 מילים ולכן הוא צריך להיות קטוע",
+        opener=long_opener,
         style_tag="reflective"
     )
     
     enforced = _enforce_rules(result, [], is_advance=False, stage="S2", language="he")
     
     assert enforced.use_opener is True
-    assert _word_count(enforced.opener) <= 12
+    assert _word_count(enforced.opener) <= 20
 
 
 def test_enforce_rules_repetition():
