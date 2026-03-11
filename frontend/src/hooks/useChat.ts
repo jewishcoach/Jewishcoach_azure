@@ -151,7 +151,36 @@ export const useChat = (displayName?: string | null) => {
         if (!response.ok) {
           const errBody = await response.text();
           console.error('[BSD V2] Error response:', response.status, errBody);
-          throw new Error(`Failed to send message (V2): ${response.status} ${errBody.slice(0, 100)}`);
+
+          // Auto-recover: if conversation was lost (e.g. server restart), create new one and retry once
+          if (response.status === 404 && errBody.includes('Conversation not found') && currentConvId === conversationId) {
+            console.warn('[BSD V2] Conversation not found — creating new conversation and retrying...');
+            const newConv = await createConversation();
+            const retryUrl = getBsdEndpoint(newConv.id, 'v2');
+            const retryResponse = await fetch(retryUrl, {
+              method: 'POST',
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+              body: JSON.stringify({ message: content, conversation_id: newConv.id, language }),
+            });
+            if (retryResponse.ok) {
+              const retryData = await retryResponse.json();
+              const coachContent = stripUndefined(String(retryData.coach_message ?? ''));
+              setMessages(prev => [...prev, {
+                id: Date.now() + 1,
+                role: 'assistant',
+                content: coachContent,
+                timestamp: new Date().toISOString(),
+              }]);
+              if (retryData.current_step) setCurrentPhase(retryData.current_step);
+              if (retryData.tool_call) setActiveTool(retryData.tool_call);
+              if (onResponseComplete && retryData.coach_message?.trim()) onResponseComplete(retryData.coach_message.trim());
+              setLoading(false);
+              return;
+            }
+          }
+
+          throw new Error(`V2_ERROR_${response.status}`);
         }
 
         const data = await response.json();
@@ -334,12 +363,26 @@ export const useChat = (displayName?: string | null) => {
       setLoading(false);
     } catch (error) {
       console.error('Error sending message:', error);
-      // Add error message with more details
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorCode = error instanceof Error ? error.message : '';
+      const isHebrew = i18n.language === 'he' || i18n.language?.startsWith('he');
+      let userFacingMessage: string;
+      if (errorCode.includes('V2_ERROR_404') || errorCode.includes('V2_ERROR_401')) {
+        userFacingMessage = isHebrew
+          ? 'השיחה לא נמצאה. לחץ על "שיחה חדשה" כדי להתחיל מחדש.'
+          : 'Session not found. Please start a new conversation.';
+      } else if (errorCode.includes('V2_ERROR_5') || errorCode.includes('NetworkError') || errorCode.includes('Failed to fetch')) {
+        userFacingMessage = isHebrew
+          ? 'אירעה שגיאה בשרת. נסה שוב בעוד רגע.'
+          : 'Server error. Please try again in a moment.';
+      } else {
+        userFacingMessage = isHebrew
+          ? 'מצטער, אירעה שגיאה. נסה שוב.'
+          : 'Sorry, something went wrong. Please try again.';
+      }
       setMessages(prev => [...prev, {
         id: Date.now() + 2,
         role: 'assistant',
-        content: `מצטער, היתה שגיאה בעיבוד ההודעה. (${errorMessage})`,
+        content: userFacingMessage,
         timestamp: new Date().toISOString(),
       }]);
     } finally {
