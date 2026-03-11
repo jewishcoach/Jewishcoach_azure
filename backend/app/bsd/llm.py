@@ -118,7 +118,7 @@ def get_azure_chat_llm(*, purpose: str, deployment: str | None = None) -> AzureC
 
 @lru_cache(maxsize=1)
 def get_azure_chat_llm_4o_mini() -> AzureChatOpenAI:
-    """Get Azure LLM for gpt-4o-mini (A/B test variant)."""
+    """Get Azure LLM for gpt-4o-mini."""
     deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME_4O_MINI", "gpt-4o-mini")
     return _build_azure_llm(deployment=deployment, temperature=0.2)
 

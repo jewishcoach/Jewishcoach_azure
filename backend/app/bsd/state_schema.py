@@ -54,6 +54,14 @@ class PatternId(BaseModel):
     paradigm: Optional[str] = None
 
 
+class BeingDesire(BaseModel):
+    """
+    Stage S8: Desired identity (מי אני רוצה להיות)
+    - identity: Who they want to be
+    """
+    identity: Optional[str] = None
+
+
 class Stance(BaseModel):
     """
     Stage S8: Stance (עמדה) - Root worldview
@@ -122,7 +130,8 @@ class CognitiveData(BaseModel):
     event_desired: EventDesired = Field(default_factory=EventDesired)  # S5 (desired)
     gap_analysis: GapAnalysis = Field(default_factory=GapAnalysis)  # S6
     pattern_id: PatternId = Field(default_factory=PatternId)  # S7
-    stance: Stance = Field(default_factory=Stance)  # S8 (CHANGED from being_desire)
+    being_desire: BeingDesire = Field(default_factory=BeingDesire)  # S8: desired identity
+    stance: Stance = Field(default_factory=Stance)  # S8: profit/loss
     kmz_forces: KmzForces = Field(default_factory=KmzForces)  # S9
     renewal_choice: RenewalChoice = Field(default_factory=RenewalChoice)  # S11 (NEW)
     vision: Vision = Field(default_factory=Vision)  # S12 (NEW)
