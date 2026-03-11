@@ -1218,10 +1218,12 @@ def user_wants_to_continue(user_message: str) -> bool:
     return any(signal in msg_lower for signal in continue_signals)
 
 
-def _check_event_criteria_bsd(state: Dict[str, Any], language: str = "he") -> Tuple[bool, List[str]]:
+def _check_event_criteria_bsd(state: Dict[str, Any], language: str = "he", current_message: Optional[str] = None) -> Tuple[bool, List[str]]:
     """
     BSD methodology: אירוע מפורט = מתי + איפה + מי + מה קרה.
     Returns (has_sufficient, list of missing: "מתי"|"איפה"|"מי"|"מה").
+    
+    current_message: the user's current message (may not be in state yet).
     """
     collected = _safe_collected_dict(state.get("collected_data"))
     event_desc = collected.get("event_description") or ""
@@ -1231,6 +1233,9 @@ def _check_event_criteria_bsd(state: Dict[str, Any], language: str = "he") -> Tu
         for msg in messages[-10:]
         if isinstance(msg, dict) and (msg.get("sender") == "user" or msg.get("role") == "user") and msg.get("content")
     ]
+    # Include current user message even if not yet saved to state
+    if current_message and current_message not in recent_user:
+        recent_user.append(current_message)
     all_text = " ".join(recent_user).lower() if recent_user else ""
 
     # Fast path: LLM extracted structured event
@@ -1277,12 +1282,14 @@ def _check_event_criteria_bsd(state: Dict[str, Any], language: str = "he") -> Tu
     return False, missing if missing else ["מתי", "איפה", "מי", "מה"]
 
 
-def has_sufficient_event_details(state: Dict[str, Any]) -> Tuple[bool, str]:
+def has_sufficient_event_details(state: Dict[str, Any], current_message: Optional[str] = None) -> Tuple[bool, str]:
     """
     Check if we have enough event details per BSD: מתי, איפה, מי, מה קרה.
     Returns (has_sufficient, reason_if_not) - reason is comma-separated missing criteria.
+    
+    current_message: the user's current message (may not be in state yet).
     """
-    has_enough, missing = _check_event_criteria_bsd(state)
+    has_enough, missing = _check_event_criteria_bsd(state, current_message=current_message)
     if has_enough:
         return True, ""
     if not missing:
@@ -1527,7 +1534,8 @@ def validate_stage_transition(
         
         # If LLM hasn't moved to S3 yet: use BSD-aligned targeted questions (מתי, איפה, מי, מה)
         if s2_turns < 3:
-            has_info, reason = has_sufficient_event_details(state)
+            # Pass user_message so we check the CURRENT message even if not yet in state
+            has_info, reason = has_sufficient_event_details(state, current_message=user_message)
             if has_info:
                 return True, None  # We have enough per BSD criteria
             logger.warning(f"[Safety Net] Blocked S2→S3: missing ({reason})")
