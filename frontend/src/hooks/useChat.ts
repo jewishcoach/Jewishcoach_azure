@@ -155,28 +155,33 @@ export const useChat = (displayName?: string | null) => {
           // Auto-recover: if conversation was lost (e.g. server restart), create new one and retry once
           if (response.status === 404 && errBody.includes('Conversation not found') && currentConvId === conversationId) {
             console.warn('[BSD V2] Conversation not found — creating new conversation and retrying...');
-            const newConv = await createConversation();
-            const retryUrl = getBsdEndpoint(newConv.id, 'v2');
-            const retryResponse = await fetch(retryUrl, {
-              method: 'POST',
-              credentials: 'include',
-              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-              body: JSON.stringify({ message: content, conversation_id: newConv.id, language }),
-            });
-            if (retryResponse.ok) {
-              const retryData = await retryResponse.json();
-              const coachContent = stripUndefined(String(retryData.coach_message ?? ''));
-              setMessages(prev => [...prev, {
-                id: Date.now() + 1,
-                role: 'assistant',
-                content: coachContent,
-                timestamp: new Date().toISOString(),
-              }]);
-              if (retryData.current_step) setCurrentPhase(retryData.current_step);
-              if (retryData.tool_call) setActiveTool(retryData.tool_call);
-              if (onResponseComplete && retryData.coach_message?.trim()) onResponseComplete(retryData.coach_message.trim());
-              setLoading(false);
-              return;
+            try {
+              const newConv = await createConversation();
+              const retryUrl = getBsdEndpoint(newConv.id, 'v2');
+              const retryResponse = await fetch(retryUrl, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ message: content, conversation_id: newConv.id, language }),
+              });
+              if (retryResponse.ok) {
+                const retryData = await retryResponse.json();
+                const coachContent = stripUndefined(String(retryData.coach_message ?? ''));
+                setMessages(prev => [...prev, {
+                  id: Date.now() + 1,
+                  role: 'assistant',
+                  content: coachContent,
+                  timestamp: new Date().toISOString(),
+                }]);
+                if (retryData.current_step) setCurrentPhase(retryData.current_step);
+                if (retryData.tool_call) setActiveTool(retryData.tool_call);
+                if (onResponseComplete && retryData.coach_message?.trim()) onResponseComplete(retryData.coach_message.trim());
+                setLoading(false);
+                return;
+              }
+            } catch (recoveryErr) {
+              console.error('[BSD V2] Auto-recovery failed:', recoveryErr);
+              // Fall through to V2_ERROR_404 message
             }
           }
 
@@ -370,7 +375,11 @@ export const useChat = (displayName?: string | null) => {
         userFacingMessage = isHebrew
           ? 'השיחה לא נמצאה. לחץ על "שיחה חדשה" כדי להתחיל מחדש.'
           : 'Session not found. Please start a new conversation.';
-      } else if (errorCode.includes('V2_ERROR_5') || errorCode.includes('NetworkError') || errorCode.includes('Failed to fetch')) {
+      } else if (errorCode.includes('V2_ERROR_429')) {
+        userFacingMessage = isHebrew
+          ? 'הגעת למגבלת ההודעות שלך לתקופה זו. שדרג תוכנית כדי להמשיך.'
+          : 'You have reached your message limit for this period. Upgrade your plan to continue.';
+      } else if (errorCode.includes('V2_ERROR_5') || errorCode.includes('NetworkError') || errorCode.includes('Failed to fetch') || errorCode.includes('Network Error')) {
         userFacingMessage = isHebrew
           ? 'אירעה שגיאה בשרת. נסה שוב בעוד רגע.'
           : 'Server error. Please try again in a moment.';
