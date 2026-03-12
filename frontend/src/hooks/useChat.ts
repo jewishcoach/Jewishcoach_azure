@@ -185,6 +185,10 @@ export const useChat = (displayName?: string | null) => {
             }
           }
 
+          // For 429, embed quota info in error message so catch block can show the right message
+          if (response.status === 429 && errBody.includes('quota_exceeded')) {
+            throw new Error('V2_ERROR_429_QUOTA');
+          }
           throw new Error(`V2_ERROR_${response.status}`);
         }
 
@@ -375,10 +379,14 @@ export const useChat = (displayName?: string | null) => {
         userFacingMessage = isHebrew
           ? 'השיחה לא נמצאה. לחץ על "שיחה חדשה" כדי להתחיל מחדש.'
           : 'Session not found. Please start a new conversation.';
+      } else if (errorCode.includes('V2_ERROR_429_QUOTA')) {
+        userFacingMessage = isHebrew
+          ? 'הגעת למגבלת ההודעות שלך לחודש זה.\n\n[➡ לשדרוג תוכנית](/billing)'
+          : 'You have reached your monthly message limit.\n\n[➡ Upgrade your plan](/billing)';
       } else if (errorCode.includes('V2_ERROR_429')) {
         userFacingMessage = isHebrew
-          ? 'הגעת למגבלת ההודעות שלך לתקופה זו. שדרג תוכנית כדי להמשיך.'
-          : 'You have reached your message limit for this period. Upgrade your plan to continue.';
+          ? 'שולחים הודעות מהר מדי. המתן רגע ונסה שוב.'
+          : 'Sending messages too fast. Please wait a moment and try again.';
       } else if (errorCode.includes('V2_ERROR_5') || errorCode.includes('NetworkError') || errorCode.includes('Failed to fetch') || errorCode.includes('Network Error')) {
         userFacingMessage = isHebrew
           ? 'אירעה שגיאה בשרת. נסה שוב בעוד רגע.'

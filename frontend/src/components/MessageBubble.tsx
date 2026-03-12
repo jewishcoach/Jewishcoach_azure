@@ -37,6 +37,16 @@ export const MessageBubble = ({ message }: Props) => {
               ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
               li: ({ children }) => <li className="mb-1">{children}</li>,
               strong: ({ children }) => <strong className={isUser ? 'text-white font-bold' : 'text-accent-dark font-bold'}>{children}</strong>,
+              a: ({ href, children }) => (
+                <a
+                  href={href}
+                  onClick={(e) => { if (href?.startsWith('/')) { e.preventDefault(); window.location.href = href; } }}
+                  className={isUser ? 'text-blue-200 underline' : 'text-accent underline'}
+                  style={{ fontWeight: 500, cursor: 'pointer' }}
+                >
+                  {children}
+                </a>
+              ),
             }}
           >
             {message.content}

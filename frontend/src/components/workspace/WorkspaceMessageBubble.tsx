@@ -63,6 +63,15 @@ export const WorkspaceMessageBubble = ({ message, animateTyping = false }: Props
               ol: ({ children }) => <ol className="list-decimal list-inside mb-4 space-y-2 text-[16px]" style={{ lineHeight: 1.7 }}>{children}</ol>,
               li: ({ children }) => <li className="mb-1">{children}</li>,
               strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+              a: ({ href, children }) => (
+                <a
+                  href={href}
+                  onClick={(e) => { if (href?.startsWith('/')) { e.preventDefault(); window.location.href = href; } }}
+                  style={{ color: '#B38728', textDecoration: 'underline', fontWeight: 500, cursor: 'pointer' }}
+                >
+                  {children}
+                </a>
+              ),
             }}
           >
             {contentToRender}
