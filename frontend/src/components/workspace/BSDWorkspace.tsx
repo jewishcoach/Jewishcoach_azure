@@ -113,7 +113,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
     }
   }, [isRecording, startRecording, stopRecording]);
 
-  const handleToolSubmit = async (submission: { tool_type: string; data: any }) => {
+  const handleToolSubmit = async (submission: { tool_type: string; data: any }): Promise<void> => {
     if (!conversationId) return;
     try {
       const token = await getToken();

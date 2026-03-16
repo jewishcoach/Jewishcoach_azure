@@ -1,15 +1,27 @@
 import { useEffect, useState, memo } from 'react';
 import { Sparkles, Archive } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { apiClient } from '../../services/api';
 import { EnrichmentVideos } from './EnrichmentVideos';
+import { ActiveToolRenderer } from '../InsightHub/ActiveToolRenderer';
+import type { ToolCall } from '../../types';
 
 interface CognitiveData {
   topic?: string;
   emotions?: string[];
-  event_actual?: { emotions_list?: string[]; thought_content?: string; action_content?: string };
+  event_actual?: {
+    emotions_list?: string[];
+    thought_content?: string;
+    action_content?: string;
+    action_desired?: string;
+    emotion_desired?: string;
+    thought_desired?: string;
+  };
   thought?: string;
   action_actual?: string;
   action_desired?: string;
+  emotion_desired?: string;
+  thought_desired?: string;
   gap_name?: string;
   gap_score?: number;
   gap_analysis?: { name?: string; score?: number };
@@ -17,6 +29,7 @@ interface CognitiveData {
   pattern_id?: { name?: string };
   stance?: { gains?: string[]; losses?: string[] };
   forces?: { source?: string[]; nature?: string[] };
+  kmz_forces?: { source_forces?: string[]; nature_forces?: string[] };
 }
 
 interface HudPanelProps {
@@ -24,12 +37,15 @@ interface HudPanelProps {
   currentPhase?: string;
   loading?: boolean;
   onArchiveClick?: () => void;
+  /** כלי אינטראקטיבי (כמ"ז, רווח/הפסד) - מוצג כשהמאמן נכנס ל-S11/S12 */
+  activeTool?: ToolCall | null;
+  onToolSubmit?: (submission: { tool_type: string; data: any }) => Promise<void>;
 }
 
-/** Compact tag for insight - appears at top of right panel */
+/** Compact tag for insight - appears at top of right panel. Wraps long text, max 4 lines with scroll. */
 const InsightTag = ({ label, value }: { label: string; value: string }) => (
   <div
-    className="px-3 py-2 rounded-xl border"
+    className="px-3 py-2 rounded-xl border min-h-[2.5rem]"
     style={{
       background: 'rgba(255, 255, 255, 0.04)',
       borderColor: 'rgba(252, 246, 186, 0.2)',
@@ -37,11 +53,17 @@ const InsightTag = ({ label, value }: { label: string; value: string }) => (
     }}
   >
     <span className="text-[11px] uppercase tracking-wider text-[#FCF6BA]/70">{label}</span>
-    <p className="text-[13px] font-light text-[#F5F5F0]/95 mt-0.5">{value}</p>
+    <p
+      className="text-[13px] font-light text-[#F5F5F0]/95 mt-0.5 break-words whitespace-pre-wrap max-h-20 overflow-y-auto"
+      style={{ lineHeight: 1.45 }}
+    >
+      {value}
+    </p>
   </div>
 );
 
-export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = false, onArchiveClick }: HudPanelProps) => {
+export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = false, onArchiveClick, activeTool, onToolSubmit }: HudPanelProps) => {
+  const { i18n } = useTranslation();
   const [data, setData] = useState<CognitiveData | null>(null);
   const [insightsPhase, setInsightsPhase] = useState<string>(currentPhase);
   const [wasLoading, setWasLoading] = useState(false);
@@ -102,17 +124,32 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
   const phaseForDisplay = currentPhase && currentPhase !== 'S0' ? currentPhase : insightsPhase;
   const currentIdx = stepIndex(phaseForDisplay);
 
+  // Order: נושא → מצוי (3 מסכים: רגש, מחשבה, מעשה) → רצוי → פער → דפוס
   const insightTags: { label: string; value: string }[] = [];
 
   if (data?.topic && currentIdx >= 1) {
     insightTags.push({ label: 'נושא האימון', value: data.topic });
   }
-  if (currentIdx >= 2 && (emotions.length > 0 || thought || actionActual)) {
+  // מצוי - 3 מסכים נפרדים (כל אחד בריבוע משלו)
+  if (currentIdx >= 2 && emotions.length > 0) {
+    insightTags.push({ label: 'רגש', value: emotions.join(', ') });
+  }
+  if (currentIdx >= 3 && thought) {
+    insightTags.push({ label: 'מחשבה', value: thought });
+  }
+  if (currentIdx >= 4 && actionActual) {
+    insightTags.push({ label: 'מעשה מצוי', value: actionActual });
+  }
+  // רצוי - לפני הפער (לפי מתודולוגיית BSD). מציג מעשה/רגש/מחשבה רצויים.
+  if (currentIdx >= 5) {
+    const ad = data?.action_desired ?? data?.event_actual?.action_desired;
+    const ed = data?.emotion_desired ?? data?.event_actual?.emotion_desired;
+    const td = data?.thought_desired ?? data?.event_actual?.thought_desired;
     const parts: string[] = [];
-    if (emotions.length) parts.push(emotions.slice(0, 3).join(', ') + (emotions.length > 3 ? '...' : ''));
-    if (thought) parts.push((thought.length > 40 ? thought.slice(0, 40) + '...' : thought));
-    if (actionActual) parts.push(actionActual.length > 40 ? actionActual.slice(0, 40) + '...' : actionActual);
-    if (parts.length) insightTags.push({ label: 'מצוי (סיכום 3 המסכים)', value: parts.join(' · ') });
+    if (ad) parts.push(`מעשה: ${ad}`);
+    if (ed) parts.push(`רגש: ${ed}`);
+    if (td) parts.push(`מחשבה: ${td}`);
+    if (parts.length) insightTags.push({ label: 'רצוי', value: parts.join('\n') });
   }
   if (gapName && currentIdx >= 6) {
     insightTags.push({ label: 'פער', value: `${gapName}${gapScore != null ? ` (${gapScore}/10)` : ''}` });
@@ -120,9 +157,16 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
   if (pattern && currentIdx >= 7) {
     insightTags.push({ label: 'דפוס', value: pattern });
   }
-  if (data?.action_desired && currentIdx >= 5) {
-    const v = data.action_desired;
-    insightTags.push({ label: 'רצוי', value: v.length > 50 ? v.slice(0, 50) + '...' : v });
+  // כמ"ז - כוחות מקור וטבע (S12) - supports both forces (source/nature) and kmz_forces (source_forces/nature_forces)
+  const kmz = data?.kmz_forces ?? data?.forces;
+  if (currentIdx >= 12 && kmz) {
+    const k = kmz as Record<string, string[] | undefined>;
+    const source = k.source_forces ?? k.source ?? [];
+    const nature = k.nature_forces ?? k.nature ?? [];
+    const parts: string[] = [];
+    if (source.length) parts.push(`מקור: ${source.join(', ')}`);
+    if (nature.length) parts.push(`טבע: ${nature.join(', ')}`);
+    if (parts.length) insightTags.push({ label: 'כמ"ז - כוחות', value: parts.join('\n') });
   }
 
   return (
@@ -140,6 +184,16 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
         </div>
       )}
       <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col min-h-0">
+        {/* כלי אינטראקטיבי (כמ"ז, רווח/הפסד) - מופיע ב-S11/S12 */}
+        {activeTool && onToolSubmit && (
+          <section className="p-4 border-b border-white/[0.08] flex-shrink-0 bg-[#0f172a]/80">
+            <ActiveToolRenderer
+              tool={activeTool}
+              onSubmit={onToolSubmit}
+              language={i18n.language as 'he' | 'en'}
+            />
+          </section>
+        )}
         {/* תובנות - תגיות למעלה */}
         {insightTags.length > 0 ? (
           <section className="p-5 border-b border-white/[0.06] flex-shrink-0">
