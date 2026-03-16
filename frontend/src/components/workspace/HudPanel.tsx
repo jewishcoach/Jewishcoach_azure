@@ -26,7 +26,8 @@ interface CognitiveData {
   gap_score?: number;
   gap_analysis?: { name?: string; score?: number };
   pattern?: string;
-  pattern_id?: { name?: string };
+  pattern_id?: { name?: string; paradigm?: string };
+  paradigm?: string;
   stance?: { gains?: string[]; losses?: string[] };
   forces?: { source?: string[]; nature?: string[] };
   kmz_forces?: { source_forces?: string[]; nature_forces?: string[] };
@@ -118,6 +119,8 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
   const gapName = data?.gap_name ?? data?.gap_analysis?.name;
   const gapScore = data?.gap_score ?? data?.gap_analysis?.score;
   const pattern = data?.pattern ?? data?.pattern_id?.name;
+  const paradigm = data?.paradigm ?? data?.pattern_id?.paradigm;
+  const stanceData = data?.stance;
 
   const stepIndex = (s: string) => parseInt(s.replace('S', ''), 10) || 0;
   // Use the more advanced of currentPhase (from last message) or insightsPhase (from API) for display
@@ -156,6 +159,17 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
   }
   if (pattern && currentIdx >= 7) {
     insightTags.push({ label: 'דפוס', value: pattern });
+  }
+  if (paradigm && currentIdx >= 9) {
+    insightTags.push({ label: 'פרדיגמה', value: paradigm });
+  }
+  if (stanceData && currentIdx >= 11) {
+    const gains = stanceData.gains ?? [];
+    const losses = stanceData.losses ?? [];
+    const parts: string[] = [];
+    if (gains.length) parts.push(`רווחים: ${gains.join(', ')}`);
+    if (losses.length) parts.push(`הפסדים: ${losses.join(', ')}`);
+    if (parts.length) insightTags.push({ label: 'עמדה ישנה', value: parts.join('\n') });
   }
   // כמ"ז - כוחות מקור וטבע (S12) - supports both forces (source/nature) and kmz_forces (source_forces/nature_forces)
   const kmz = data?.kmz_forces ?? data?.forces;

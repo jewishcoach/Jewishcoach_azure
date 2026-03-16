@@ -19,5 +19,5 @@
 **חובה:**
 - התשובה כולה אובייקט JSON אחד. אין טקסט לפני או אחרי.
 - `current_step` – השלב הנוכחי (S0, S1, S2...).
-- `collected_data` – **חשוב!** עדכן בכל תור עם הנתונים החדשים שהמשתמש נתן. ב-S1: topic. ב-S2: event_description (תיאור מלא של האירוע שהמשתמש תיאר — שמור בלשונו, כולל מתי/איפה/מי/מה). ב-S3: emotions. ב-S4: thought. ב-S5: action_actual. ב-S6: action_desired, emotion_desired, thought_desired. ב-S7: gap_name, gap_score. ב-S8: pattern. התובנות מוצגות למשתמש בלייב – אל תחזיר collected_data ריק.
+- `collected_data` – **חשוב!** עדכן בכל תור עם הנתונים החדשים שהמשתמש נתן. ב-S1: topic. ב-S2: event_description. ב-S3: emotions. ב-S4: thought. ב-S5: action_actual. ב-S6: action_desired, emotion_desired, thought_desired. ב-S7: gap_name, gap_score. ב-S8: pattern. ב-S9: paradigm (הפרדיגמה – "ככה זה אצלי"). ב-S11: stance (gains, losses – רווחים והפסדים). התובנות מוצגות למשתמש בלייב – אל תחזיר collected_data ריק.
 - `entities` – **זיכרון הקשר חיוני!** בכל תור שבו המשתמש מזכיר שמות, מקומות, או דוגמאות ספציפיות — הוסף אותם ל-`entities`. זה מאפשר לך להשתמש בפרטים האמיתיים ("הבוס דניאל", "חדר הישיבות") בכל השיחה ולא לשכוח אותם.

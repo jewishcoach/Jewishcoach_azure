@@ -83,7 +83,7 @@ def _enrich_collected_from_messages(collected: dict, messages: list, current_sta
             continue
         internal = msg.get("internal_state") or msg.get("metadata", {}).get("internal_state", {})
         cd = internal.get("collected_data") or {}
-        for key in ("gap_name", "gap_score", "pattern", "topic", "emotions", "thought", "action_actual", "action_desired"):
+        for key in ("gap_name", "gap_score", "pattern", "paradigm", "topic", "emotions", "thought", "action_actual", "action_desired"):
             if key not in cd:
                 continue
             v = cd[key]
@@ -132,7 +132,8 @@ _FIELD_VISIBLE_FROM_STAGE: Dict[str, int] = {
     "gap_name":        7,   # S7 (פער) → visible as soon as collected
     "gap_score":       7,
     "pattern":         8,   # S8 (דפוס) → visible as soon as collected
-    "stance":          9,   # S9 (עמדה) → visible as soon as collected
+    "paradigm":        9,   # S9 (פרדיגמה) → visible as soon as collected
+    "stance":         11,   # S11 (רווחים והפסדים) → visible as soon as collected
     "forces":         10,   # S10 (כוחות) → visible as soon as collected
     "renewal":        11,   # S11 (בחירה) → visible as soon as collected
     "vision":         12,   # S12 (חזון) → visible as soon as collected
@@ -222,18 +223,27 @@ def _v2_collected_data_to_cognitive_data(
             if gap_score is not None:
                 out["gap_score"] = gap_score
 
-    # --- Pattern (S7) ---
+    # --- Pattern (S8) ---
     stance = collected.get("stance") or {}
     if not isinstance(stance, dict):
         stance = {}
     if _field_validated("pattern", current_stage):
         pattern = collected.get("pattern")
+        paradigm_val = collected.get("paradigm") or ""
         if pattern:
-            paradigm = (stance.get("gains") or [""])[0] if stance.get("gains") else ""
-            out["pattern_id"] = {"name": pattern, "paradigm": paradigm}
+            out["pattern_id"] = {"name": pattern, "paradigm": paradigm_val}
             out["pattern"] = pattern
+        if paradigm_val:
+            out["paradigm"] = paradigm_val
 
-    # --- Stance / being_desire (S8) ---
+    # --- Stance (S11 — gains/losses) — עמדה ישנה: רווחים והפסדים ---
+    if _field_validated("stance", current_stage) and (stance.get("gains") or stance.get("losses")):
+        out["stance"] = {
+            "gains": stance.get("gains") or [],
+            "losses": stance.get("losses") or []
+        }
+
+    # --- being_desire (renewal/vision) ---
     if _field_validated("stance", current_stage):
         renewal = collected.get("renewal")
         vision  = collected.get("vision")   if _field_validated("vision", current_stage)   else None

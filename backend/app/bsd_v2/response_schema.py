@@ -50,15 +50,17 @@ class CollectedDataSchema(BaseModel):
     S6:  action_desired, emotion_desired, thought_desired (רצוי — desired state)
     S7:  gap_name, gap_score
     S8:  pattern
-    S9:  stance (gains/losses from the pattern — עמדה: רווחים והפסדים)
-    S10: forces (values and abilities — כוחות מקור וטבע)
-    S11: renewal (new choice / new stance — בחירה חדשה / עמדה חדשה)
-    S12: vision (future picture — חזון)
-    S13: commitment (concrete first step — מחויבות / צעד קונקרטי)
+    S9:  paradigm (thought behind the action — פרדיגמה)
+    S10: stance + trigger (reality perception — עמדה וטריגר)
+    S11: stance (gains/losses from the pattern — רווחים והפסדים)
+    S12: forces (values and abilities — כוחות מקור וטבע)
+    S13: renewal (new choice / new stance — בחירה חדשה / עמדה חדשה)
+    S14: vision (future picture — חזון)
+    S15: commitment (concrete first step — מחויבות / צעד קונקרטי)
 
     IMPORTANT — stage numbers match the prompt file headers exactly:
-      S5=מצוי, S6=רצוי, S7=פער, S8=דפוס, S9=עמדה,
-      S10=כוחות, S11=בחירה, S12=חזון, S13=מחויבות
+      S5=מצוי, S6=רצוי, S7=פער, S8=דפוס, S9=פרדיגמה, S10=עמדה+טריגר,
+      S11=רווחים, S12=כוחות, S13=בחירה, S14=חזון, S15=מחויבות
     """
     topic: Union[str, None] = Field(default=None, description="נושא האימון (S1)")
     event_description: Union[str, None] = Field(default=None, description="תיאור האירוע הספציפי (S2)")
@@ -71,11 +73,12 @@ class CollectedDataSchema(BaseModel):
     gap_name: Union[str, None] = Field(default=None, description="שם הפער (S7). מלא רק בשלב S7!")
     gap_score: Union[str, None] = Field(default=None, description="ציון הפער 1-10 כמחרוזת (S7). מלא רק בשלב S7!")
     pattern: Union[str, None] = Field(default=None, description="הדפוס החוזר שזוהה (S8). מלא רק בשלב S8!")
-    stance: Union[StanceSchema, None] = Field(default=None, description="רווחים והפסדים מהדפוס (S9 — עמדה). מלא רק בשלב S9!")
-    forces: Union[ForcesSchema, None] = Field(default=None, description="כוחות מקור וטבע: ערכים ויכולות (S10 — כוחות). מלא רק בשלב S10!")
-    renewal: Union[str, None] = Field(default=None, description="עמדה חדשה / בחירה מודעת שהמשתמש ניסח (S11 — בחירה). מלא רק בשלב S11!")
-    vision: Union[str, None] = Field(default=None, description="חזון / תמונת עתיד (S12 — חזון). מלא רק בשלב S12!")
-    commitment: Union[str, None] = Field(default=None, description="מחויבות קונקרטית / צעד ראשון (S13 — מחויבות). מלא רק בשלב S13!")
+    paradigm: Union[str, None] = Field(default=None, description="הפרדיגמה - 'ככה זה אצלי' / מחשבת המעשה (S9). מלא רק בשלב S9!")
+    stance: Union[StanceSchema, None] = Field(default=None, description="רווחים והפסדים מהדפוס (S11 — עמדה). מלא רק בשלב S11!")
+    forces: Union[ForcesSchema, None] = Field(default=None, description="כוחות מקור וטבע: ערכים ויכולות (S12 — כוחות). מלא רק בשלב S12!")
+    renewal: Union[str, None] = Field(default=None, description="עמדה חדשה / בחירה מודעת שהמשתמש ניסח (S13 — בחירה). מלא רק בשלב S13!")
+    vision: Union[str, None] = Field(default=None, description="חזון / תמונת עתיד (S14 — חזון). מלא רק בשלב S14!")
+    commitment: Union[str, None] = Field(default=None, description="מחויבות קונקרטית / צעד ראשון (S15 — מחויבות). מלא רק בשלב S15!")
     entities: Union[EntitySchema, None] = Field(
         default=None,
         description="ישויות אישיות: שמות אנשים, מקומות, דוגמאות ספציפיות. עדכן בכל תור לאורך כל השיחה! זיכרון הקשר חיוני."
