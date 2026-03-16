@@ -5,7 +5,9 @@
 export function stripUndefined(text: string): string {
   if (text == null || typeof text !== 'string') return '';
   return text
-    .replace(/[^\S\n]*undefined[^\S\n]*/gi, ' ')  // inline: replace with single space, preserve newlines
+    .replace(/\?undefined\s*$/gi, '?')             // "?undefined" at end (common in greetings)
+    .replace(/undefined\s*$/gi, '')                // "undefined" at very end
+    .replace(/[^\S\n]*undefined[^\S\n]*/gi, ' ')   // inline: replace with single space, preserve newlines
     .replace(/\n+undefined[^\S\n]*$/gi, '')        // trailing undefined after newline(s)
     .replace(/^[^\S\n]*undefined\n*/gi, '')        // leading undefined before newline(s)
     .replace(/\?undefined/gi, '?')

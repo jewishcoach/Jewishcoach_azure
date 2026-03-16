@@ -1,14 +1,24 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useUser } from '@clerk/clerk-react';
 import type { Message, Conversation, ToolCall } from '../types';
 import { apiClient } from '../services/api';
 import { BSD_VERSION, getBsdEndpoint } from '../config';
 import { stripUndefined } from '../utils/messageContent';
 
+/** Safe name for greeting - never undefined, never literal "undefined" */
+function getNameForGreeting(displayName?: string | null, clerkFirstName?: string | null, lang: string = 'he'): string {
+  const raw = displayName ?? clerkFirstName ?? '';
+  const cleaned = (typeof raw === 'string' ? raw : '').replace(/^undefined$/i, '').trim();
+  if (cleaned) return cleaned;
+  return lang === 'he' ? 'רב' : 'there';
+}
+
 export const useChat = (displayName?: string | null) => {
   const { t, i18n } = useTranslation();
+  const { user: clerkUser } = useUser();
   
-  // In demo mode, we don't have Clerk user - use displayName directly
+  // In demo mode, displayName is passed directly; otherwise use displayName from API or Clerk
   const user = displayName ? { firstName: displayName } : null;
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
@@ -29,23 +39,21 @@ export const useChat = (displayName?: string | null) => {
 
       // Add welcome message with animation delay
       setTimeout(() => {
-        // Get user's display name (avoid undefined string from API)
-        const rawName = displayName ?? user?.firstName ?? '';
-        const userName = (typeof rawName === 'string' && rawName !== 'undefined' && rawName.trim()) ? rawName.trim() : '';
-        const fallbackName = i18n.language === 'he' ? 'רב' : 'there';
-        const greeting = stripUndefined(String(t('welcome_message', { name: userName || fallbackName }) ?? ''));
+        const name = getNameForGreeting(displayName, clerkUser?.firstName, i18n.language);
+        const greeting = stripUndefined(String(t('welcome_message', { name }) ?? ''));
 
         const welcomeMessage: Message = {
           id: Date.now(),
           role: 'assistant',
           content: greeting,
           timestamp: new Date().toISOString(),
+          meta: { phase: 'S0' },
         };
         setMessages([welcomeMessage]);
         setLoading(false); // Ensure loading is off after welcome message
       }, 500); // Small delay for animation
     }
-  }, [hasInitialized, messages.length, conversationId, t, i18n.language, user, displayName]);
+  }, [hasInitialized, messages.length, conversationId, t, i18n.language, user, displayName, clerkUser?.firstName]);
 
   const createConversation = async () => {
     const response = await apiClient.createConversation();
@@ -84,11 +92,8 @@ export const useChat = (displayName?: string | null) => {
   const startNewConversation = async () => {
     setLoading(false); // Clear any loading state when starting new chat
     
-    // Get user's display name (avoid undefined string from API)
-    const rawName = displayName ?? user?.firstName ?? '';
-    const userName = (typeof rawName === 'string' && rawName !== 'undefined' && rawName.trim()) ? rawName.trim() : '';
-    const fallbackName = i18n.language === 'he' ? 'רב' : 'there';
-    const greeting = stripUndefined(String(t('welcome_message', { name: userName || fallbackName }) ?? ''));
+    const name = getNameForGreeting(displayName, clerkUser?.firstName, i18n.language);
+    const greeting = stripUndefined(String(t('welcome_message', { name }) ?? ''));
 
     // Add welcome message immediately to prevent visual "jump"
     const welcomeMessage: Message = {
@@ -96,6 +101,7 @@ export const useChat = (displayName?: string | null) => {
       role: 'assistant',
       content: greeting,
       timestamp: new Date().toISOString(),
+      meta: { phase: 'S0' },
     };
     
     setMessages([welcomeMessage]);
@@ -167,11 +173,13 @@ export const useChat = (displayName?: string | null) => {
               if (retryResponse.ok) {
                 const retryData = await retryResponse.json();
                 const coachContent = stripUndefined(String(retryData.coach_message ?? ''));
+                const step = retryData.current_step ?? 'S0';
                 setMessages(prev => [...prev, {
                   id: Date.now() + 1,
                   role: 'assistant',
                   content: coachContent,
                   timestamp: new Date().toISOString(),
+                  meta: { phase: step },
                 }]);
                 if (retryData.current_step) setCurrentPhase(retryData.current_step);
                 if (retryData.tool_call) setActiveTool(retryData.tool_call);
@@ -195,11 +203,13 @@ export const useChat = (displayName?: string | null) => {
         const data = await response.json();
         const assistantMessageId = Date.now() + 1;
         const coachContent = stripUndefined(String(data.coach_message ?? ''));
+        const step = data.current_step ?? currentPhase;
         setMessages(prev => [...prev, {
           id: assistantMessageId,
           role: 'assistant',
           content: coachContent,
           timestamp: new Date().toISOString(),
+          meta: { phase: step },
         }]);
         if (data.current_step) setCurrentPhase(data.current_step);
         if (data.tool_call) {
@@ -331,10 +341,18 @@ export const useChat = (displayName?: string | null) => {
                   streamingMessageIdRef.current = null; // Clear streaming message ID
                   streamComplete = true; // Mark stream as complete to exit while loop
                   
-                  // Update current phase if provided
-                  if (data.current_phase) {
-                    console.log('🔄 Updating phase:', currentPhase, '->', data.current_phase);
-                    setCurrentPhase(data.current_phase);
+                  const step = data.current_phase ?? data.current_step;
+                  if (step) {
+                    setCurrentPhase(step);
+                    // Store phase on the assistant message for smart scroll
+                    setMessages(prev => {
+                      const next = [...prev];
+                      const idx = next.findIndex(m => m.role === 'assistant' && m.id === assistantMessageId);
+                      if (idx !== -1) {
+                        next[idx] = { ...next[idx], meta: { ...next[idx].meta, phase: step } };
+                      }
+                      return next;
+                    });
                   }
                   
                   // NEW: Update active tool if provided (for Real-Time Reflection)

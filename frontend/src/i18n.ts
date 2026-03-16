@@ -374,7 +374,8 @@ i18n
     resources,
     fallbackLng: 'en',
     interpolation: {
-      escapeValue: false
+      escapeValue: false,
+      defaultVariables: { name: 'רב' }  // Prevent "undefined" in welcome_message when name is missing
     }
   });
 

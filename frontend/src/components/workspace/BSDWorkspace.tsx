@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { PHASE_TO_STAGES } from './VisionLadder';
 import { useTranslation } from 'react-i18next';
 import { Send, Mic, Square } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -27,11 +28,25 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
   const [inputValue, setInputValue] = useState('');
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [archiveOpen, setArchiveOpen] = useState(false);
-  const { messages, loading, currentPhase, conversationId, sendMessage, loadConversation, startNewConversation } = useChat(displayName);
+  const { messages, loading, currentPhase, conversationId, activeTool, sendMessage, loadConversation, startNewConversation } = useChat(displayName);
   const { isRecording, startRecording, stopRecording } = useVoiceRecord(i18n.language);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesScrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isSendingRef = useRef(false);
+
+  const handlePhaseClick = useCallback((phaseIndex: number) => {
+    const stages = PHASE_TO_STAGES[phaseIndex];
+    if (!stages || stages.length === 0) return;
+    const container = messagesScrollRef.current;
+    if (!container) return;
+    const firstMatch = container.querySelector(
+      stages.map(s => `[data-phase="${s}"]`).join(',')
+    ) as HTMLElement | null;
+    if (firstMatch) {
+      firstMatch.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -97,6 +112,20 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
       await startRecording();
     }
   }, [isRecording, startRecording, stopRecording]);
+
+  const handleToolSubmit = async (submission: { tool_type: string; data: Record<string, unknown> }) => {
+    if (!conversationId) return;
+    try {
+      const token = await getToken();
+      if (!token) return;
+      apiClient.setToken(token);
+      await apiClient.submitToolResponse(conversationId, submission.tool_type, submission.data);
+      const convs = await apiClient.getConversations();
+      setConversations(convs);
+    } catch (error) {
+      console.error('Error submitting tool:', error);
+    }
+  };
 
   const handleDeleteConversation = async (id: number) => {
     const confirmMessage = i18n.language === 'he' ? 'למחוק את השיחה הזו?' : 'Delete this conversation?';
@@ -169,7 +198,14 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
     >
       {/* RIGHT in RTL: Cognitive HUD - Mekor, Teva, Archive, Videos. On mobile: below chat */}
       <div className="order-2 md:order-1 w-full md:w-64 lg:w-72 flex-shrink-0 border-t md:border-t-0 md:border-r border-white/[0.08] bg-[#1e293b] overflow-hidden min-h-0 max-h-[45vh] md:max-h-none">
-        <HudPanel conversationId={conversationId} currentPhase={currentPhase} loading={loading} onArchiveClick={() => setArchiveOpen(true)} />
+        <HudPanel
+          conversationId={conversationId}
+          currentPhase={currentPhase}
+          loading={loading}
+          onArchiveClick={() => setArchiveOpen(true)}
+          activeTool={activeTool ?? null}
+          onToolSubmit={handleToolSubmit}
+        />
       </div>
 
       {/* Archive Drawer */}
@@ -189,7 +225,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
       <div className="order-1 md:order-2 flex flex-col min-w-0 relative overflow-hidden bg-[#F5F5F0] flex-1">
         <ShehiyaProgress loading={loading} />
 
-        <div className="flex-1 overflow-y-auto px-10 py-10 custom-scrollbar bg-[#F5F5F0]">
+        <div ref={messagesScrollRef} className="flex-1 overflow-y-auto px-10 py-10 custom-scrollbar bg-[#F5F5F0]">
           {messages.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
@@ -205,13 +241,19 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
           ) : (
             <div className="space-y-9">
               <AnimatePresence>
-                {messages.map((message, idx) => (
-                  <WorkspaceMessageBubble
-                    key={message.id}
-                    message={message}
-                    animateTyping={idx === 0 && message.role === 'assistant' && messages.length === 1}
-                  />
-                ))}
+                {messages.map((message, idx) => {
+                  const phase = message.role === 'assistant' && message.meta?.phase
+                    ? message.meta.phase
+                    : messages.slice(0, idx).reverse().find(m => m.role === 'assistant' && m.meta?.phase)?.meta?.phase ?? 'S0';
+                  return (
+                    <div key={message.id} data-phase={phase} data-message-id={message.id}>
+                      <WorkspaceMessageBubble
+                        message={message}
+                        animateTyping={idx === 0 && message.role === 'assistant' && messages.length === 1}
+                      />
+                    </div>
+                  );
+                })}
               </AnimatePresence>
               {loading && (
                 <div className="flex justify-start">
@@ -286,7 +328,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
 
       {/* LEFT in RTL: Vision Ladder. On mobile: last (scroll to see) */}
       <div className="order-3 w-[280px] min-w-[280px] flex-shrink-0 h-full min-h-[400px] border-t md:border-t-0 md:border-l border-white/[0.08] bg-[#1e293b] overflow-hidden">
-        <VisionLadder currentStep={currentPhase} />
+        <VisionLadder currentStep={currentPhase} onPhaseClick={handlePhaseClick} />
       </div>
     </div>
   );

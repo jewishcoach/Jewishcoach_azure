@@ -12,6 +12,7 @@ export interface Message {
   timestamp: string;
   meta?: {
     sources?: any;
+    phase?: string;  // Stage (S0-S15) when message was sent - for smart scroll
   };
 }
 
