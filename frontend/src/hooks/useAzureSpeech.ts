@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import * as sdk from 'microsoft-cognitiveservices-speech-sdk';
-import axios from 'axios';
+import { apiClient } from '../services/api';
 import type { SpeechToken } from '../types';
 
 const VOICE_MAP = {
@@ -21,8 +21,7 @@ export const useAzureSpeech = (language: string) => {
 
   const getToken = async (): Promise<SpeechToken> => {
     try {
-      const response = await axios.get<SpeechToken>('http://localhost:8000/api/speech/token');
-      return response.data;
+      return await apiClient.getSpeechToken();
     } catch (err) {
       console.error('Failed to get speech token:', err);
       throw new Error('לא הצלחנו לקבל טוקן לזיהוי דיבור');

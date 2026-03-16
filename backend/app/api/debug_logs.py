@@ -1,9 +1,11 @@
-"""Debug endpoint to fetch recent logs"""
-from fastapi import APIRouter
+"""Debug endpoint to fetch recent logs - admin only"""
+from fastapi import APIRouter, Depends
+from ..dependencies import get_current_admin_user
 import subprocess
 import os
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_admin_user)])
+
 
 @router.get("/debug/logs")
 async def get_recent_logs():

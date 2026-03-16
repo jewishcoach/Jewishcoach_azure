@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import * as sdk from 'microsoft-cognitiveservices-speech-sdk';
 import { COACH_VOICES, type VoiceGender, type VoiceLanguage } from '../constants/voices';
-import axios from 'axios';
+import { apiClient } from '../services/api';
 
 interface UseContinuousChatProps {
   language: VoiceLanguage;
@@ -28,10 +28,9 @@ export const useContinuousChat = ({
   const lastProcessedTextRef = useRef<string>(''); // Track last processed text to prevent duplicates
   const isProcessingRef = useRef(false); // Prevent concurrent processing
 
-  // Get Azure Speech token
+  // Get Azure Speech token (requires auth via apiClient)
   const getToken = async () => {
-    const response = await axios.get('http://localhost:8000/api/speech/token');
-    return response.data;
+    return apiClient.getSpeechToken();
   };
 
   // Initialize recognizer

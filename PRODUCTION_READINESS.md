@@ -13,7 +13,7 @@
 ### שימוש ומגבלות
 - **Usage limits** – `check_usage_limit`, `increment_usage` ב-billing
 - **Usage limiter** – מחובר ל-chat V1 ו-V2 (require_message_quota dependency)
-- **Rate limiting** – slowapi 30/דקה ל-chat (לפי IP)
+- **Rate limiting** – slowapi 30/דקה ל-chat, 10/דקה ל-speech (לפי IP, X-Forwarded-For)
 
 ### Scale ו-Performance
 - **MULTI_USER_SCALING.md** – הנחיות Scale Out, Azure OpenAI tier, GUNICORN_WORKERS
@@ -54,6 +54,15 @@
 
 ---
 
+## Abuse Prevention (תיקונים 2025-03)
+
+| Endpoint | תיקון |
+|---------|-------|
+| `/api/speech/token` | אימות + rate limit 10/דקה + speech quota |
+| `/debug/logs`, `/debug/prompts-health` | הגבלה ל-admin בלבד |
+| `/api/feedback` | אימות + בדיקת בעלות על message |
+| Rate limiter | שימוש ב-X-Forwarded-For מאחורי Azure proxy |
+
 ## סיכום – מה בוצע
 
 | פעולה | סטטוס |
@@ -62,4 +71,5 @@
 | חיבור usage_limiter ל-chat | ✅ |
 | Rate limiting (slowapi) | ✅ |
 | .gitignore ל-antenv | ✅ |
+| אבטחת speech/feedback/debug מפני abuse | ✅ |
 | Application Insights | ⏳ מומלץ |

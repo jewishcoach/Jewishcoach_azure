@@ -149,6 +149,12 @@ class ApiClient {
     return [];
   }
 
+  // Speech - requires auth
+  async getSpeechToken(): Promise<{ token: string; region: string }> {
+    const response = await this.client.get('/speech/token');
+    return response.data;
+  }
+
   // Admin Endpoints
   async getAdminFlags(resolved?: boolean, severity?: string, issueType?: string) {
     const params = new URLSearchParams();

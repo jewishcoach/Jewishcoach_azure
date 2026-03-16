@@ -1,7 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import * as sdk from 'microsoft-cognitiveservices-speech-sdk';
-import axios from 'axios';
-import { getApiBase } from '../config';
+import { apiClient } from '../services/api';
 
 const RECOGNITION_LANGUAGE_MAP: Record<string, string> = {
   he: 'he-IL',
@@ -14,11 +13,8 @@ export const useVoiceRecord = (language: string) => {
   const recognizerRef = useRef<sdk.SpeechRecognizer | null>(null);
   const transcriptRef = useRef<string[]>([]);
 
-  const getToken = useCallback(async () => {
-    const base = getApiBase();
-    const url = `${base.replace(/\/$/, '')}/speech/token`;
-    const response = await axios.get(url);
-    return response.data;
+  const getSpeechToken = useCallback(async () => {
+    return apiClient.getSpeechToken();
   }, []);
 
   const startRecording = useCallback(async (): Promise<boolean> => {
@@ -31,7 +27,7 @@ export const useVoiceRecord = (language: string) => {
       }
       await navigator.mediaDevices.getUserMedia({ audio: true });
 
-      const { token, region } = await getToken();
+      const { token, region } = await getSpeechToken();
       const speechConfig = sdk.SpeechConfig.fromAuthorizationToken(token, region);
       speechConfig.speechRecognitionLanguage = RECOGNITION_LANGUAGE_MAP[language] || 'en-US';
 
@@ -63,7 +59,7 @@ export const useVoiceRecord = (language: string) => {
       setIsRecording(false);
       return false;
     }
-  }, [language, getToken]);
+  }, [language, getSpeechToken]);
 
   const stopRecording = useCallback(async (): Promise<string> => {
     if (!recognizerRef.current) {

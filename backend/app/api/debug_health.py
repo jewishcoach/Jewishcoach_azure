@@ -1,7 +1,9 @@
-"""Debug health check with prompts info"""
-from fastapi import APIRouter
+"""Debug health check with prompts info - admin only"""
+from fastapi import APIRouter, Depends
+from ..dependencies import get_current_admin_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_admin_user)])
+
 
 @router.get("/debug/prompts-health")
 async def prompts_health():
