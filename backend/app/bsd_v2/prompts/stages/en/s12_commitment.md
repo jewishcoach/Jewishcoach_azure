@@ -1,4 +1,4 @@
-# S12 - Commitment
+# S15 - Commitment
 
 Ask:
 "What is one concrete step you commit to?"

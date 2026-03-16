@@ -13,8 +13,11 @@ STAGE_FILES: Dict[str, str] = {
     "S5": "s5_action.md",       # מצוי - מעשה בלבד
     "S6": "s6_desired.md",     # רצוי - רגש, מחשבה, מעשה
     "S7": "s6_gap.md",         # פער
-    "S8": "s7_pattern.md", "S9": "s8_stance.md", "S10": "s9_forces.md",
-    "S11": "s10_choice.md", "S12": "s11_vision.md", "S13": "s12_commitment.md",
+    "S8": "s7_pattern.md",     # דפוס
+    "S9": "s7_paradigm.md",    # פרדיגמה (מחשבת המעשה)
+    "S10": "s8_stance_trigger.md",  # עמדה + טריגר
+    "S11": "s8_stance.md",     # רווחים והפסדים
+    "S12": "s9_forces.md", "S13": "s10_choice.md", "S14": "s11_vision.md", "S15": "s12_commitment.md",
 }
 
 SUPPORTED_LANGUAGES = {"he", "en"}
@@ -30,11 +33,13 @@ STAGE_GATES_HE: Dict[str, str] = {
     "S6": "**Gate (S6→S7):** רצוי (מעשה+רגש+מחשבה) + סיכום מאושר.",
     "S7": "**Gate (S7→S8):** שם לפער + ציון 1–10.",
     "S8": "**Gate (S8→S9):** דפוס סוכם + אישור משתמש.",
-    "S9": "**Gate (S9→S10):** 2+ רווחים, 2+ הפסדים.",
-    "S10": "**Gate (S10→S11):** 2+ ערכים, 2+ יכולות.",
-    "S11": "**Gate (S11→S12):** בחירה ברורה.",
-    "S12": "**Gate (S12→S13):** חזון ברור.",
-    "S13": "**Gate (S13→סיום):** מחויבות קונקרטית.",
+    "S9": "**Gate (S9→S10):** פרדיגמה מנוסחת עם 'ככה זה אצלי'.",
+    "S10": "**Gate (S10→S11):** עמדה מנוסחת + טריגר + שאלות שליטה/סביבה.",
+    "S11": "**Gate (S11→S12):** 2+ רווחים, 2+ הפסדים.",
+    "S12": "**Gate (S12→S13):** 2+ ערכים, 2+ יכולות.",
+    "S13": "**Gate (S13→S14):** בחירה ברורה.",
+    "S14": "**Gate (S14→S15):** חזון ברור.",
+    "S15": "**Gate (S15→סיום):** מחויבות קונקרטית.",
 }
 STAGE_GATES_EN: Dict[str, str] = {
     "S0": "**Gate (S0→S1):** Explicit permission to start (yes/okay/let's go).",
@@ -46,11 +51,13 @@ STAGE_GATES_EN: Dict[str, str] = {
     "S6": "**Gate (S6→S7):** Desired (action+emotion+thought) + confirmed summary.",
     "S7": "**Gate (S7→S8):** Gap name + 1–10 score.",
     "S8": "**Gate (S8→S9):** Pattern summarized + user confirmation.",
-    "S9": "**Gate (S9→S10):** 2+ gains, 2+ losses.",
-    "S10": "**Gate (S10→S11):** 2+ values, 2+ abilities.",
-    "S11": "**Gate (S11→S12):** Clear choice.",
-    "S12": "**Gate (S12→S13):** Clear vision.",
-    "S13": "**Gate (S13→End):** Specific commitment.",
+    "S9": "**Gate (S9→S10):** Paradigm formulated with 'that's how it is for me'.",
+    "S10": "**Gate (S10→S11):** Stance formulated + trigger + control/environment questions.",
+    "S11": "**Gate (S11→S12):** 2+ gains, 2+ losses.",
+    "S12": "**Gate (S12→S13):** 2+ values, 2+ abilities.",
+    "S13": "**Gate (S13→S14):** Clear choice.",
+    "S14": "**Gate (S14→S15):** Clear vision.",
+    "S15": "**Gate (S15→End):** Specific commitment.",
 }
 
 
