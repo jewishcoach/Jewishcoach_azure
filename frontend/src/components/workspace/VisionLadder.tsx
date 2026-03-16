@@ -17,21 +17,6 @@ const STEP_TO_PHASE: Record<string, number> = {
   S13: 9, S14: 10, S15: 10,             // בחירה, חזון ומחויבות
 };
 
-// Reverse: phase index → stage IDs (for scroll-to-phase)
-export const PHASE_TO_STAGES: Record<number, string[]> = {
-  0: ['S0'],
-  1: ['S1', 'S2', 'S3', 'S4', 'S5'],
-  2: ['S6'],
-  3: ['S7'],
-  4: ['S8'],
-  5: ['S9'],
-  6: ['S10', 'S11'],
-  7: [],  // שינוי - no direct stage
-  8: ['S12'],
-  9: ['S13'],
-  10: ['S14', 'S15'],
-};
-
 // 11 שלבים לפי החוברת (מקור-טבע-שכל וכמ"ז – אותו שלב)
 const PHASES: { id: string; title: string; tooltip: string }[] = [
   { id: 'p0', title: 'בקשה לאימון', tooltip: 'קבלת רשות והסכמה להתחיל את תהליך האימון.' },

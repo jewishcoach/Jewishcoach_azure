@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { PHASE_TO_STAGES } from './VisionLadder';
+import { PHASE_TO_STAGES } from './phaseMapping';
 import { useTranslation } from 'react-i18next';
 import { Send, Mic, Square } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
