@@ -67,14 +67,22 @@ export const useChat = (displayName?: string | null) => {
       setLoading(false); // Clear any loading state when switching conversations
       const conv = await apiClient.getConversation(conversationId);
       
-      // Filter out metadata and undefined from all messages
-      const cleanMessages = (conv.messages || []).map((msg: Message) => {
+      // Filter out metadata and undefined from all messages; enrich phase for smart scroll
+      const currentPhase = conv.current_phase || 'S0';
+      const raw = conv.messages || [];
+      const lastAssistantIdx = raw.map((m: Message) => m.role).lastIndexOf('assistant');
+      const cleanMessages = raw.map((msg: Message, idx: number) => {
         let cleanContent = msg.content ?? '';
         cleanContent = cleanContent.replace(/\n\n__METADATA__:.*$/s, '');
         cleanContent = cleanContent.replace(/__SOURCES__:.*$/s, '');
         cleanContent = cleanContent.replace(/\n\n\{.*"sources".*\}$/s, '');
         cleanContent = stripUndefined(cleanContent);
-        return { ...msg, content: cleanContent };
+        let meta = msg.meta ?? {};
+        // Ensure last assistant message has phase for smart scroll (backend may not have saved it for older convs)
+        if (msg.role === 'assistant' && !meta.phase && idx === lastAssistantIdx) {
+          meta = { ...meta, phase: currentPhase };
+        }
+        return { ...msg, content: cleanContent, meta };
       });
       
       setMessages(cleanMessages);

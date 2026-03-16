@@ -48,7 +48,7 @@ class ChatResponse(BaseModel):
 # Defines which tool to activate when the coach first enters each stage.
 # Only stages with interactive input cards are listed here.
 _STAGE_TOOL_TRIGGERS: dict[str, dict] = {
-    "S9": {
+    "S11": {
         "type": "tool",
         "tool_type": "profit_loss",
         "title_he": "טבלת רווח והפסד",
@@ -56,7 +56,7 @@ _STAGE_TOOL_TRIGGERS: dict[str, dict] = {
         "instruction_he": "מה אתה מרוויח מהדפוס הזה? ומה אתה מפסיד? מלא את הטבלה.",
         "instruction_en": "What do you gain from this pattern? And what do you lose? Fill in the table.",
     },
-    "S10": {
+    "S12": {
         "type": "tool",
         "tool_type": "trait_picker",
         "title_he": "כוחות מקור וטבע (כמ\"ז)",
@@ -238,12 +238,13 @@ async def send_message_v2(
         )
         db.add(user_msg)
         
-        # Save coach message
+        # Save coach message (meta.phase for smart scroll in frontend)
         coach_msg = Message(
             conversation_id=body.conversation_id,
             role="assistant",
             content=coach_message,
-            timestamp=utc_now()
+            timestamp=utc_now(),
+            meta={"phase": updated_state["current_step"]}
         )
         db.add(coach_msg)
         
@@ -303,7 +304,7 @@ async def send_message_v2(
         try:
             from app.database import utc_now
             user_msg = Message(conversation_id=body.conversation_id, role="user", content=body.message, timestamp=utc_now())
-            coach_msg = Message(conversation_id=body.conversation_id, role="assistant", content=fallback_msg, timestamp=utc_now())
+            coach_msg = Message(conversation_id=body.conversation_id, role="assistant", content=fallback_msg, timestamp=utc_now(), meta={"phase": state.get("current_step", "S1")})
             db.add(user_msg)
             db.add(coach_msg)
             db.commit()
