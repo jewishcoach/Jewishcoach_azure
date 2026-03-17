@@ -7,11 +7,19 @@ import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { BSDWorkspace } from './components/workspace/BSDWorkspace';
 import { LandingPage } from './components/LandingPage';
 import { OnboardingFlow } from './components/OnboardingFlow';
-import { hasSeenOnboarding, setOnboardingComplete } from './lib/onboardingStorage';
+import { hasSeenOnboarding, setOnboardingComplete, clearOnboardingOnSignOut } from './lib/onboardingStorage';
 import { AdminDashboard } from './pages/AdminDashboard';
-import { BillingPageSimple as BillingPage } from './components/BillingPageSimple';
+import { BillingPage } from './components/BillingPage';
 import { apiClient } from './services/api';
 import './i18n';
+
+// Clear onboarding when user is signed out, so next login shows it again
+function SignedOutClearOnboarding() {
+  useEffect(() => {
+    clearOnboardingOnSignOut();
+  }, []);
+  return null;
+}
 
 // Check if running on tunnel domain (Demo Mode)
 const isTunnelDomain = () => {
@@ -264,8 +272,9 @@ function App() {
 
   return (
     <>
-      {/* Not Signed In - Landing Page */}
+      {/* Not Signed In - Landing Page. Clear onboarding so next login shows it again. */}
       <SignedOut>
+        <SignedOutClearOnboarding />
         <div className="fixed top-4 end-4 z-50">
           <LanguageSwitcher />
         </div>
