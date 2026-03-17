@@ -1,6 +1,5 @@
 /**
  * Application Configuration
- * 
  * Centralized config for feature flags and environment settings.
  */
 
