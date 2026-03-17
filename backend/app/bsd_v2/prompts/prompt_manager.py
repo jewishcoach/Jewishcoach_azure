@@ -37,7 +37,7 @@ STAGE_GATES_HE: Dict[str, str] = {
     "S10": "**Gate (S10→S11):** עמדה מנוסחת + טריגר + שאלות שליטה/סביבה.",
     "S11": "**Gate (S11→S12):** 2+ רווחים, 2+ הפסדים.",
     "S12": "**Gate (S12→S13):** 2+ ערכים, 2+ יכולות.",
-    "S13": "**Gate (S13→S14):** בחירה ברורה.",
+    "S13": "**Gate (S13→S14):** 3 קומות (עמדה→פרדיגמה→דפוס) + תמהיל כמ\"ז בכל אחת.",
     "S14": "**Gate (S14→S15):** חזון ברור.",
     "S15": "**Gate (S15→סיום):** מחויבות קונקרטית.",
 }
@@ -55,7 +55,7 @@ STAGE_GATES_EN: Dict[str, str] = {
     "S10": "**Gate (S10→S11):** Stance formulated + trigger + control/environment questions.",
     "S11": "**Gate (S11→S12):** 2+ gains, 2+ losses.",
     "S12": "**Gate (S12→S13):** 2+ values, 2+ abilities.",
-    "S13": "**Gate (S13→S14):** Clear choice.",
+    "S13": "**Gate (S13→S14):** 3 floors (stance→paradigm→pattern) + KaMaZ mix in each.",
     "S14": "**Gate (S14→S15):** Clear vision.",
     "S15": "**Gate (S15→End):** Specific commitment.",
 }

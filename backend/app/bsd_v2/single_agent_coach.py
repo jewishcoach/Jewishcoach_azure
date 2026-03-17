@@ -314,9 +314,11 @@ def _infer_step_from_coach_message(coach_message: str, language: str) -> Optiona
             ("S6", ["מה היית רוצה", "איך היית רוצה להרגיש", "מה לומר לעצמך"]),
             ("S7", ["איך תקרא לפער", "בסולם", "כמה חזק הפער"]),
             ("S8", ["איפה עוד", "מאיפה עוד", "האם אתה מזהה"]),
-            ("S9", ["מה אתה מרוויח", "מה אתה מפסיד", "מה ההפסד"]),
-            ("S10", ["איזה ערך", "איזו יכולת", "מה חשוב לך"]),
-            ("S11", ["איזו עמדה", "מה אתה בוחר", "איזו בחירה"]),
+            ("S9", ["ככה זה אצלי", "טייס אוטומטי", "חוק פנימי", "פרכדיגמה"]),
+            ("S10", ["אני מאמין ש", "העמדה שלי", "המציאות היא", "העולם הוא", "טריגר", "כפתור הפעלה"]),
+            ("S11", ["מה אתה מרוויח", "מה אתה מפסיד", "מה ההפסד"]),
+            ("S12", ["איזה ערך", "איזו יכולת", "מה חשוב לך"]),
+            ("S13", ["איזו עמדה", "מה אתה בוחר", "איזו בחירה"]),
         ]
     else:
         indicators = [
@@ -327,9 +329,11 @@ def _infer_step_from_coach_message(coach_message: str, language: str) -> Optiona
             ("S6", ["what would you want", "how would you want to feel"]),
             ("S7", ["what would you call", "on a scale", "how strong"]),
             ("S8", ["where else", "do you recognize", "does this happen"]),
-            ("S9", ["what do you gain", "what do you lose"]),
-            ("S10", ["what value", "what ability", "what's important"]),
-            ("S11", ["what stance", "what do you choose"]),
+            ("S9", ["that's how it is for me", "autopilot", "internal rule", "paradigm"]),
+            ("S10", ["I believe that", "my stance", "reality is", "the world is", "trigger", "activation button"]),
+            ("S11", ["what do you gain", "what do you lose"]),
+            ("S12", ["what value", "what ability", "what's important"]),
+            ("S13", ["what stance", "what do you choose"]),
         ]
     for step, phrases in indicators:
         if any(p in coach_lower for p in phrases):
@@ -470,7 +474,7 @@ def detect_stage_question_mismatch(
     Returns:
         The correct next stage if mismatch detected (and it's safe to advance), None otherwise.
     """
-    stage_order = ["S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13"]
+    stage_order = ["S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13", "S14", "S15"]
 
     if language == "he":
         stage_indicators = {
@@ -482,9 +486,11 @@ def detect_stage_question_mismatch(
             "S6": ["מה היית רוצה", "איך היית רוצה להרגיש", "מה לומר לעצמך"],
             "S7": ["איך תקרא לפער", "בסולם", "כמה חזק הפער"],
             "S8": ["איפה עוד", "מאיפה עוד", "האם אתה מזהה", "האם זה קורה"],
-            "S9": ["מה אתה מרוויח", "מה אתה מפסיד", "מה ההפסד", "מה הרווח"],
-            "S10": ["איזה ערך", "איזו יכולת", "מה חשוב לך"],
-            "S11": ["איזו עמדה", "מה אתה בוחר", "איזו בחירה"]
+            "S9": ["ככה זה אצלי", "טייס אוטומטי", "חוק פנימי", "פרכדיגמה"],
+            "S10": ["אני מאמין ש", "העמדה שלי", "המציאות היא", "העולם הוא", "טריגר", "כפתור הפעלה"],
+            "S11": ["מה אתה מרוויח", "מה אתה מפסיד", "מה ההפסד", "מה הרווח"],
+            "S12": ["איזה ערך", "איזו יכולת", "מה חשוב לך"],
+            "S13": ["איזו עמדה", "מה אתה בוחר", "איזו בחירה"]
         }
     else:
         stage_indicators = {
@@ -495,9 +501,11 @@ def detect_stage_question_mismatch(
             "S6": ["what would you want", "how would you want to feel"],
             "S7": ["what would you call", "on a scale", "how strong"],
             "S8": ["where else", "do you recognize", "does this happen"],
-            "S9": ["what do you gain", "what do you lose"],
-            "S10": ["what value", "what ability", "what's important"],
-            "S11": ["what stance", "what do you choose"]
+            "S9": ["that's how it is for me", "autopilot", "internal rule", "paradigm"],
+            "S10": ["I believe that", "my stance", "reality is", "the world is", "trigger", "activation button"],
+            "S11": ["what do you gain", "what do you lose"],
+            "S12": ["what value", "what ability", "what's important"],
+            "S13": ["what stance", "what do you choose"]
         }
 
     coach_lower = coach_message.lower()
@@ -517,7 +525,7 @@ def detect_stage_question_mismatch(
                 return None
 
             # RULE 2: Don't advance S1/S2 → S3+ without an event
-            if current_step in ("S1", "S2") and stage in ("S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11"):
+            if current_step in ("S1", "S2") and stage in ("S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13"):
                 if state:
                     has_event, _ = has_sufficient_event_details(state)
                     if not has_event:
@@ -631,14 +639,16 @@ def get_next_step_question(current_step: str, language: str = "he") -> str:
             "S3": "אני מבין. עכשיו אני רוצה לשמוע - מה עבר לך בראש באותו רגע?",
             "S4": "מה עשית באותו רגע?",
             "S5": "מה עשית בפועל? איך הגבת?",
-            "S6": "מה היית רוצה לעשות במקום? איך להרגיש? מה לומר לעצמך?",
+            "S6": "מה היית רוצה לעשות במקום? איך היית רוצה להרגיש? מה היית רוצה לומר לעצמך?",
             "S7": "איך תקרא לפער הזה? תן לו שם משלך.",
             "S8": "איפה עוד זה קורה?",
-            "S9": "מה אתה מרוויח מהדפוס הזה?",
-            "S10": "מה חשוב לך בחיים? איזה ערך?",
-            "S11": "איזו עמדה חדשה אתה בוחר?",
-            "S12": "איפה הבחירה הזו מובילה אותך?",
-            "S13": "מה תעשה בפעם הבאה?"
+            "S9": "מהו ה'ככה זה אצלי' שממנו מופיע הדפוס הזה?",
+            "S10": "מאיזו תפיסת מציאות או אמונה הפרכדיגמה הזו נובעת? מה מדליק אותה?",
+            "S11": "מה אתה מרוויח מהדפוס הזה?",
+            "S12": "מה חשוב לך בחיים? איזה ערך?",
+            "S13": "איזו עמדה חדשה אתה בוחר?",
+            "S14": "איפה הבחירה הזו מובילה אותך?",
+            "S15": "מה תעשה בפעם הבאה?"
         }
     else:
         step_questions = {
@@ -648,14 +658,16 @@ def get_next_step_question(current_step: str, language: str = "he") -> str:
             "S3": "I understand. Now I want to hear - what went through your mind in that moment?",
             "S4": "What did you do in that moment?",
             "S5": "What did you actually do? How did you respond?",
-            "S6": "What would you have wanted to do instead? How to feel? What to tell yourself?",
+            "S6": "What would you have wanted to do instead? How would you want to feel? What would you want to tell yourself?",
             "S7": "What would you call this gap? Give it a name.",
             "S8": "Where else does this happen?",
-            "S9": "What do you gain from this pattern?",
-            "S10": "What's important to you in life? What value?",
-            "S11": "What new stance do you choose?",
-            "S12": "Where does this choice lead you?",
-            "S13": "What will you do next time?"
+            "S9": "What is the 'that's how it is for me' from which this pattern emerges?",
+            "S10": "From what reality perception or belief does this paradigm stem? What activates it?",
+            "S11": "What do you gain from this pattern?",
+            "S12": "What's important to you in life? What value?",
+            "S13": "What new stance do you choose?",
+            "S14": "Where does this choice lead you?",
+            "S15": "What will you do next time?"
         }
     
     return step_questions.get(current_step, "בוא נמשיך הלאה." if language == "he" else "Let's continue.")
@@ -1368,7 +1380,7 @@ def validate_stage_transition(
         - If is_valid=False, return correction message to override LLM response
     """
     # Compute stage indexes once - ALWAYS set (guards against UnboundLocalError)
-    stage_order = ["S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13"]
+    stage_order = ["S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13", "S14", "S15"]
     old_idx = _safe_stage_index(old_step, stage_order)
     new_idx = _safe_stage_index(new_step, stage_order)
 
@@ -1983,7 +1995,7 @@ So feel free to share an event from any area where you interacted with people an
             step_progression = {
                 "S0": "S1", "S1": "S2", "S2": "S3", "S3": "S4",
                 "S4": "S5", "S5": "S6", "S6": "S7", "S7": "S8",
-                "S8": "S9", "S9": "S10", "S10": "S11", "S11": "S12", "S12": "S13"
+                "S8": "S9", "S9": "S10", "S10": "S11", "S11": "S12", "S12": "S13", "S13": "S14", "S14": "S15"
             }
             next_step = step_progression.get(current_step, current_step)
         
