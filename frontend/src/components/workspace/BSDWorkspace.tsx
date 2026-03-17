@@ -210,7 +210,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
       dir={i18n.dir()}
     >
       {/* RIGHT in RTL: Cognitive HUD - Mekor, Teva, Archive, Videos. On mobile: below chat */}
-      <div className="order-2 md:order-1 w-full md:w-64 lg:w-72 flex-shrink-0 border-t md:border-t-0 md:border-r border-white/[0.08] bg-[#1e293b] overflow-hidden min-h-0 max-h-[45vh] md:max-h-none">
+      <div className="order-2 md:order-1 w-full md:w-64 lg:w-72 flex-shrink-0 border-t md:border-t-0 md:border-r border-white/[0.08] bg-[#1e293b] overflow-hidden min-h-0 max-h-[30vh] md:max-h-none">
         <HudPanel
           conversationId={conversationId}
           currentPhase={currentPhase}
@@ -234,8 +234,8 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
         isRTL={isRTL}
       />
 
-      {/* CENTER: Chat area - cream background. On mobile: first */}
-      <div className="order-1 md:order-2 flex flex-col min-w-0 relative overflow-hidden bg-[#F5F5F0] flex-1">
+      {/* CENTER: Chat area - cream background. On mobile: first, must not shrink */}
+      <div className="order-1 md:order-2 flex flex-col min-w-0 min-h-[50vh] md:min-h-0 relative overflow-hidden bg-[#F5F5F0] flex-1 flex-shrink-0 md:flex-shrink">
         <ShehiyaProgress loading={loading} />
 
         <div ref={messagesScrollRef} className="flex-1 overflow-y-auto px-4 py-6 md:px-10 md:py-10 custom-scrollbar bg-[#F5F5F0]">
@@ -340,7 +340,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
       </div>
 
       {/* LEFT in RTL: Vision Ladder. On mobile: full width, last (scroll to see) */}
-      <div className="order-3 w-full md:w-[280px] min-w-0 md:min-w-[280px] flex-shrink-0 h-full min-h-[400px] border-t md:border-t-0 md:border-l border-white/[0.08] bg-[#1e293b] overflow-hidden">
+      <div className="order-3 w-full md:w-[280px] min-w-0 md:min-w-[280px] flex-shrink-0 h-full min-h-[200px] md:min-h-[400px] border-t md:border-t-0 md:border-l border-white/[0.08] bg-[#1e293b] overflow-hidden">
         <VisionLadder currentStep={currentPhase} onPhaseClick={handlePhaseClick} />
       </div>
     </div>

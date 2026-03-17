@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import {
   User, Settings, Save, X, ArrowRight, Target, History,
   Loader2, CreditCard, FileText, ExternalLink, BookOpen,
-  ScanEye
+  ScanEye, MoreVertical
 } from 'lucide-react';
 import { CoachingCalendar } from './CoachingCalendar';
 import { RemindersManager } from './RemindersManager';
@@ -84,6 +84,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
   const [editForm, setEditForm] = useState({ display_name: '', gender: '' });
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<DashboardTab>('summary');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     loadDashboard();
@@ -178,10 +179,107 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
   }
   const isNewUser = stats.total_conversations === 0;
 
+  const LinksSection = () => (
+    <div className="flex flex-col gap-1">
+      {onShowBilling && (
+        <button
+          onClick={() => { onShowBilling(); setMobileMenuOpen(false); }}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full transition-colors hover:bg-gray-50 text-start"
+          style={{ color: COLORS.textMuted }}
+        >
+          <CreditCard className="w-4 h-4 flex-shrink-0" />
+          {t('billing.button')}
+        </button>
+      )}
+      <a
+        href={`${BSD_WEBSITE_URL}/privacy`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full transition-colors hover:bg-gray-50"
+        style={{ color: COLORS.textMuted }}
+      >
+        <FileText className="w-4 h-4 flex-shrink-0" />
+        {t('sidebar.policy')}
+      </a>
+      <a
+        href={BSD_BOOKS_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full transition-colors hover:bg-gray-50"
+        style={{ color: COLORS.textMuted }}
+      >
+        <BookOpen className="w-4 h-4 flex-shrink-0" />
+        {t('sidebar.book')}
+      </a>
+      <a
+        href={BSD_WEBSITE_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full transition-colors hover:bg-gray-50"
+        style={{ color: COLORS.textMuted }}
+      >
+        <ExternalLink className="w-4 h-4 flex-shrink-0" />
+        {t('sidebar.website')}
+      </a>
+    </div>
+  );
+
   return (
     <div className="flex flex-col md:flex-row h-full overflow-hidden dashboard-container" dir="rtl" style={{ background: COLORS.bg }}>
-      {/* Left Sidebar - MatDash style. On mobile: horizontal nav at top */}
-      <aside className="w-full md:w-56 flex-shrink-0 flex flex-row md:flex-col py-4 md:py-6 px-3 gap-1 md:gap-0 overflow-x-auto md:overflow-visible" style={{ background: COLORS.card, boxShadow: COLORS.shadow }}>
+      {/* Mobile: Sticky top bar with profile + more menu */}
+      <div className="md:hidden sticky top-0 z-10 flex items-center justify-between gap-3 px-4 py-3 border-b" style={{ background: COLORS.card, borderColor: COLORS.border, boxShadow: COLORS.shadow }}>
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="p-2 -m-2 rounded-lg transition-colors hover:bg-gray-100 flex-shrink-0"
+              style={{ color: COLORS.textMuted }}
+              aria-label={t('chat.button')}
+            >
+              <ArrowRight className="w-5 h-5" />
+            </button>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold truncate" style={{ color: COLORS.text }}>
+              {profile.display_name || profile.email?.split('@')[0] || 'משתמש'}
+            </p>
+            <div className="flex items-center gap-2 mt-0.5">
+              {profile.gender && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: COLORS.accentLight, color: COLORS.accent }}>
+                  {profile.gender === 'male' ? t('dashboard.male') : t('dashboard.female')}
+                </span>
+              )}
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: COLORS.accentLight, color: COLORS.accent }}>
+                {profile.current_plan.toUpperCase()}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className="relative flex-shrink-0">
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-2 rounded-xl transition-colors hover:bg-gray-100"
+            style={{ color: COLORS.textMuted }}
+            aria-label="תפריט"
+          >
+            <MoreVertical className="w-5 h-5" />
+          </button>
+          {mobileMenuOpen && (
+            <>
+              <div className="fixed inset-0 z-20" onClick={() => setMobileMenuOpen(false)} aria-hidden="true" />
+              <div
+                className="absolute top-full end-0 mt-2 w-56 rounded-xl shadow-lg py-2 z-30"
+                style={{ background: COLORS.card, boxShadow: '0 10px 40px rgba(0,0,0,0.15)' }}
+              >
+                <LinksSection />
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Desktop: Left Sidebar */}
+      <aside className="hidden md:flex w-56 flex-shrink-0 flex-col py-6 px-3" style={{ background: COLORS.card, boxShadow: COLORS.shadow }}>
         {onBack && (
           <button
             onClick={onBack}
@@ -192,12 +290,12 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
             {t('chat.button')}
           </button>
         )}
-        <nav className="flex flex-row md:flex-col gap-1 flex-1 overflow-x-auto md:overflow-visible flex-nowrap md:flex-wrap">
+        <nav className="flex flex-col gap-1 flex-1">
           {NAV_ITEMS.map((item) => (
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className="flex items-center gap-2 md:gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all flex-shrink-0"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-start w-full"
               style={{
                 background: activeTab === item.id ? COLORS.accent : 'transparent',
                 color: activeTab === item.id ? '#FFFFFF' : COLORS.textMuted,
@@ -208,58 +306,43 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
             </button>
           ))}
         </nav>
-
-        {/* Links: Billing, Policy, Website */}
-        <div className="md:mt-auto pt-4 border-t flex-shrink-0 flex flex-col gap-1" style={{ borderColor: COLORS.border }}>
-          {onShowBilling && (
-            <button
-              onClick={onShowBilling}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full transition-colors hover:bg-gray-50"
-              style={{ color: COLORS.textMuted }}
-            >
-              <CreditCard className="w-4 h-4" />
-              {t('billing.button')}
-            </button>
-          )}
-          <a
-            href={`${BSD_WEBSITE_URL}/privacy`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full transition-colors hover:bg-gray-50"
-            style={{ color: COLORS.textMuted }}
-          >
-            <FileText className="w-4 h-4" />
-            {t('sidebar.policy')}
-          </a>
-          <a
-            href={BSD_BOOKS_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full transition-colors hover:bg-gray-50"
-            style={{ color: COLORS.textMuted }}
-          >
-            <BookOpen className="w-4 h-4" />
-            {t('sidebar.book')}
-          </a>
-          <a
-            href={BSD_WEBSITE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full transition-colors hover:bg-gray-50"
-            style={{ color: COLORS.textMuted }}
-          >
-            <ExternalLink className="w-4 h-4" />
-            {t('sidebar.website')}
-          </a>
+        <div className="mt-auto pt-4 border-t" style={{ borderColor: COLORS.border }}>
+          <LinksSection />
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto custom-scrollbar">
+      {/* Mobile: Bottom tab bar */}
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 z-10 flex items-center justify-around py-2 px-2"
+        style={{
+          background: COLORS.card,
+          borderTop: `1px solid ${COLORS.border}`,
+          boxShadow: '0 -2px 10px rgba(0,0,0,0.06)',
+          paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
+        }}
+      >
+        {NAV_ITEMS.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => setActiveTab(item.id)}
+            className="flex flex-col items-center justify-center gap-1 px-4 py-2 rounded-xl min-w-[64px] transition-all"
+            style={{
+              background: activeTab === item.id ? COLORS.accentLight : 'transparent',
+              color: activeTab === item.id ? COLORS.accent : COLORS.textMuted,
+            }}
+          >
+            {item.icon}
+            <span className="text-[11px] font-medium">{t(item.labelKey)}</span>
+          </button>
+        ))}
+      </nav>
+
+      {/* Main Content - pb for mobile bottom nav */}
+      <main className="flex-1 overflow-y-auto custom-scrollbar pb-24 md:pb-0">
         <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-8 overflow-x-hidden">
-          {/* Hero Banner */}
+          {/* Hero Banner - desktop only; mobile has compact top bar */}
           <motion.div
-            className="relative rounded-2xl overflow-hidden mb-6"
+            className="relative rounded-2xl overflow-hidden mb-6 hidden md:block"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             style={{ boxShadow: COLORS.shadowSm }}
@@ -280,9 +363,9 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
             </div>
           </motion.div>
 
-          {/* Profile + Stats row - Instagram style */}
+          {/* Profile + Stats row - desktop only */}
           <motion.div
-            className="text-center mb-8"
+            className="text-center mb-8 hidden md:block"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.05 }}
