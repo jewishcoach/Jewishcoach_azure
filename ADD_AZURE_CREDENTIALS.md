@@ -77,6 +77,24 @@ az webapp config appsettings set \
 | `AZURE_OPENAI_API_VERSION` | `2024-08-01-preview` | נדרש ל-Structured Outputs. אם חסר – ייפול ל-JSON Mode (עובד). |
 | `BSD_V2_JSON_MODE` | `1` | משמש fallback כש-Structured Output נכשל. מפעיל `response_format={"type": "json_object"}`. |
 
+### תזכורות במייל (Email)
+
+| משתנה | ערך | הסבר |
+|-------|-----|------|
+| `EMAIL_CONNECTION_STRING` | `endpoint=https://xxx.communication.azure.com/;accessKey=xxx` | **חובה** לשליחת תזכורות. Connection string מ-Azure Communication Services. ראה [REMINDER_EMAIL_SETUP.md](backend/REMINDER_EMAIL_SETUP.md). |
+| `EMAIL_SENDER` | `donotreply@xxx.azurecomm.net` | עבור Azure Managed Domain. עבור דומיין מותאם: `reminders@jewishcoacher.com`. |
+| `REMINDER_CRON_SECRET` | מחרוזת סודית (למשל UUID) | **חובה** להגנה על endpoint התזכורות. Logic App / Cron שולח ב-header: `X-Cron-Secret`. |
+
+**הגדרה דרך CLI:**
+```bash
+az webapp config appsettings set \
+  --name jewishcoach-api \
+  --resource-group jewish-coach-rg \
+  --settings \
+    EMAIL_CONNECTION_STRING="endpoint=https://YOUR-RESOURCE.communication.azure.com/;accessKey=YOUR_KEY" \
+    REMINDER_CRON_SECRET="your-random-secret"
+```
+
 ---
 
 ## A/B Testing: Google Gemini (USE_GEMINI=1)

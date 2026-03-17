@@ -80,7 +80,7 @@ export const RemindersManager = ({ variant = 'dark' }: RemindersManagerProps) =>
         },
         body: JSON.stringify({
           ...formData,
-          reminder_date: new Date(formData.reminder_date + 'T00:00:00').toISOString(),
+          reminder_date: new Date(formData.reminder_date + 'T' + (formData.reminder_time || '12:00') + ':00').toISOString(),
         })
       });
       

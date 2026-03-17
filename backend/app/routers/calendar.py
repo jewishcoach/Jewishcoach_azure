@@ -1,11 +1,12 @@
 """
 Calendar, Goals, and Reminders endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+import os
+from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from fastapi.responses import Response, RedirectResponse
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
-from typing import List
+from datetime import datetime, timedelta, timezone
+from typing import List, Optional
 from ics import Calendar as ICSCalendar, Event
 import json
 
@@ -386,6 +387,81 @@ def _enrich_reminder_response(reminder: CoachingReminder) -> ReminderResponse:
         response.next_reminder_date = reminder.reminder_date
     
     return response
+
+
+# ============================================================================
+# REMINDER EMAIL SENDING (called by cron / Azure Logic Apps)
+# ============================================================================
+
+def _get_reminder_datetime(reminder: CoachingReminder) -> datetime:
+    """Get reminder datetime in UTC. Frontend sends combined date+time in reminder_date."""
+    d = reminder.reminder_date
+    return d.replace(tzinfo=timezone.utc) if d.tzinfo is None else d
+
+
+@router.post("/send-reminder-emails")
+def send_reminder_emails(
+    x_cron_secret: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
+):
+    """
+    Process due reminders and send emails.
+    Call from Azure Logic Apps / cron every 15 min.
+    Requires X-Cron-Secret header matching REMINDER_CRON_SECRET env.
+    """
+    secret = os.getenv("REMINDER_CRON_SECRET", "").strip()
+    if secret and x_cron_secret != secret:
+        raise HTTPException(status_code=403, detail="Invalid or missing X-Cron-Secret")
+
+    from ..services.email_service import send_reminder_email
+
+    now = datetime.now(timezone.utc)
+    window_start = now - timedelta(minutes=15)
+    window_end = now + timedelta(minutes=5)
+    sent = 0
+    skipped = 0
+
+    reminders = db.query(CoachingReminder).filter(
+        CoachingReminder.is_active == True,
+    ).all()
+
+    for reminder in reminders:
+        user = reminder.user
+        if not user or not user.email or "@clerk.temp" in (user.email or ""):
+            skipped += 1
+            continue
+
+        reminder_dt = _get_reminder_datetime(reminder)
+        if reminder_dt.tzinfo is None:
+            reminder_dt = reminder_dt.replace(tzinfo=timezone.utc)
+
+        # Send if reminder time is within the window and we haven't sent (for once) or not recently (recurring)
+        if window_start <= reminder_dt <= window_end:
+            if reminder.repeat_type == "once" and reminder.last_sent is not None:
+                skipped += 1
+                continue
+            if reminder.repeat_type != "once" and reminder.last_sent:
+                last = reminder.last_sent.replace(tzinfo=timezone.utc) if reminder.last_sent.tzinfo is None else reminder.last_sent
+                if (now - last).total_seconds() < 3600:
+                    skipped += 1
+                    continue
+
+            ok = send_reminder_email(
+                to_email=user.email,
+                title=reminder.title,
+                description=reminder.description,
+                reminder_date=reminder.reminder_date,
+                reminder_time=reminder.reminder_time,
+                repeat_type=reminder.repeat_type,
+            )
+            if ok:
+                reminder.last_sent = now
+                db.commit()
+                sent += 1
+            else:
+                skipped += 1
+
+    return {"sent": sent, "skipped": skipped}
 
 
 # ============================================================================

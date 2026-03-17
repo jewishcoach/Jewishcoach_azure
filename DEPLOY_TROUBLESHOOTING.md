@@ -1,7 +1,7 @@
 # פתרון בעיות פריסה ל-Azure
 
 ## הבעיה
-- `/api/chat/v2/warmup` ו-`/api/chat/v2/message/stream` מחזירים 404
+- `/api/chat/v2/warmup` מחזיר 404
 - השרת מריץ גרסה ישנה (commit bffadaa)
 - פריסה ישירה (`az webapp deploy`) נכשלת עם 503
 

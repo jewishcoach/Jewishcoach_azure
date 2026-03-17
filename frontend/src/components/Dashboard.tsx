@@ -3,8 +3,8 @@ import { useAuth } from '@clerk/clerk-react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import {
-  User, Award, Settings, Save, X, ArrowRight, Target, History,
-  MessageSquare, Calendar, TrendingUp, Loader2, CreditCard, FileText, ExternalLink, BookOpen,
+  User, Settings, Save, X, ArrowRight, Target, History,
+  Loader2, CreditCard, FileText, ExternalLink, BookOpen,
   ScanEye
 } from 'lucide-react';
 import { CoachingCalendar } from './CoachingCalendar';
@@ -292,22 +292,6 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
             </h1>
             <p className="text-sm mb-5" style={{ color: COLORS.textMuted }}>{profile.email}</p>
 
-            {/* Stats - horizontal, minimal */}
-            <div className="flex justify-center gap-12 mb-5">
-              <div className="text-center">
-                <div className="text-xl font-semibold" style={{ color: COLORS.text }}>{stats.total_conversations}</div>
-                <div className="text-xs" style={{ color: COLORS.textMuted }}>{t('dashboard.conversations')}</div>
-              </div>
-              <div className="text-center">
-                <div className="text-xl font-semibold" style={{ color: COLORS.text }}>{stats.total_messages}</div>
-                <div className="text-xs" style={{ color: COLORS.textMuted }}>{t('dashboard.messages')}</div>
-              </div>
-              <div className="text-center">
-                <div className="text-xl font-semibold" style={{ color: COLORS.text }}>{stats.days_active}</div>
-                <div className="text-xs" style={{ color: COLORS.textMuted }}>{t('dashboard.daysActive')}</div>
-              </div>
-            </div>
-
             {/* Badges */}
             <div className="flex flex-wrap justify-center gap-2">
               {profile.gender && (
@@ -482,29 +466,6 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
                     </div>
                   </div>
                 </motion.div>
-
-                {/* Achievements - full width, icons only */}
-                <motion.div
-                  className="md:col-span-2 rounded-xl p-5"
-                  style={{ background: COLORS.card, boxShadow: COLORS.shadow }}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                >
-                  <h3 className="text-base font-semibold mb-4 flex items-center gap-2" style={{ color: COLORS.text }}>
-                    <Award className="w-4 h-4" style={{ color: COLORS.accent }} />
-                    {t('dashboard.achievements')}
-                  </h3>
-                  <div className="flex flex-wrap gap-4">
-                    {stats.total_conversations >= 5 && <AchievementBadge icon={<MessageSquare className="w-4 h-4" />} text={t('dashboard.achievement5Conversations')} />}
-                    {stats.total_messages >= 50 && <AchievementBadge icon={<MessageSquare className="w-4 h-4" />} text={t('dashboard.achievement50Messages')} />}
-                    {stats.days_active >= 7 && <AchievementBadge icon={<Calendar className="w-4 h-4" />} text={t('dashboard.achievement7Days')} />}
-                    {stats.longest_conversation_messages >= 20 && <AchievementBadge icon={<TrendingUp className="w-4 h-4" />} text={t('dashboard.achievement20Messages')} />}
-                    {stats.total_conversations < 5 && stats.total_messages < 50 && stats.days_active < 7 && stats.longest_conversation_messages < 20 && (
-                      <p className="text-sm italic" style={{ color: COLORS.textMuted }}>{t('dashboard.noAchievements')}</p>
-                    )}
-                  </div>
-                </motion.div>
               </div>
             </div>
           )}
@@ -539,7 +500,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
           {activeTab === 'history' && (
             <div className="grid lg:grid-cols-2 gap-6">
               <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-                <CoachingCalendar conversations={recent_conversations} variant="light" />
+                <CoachingCalendar conversations={recent_conversations} variant="light" stats={stats} />
               </motion.div>
               <motion.div
                 className="rounded-xl p-5"
@@ -578,15 +539,6 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
     </div>
   );
 };
-
-function AchievementBadge({ icon, text }: { icon: React.ReactNode; text: string }) {
-  return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: COLORS.accentLight, color: COLORS.accent }}>
-      {icon}
-      <span className="text-sm" style={{ color: COLORS.text }}>{text}</span>
-    </div>
-  );
-}
 
 function translatePhase(phase: string): string {
   const translations: Record<string, string> = {

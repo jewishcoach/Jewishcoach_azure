@@ -29,7 +29,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
   const [inputValue, setInputValue] = useState('');
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [archiveOpen, setArchiveOpen] = useState(false);
-  const { messages, loading, currentPhase, conversationId, activeTool, quotaExceeded, dismissQuotaModal, sendMessage, loadConversation, startNewConversation } = useChat(displayName);
+  const { messages, loading, currentPhase, conversationId, activeTool, quotaExceeded, dismissQuotaModal, sendMessage, loadConversation, startNewConversation, applyToolResponse } = useChat(displayName);
   const { isRecording, startRecording, stopRecording } = useVoiceRecord(i18n.language);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesScrollRef = useRef<HTMLDivElement>(null);
@@ -122,7 +122,8 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
       const token = await getToken();
       if (!token) return;
       apiClient.setToken(token);
-      await apiClient.submitToolResponse(conversationId, submission.tool_type, submission.data);
+      const result = await apiClient.submitToolResponse(conversationId, submission.tool_type, submission.data);
+      applyToolResponse(result);
       const convs = await apiClient.getConversations();
       setConversations(convs);
     } catch (error) {

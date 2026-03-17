@@ -6,7 +6,7 @@ This rollout switches BSD V2 from legacy compact prompt loading to modular markd
 
 - Runtime uses stage-aware prompt assembly (`core + current stage`) in:
   - `backend/app/bsd_v2/single_agent_coach.py`
-  - `backend/app/bsd_v2/single_agent_coach_streaming.py`
+  - (streaming removed - uses single_agent_coach only)
 - Full collected-data schema in prompt response format.
 - Hebrew and English modular prompt trees.
 - Local validation scripts:

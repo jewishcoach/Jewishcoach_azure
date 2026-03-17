@@ -124,6 +124,30 @@ export const useChat = (displayName?: string | null) => {
     apiClient.warmupCache();
   };
 
+  const applyToolResponse = (result: any) => {
+    if (!result) {
+      setActiveTool(null);
+      return;
+    }
+
+    const coachContent = stripUndefined(String(result.coach_message ?? ''));
+    const step = result.current_step ?? currentPhase;
+
+    if (coachContent.trim()) {
+      setMessages(prev => [...prev, {
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: coachContent,
+        timestamp: new Date().toISOString(),
+        meta: { phase: step },
+      }]);
+    }
+
+    if (result.current_step) setCurrentPhase(result.current_step);
+    if (result.tool_call) setActiveTool(result.tool_call);
+    else setActiveTool(null);
+  };
+
   const sendMessage = async (
     content: string, 
     language: string, 
@@ -450,6 +474,7 @@ export const useChat = (displayName?: string | null) => {
     sendMessage,
     loadConversation,
     startNewConversation,
-    createConversation
+    createConversation,
+    applyToolResponse
   };
 };

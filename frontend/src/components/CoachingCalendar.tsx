@@ -16,6 +16,8 @@ interface Conversation {
 interface CoachingCalendarProps {
   conversations: Conversation[];
   variant?: 'dark' | 'light';
+  /** Optional: use these for accurate stats instead of deriving from conversations (which may be limited to last 5) */
+  stats?: { total_messages: number; total_conversations: number; days_active: number };
 }
 
 const LIGHT = {
@@ -35,7 +37,7 @@ const DARK = {
   item: 'bg-white/[0.06] border border-white/[0.1]',
 };
 
-export const CoachingCalendar = ({ conversations, variant = 'dark' }: CoachingCalendarProps) => {
+export const CoachingCalendar = ({ conversations, variant = 'dark', stats }: CoachingCalendarProps) => {
   const theme = variant === 'light' ? LIGHT : DARK;
   const { t, i18n } = useTranslation();
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -67,7 +69,7 @@ export const CoachingCalendar = ({ conversations, variant = 'dark' }: CoachingCa
     if (view === 'month' && hasConversations(date)) {
       return (
         <div className="flex justify-center mt-1">
-          <div className="w-1.5 h-1.5 rounded-full bg-[#2E3A56]"></div>
+          <div className="w-1.5 h-1.5 rounded-full bg-[#B38728]"></div>
         </div>
       );
     }
@@ -110,7 +112,7 @@ export const CoachingCalendar = ({ conversations, variant = 'dark' }: CoachingCa
 
         {/* Legend */}
         <div className={`flex items-center gap-2 mt-4 text-sm ${theme.muted}`}>
-          <div className={`w-2 h-2 rounded-full ${variant === 'light' ? 'bg-[#2E3A56]' : 'bg-[#FCF6BA]'}`}></div>
+          <div className="w-2 h-2 rounded-full bg-[#B38728]"></div>
           <span>{t('calendar.daysWithCoaching')}</span>
         </div>
       </motion.div>
@@ -179,19 +181,19 @@ export const CoachingCalendar = ({ conversations, variant = 'dark' }: CoachingCa
         <div className="grid grid-cols-3 gap-4 text-center">
           <div>
             <div className={`text-3xl font-bold ${theme.accent}`}>
-              {Object.keys(conversationsByDate).length}
+              {stats ? stats.days_active : Object.keys(conversationsByDate).length}
             </div>
             <div className={`text-sm mt-1 ${theme.muted}`}>{t('calendar.activeDays')}</div>
           </div>
           <div>
             <div className={`text-3xl font-bold ${theme.title}`}>
-              {conversations.length}
+              {stats ? stats.total_conversations : conversations.length}
             </div>
             <div className={`text-sm mt-1 ${theme.muted}`}>{t('calendar.totalSessions')}</div>
           </div>
           <div>
             <div className={`text-3xl font-bold ${theme.accent}`}>
-              {conversations.reduce((sum, c) => sum + c.message_count, 0)}
+              {stats ? stats.total_messages : conversations.reduce((sum, c) => sum + c.message_count, 0)}
             </div>
             <div className={`text-sm mt-1 ${theme.muted}`}>{t('calendar.totalMessages')}</div>
           </div>
