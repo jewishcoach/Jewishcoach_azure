@@ -3,6 +3,7 @@ import { useAuth } from '@clerk/clerk-react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { Check, Sparkles, Zap, Crown, Gift, Loader2, MessageSquare, Mic } from 'lucide-react';
+import { getApiBase } from '../config';
 
 interface Plan {
   id: string;
@@ -38,7 +39,7 @@ interface BillingOverview {
   coupon_code?: string;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE = getApiBase();
 
 const GOLD_GRADIENT = 'linear-gradient(135deg, #BF953F, #FCF6BA, #B38728)';
 
@@ -54,7 +55,7 @@ export const BillingPage = () => {
   const loadBillingData = useCallback(async () => {
     try {
       const token = await getToken();
-      const response = await fetch(`${API_URL}/api/billing/overview`, {
+      const response = await fetch(`${API_BASE}/billing/overview`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
@@ -81,7 +82,7 @@ export const BillingPage = () => {
     setCouponMessage(null);
     try {
       const token = await getToken();
-      const response = await fetch(`${API_URL}/api/billing/redeem-coupon`, {
+      const response = await fetch(`${API_BASE}/billing/redeem-coupon`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
