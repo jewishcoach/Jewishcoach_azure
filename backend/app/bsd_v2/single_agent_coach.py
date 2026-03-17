@@ -1713,6 +1713,13 @@ def validate_stage_transition(
     
     # S8→S9: Need pattern confirmation
     if old_step == "S8" and new_step == "S9":
+        # Hard floor: require at least one follow-up user response in S8
+        # (don't allow immediate S8→S9 jump with no additional completion turn).
+        s8_turns = count_turns_in_step(state, "S8")
+        if s8_turns < 2:
+            logger.warning(f"[Safety Net] Blocked S8→S9: no additional S8 completion turn yet (s8_turns={s8_turns})")
+            return False, coach_message
+
         # Check if user explicitly said they don't understand the pattern
         if language == "he":
             confusion_keywords = ["לא יודע מה הדפוס", "לא מבין מה הדפוס", "מה הדפוס", "איזה דפוס"]
@@ -1746,8 +1753,6 @@ def validate_stage_transition(
             return True, None
         
         # Check if we have sufficient examples (content-based, not just turns)
-        s8_turns = count_turns_in_step(state, "S8")
-        
         if example_count >= 2 and s8_turns >= 3:
             # Has enough examples and turns → allow transition
             logger.info(f"[Safety Net] S8 has {example_count} examples + {s8_turns} turns → allowing S8→S9")
