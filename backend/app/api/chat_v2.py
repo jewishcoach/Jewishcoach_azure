@@ -204,6 +204,10 @@ async def send_message_v2(
         logger.info(f"[PERF API] Load state from DB: {(t2-t1)*1000:.0f}ms")
         logger.info(f"[BSD V2 API] Loaded state: step={state['current_step']}, messages={len(state.get('messages', []))}")
         
+        # Snapshot previous step BEFORE handle_conversation mutates state in-place.
+        # This is required for reliable "stage entry" detection and tool activation.
+        prev_step = state.get("current_step", "S0")
+
         # Handle conversation (pass user gender from dashboard for אתה/את)
         t3 = time.time()
         user_gender = getattr(current_user, "gender", None) or None
@@ -253,7 +257,6 @@ async def send_message_v2(
         logger.info(f"[PERF API] Save messages to DB: {(t8-t7)*1000:.0f}ms")
         
         # Detect stage entry: if the coach just moved into a new stage, activate its tool
-        prev_step = state.get("current_step", "S0")
         new_step = updated_state.get("current_step", "S0")
         tool_call = None
         if new_step != prev_step and new_step in _STAGE_TOOL_TRIGGERS:
