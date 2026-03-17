@@ -179,82 +179,80 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
   const isNewUser = stats.total_conversations === 0;
 
   const HeaderLinks = () => (
-    <div className="flex items-center gap-1 md:gap-2 flex-wrap justify-end">
+    <div className="flex items-center gap-1 md:gap-2 flex-nowrap flex-shrink-0">
       {onShowBilling && (
         <button
           onClick={() => onShowBilling()}
-          className="flex flex-col md:flex-row items-center gap-0.5 md:gap-1.5 px-1.5 py-1 md:px-2 md:py-1.5 rounded-lg transition-colors hover:bg-gray-100"
+          className="flex items-center gap-1 px-1.5 py-1 md:px-2 md:py-1.5 rounded-lg transition-colors hover:bg-gray-100 whitespace-nowrap min-w-0"
           style={{ color: COLORS.textMuted }}
           aria-label={t('billing.button')}
         >
           <CreditCard className="w-4 h-4 flex-shrink-0" />
-          <span className="text-[10px] md:text-sm">{t('billing.button')}</span>
+          <span className="text-[9px] md:text-sm truncate"><span className="md:hidden">{t('billing.button.short')}</span><span className="hidden md:inline">{t('billing.button')}</span></span>
         </button>
       )}
       <a
         href={`${BSD_WEBSITE_URL}/privacy`}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex flex-col md:flex-row items-center gap-0.5 md:gap-1.5 px-1.5 py-1 md:px-2 md:py-1.5 rounded-lg transition-colors hover:bg-gray-100"
+        className="flex items-center gap-1 px-1.5 py-1 md:px-2 md:py-1.5 rounded-lg transition-colors hover:bg-gray-100 whitespace-nowrap min-w-0"
         style={{ color: COLORS.textMuted }}
         aria-label={t('sidebar.policy')}
       >
         <FileText className="w-4 h-4 flex-shrink-0" />
-        <span className="text-[10px] md:text-sm">{t('sidebar.policy')}</span>
+        <span className="text-[9px] md:text-sm truncate"><span className="md:hidden">{t('sidebar.policy.short')}</span><span className="hidden md:inline">{t('sidebar.policy')}</span></span>
       </a>
       <a
         href={BSD_BOOKS_URL}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex flex-col md:flex-row items-center gap-0.5 md:gap-1.5 px-1.5 py-1 md:px-2 md:py-1.5 rounded-lg transition-colors hover:bg-gray-100"
+        className="flex items-center gap-1 px-1.5 py-1 md:px-2 md:py-1.5 rounded-lg transition-colors hover:bg-gray-100 whitespace-nowrap min-w-0"
         style={{ color: COLORS.textMuted }}
         aria-label={t('sidebar.book')}
       >
         <BookOpen className="w-4 h-4 flex-shrink-0" />
-        <span className="text-[10px] md:text-sm">{t('sidebar.book')}</span>
+        <span className="text-[9px] md:text-sm truncate"><span className="md:hidden">{t('sidebar.book.short')}</span><span className="hidden md:inline">{t('sidebar.book')}</span></span>
       </a>
       <a
         href={BSD_WEBSITE_URL}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex flex-col md:flex-row items-center gap-0.5 md:gap-1.5 px-1.5 py-1 md:px-2 md:py-1.5 rounded-lg transition-colors hover:bg-gray-100"
+        className="flex items-center gap-1 px-1.5 py-1 md:px-2 md:py-1.5 rounded-lg transition-colors hover:bg-gray-100 whitespace-nowrap min-w-0"
         style={{ color: COLORS.textMuted }}
         aria-label={t('sidebar.website')}
       >
         <ExternalLink className="w-4 h-4 flex-shrink-0" />
-        <span className="text-[10px] md:text-sm">{t('sidebar.website')}</span>
+        <span className="text-[9px] md:text-sm truncate"><span className="md:hidden">{t('sidebar.website.short')}</span><span className="hidden md:inline">{t('sidebar.website')}</span></span>
       </a>
     </div>
   );
 
   return (
     <div className="flex flex-col md:flex-row h-full overflow-hidden dashboard-container" dir="rtl" style={{ background: COLORS.bg }}>
-      {/* Mobile: Sticky top bar - settings (replaces back) | profile | header links */}
-      <div className="md:hidden sticky top-0 z-10 flex items-center justify-between gap-3 px-4 py-3 border-b" style={{ background: COLORS.card, borderColor: COLORS.border, boxShadow: COLORS.shadow }}>
+      {/* Mobile: Sticky top bar - one row: settings | profile | header links */}
+      <div className="md:hidden sticky top-0 z-10 flex items-center gap-2 px-3 py-2 border-b flex-nowrap min-w-0" style={{ background: COLORS.card, borderColor: COLORS.border, boxShadow: COLORS.shadow }}>
         <button
           onClick={() => setEditing(!editing)}
-          className="p-2 rounded-lg transition-colors hover:bg-gray-100 flex-shrink-0 order-first"
+          className="p-1.5 rounded-lg transition-colors hover:bg-gray-100 flex-shrink-0"
           style={{ color: COLORS.textMuted }}
           title={t('dashboard.title')}
           aria-label={t('dashboard.title')}
         >
           <Settings className="w-5 h-5" />
         </button>
-        <div className="flex items-center gap-3 min-w-0 flex-1">
-          <div className="min-w-0 flex-1">
-            <p className="font-semibold truncate" style={{ color: COLORS.text }}>
-              {profile.display_name || profile.email?.split('@')[0] || 'משתמש'}
-            </p>
-            <div className="flex items-center gap-2 mt-0.5">
-              {profile.gender && (
-                <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: COLORS.accentLight, color: COLORS.accent }}>
-                  {profile.gender === 'male' ? t('dashboard.male') : t('dashboard.female')}
-                </span>
-              )}
-              <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: COLORS.accentLight, color: COLORS.accent }}>
-                {profile.current_plan.toUpperCase()}
+        <div className="min-w-0 flex-1 flex items-center gap-1.5 overflow-hidden">
+          <p className="font-semibold truncate text-sm" style={{ color: COLORS.text }}>
+            {profile.display_name || profile.email?.split('@')[0] || 'משתמש'}
+          </p>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {profile.gender && (
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full font-medium" style={{ background: COLORS.accentLight, color: COLORS.accent }}>
+                {profile.gender === 'male' ? t('dashboard.male') : t('dashboard.female')}
               </span>
-            </div>
+            )}
+            <span className="text-[9px] px-1.5 py-0.5 rounded-full font-medium" style={{ background: COLORS.accentLight, color: COLORS.accent }}>
+              {profile.current_plan.toUpperCase()}
+            </span>
           </div>
         </div>
         <HeaderLinks />
