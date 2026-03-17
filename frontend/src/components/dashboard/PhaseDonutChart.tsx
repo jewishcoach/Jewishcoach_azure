@@ -1,6 +1,9 @@
 import { motion } from 'framer-motion';
 
-const PHASE_COLORS = ['#2E3A56', '#5A6B8A', '#8B9BB3', '#B38728', '#2E3A56', '#5A6B8A', '#A3A3A3'];
+const PHASE_COLORS = [
+  '#B38728', '#D4AF37', '#FCF6BA', '#AA771C', '#C9A227',
+  '#2E3A56', '#5A6B8A', '#8B9BB3',
+];
 const COLORS = { text: '#2E3A56', textMuted: '#5A6B8A' };
 
 interface PhaseCount {

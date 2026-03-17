@@ -229,34 +229,22 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
 
   return (
     <div className="flex flex-col md:flex-row h-full overflow-hidden dashboard-container" dir="rtl" style={{ background: COLORS.bg }}>
-      {/* Mobile: Sticky top bar with profile + settings + header links */}
+      {/* Mobile: Sticky top bar - settings (replaces back) | profile | header links */}
       <div className="md:hidden sticky top-0 z-10 flex items-center justify-between gap-3 px-4 py-3 border-b" style={{ background: COLORS.card, borderColor: COLORS.border, boxShadow: COLORS.shadow }}>
+        <button
+          onClick={() => setEditing(!editing)}
+          className="p-2 rounded-lg transition-colors hover:bg-gray-100 flex-shrink-0 order-first"
+          style={{ color: COLORS.textMuted }}
+          title={t('dashboard.title')}
+          aria-label={t('dashboard.title')}
+        >
+          <Settings className="w-5 h-5" />
+        </button>
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          {onBack && (
-            <button
-              onClick={onBack}
-              className="p-2 -m-2 rounded-lg transition-colors hover:bg-gray-100 flex-shrink-0"
-              style={{ color: COLORS.textMuted }}
-              aria-label={t('chat.button')}
-            >
-              <ArrowRight className="w-5 h-5" />
-            </button>
-          )}
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <p className="font-semibold truncate" style={{ color: COLORS.text }}>
-                {profile.display_name || profile.email?.split('@')[0] || 'משתמש'}
-              </p>
-              <button
-                onClick={() => setEditing(!editing)}
-                className="p-1.5 rounded-lg transition-colors hover:bg-gray-100 flex-shrink-0"
-                style={{ color: COLORS.textMuted }}
-                title={t('dashboard.title')}
-                aria-label={t('dashboard.title')}
-              >
-                <Settings className="w-4 h-4" />
-              </button>
-            </div>
+            <p className="font-semibold truncate" style={{ color: COLORS.text }}>
+              {profile.display_name || profile.email?.split('@')[0] || 'משתמש'}
+            </p>
             <div className="flex items-center gap-2 mt-0.5">
               {profile.gender && (
                 <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: COLORS.accentLight, color: COLORS.accent }}>
