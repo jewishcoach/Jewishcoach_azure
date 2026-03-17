@@ -26,6 +26,7 @@ export const useChat = (displayName?: string | null) => {
   const [currentPhase, setCurrentPhase] = useState<string>('S0');
   const [activeTool, setActiveTool] = useState<ToolCall | null>(null); // NEW: Track active tool from backend
   const [hasInitialized, setHasInitialized] = useState(false);
+  const [quotaExceeded, setQuotaExceeded] = useState(false);
   const streamingMessageIdRef = useRef<number | null>(null); // Track current streaming message
 
   // Auto-send welcome message on mount (only on first load)
@@ -406,9 +407,8 @@ export const useChat = (displayName?: string | null) => {
           ? 'השיחה לא נמצאה. לחץ על "שיחה חדשה" כדי להתחיל מחדש.'
           : 'Session not found. Please start a new conversation.';
       } else if (errorCode.includes('V2_ERROR_429_QUOTA')) {
-        userFacingMessage = isHebrew
-          ? 'הגעת למגבלת ההודעות שלך לחודש זה.\n\n[➡ לשדרוג תוכנית](/billing)'
-          : 'You have reached your monthly message limit.\n\n[➡ Upgrade your plan](/billing)';
+        setQuotaExceeded(true);
+        return; // Modal will be shown by parent - no chat message
       } else if (errorCode.includes('V2_ERROR_429')) {
         userFacingMessage = isHebrew
           ? 'שולחים הודעות מהר מדי. המתן רגע ונסה שוב.'
@@ -444,7 +444,9 @@ export const useChat = (displayName?: string | null) => {
     loading,
     currentPhase,
     conversationId,
-    activeTool, // NEW: Return active tool for InsightHub
+    activeTool,
+    quotaExceeded,
+    dismissQuotaModal: () => setQuotaExceeded(false),
     sendMessage,
     loadConversation,
     startNewConversation,

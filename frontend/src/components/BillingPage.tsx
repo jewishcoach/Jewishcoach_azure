@@ -260,10 +260,10 @@ export const BillingPage = () => {
                         {i18n.language === 'he' ? 'יומן אישי' : 'Personal journal'}
                       </li>
                     )}
-                    {plan.features?.priority_support && (
+                    {(plan.features?.priority_support || plan.features?.advanced_tools) && (
                       <li className="flex items-center gap-2 text-[#94a3b8] text-sm">
                         <Check className="w-4 h-4 text-[#64748b] flex-shrink-0" />
-                        {t('billing.personalSupport')}
+                        {t('billing.deepInsights')}
                       </li>
                     )}
                   </ul>

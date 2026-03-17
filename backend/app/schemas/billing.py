@@ -29,11 +29,11 @@ PLAN_LIMITS = {
         "name_en": "Basic",
         "price": 0,
         "currency": "ILS",
-        "messages_per_month": 10,
+        "messages_per_month": 30,
         "speech_minutes_per_month": 0,
         "features": {
             "coaching_phases": ["Situation", "Gap"],
-            "journal_access": False,
+            "journal_access": True,
             "advanced_tools": False,
             "priority_support": False
         }

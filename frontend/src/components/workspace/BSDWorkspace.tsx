@@ -12,6 +12,7 @@ import { HudPanel } from './HudPanel';
 import { ShehiyaProgress } from './ShehiyaProgress';
 import { WorkspaceMessageBubble } from './WorkspaceMessageBubble';
 import { Dashboard } from '../Dashboard';
+import { QuotaExceededModal } from '../QuotaExceededModal';
 import { apiClient } from '../../services/api';
 import type { Conversation } from '../../types';
 
@@ -28,7 +29,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
   const [inputValue, setInputValue] = useState('');
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [archiveOpen, setArchiveOpen] = useState(false);
-  const { messages, loading, currentPhase, conversationId, activeTool, sendMessage, loadConversation, startNewConversation } = useChat(displayName);
+  const { messages, loading, currentPhase, conversationId, activeTool, quotaExceeded, dismissQuotaModal, sendMessage, loadConversation, startNewConversation } = useChat(displayName);
   const { isRecording, startRecording, stopRecording } = useVoiceRecord(i18n.language);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesScrollRef = useRef<HTMLDivElement>(null);
@@ -194,6 +195,15 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
   }
 
   return (
+    <>
+      <QuotaExceededModal
+        isOpen={quotaExceeded}
+        onClose={dismissQuotaModal}
+        onGoToSubscription={() => {
+          dismissQuotaModal();
+          onShowBilling?.();
+        }}
+      />
     <div
       className="flex flex-col md:flex-row h-full w-full bg-[#020617] overflow-y-auto md:overflow-hidden"
       dir={i18n.dir()}
@@ -333,5 +343,6 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
         <VisionLadder currentStep={currentPhase} onPhaseClick={handlePhaseClick} />
       </div>
     </div>
+    </>
   );
 };
