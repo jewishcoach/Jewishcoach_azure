@@ -114,12 +114,13 @@ def _stage_idx(stage: str) -> int:
 # A field is visible only once we have moved PAST the stage that produced it
 # (stage advancement = the LLM's implicit validation that the data is complete).
 #
-# Stage → data mapping (from prompt file headers):
+# Stage → data mapping (from response_schema + prompt headers):
 #   S1: topic · S2: event_description · S3: emotions · S4: thought
 #   S5: action_actual (מצוי) · S6: action/emotion/thought_desired (רצוי)
 #   S7: gap_name, gap_score (פער) · S8: pattern (דפוס)
-#   S9: stance/gains/losses (עמדה) · S10: forces (כוחות — ערכים ויכולות)
-#   S11: renewal/choice (בחירה) · S12: vision (חזון) · S13: commitment (מחויבות)
+#   S9: paradigm (פרדיגמה) · S11: stance (רווחים/הפסדים)
+#   S12: forces (כמ"ז — ערכים ויכולות) · S13: renewal/choice
+#   S14: vision · S15: commitment
 _FIELD_VISIBLE_FROM_STAGE: Dict[str, int] = {
     "topic":           2,   # S1 data → visible from S2 onward
     "event_description": 3, # S2 data → visible from S3 onward
@@ -134,10 +135,10 @@ _FIELD_VISIBLE_FROM_STAGE: Dict[str, int] = {
     "pattern":         8,   # S8 (דפוס) → visible as soon as collected
     "paradigm":        9,   # S9 (פרדיגמה) → visible as soon as collected
     "stance":         11,   # S11 (רווחים והפסדים) → visible as soon as collected
-    "forces":         10,   # S10 (כוחות) → visible as soon as collected
-    "renewal":        11,   # S11 (בחירה) → visible as soon as collected
-    "vision":         12,   # S12 (חזון) → visible as soon as collected
-    "commitment":     13,   # S13 (מחויבות) → visible as soon as collected
+    "forces":         12,   # S12 (כוחות כמ"ז) → visible as soon as collected
+    "renewal":        13,   # S13 (בחירה) → visible as soon as collected
+    "vision":         14,   # S14 (חזון) → visible as soon as collected
+    "commitment":     15,   # S15 (מחויבות) → visible as soon as collected
 }
 
 
@@ -148,7 +149,7 @@ def _field_validated(field: str, current_stage: str) -> bool:
 
 
 def _v2_collected_data_to_cognitive_data(
-    collected: dict, messages: list = None, current_stage: str = "S13"
+    collected: dict, messages: list = None, current_stage: str = "S15"
 ) -> dict:
     """
     Transform V2 collected_data schema to frontend CognitiveData format.
@@ -157,7 +158,7 @@ def _v2_collected_data_to_cognitive_data(
 
     Fields are only included once the conversation has advanced past the stage that
     produced them — stage advancement serves as implicit LLM validation.
-    Pass current_stage="S13" to bypass gating (e.g. for admin/debug views).
+    Pass current_stage="S15" to bypass gating (e.g. for admin/debug views).
     """
     if not collected:
         collected = {}
@@ -251,7 +252,7 @@ def _v2_collected_data_to_cognitive_data(
             identity = renewal or vision or (stance["gains"][0] if stance.get("gains") else "")
             out["being_desire"] = {"identity": identity}
 
-    # --- KaMaZ Forces (S9) ---
+    # --- KaMaZ Forces (S12) ---
     if _field_validated("forces", current_stage):
         forces = collected.get("forces") or {}
         if not isinstance(forces, dict):
@@ -262,7 +263,7 @@ def _v2_collected_data_to_cognitive_data(
                 "nature_forces": forces.get("nature") or []
             }
 
-    # --- Commitment (S12) ---
+    # --- Commitment (S15) ---
     if _field_validated("commitment", current_stage):
         commitment = collected.get("commitment")
         if commitment:
@@ -564,11 +565,11 @@ def get_conversation_insights(
     - Emotions (S3)
     - Thought (S4)
     - Action (S5)
-    - Gap analysis (S6)
-    - Pattern (S7)
-    - Being desire (S8)
-    - KaMaZ forces (S9)
-    - Commitment (S10)
+    - Gap analysis (S7)
+    - Pattern (S8)
+    - Being desire / new identity (S13-S14)
+    - KaMaZ forces (S12)
+    - Commitment (S15)
     
     Returns 404 if conversation doesn't exist or user doesn't have access.
     Frontend should handle this gracefully by stopping insights polling.
