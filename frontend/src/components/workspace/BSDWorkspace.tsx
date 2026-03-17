@@ -238,12 +238,12 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
       <div className="order-1 md:order-2 flex flex-col min-w-0 relative overflow-hidden bg-[#F5F5F0] flex-1">
         <ShehiyaProgress loading={loading} />
 
-        <div ref={messagesScrollRef} className="flex-1 overflow-y-auto px-10 py-10 custom-scrollbar bg-[#F5F5F0]">
+        <div ref={messagesScrollRef} className="flex-1 overflow-y-auto px-4 py-6 md:px-10 md:py-10 custom-scrollbar bg-[#F5F5F0]">
           {messages.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="flex flex-col items-center justify-center h-full text-center py-24 px-10"
+              className="flex flex-col items-center justify-center h-full text-center py-16 md:py-24 px-4 md:px-10"
             >
               <p className="text-[#2E3A56]/90 text-[16px] max-w-md" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 300, lineHeight: 1.6 }}>
                 {i18n.language === 'he'
@@ -290,8 +290,8 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
         </div>
 
         {/* Input */}
-        <div className="p-9 border-t border-[#E2E4E8] bg-[#F5F5F0]">
-              <form onSubmit={handleSubmit} className="flex items-end gap-5">
+        <div className="p-4 md:p-9 border-t border-[#E2E4E8] bg-[#F5F5F0]">
+              <form onSubmit={handleSubmit} className="flex items-end gap-3 md:gap-5">
                 <textarea
                   ref={inputRef}
                   value={inputValue}
@@ -299,7 +299,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
                   onKeyDown={handleKeyDown}
                   placeholder={t('chat.placeholder')}
                   disabled={loading}
-                  className="flex-1 resize-none rounded-xl px-6 py-5 text-[16px] max-h-28 placeholder-[#5A6B8A]/60 focus:border-[#B38728]/50 focus:ring-2 focus:ring-[#B38728]/20 focus:outline-none"
+                  className="flex-1 min-w-0 resize-none rounded-xl px-4 md:px-6 py-4 md:py-5 text-[16px] max-h-28 placeholder-[#5A6B8A]/60 focus:border-[#B38728]/50 focus:ring-2 focus:ring-[#B38728]/20 focus:outline-none"
                   style={{
                     fontFamily: 'Inter, sans-serif',
                     fontWeight: 300,
@@ -316,7 +316,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
                   onClick={handleMicClick}
                   disabled={loading}
                   title={isRecording ? (i18n.language === 'he' ? 'עצור הקלטה' : 'Stop recording') : (i18n.language === 'he' ? 'הקלט קול' : 'Record voice')}
-                  className={`p-4 rounded-xl border transition-colors shadow-sm ${
+                  className={`p-3 md:p-4 rounded-xl border transition-colors shadow-sm min-h-[44px] min-w-[44px] flex items-center justify-center ${
                     isRecording
                       ? 'bg-[#2E3A56]/15 border-[#2E3A56]/40 text-[#2E3A56] hover:bg-[#2E3A56]/25'
                       : 'bg-white border-[#E2E4E8] hover:bg-[#F0F1F3] text-[#2E3A56]/80'
@@ -327,7 +327,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
                 <button
                   type="submit"
                   disabled={!inputValue.trim() || loading}
-                  className="p-4 rounded-xl text-[#020617] font-light disabled:opacity-50 transition-all"
+                  className="p-3 md:p-4 rounded-xl text-[#020617] font-light disabled:opacity-50 transition-all min-h-[44px] min-w-[44px] flex items-center justify-center flex-shrink-0"
                   style={{
                     background: 'linear-gradient(45deg, #BF953F, #FCF6BA, #B38728, #FBF5B7, #AA771C)',
                     filter: 'drop-shadow(0 0 5px rgba(212, 175, 55, 0.5))',
@@ -339,8 +339,8 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
         </div>
       </div>
 
-      {/* LEFT in RTL: Vision Ladder. On mobile: last (scroll to see) */}
-      <div className="order-3 w-[280px] min-w-[280px] flex-shrink-0 h-full min-h-[400px] border-t md:border-t-0 md:border-l border-white/[0.08] bg-[#1e293b] overflow-hidden">
+      {/* LEFT in RTL: Vision Ladder. On mobile: full width, last (scroll to see) */}
+      <div className="order-3 w-full md:w-[280px] min-w-0 md:min-w-[280px] flex-shrink-0 h-full min-h-[400px] border-t md:border-t-0 md:border-l border-white/[0.08] bg-[#1e293b] overflow-hidden">
         <VisionLadder currentStep={currentPhase} onPhaseClick={handlePhaseClick} />
       </div>
     </div>

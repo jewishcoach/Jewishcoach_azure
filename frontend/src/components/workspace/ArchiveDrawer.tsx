@@ -49,7 +49,7 @@ export const ArchiveDrawer = ({
             animate={{ x: 0 }}
             exit={{ x: -320 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed top-0 bottom-0 left-0 w-80 bg-[#0F172A]/95 backdrop-blur-md border-r border-white/10 z-50 shadow-2xl"
+            className="fixed top-0 bottom-0 left-0 w-[min(85vw,320px)] max-w-[320px] bg-[#0F172A]/95 backdrop-blur-md border-r border-white/10 z-50 shadow-2xl"
           >
             <div className="p-4 border-b border-white/10 flex justify-between items-center">
               <h3 className="text-sm font-medium text-white/90">ארכיון שיחות</h3>

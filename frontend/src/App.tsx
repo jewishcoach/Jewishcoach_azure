@@ -87,26 +87,26 @@ function SignedInContent() {
   }, [showDashboard, showBilling, showAdmin, getToken, user]);
 
   return (
-    <div className="h-screen flex flex-col bg-[#020617] workspace-root">
+    <div className="h-screen flex flex-col bg-[#020617] workspace-root overflow-x-hidden">
       <motion.header
         initial={{ opacity: 0, y: -50 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 120, damping: 14 }}
-        className="relative z-20 flex justify-between items-center p-6 bg-[#0f172a] backdrop-blur-[25px] border-b border-white/[0.08]"
+        className="relative z-20 flex justify-between items-center p-4 md:p-6 bg-[#0f172a] backdrop-blur-[25px] border-b border-white/[0.08]"
       >
-        <div className="flex items-center gap-[1.2em] flex-shrink-0">
-          <img src="/bsd-logo.png" alt="BSD אימון יהודי" className="h-[69px] object-contain" />
+        <div className="flex items-center gap-2 md:gap-[1.2em] flex-shrink-0 min-w-0">
+          <img src="/bsd-logo.png" alt="BSD אימון יהודי" className="h-12 md:h-[69px] object-contain flex-shrink-0" />
           <p
-            className="text-white font-bold text-2xl md:text-[1.8rem] tracking-wide"
+            className="text-white font-bold text-base sm:text-lg md:text-[1.8rem] tracking-wide truncate hidden sm:block"
             style={{ fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.4 }}
           >
             אִם יֵשׁ לְךָ שָׁמַיִם, נִתֵּן לְךָ כְּנָפַיִם
           </p>
         </div>
-        <div className="flex-1" />
-        <div className="flex items-center gap-4 flex-shrink-0">
+        <div className="flex-1 min-w-2" />
+        <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
           {user && (
-            <span className="text-white/80 text-sm font-light tracking-[0.02em]" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <span className="text-white/80 text-xs md:text-sm font-light tracking-[0.02em] hidden sm:inline" style={{ fontFamily: 'Inter, sans-serif' }}>
               {(() => {
                 const raw = displayName ?? user?.firstName ?? user?.emailAddresses?.[0]?.emailAddress ?? '';
                 const name = (typeof raw === 'string' ? raw : '').replace(/^undefined$/i, '').trim();
@@ -120,11 +120,11 @@ function SignedInContent() {
               setShowBilling(false);
               setShowAdmin(false);
             }}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white text-sm font-light transition-colors"
+            className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs md:text-sm font-light transition-colors min-h-[44px]"
             style={{ fontFamily: 'Inter, sans-serif' }}
           >
-            <BarChart3 className="w-4 h-4" />
-            {showDashboard ? t('chat.button') : t('dashboard.button')}
+            <BarChart3 className="w-4 h-4 flex-shrink-0" />
+            <span className="hidden sm:inline">{showDashboard ? t('chat.button') : t('dashboard.button')}</span>
           </button>
           {isAdmin && !checkingAdmin && (
             <button
@@ -133,11 +133,11 @@ function SignedInContent() {
                 setShowBilling(false);
                 setShowDashboard(false);
               }}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white text-sm font-light transition-colors"
+              className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs md:text-sm font-light transition-colors min-h-[44px]"
               style={{ fontFamily: 'Inter, sans-serif' }}
             >
-              <Shield className="w-4 h-4" />
-              {showAdmin ? t('chat.button') : t('admin.button')}
+              <Shield className="w-4 h-4 flex-shrink-0" />
+              <span className="hidden sm:inline">{showAdmin ? t('chat.button') : t('admin.button')}</span>
             </button>
           )}
           <LanguageSwitcher />
@@ -207,17 +207,17 @@ function DemoModeContent() {
       <motion.header
         initial={{ y: -100 }}
         animate={{ y: 0 }}
-        className="sticky top-0 z-50 flex items-center justify-between p-4 bg-[#0F172A]/95 backdrop-blur-sm border-b border-white/10"
+        className="sticky top-0 z-50 flex items-center justify-between p-4 md:p-6 bg-[#0F172A]/95 backdrop-blur-sm border-b border-white/10"
       >
-        <div className="flex items-center gap-[1.2em] flex-shrink-0">
-          <img src="/bsd-logo.png" alt="BSD אימון יהודי" className="h-[69px] object-contain" />
+        <div className="flex items-center gap-2 md:gap-[1.2em] flex-shrink-0 min-w-0">
+          <img src="/bsd-logo.png" alt="BSD אימון יהודי" className="h-12 md:h-[69px] object-contain flex-shrink-0" />
           <p
-            className="text-white font-bold text-2xl md:text-[1.8rem] tracking-wide"
+            className="text-white font-bold text-base sm:text-lg md:text-[1.8rem] tracking-wide truncate hidden sm:block"
             style={{ fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.4 }}
           >
             אִם יֵשׁ לְךָ שָׁמַיִם, נִתֵּן לְךָ כְּנָפַיִם
           </p>
-          <span className="px-2 py-1 bg-yellow-500/20 text-yellow-300 text-xs rounded-full border border-yellow-500/30">
+          <span className="px-2 py-1 bg-yellow-500/20 text-yellow-300 text-xs rounded-full border border-yellow-500/30 flex-shrink-0">
             DEMO MODE
           </span>
         </div>

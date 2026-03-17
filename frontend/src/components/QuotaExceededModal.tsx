@@ -27,7 +27,7 @@ export const QuotaExceededModal = ({ isOpen, onClose, onGoToSubscription }: Quot
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="relative w-full max-w-md rounded-2xl overflow-hidden shadow-2xl"
+            className="relative w-full max-w-[min(28rem,calc(100vw-2rem))] rounded-2xl overflow-hidden shadow-2xl"
             style={{
               background: 'linear-gradient(165deg, #1e293b 0%, #0f172a 100%)',
               border: '1px solid rgba(255,255,255,0.08)',

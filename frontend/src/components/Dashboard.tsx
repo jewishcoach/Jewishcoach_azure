@@ -179,9 +179,9 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
   const isNewUser = stats.total_conversations === 0;
 
   return (
-    <div className="flex h-full overflow-hidden dashboard-container" dir="rtl" style={{ background: COLORS.bg }}>
-      {/* Left Sidebar - MatDash style */}
-      <aside className="w-56 flex-shrink-0 flex flex-col py-6 px-3" style={{ background: COLORS.card, boxShadow: COLORS.shadow }}>
+    <div className="flex flex-col md:flex-row h-full overflow-hidden dashboard-container" dir="rtl" style={{ background: COLORS.bg }}>
+      {/* Left Sidebar - MatDash style. On mobile: horizontal nav at top */}
+      <aside className="w-full md:w-56 flex-shrink-0 flex flex-row md:flex-col py-4 md:py-6 px-3 gap-1 md:gap-0 overflow-x-auto md:overflow-visible" style={{ background: COLORS.card, boxShadow: COLORS.shadow }}>
         {onBack && (
           <button
             onClick={onBack}
@@ -192,12 +192,12 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
             {t('chat.button')}
           </button>
         )}
-        <nav className="flex flex-col gap-1 flex-1">
+        <nav className="flex flex-row md:flex-col gap-1 flex-1 overflow-x-auto md:overflow-visible flex-nowrap md:flex-wrap">
           {NAV_ITEMS.map((item) => (
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
+              className="flex items-center gap-2 md:gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all flex-shrink-0"
               style={{
                 background: activeTab === item.id ? COLORS.accent : 'transparent',
                 color: activeTab === item.id ? '#FFFFFF' : COLORS.textMuted,
@@ -210,7 +210,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
         </nav>
 
         {/* Links: Billing, Policy, Website */}
-        <div className="mt-auto pt-4 border-t" style={{ borderColor: COLORS.border }}>
+        <div className="md:mt-auto pt-4 border-t flex-shrink-0 flex flex-col gap-1" style={{ borderColor: COLORS.border }}>
           {onShowBilling && (
             <button
               onClick={onShowBilling}
@@ -256,7 +256,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto custom-scrollbar">
-        <div className="max-w-4xl mx-auto px-6 py-8">
+        <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-8 overflow-x-hidden">
           {/* Hero Banner */}
           <motion.div
             className="relative rounded-2xl overflow-hidden mb-6"

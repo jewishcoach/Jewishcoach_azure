@@ -186,7 +186,7 @@ export const RemindersManager = ({ variant = 'dark' }: RemindersManagerProps) =>
                 <textarea value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} placeholder={t('reminders.description_placeholder')} rows={2} className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none ${inputCls}`} />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${textCls}`}>{t('reminders.date')}</label>
                   <input type="date" value={formData.reminder_date} onChange={(e) => setFormData({...formData, reminder_date: e.target.value})} required className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none ${inputCls}`} />
@@ -251,14 +251,14 @@ export const RemindersManager = ({ variant = 'dark' }: RemindersManagerProps) =>
         ) : (
           reminders.map((reminder) => (
             <motion.div key={reminder.id} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className={`rounded-xl p-4 border ${cardCls}`}>
-              <div className="flex justify-between items-start">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <Bell className={`w-4 h-4 ${isLight ? 'text-[#2E3A56]' : 'text-[#FCF6BA]'}`} />
                     <h4 className={`font-bold ${textCls}`}>{reminder.title}</h4>
                   </div>
                   {reminder.description && <p className={`text-sm mt-1 ${mutedCls}`}>{reminder.description}</p>}
-                  <div className={`flex items-center gap-4 mt-2 text-sm ${mutedCls}`}>
+                  <div className={`flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 mt-2 text-sm ${mutedCls}`}>
                     <div className="flex items-center gap-1">
                       <Clock className="w-4 h-4" />
                       {new Date(reminder.reminder_date).toLocaleDateString('he-IL')}
@@ -269,11 +269,11 @@ export const RemindersManager = ({ variant = 'dark' }: RemindersManagerProps) =>
                     </span>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <button onClick={() => handleEdit(reminder)} className={`p-2 ${mutedCls} hover:opacity-100 transition-colors ${isLight ? 'hover:text-[#2E3A56]' : 'hover:text-[#FCF6BA]'}`}>
+                <div className="flex gap-2 flex-shrink-0">
+                  <button onClick={() => handleEdit(reminder)} className={`min-h-[44px] min-w-[44px] flex items-center justify-center p-2 ${mutedCls} hover:opacity-100 transition-colors ${isLight ? 'hover:text-[#2E3A56]' : 'hover:text-[#FCF6BA]'}`}>
                     <Edit2 className="w-4 h-4" />
                   </button>
-                  <button onClick={() => handleDelete(reminder.id)} className={`p-2 ${mutedCls} hover:text-red-400 transition-colors`}>
+                  <button onClick={() => handleDelete(reminder.id)} className={`min-h-[44px] min-w-[44px] flex items-center justify-center p-2 ${mutedCls} hover:text-red-400 transition-colors`}>
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
