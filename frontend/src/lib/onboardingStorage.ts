@@ -12,8 +12,3 @@ export function setOnboardingComplete(): void {
 export function clearOnboardingOnSignOut(): void {
   localStorage.removeItem(ONBOARDING_STORAGE_KEY);
 }
-
-/** נקרא בעת התנתקות – כך שבכניסה הבאה יוצג שוב תהליך ההכרות */
-export function clearOnboardingOnSignOut(): void {
-  localStorage.removeItem(ONBOARDING_STORAGE_KEY);
-}
