@@ -394,7 +394,7 @@ const resources = {
       "onboarding.learnMore": "למד עוד ב־bsdcoach.com",
       "onboarding.step": "שלב {{current}} מתוך {{total}}",
       "ladder.p0": "בקשה לאימון",
-      "ladder.p0.compact": "Request",
+      "ladder.p0.compact": "בקשה לאימון",
       "ladder.p0.tooltip": "קבלת רשות והסכמה להתחיל את תהליך האימון.",
       "ladder.p1": "מצוי",
       "ladder.p1.tooltip": "נושא, אירוע, ושלושת המסכים: רגש, מחשבה, מעשה.",

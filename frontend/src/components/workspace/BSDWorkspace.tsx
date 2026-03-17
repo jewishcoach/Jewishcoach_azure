@@ -240,17 +240,17 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
           isRTL={isRTL}
         />
 
-        {/* Chat + Stages row on mobile; Chat only on desktop */}
-        <div className="order-1 md:order-2 flex flex-1 min-w-0 min-h-0 flex-row">
-          {/* Mobile: compact stages strip - full height alongside chat */}
-          <div className="md:hidden flex-shrink-0 self-stretch min-h-0">
-            <VisionLadder currentStep={currentPhase} onPhaseClick={handlePhaseClick} compact conversationId={conversationId} />
-          </div>
-          {/* Chat area */}
-          <div className="flex flex-col min-w-0 flex-1 relative overflow-hidden bg-[#F5F5F0]">
-            <ShehiyaProgress loading={loading} />
-
-            <div ref={messagesScrollRef} className="flex-1 overflow-y-auto px-3 py-4 md:px-10 md:py-10 custom-scrollbar bg-[#F5F5F0]">
+        {/* Chat area: mobile [strip|messages] + input below; desktop messages + input */}
+        <div className="order-1 md:order-2 flex flex-1 min-w-0 min-h-0 flex-col">
+          {/* Messages row: mobile has strip alongside; desktop messages only */}
+          <div className="flex flex-1 min-w-0 min-h-0 flex-row">
+            {/* Mobile: stages strip - height only up to messages, not input */}
+            <div className="md:hidden flex-shrink-0 self-stretch min-h-0">
+              <VisionLadder currentStep={currentPhase} onPhaseClick={handlePhaseClick} compact conversationId={conversationId} />
+            </div>
+            <div className="flex flex-col min-w-0 flex-1 relative overflow-hidden bg-[#F5F5F0]">
+              <ShehiyaProgress loading={loading} />
+              <div ref={messagesScrollRef} className="flex-1 overflow-y-auto px-3 py-4 md:px-10 md:py-10 custom-scrollbar bg-[#F5F5F0]">
           {messages.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
@@ -299,10 +299,12 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
               <div ref={messagesEndRef} />
             </div>
           )}
-        </div>
+              </div>
+            </div>
+          </div>
 
-        {/* Input */}
-        <div className="p-4 md:p-9 border-t border-[#E2E4E8] bg-[#F5F5F0]">
+          {/* Input - below messages; full width on mobile */}
+          <div className="p-4 md:p-9 border-t border-[#E2E4E8] bg-[#F5F5F0] flex-shrink-0">
               <form onSubmit={handleSubmit} className="flex items-end gap-3 md:gap-5">
                 <textarea
                   ref={inputRef}
@@ -348,7 +350,6 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
                   <Send size={18} strokeWidth={1.5} />
                 </button>
             </form>
-        </div>
           </div>
         </div>
 
