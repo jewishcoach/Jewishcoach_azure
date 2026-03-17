@@ -215,8 +215,8 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
     >
       {/* Mobile: [Stages strip | Chat] row, then HUD below. Desktop: HUD | Chat | Ladder */}
       <div className="flex flex-1 min-h-0 flex-col md:flex-row w-full">
-        {/* HUD - desktop: left. Mobile: bottom */}
-        <div className="order-3 md:order-1 w-full md:w-64 lg:w-72 flex-shrink-0 border-t md:border-t-0 md:border-r border-white/[0.08] bg-[#1e293b] overflow-hidden min-h-0 max-h-[25vh] md:max-h-none flex flex-col">
+        {/* HUD - desktop only; mobile uses stages strip insights */}
+        <div className="hidden md:flex order-3 md:order-1 w-64 lg:w-72 flex-shrink-0 border-r border-white/[0.08] bg-[#1e293b] overflow-hidden min-h-0 flex flex-col">
           <HudPanel
             conversationId={conversationId}
             currentPhase={currentPhase}
@@ -244,7 +244,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
         <div className="order-1 md:order-2 flex flex-1 min-w-0 min-h-0 flex-row">
           {/* Mobile: compact stages strip - full height alongside chat */}
           <div className="md:hidden flex-shrink-0 self-stretch min-h-0">
-            <VisionLadder currentStep={currentPhase} onPhaseClick={handlePhaseClick} compact />
+            <VisionLadder currentStep={currentPhase} onPhaseClick={handlePhaseClick} compact conversationId={conversationId} />
           </div>
           {/* Chat area */}
           <div className="flex flex-col min-w-0 flex-1 relative overflow-hidden bg-[#F5F5F0]">
@@ -311,7 +311,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
                   onKeyDown={handleKeyDown}
                   placeholder={t('chat.placeholder')}
                   disabled={loading}
-                  className="flex-1 min-w-0 resize-none rounded-xl px-4 md:px-6 py-3 md:py-5 text-[14px] md:text-[16px] max-h-28 placeholder-[#5A6B8A]/60 focus:border-[#B38728]/50 focus:ring-2 focus:ring-[#B38728]/20 focus:outline-none"
+                  className="flex-1 min-w-0 resize-none rounded-xl px-4 md:px-6 py-3 md:py-5 text-[14px] md:text-[16px] max-h-28 placeholder-[#5A6B8A]/60 placeholder:text-[12px] md:placeholder:text-[16px] focus:border-[#B38728]/50 focus:ring-2 focus:ring-[#B38728]/20 focus:outline-none"
                   style={{
                     fontFamily: 'Inter, sans-serif',
                     fontWeight: 300,

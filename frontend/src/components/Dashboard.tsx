@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { useTranslation } from 'react-i18next';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   User, Settings, Save, X, ArrowRight, Target, History,
   Loader2, CreditCard, FileText, ExternalLink, BookOpen,
@@ -179,7 +179,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
   const isNewUser = stats.total_conversations === 0;
 
   const HeaderLinks = () => (
-    <div className="flex items-center gap-1 md:gap-2">
+    <div className="flex items-center gap-3 md:gap-2">
       {onShowBilling && (
         <button
           onClick={() => onShowBilling()}
@@ -229,7 +229,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
 
   return (
     <div className="flex flex-col md:flex-row h-full overflow-hidden dashboard-container" dir="rtl" style={{ background: COLORS.bg }}>
-      {/* Mobile: Sticky top bar with profile + header links */}
+      {/* Mobile: Sticky top bar with profile + settings + header links */}
       <div className="md:hidden sticky top-0 z-10 flex items-center justify-between gap-3 px-4 py-3 border-b" style={{ background: COLORS.card, borderColor: COLORS.border, boxShadow: COLORS.shadow }}>
         <div className="flex items-center gap-3 min-w-0 flex-1">
           {onBack && (
@@ -243,9 +243,20 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
             </button>
           )}
           <div className="min-w-0 flex-1">
-            <p className="font-semibold truncate" style={{ color: COLORS.text }}>
-              {profile.display_name || profile.email?.split('@')[0] || 'משתמש'}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="font-semibold truncate" style={{ color: COLORS.text }}>
+                {profile.display_name || profile.email?.split('@')[0] || 'משתמש'}
+              </p>
+              <button
+                onClick={() => setEditing(!editing)}
+                className="p-1.5 rounded-lg transition-colors hover:bg-gray-100 flex-shrink-0"
+                style={{ color: COLORS.textMuted }}
+                title={t('dashboard.title')}
+                aria-label={t('dashboard.title')}
+              >
+                <Settings className="w-4 h-4" />
+              </button>
+            </div>
             <div className="flex items-center gap-2 mt-0.5">
               {profile.gender && (
                 <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: COLORS.accentLight, color: COLORS.accent }}>
@@ -260,6 +271,77 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
         </div>
         <HeaderLinks />
       </div>
+
+      {/* Mobile: Edit profile modal when Settings clicked */}
+      <AnimatePresence>
+      {editing && (
+        <div className="md:hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setEditing(false)} aria-hidden="true" />
+          <motion.div
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            className="relative w-full max-h-[85vh] overflow-y-auto rounded-t-2xl p-6 pb-8"
+            style={{ background: COLORS.card, boxShadow: '0 -4px 24px rgba(0,0,0,0.15)' }}
+          >
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-base font-semibold" style={{ color: COLORS.text }}>{t('dashboard.title')}</h3>
+              <button
+                onClick={() => setEditing(false)}
+                className="p-2 rounded-lg transition-colors hover:bg-gray-100"
+                style={{ color: COLORS.textMuted }}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: COLORS.textMuted }}>{t('dashboard.displayName')}</label>
+                <input
+                  type="text"
+                  value={editForm.display_name}
+                  onChange={(e) => setEditForm({ ...editForm, display_name: e.target.value })}
+                  className="w-full px-3 py-2.5 text-sm rounded-lg border focus:ring-2 focus:ring-blue-200 focus:outline-none"
+                  style={{ borderColor: COLORS.border, color: COLORS.text }}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: COLORS.textMuted }}>{t('dashboard.gender')}</label>
+                <select
+                  value={editForm.gender}
+                  onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}
+                  className="w-full px-3 py-2.5 text-sm rounded-lg border focus:ring-2 focus:ring-blue-200 focus:outline-none"
+                  style={{ borderColor: COLORS.border, color: COLORS.text }}
+                >
+                  <option value="">{t('dashboard.notSpecified')}</option>
+                  <option value="male">{t('dashboard.male')}</option>
+                  <option value="female">{t('dashboard.female')}</option>
+                </select>
+              </div>
+              <p className="text-xs" style={{ color: COLORS.textMuted }}>{t('dashboard.genderHelp')}</p>
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={handleSaveProfile}
+                  disabled={saving}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium rounded-xl text-white disabled:opacity-50"
+                  style={{ background: COLORS.accent }}
+                >
+                  <Save className="w-4 h-4" />
+                  {saving ? t('dashboard.saving') : t('dashboard.save')}
+                </button>
+                <button
+                  onClick={() => setEditing(false)}
+                  className="px-5 py-3 text-sm rounded-xl"
+                  style={{ background: COLORS.border, color: COLORS.text }}
+                >
+                  {t('dashboard.cancel')}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+      </AnimatePresence>
 
       {/* Desktop: Left Sidebar */}
       <aside className="hidden md:flex w-56 flex-shrink-0 flex-col py-6 px-3" style={{ background: COLORS.card, boxShadow: COLORS.shadow }}>
@@ -437,9 +519,9 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
 
               {/* Two-column content cards */}
               <div className="grid md:grid-cols-2 gap-5">
-                {/* Profile / Edit card */}
+                {/* Profile / Edit card - desktop only; on mobile use header Settings */}
                 <motion.div
-                  className="rounded-xl p-5"
+                  className="hidden md:block rounded-xl p-5"
                   style={{ background: COLORS.card, boxShadow: COLORS.shadow }}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
