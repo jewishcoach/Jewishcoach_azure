@@ -336,7 +336,7 @@ const resources = {
       "reminders.cancel": "ביטול",
       "reminders.delete": "מחק",
       "reminders.deleteConfirm": "למחוק את התזכורת?",
-      "reminders.noReminders": "אין תזכורות עדיין. לחץ על 'תזכורת חדשה' כדי להוסיף.",
+      "reminders.noReminders": "אין תזכורות עדיין\nלחץ על 'תזכורת חדשה' כדי להוסיף",
       "calendar.export": "ייצוא ליומן",
       "calendar.exporting": "מייצא...",
       "calendar.sync": "סנכרן עכשיו",
