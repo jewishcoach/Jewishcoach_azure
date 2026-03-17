@@ -58,9 +58,14 @@ export const BillingPage = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
-      setOverview(data);
+      if (response.ok && data?.usage && Array.isArray(data?.available_plans)) {
+        setOverview(data);
+      } else {
+        setOverview(null);
+      }
     } catch (err) {
       console.error('Error loading billing data:', err);
+      setOverview(null);
     } finally {
       setLoading(false);
     }
