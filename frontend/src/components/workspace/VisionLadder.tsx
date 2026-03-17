@@ -116,17 +116,15 @@ export const VisionLadder = ({ currentStep, onPhaseClick, compact = false, conve
                   {title}
                 </span>
               </button>
-              {showPopover && insights.length > 0 && (
+              {showPopover && hasInsight && insights.length > 0 && (
                 <>
                   <div
-                    className="fixed inset-0 z-40"
+                    className="fixed inset-0 z-[60]"
                     onClick={() => setPopoverPhase(null)}
                     aria-hidden
                   />
                   <div
-                    className={`absolute z-50 min-w-[200px] max-w-[280px] rounded-xl p-3 shadow-xl border ${
-                      isRTL ? 'end-full me-2 top-1/2 -translate-y-1/2' : 'start-full ms-2 top-1/2 -translate-y-1/2'
-                    }`}
+                    className="fixed z-[70] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 min-w-[220px] max-w-[min(300px,90vw)] rounded-xl p-4 shadow-xl border"
                     style={{
                       background: 'rgba(2,6,23,0.98)',
                       borderColor: 'rgba(252,246,186,0.3)',

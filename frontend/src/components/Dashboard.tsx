@@ -179,50 +179,50 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
   const isNewUser = stats.total_conversations === 0;
 
   const HeaderLinks = () => (
-    <div className="flex items-center gap-3 md:gap-2">
+    <div className="flex items-center gap-2 md:gap-2 flex-wrap justify-end">
       {onShowBilling && (
         <button
           onClick={() => onShowBilling()}
-          className="p-2 rounded-lg transition-colors hover:bg-gray-100"
+          className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-colors hover:bg-gray-100 text-sm"
           style={{ color: COLORS.textMuted }}
-          title={t('billing.button')}
           aria-label={t('billing.button')}
         >
-          <CreditCard className="w-4 h-4 md:w-4 md:h-4" />
+          <CreditCard className="w-4 h-4 flex-shrink-0" />
+          <span>{t('billing.button')}</span>
         </button>
       )}
       <a
         href={`${BSD_WEBSITE_URL}/privacy`}
         target="_blank"
         rel="noopener noreferrer"
-        className="p-2 rounded-lg transition-colors hover:bg-gray-100"
+        className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-colors hover:bg-gray-100 text-sm"
         style={{ color: COLORS.textMuted }}
-        title={t('sidebar.policy')}
         aria-label={t('sidebar.policy')}
       >
-        <FileText className="w-4 h-4 md:w-4 md:h-4" />
+        <FileText className="w-4 h-4 flex-shrink-0" />
+        <span>{t('sidebar.policy')}</span>
       </a>
       <a
         href={BSD_BOOKS_URL}
         target="_blank"
         rel="noopener noreferrer"
-        className="p-2 rounded-lg transition-colors hover:bg-gray-100"
+        className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-colors hover:bg-gray-100 text-sm"
         style={{ color: COLORS.textMuted }}
-        title={t('sidebar.book')}
         aria-label={t('sidebar.book')}
       >
-        <BookOpen className="w-4 h-4 md:w-4 md:h-4" />
+        <BookOpen className="w-4 h-4 flex-shrink-0" />
+        <span>{t('sidebar.book')}</span>
       </a>
       <a
         href={BSD_WEBSITE_URL}
         target="_blank"
         rel="noopener noreferrer"
-        className="p-2 rounded-lg transition-colors hover:bg-gray-100"
+        className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-colors hover:bg-gray-100 text-sm"
         style={{ color: COLORS.textMuted }}
-        title={t('sidebar.website')}
         aria-label={t('sidebar.website')}
       >
-        <ExternalLink className="w-4 h-4 md:w-4 md:h-4" />
+        <ExternalLink className="w-4 h-4 flex-shrink-0" />
+        <span>{t('sidebar.website')}</span>
       </a>
     </div>
   );
