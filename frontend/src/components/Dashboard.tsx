@@ -13,8 +13,9 @@ import { GoalsManager } from './GoalsManager';
 import { ActivityBarChart } from './dashboard/ActivityBarChart';
 import { PhaseDonutChart } from './dashboard/PhaseDonutChart';
 import { InsightsTab } from './InsightsTab';
+import { getApiBase } from '../config';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE = getApiBase();
 
 // BSD palette: navy primary, minimal red - gold for soft accents
 const COLORS = {
@@ -92,17 +93,22 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
   const loadDashboard = async () => {
     try {
       const token = await getToken();
-      const response = await fetch(`${API_URL}/profile/dashboard`, {
+      const response = await fetch(`${API_BASE}/profile/dashboard`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const dashboardData = await response.json();
-      setData(dashboardData);
-      setEditForm({
-        display_name: dashboardData.profile.display_name || '',
-        gender: dashboardData.profile.gender || ''
-      });
+      if (response.ok && dashboardData?.profile) {
+        setData(dashboardData);
+        setEditForm({
+          display_name: dashboardData.profile.display_name || '',
+          gender: dashboardData.profile.gender || ''
+        });
+      } else {
+        setData(null);
+      }
     } catch (error) {
       console.error('Error loading dashboard:', error);
+      setData(null);
     } finally {
       setLoading(false);
     }
@@ -112,7 +118,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
     setSaving(true);
     try {
       const token = await getToken();
-      await fetch(`${API_URL}/profile/me`, {
+      await fetch(`${API_BASE}/profile/me`, {
         method: 'PATCH',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(editForm)
@@ -557,8 +563,8 @@ function translatePhase(phase: string): string {
     'Situation': 'המצוי', 'Gap': 'הפער', 'Pattern': 'הדפוס', 'Paradigm': 'פרדיגמה',
     'Stance': 'עמדה', 'KMZ': 'כמ"ז', 'New_Choice': 'בחירה חדשה', 'Vision': 'חזון', 'PPD': 'תכנית',
     'S0': 'רשות', 'S1': 'נושא', 'S2': 'אירוע', 'S3': 'רגשות', 'S4': 'מחשבה', 'S5': 'מעשה',
-    'S6': 'רצוי', 'S7': 'פער', 'S8': 'דפוס', 'S9': 'עמדה', 'S10': 'כוחות', 'S11': 'בחירה',
-    'S12': 'חזון', 'S13': 'מחויבות',
+    'S6': 'רצוי', 'S7': 'פער', 'S8': 'דפוס', 'S9': 'פרדיגמה', 'S10': 'עמדה+טריגר', 'S11': 'רווחים', 'S12': 'כוחות', 'S13': 'בחירה',
+    'S14': 'חזון', 'S15': 'מחויבות',
   };
   return translations[phase] || phase;
 }

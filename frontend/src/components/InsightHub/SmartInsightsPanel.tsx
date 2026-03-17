@@ -127,10 +127,14 @@ export const SmartInsightsPanel = ({ conversationId, currentPhase }: SmartInsigh
     'S5': { he: 'מסך המעשה (מצוי)', en: 'Action Screen (actual)' },
     'S6': { he: 'הרצוי', en: 'Desired' },
     'S7': { he: 'ניתוח הפער', en: 'Gap Analysis' },
-    'S8': { he: 'דפוס ופרדיגמה', en: 'Pattern & Paradigm' },
-    'S9': { he: 'בירור הרצון', en: 'Clarify Desire' },
-    'S10': { he: 'כמ"ז - כוחות', en: 'KaMaZ - Forces' },
-    'S13': { he: 'נוסחת המחויבות', en: 'Commitment Formula' }
+    'S8': { he: 'דפוס', en: 'Pattern' },
+    'S9': { he: 'פרדיגמה', en: 'Paradigm' },
+    'S10': { he: 'עמדה+טריגר', en: 'Stance & Trigger' },
+    'S11': { he: 'רווחים והפסדים', en: 'Gains & Losses' },
+    'S12': { he: 'כמ"ז - כוחות', en: 'KaMaZ - Forces' },
+    'S13': { he: 'בחירה', en: 'Choice' },
+    'S14': { he: 'חזון', en: 'Vision' },
+    'S15': { he: 'מחויבות', en: 'Commitment' }
   };
 
   const lang = i18n.language as 'he' | 'en';
@@ -228,12 +232,12 @@ export const SmartInsightsPanel = ({ conversationId, currentPhase }: SmartInsigh
     });
   }
 
-  // S10: KaMaZ
+  // S12: KaMaZ
   if (insights.kmz_forces?.source_forces?.length || insights.kmz_forces?.nature_forces?.length) {
     insightItems.push({
-      stage: 'S10',
-      title: stageTitles['S10'][lang],
-      status: currentPhase === 'S10' ? 'draft' : 'final',
+      stage: 'S12',
+      title: stageTitles['S12'][lang],
+      status: currentPhase === 'S12' ? 'draft' : 'final',
       data: {
         source_forces: insights.kmz_forces.source_forces || [],
         nature_forces: insights.kmz_forces.nature_forces || []
@@ -241,12 +245,12 @@ export const SmartInsightsPanel = ({ conversationId, currentPhase }: SmartInsigh
     });
   }
 
-  // S13: Commitment
+  // S15: Commitment
   if (insights.commitment?.difficulty) {
     insightItems.push({
-      stage: 'S13',
-      title: stageTitles['S13'][lang],
-      status: currentPhase === 'S13' ? 'draft' : 'final',
+      stage: 'S15',
+      title: stageTitles['S15'][lang],
+      status: currentPhase === 'S15' ? 'draft' : 'final',
       data: {
         difficulty: insights.commitment.difficulty,
         result: insights.commitment.result || ''
@@ -340,6 +344,7 @@ function renderWidgetContent(stage: string, data: any, language: 'he' | 'en') {
       );
 
     case 'S10':
+    case 'S12':
       return (
         <div className="space-y-3">
           {data.source_forces && data.source_forces.length > 0 && (

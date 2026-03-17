@@ -10,7 +10,7 @@ export const PHASE_TO_STAGES: Record<number, string[]> = {
   4: ['S8'],
   5: ['S9'],
   6: ['S10', 'S11'],
-  7: [],  // שינוי - no direct stage
+  7: ['S11', 'S12'],  // שינוי - מעבר מעמדה לכמ"ז, גלילה ל-S11 או S12
   8: ['S12'],
   9: ['S13'],
   10: ['S14', 'S15'],

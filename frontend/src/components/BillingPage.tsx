@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { useTranslation } from 'react-i18next';
-import { motion } from 'framer-motion';
-import { Check, Sparkles, Zap, Crown, Gift, Loader2, MessageSquare, Mic } from 'lucide-react';
+import { Check, Loader2, MessageSquare, CreditCard } from 'lucide-react';
 import { getApiBase } from '../config';
 
 interface Plan {
@@ -41,8 +40,6 @@ interface BillingOverview {
 
 const API_BASE = getApiBase();
 
-const GOLD_GRADIENT = 'linear-gradient(135deg, #BF953F, #FCF6BA, #B38728)';
-
 export const BillingPage = () => {
   const { getToken } = useAuth();
   const { t, i18n } = useTranslation();
@@ -51,6 +48,7 @@ export const BillingPage = () => {
   const [couponCode, setCouponCode] = useState('');
   const [couponMessage, setCouponMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [couponLoading, setCouponLoading] = useState(false);
+  const [showUpgradeNote, setShowUpgradeNote] = useState(false);
 
   const loadBillingData = useCallback(async () => {
     try {
@@ -105,19 +103,6 @@ export const BillingPage = () => {
     }
   };
 
-  const getPlanIcon = (planId: string) => {
-    switch (planId) {
-      case 'basic':
-        return <Sparkles className="w-7 h-7 text-[#F5F5F0]/90" />;
-      case 'premium':
-        return <Zap className="w-7 h-7 text-[#FCF6BA]" />;
-      case 'pro':
-        return <Crown className="w-7 h-7 text-[#FCF6BA]" />;
-      default:
-        return null;
-    }
-  };
-
   const getFeatureText = (plan: Plan) => {
     const phases = plan.features?.coaching_phases;
     const isAll = phases === 'all' || (Array.isArray(phases) && phases.length > 5);
@@ -127,16 +112,12 @@ export const BillingPage = () => {
   if (loading) {
     return (
       <div className="flex-1 w-full bg-[#0F172A] flex items-center justify-center min-h-0" dir="rtl">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="flex flex-col items-center gap-4"
-        >
-          <Loader2 className="w-12 h-12 text-[#FCF6BA] animate-spin" />
-          <p className="text-[#F5F5F0]/70 font-light" style={{ fontFamily: 'Heebo, Inter, sans-serif' }}>
-            {i18n.language === 'he' ? 'טוען נתוני חיוב...' : 'Loading billing data...'}
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-10 h-10 text-[#94a3b8] animate-spin" />
+          <p className="text-[#94a3b8] text-sm font-medium" style={{ fontFamily: 'Heebo, Inter, sans-serif' }}>
+            {i18n.language === 'he' ? 'טוען...' : 'Loading...'}
           </p>
-        </motion.div>
+        </div>
       </div>
     );
   }
@@ -144,320 +125,200 @@ export const BillingPage = () => {
   if (!overview) {
     return (
       <div className="flex-1 w-full bg-[#0F172A] flex items-center justify-center min-h-0 p-8" dir="rtl">
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white/[0.04] rounded-2xl p-8 border border-white/[0.08] max-w-md text-center"
-        >
-          <p className="text-red-300 font-medium mb-4">
-            {i18n.language === 'he' ? 'שגיאה בטעינת נתוני חיוב' : 'Error loading billing data'}
+        <div className="bg-white/[0.03] rounded-lg p-8 border border-white/[0.06] max-w-md text-center">
+          <p className="text-[#94a3b8] font-medium mb-4">
+            {i18n.language === 'he' ? 'שגיאה בטעינת נתונים' : 'Error loading data'}
           </p>
           <button
             onClick={loadBillingData}
-            className="px-6 py-3 rounded-xl font-medium transition-colors"
-            style={{ background: GOLD_GRADIENT, color: '#020617' }}
+            className="px-5 py-2.5 rounded-lg bg-white/10 text-[#F5F5F0] text-sm font-medium hover:bg-white/15 transition-colors"
           >
             {i18n.language === 'he' ? 'נסה שוב' : 'Try again'}
           </button>
-        </motion.div>
+        </div>
       </div>
     );
   }
 
   const usage = overview.usage;
   const messagesPercent = usage.messages_limit === -1 ? 0 : Math.min((usage.messages_used / usage.messages_limit) * 100, 100);
-  const speechPercent = usage.speech_minutes_limit === -1 ? 0 : Math.min((usage.speech_minutes_used / usage.speech_minutes_limit) * 100, 100);
 
   return (
     <div className="flex-1 w-full bg-[#0F172A] overflow-y-auto custom-scrollbar" dir="rtl">
-      <div className="max-w-6xl mx-auto p-6 md:p-8">
+      <div className="max-w-4xl mx-auto p-6 md:p-8">
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-10"
-        >
-          <h1
-            className="text-3xl md:text-4xl font-bold text-[#F5F5F0] mb-2"
-            style={{ fontFamily: 'Cormorant Garamond, Georgia, serif' }}
-          >
+        <div className="mb-8">
+          <h1 className="text-2xl font-semibold text-[#F5F5F0] mb-1" style={{ fontFamily: 'Heebo, sans-serif' }}>
             {t('billing.title')}
           </h1>
-          <p className="text-[#F5F5F0]/70 text-lg" style={{ fontFamily: 'Heebo, Inter, sans-serif' }}>
-            {t('billing.subtitle')}
-          </p>
-        </motion.div>
+          <p className="text-[#94a3b8] text-sm">{t('billing.subtitle')}</p>
+        </div>
 
-        {/* Active Coupon Badge */}
+        {/* Active Coupon */}
         {overview.has_active_coupon && (
-          <motion.div
-            initial={{ opacity: 0, y: -15 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-8 p-4 rounded-2xl border border-[#FCF6BA]/30 text-center"
-            style={{ background: 'linear-gradient(135deg, rgba(191,149,63,0.15), rgba(252,246,186,0.08))' }}
-          >
-            <Gift className="w-5 h-5 inline-block ml-2 text-[#FCF6BA]" />
-            <span className="font-bold text-[#F5F5F0]">
-              {i18n.language === 'he' ? 'קופון פעיל:' : 'Active coupon:'} {overview.coupon_code}
+          <div className="mb-6 py-3 px-4 rounded-lg bg-white/[0.03] border border-white/[0.06]">
+            <span className="text-[#F5F5F0] text-sm">
+              {i18n.language === 'he' ? 'קופון פעיל:' : 'Active coupon:'} <span className="font-medium">{overview.coupon_code}</span>
             </span>
-          </motion.div>
+          </div>
         )}
 
-        {/* Usage Stats */}
-        <div className="grid md:grid-cols-2 gap-5 mb-10">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.05 }}
-            className="bg-white/[0.04] rounded-2xl p-6 border border-white/[0.08]"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-[#FCF6BA]/10 flex items-center justify-center">
-                <MessageSquare className="w-5 h-5 text-[#FCF6BA]" />
-              </div>
-              <h3 className="text-lg font-semibold text-[#F5F5F0]" style={{ fontFamily: 'Heebo, sans-serif' }}>
-                {i18n.language === 'he' ? 'שימוש בהודעות' : 'Messages used'}
-              </h3>
+        {/* Usage - Messages only */}
+        <div className="mb-8">
+          <div className="bg-white/[0.03] rounded-lg p-5 border border-white/[0.06]">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[#94a3b8] text-sm font-medium">{i18n.language === 'he' ? 'שימוש בהודעות' : 'Messages used'}</span>
+              <span className="text-[#F5F5F0] text-sm">
+                {usage.messages_used} / {usage.messages_limit === -1 ? '∞' : usage.messages_limit}
+              </span>
             </div>
-            <div className="flex justify-between text-sm mb-2">
-              <span className="text-[#F5F5F0]/80">{usage.messages_used}</span>
-              <span className="text-[#F5F5F0]/60">{usage.messages_limit === -1 ? '∞' : usage.messages_limit}</span>
-            </div>
-            <div className="w-full h-2 bg-white/[0.06] rounded-full overflow-hidden">
-              <motion.div
-                className="h-full rounded-full"
-                style={{ background: GOLD_GRADIENT }}
-                initial={{ width: 0 }}
-                animate={{ width: `${usage.messages_limit === -1 ? 0 : messagesPercent}%` }}
-                transition={{ duration: 0.6, ease: 'easeOut' }}
+            <div className="w-full h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[#64748b] rounded-full transition-all duration-500"
+                style={{ width: `${usage.messages_limit === -1 ? 0 : messagesPercent}%` }}
               />
             </div>
             {usage.messages_limit !== -1 && (
-              <p className="text-sm text-[#F5F5F0]/60 mt-2">
-                {i18n.language === 'he'
-                  ? `נותרו ${usage.messages_limit - usage.messages_used} הודעות`
-                  : `${usage.messages_limit - usage.messages_used} remaining`}
+              <p className="text-[#64748b] text-xs mt-2">
+                {i18n.language === 'he' ? `נותרו ${usage.messages_limit - usage.messages_used} הודעות` : `${usage.messages_limit - usage.messages_used} remaining`}
               </p>
             )}
-            {usage.messages_limit === -1 && (
-              <p className="text-sm text-[#FCF6BA] font-medium mt-2">✨ {t('billing.unlimited')}</p>
-            )}
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-white/[0.04] rounded-2xl p-6 border border-white/[0.08]"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-[#FCF6BA]/10 flex items-center justify-center">
-                <Mic className="w-5 h-5 text-[#FCF6BA]" />
-              </div>
-              <h3 className="text-lg font-semibold text-[#F5F5F0]" style={{ fontFamily: 'Heebo, sans-serif' }}>
-                {i18n.language === 'he' ? 'זמן דיבור' : 'Speech time'}
-              </h3>
-            </div>
-            <div className="flex justify-between text-sm mb-2">
-              <span className="text-[#F5F5F0]/80">{usage.speech_minutes_used} {i18n.language === 'he' ? 'דק׳' : 'min'}</span>
-              <span className="text-[#F5F5F0]/60">
-                {usage.speech_minutes_limit === -1 ? '∞' : `${usage.speech_minutes_limit} ${i18n.language === 'he' ? 'דק׳' : 'min'}`}
-              </span>
-            </div>
-            <div className="w-full h-2 bg-white/[0.06] rounded-full overflow-hidden">
-              <motion.div
-                className="h-full rounded-full"
-                style={{ background: GOLD_GRADIENT }}
-                initial={{ width: 0 }}
-                animate={{ width: `${usage.speech_minutes_limit === -1 ? 0 : speechPercent}%` }}
-                transition={{ duration: 0.6, ease: 'easeOut' }}
-              />
-            </div>
-            {usage.speech_minutes_limit !== -1 && usage.speech_minutes_limit > 0 && (
-              <p className="text-sm text-[#F5F5F0]/60 mt-2">
-                {i18n.language === 'he'
-                  ? `נותרו ${usage.speech_minutes_limit - usage.speech_minutes_used} דקות`
-                  : `${usage.speech_minutes_limit - usage.speech_minutes_used} min remaining`}
-              </p>
-            )}
-            {usage.speech_minutes_limit === 0 && (
-              <p className="text-sm text-[#F5F5F0]/60 mt-2">{t('billing.noSpeech')}</p>
-            )}
-            {usage.speech_minutes_limit === -1 && (
-              <p className="text-sm text-[#FCF6BA] font-medium mt-2">✨ {t('billing.unlimited')}</p>
-            )}
-          </motion.div>
+          </div>
         </div>
 
         {/* Coupon Redemption */}
         {!overview.has_active_coupon && (
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-            className="bg-white/[0.04] rounded-2xl p-6 md:p-8 border border-white/[0.08] mb-10 max-w-2xl mx-auto"
-          >
-            <h3 className="text-xl font-bold mb-3 flex items-center gap-2 text-[#F5F5F0]">
-              <Gift className="w-6 h-6 text-[#FCF6BA]" />
-              {t('billing.couponTitle')}
-            </h3>
-            <p className="text-[#F5F5F0]/80 mb-4 text-sm">
-              {i18n.language === 'he'
-                ? 'הזן את הקוד BSD100 לקבלת גישה חינמית לצמיתות לחבילת PRO'
-                : 'Enter code BSD100 for free lifetime PRO access'}
-            </p>
-            <div className="flex gap-3">
-              <input
-                type="text"
-                value={couponCode}
-                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                placeholder={t('billing.couponPlaceholder')}
-                className="flex-1 px-4 py-3 rounded-xl border border-white/10 bg-white/[0.04] text-[#F5F5F0] placeholder-[#F5F5F0]/40 focus:ring-2 focus:ring-[#FCF6BA]/30 focus:border-[#FCF6BA]/40 outline-none transition-all"
-                dir="ltr"
-                disabled={couponLoading}
-              />
-              <button
-                onClick={handleRedeemCoupon}
-                disabled={couponLoading || !couponCode.trim()}
-                className="px-6 py-3 rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:opacity-95"
-                style={{ background: GOLD_GRADIENT, color: '#020617' }}
-              >
-                {couponLoading ? t('billing.couponActivating') : t('billing.couponActivate')}
-              </button>
+          <div className="mb-8">
+            <div className="bg-white/[0.03] rounded-lg p-5 border border-white/[0.06]">
+              <h3 className="text-sm font-medium text-[#F5F5F0] mb-3">{t('billing.couponTitle')}</h3>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                  placeholder={t('billing.couponPlaceholder')}
+                  className="flex-1 px-3 py-2 rounded-lg border border-white/10 bg-white/[0.03] text-[#F5F5F0] text-sm placeholder-[#64748b] focus:outline-none focus:ring-1 focus:ring-white/20"
+                  dir="ltr"
+                  disabled={couponLoading}
+                />
+                <button
+                  onClick={handleRedeemCoupon}
+                  disabled={couponLoading || !couponCode.trim()}
+                  className="px-4 py-2 rounded-lg bg-white/10 text-[#F5F5F0] text-sm font-medium hover:bg-white/15 disabled:opacity-50 transition-colors"
+                >
+                  {couponLoading ? t('billing.couponActivating') : t('billing.couponActivate')}
+                </button>
+              </div>
+              {couponMessage && (
+                <div className={`mt-3 p-3 rounded-lg text-sm ${couponMessage.type === 'success' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                  {couponMessage.text}
+                </div>
+              )}
             </div>
-            {couponMessage && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className={`mt-4 p-4 rounded-xl ${
-                  couponMessage.type === 'success'
-                    ? 'bg-[#FCF6BA]/15 text-[#FCF6BA] border border-[#FCF6BA]/30'
-                    : 'bg-red-500/15 text-red-300 border border-red-500/30'
-                }`}
-              >
-                <p className="font-medium">{couponMessage.text}</p>
-                {couponMessage.type === 'success' && (
-                  <p className="text-sm mt-1 opacity-90">{t('billing.successAccess')}</p>
-                )}
-              </motion.div>
-            )}
-          </motion.div>
+          </div>
         )}
 
         {/* Plans */}
-        <div className="mb-10">
-          <h2
-            className="text-2xl font-bold text-center mb-8 text-[#F5F5F0]"
-            style={{ fontFamily: 'Cormorant Garamond, Georgia, serif' }}
-          >
-            {t('billing.plansTitle')}
-          </h2>
-          <div className="grid md:grid-cols-3 gap-6">
-            {overview.available_plans.map((plan, index) => {
+        <div className="mb-8">
+          <h2 className="text-lg font-medium text-[#F5F5F0] mb-6">{t('billing.plansTitle')}</h2>
+          <div className="grid md:grid-cols-3 gap-4">
+            {overview.available_plans.map((plan) => {
               const isCurrent = plan.id === overview.current_plan;
-              const isPro = plan.id === 'pro';
               return (
-                <motion.div
+                <div
                   key={plan.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 + index * 0.08 }}
-                  className={`relative rounded-2xl p-6 border transition-all ${
-                    isPro
-                      ? 'bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#0f172a] border-[#FCF6BA]/40 shadow-lg shadow-[#FCF6BA]/5'
-                      : isCurrent
-                        ? 'bg-white/[0.06] border-[#FCF6BA]/30'
-                        : 'bg-white/[0.04] border-white/[0.08] hover:border-white/[0.12]'
+                  className={`rounded-lg p-5 border ${
+                    isCurrent ? 'bg-white/[0.06] border-[#64748b]/50' : 'bg-white/[0.02] border-white/[0.06]'
                   }`}
                 >
-                  {isPro && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-sm font-bold bg-[#FCF6BA] text-[#020617]">
-                      {i18n.language === 'he' ? 'מומלץ' : 'Recommended'}
-                    </div>
-                  )}
-                  {isCurrent && !isPro && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-sm font-bold bg-[#FCF6BA]/20 text-[#FCF6BA] border border-[#FCF6BA]/40">
+                  {isCurrent && (
+                    <span className="text-[#64748b] text-xs font-medium">
                       {t('billing.currentBadge')}
-                    </div>
+                    </span>
                   )}
-
-                  <div className="text-center mb-6">
-                    <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/10 mb-4">
-                      {getPlanIcon(plan.id)}
-                    </div>
-                    <h3 className="text-2xl font-bold text-[#F5F5F0]">{plan.name_he}</h3>
-                    <div className="mt-2">
-                      <span className="text-3xl font-bold text-[#F5F5F0]">
-                        {plan.price === 0 ? (i18n.language === 'he' ? 'חינם' : 'Free') : `₪${plan.price}`}
-                      </span>
-                      {plan.price > 0 && <span className="text-[#F5F5F0]/60">{t('billing.perMonth')}</span>}
-                    </div>
+                  <h3 className="text-lg font-medium text-[#F5F5F0] mt-1">{plan.name_he}</h3>
+                  <div className="mt-2 mb-4">
+                    <span className="text-2xl font-semibold text-[#F5F5F0]">
+                      {plan.price === 0 ? (i18n.language === 'he' ? 'חינם' : 'Free') : `₪${plan.price}`}
+                    </span>
+                    {plan.price > 0 && <span className="text-[#94a3b8] text-sm mr-1">{t('billing.perMonth')}</span>}
                   </div>
-
-                  <ul className="space-y-3 mb-6">
-                    <li className="flex items-start gap-2 text-[#F5F5F0]/90">
-                      <Check className="w-5 h-5 text-[#FCF6BA] flex-shrink-0 mt-0.5" />
-                      <span>
-                        {plan.messages_per_month === -1
-                          ? `${t('billing.unlimited')} ${i18n.language === 'he' ? 'הודעות' : 'messages'}`
-                          : `${plan.messages_per_month} ${t('billing.messagesPerMonthShort')}`}
-                      </span>
+                  <ul className="space-y-2 mb-5">
+                    <li className="flex items-center gap-2 text-[#94a3b8] text-sm">
+                      <Check className="w-4 h-4 text-[#64748b] flex-shrink-0" />
+                      {plan.messages_per_month === -1
+                        ? `${t('billing.unlimited')} ${i18n.language === 'he' ? 'הודעות' : 'messages'}`
+                        : `${plan.messages_per_month} ${t('billing.messagesPerMonthShort')}`}
                     </li>
-                    <li className="flex items-start gap-2 text-[#F5F5F0]/90">
-                      <Check className="w-5 h-5 text-[#FCF6BA] flex-shrink-0 mt-0.5" />
-                      <span>
-                        {plan.speech_minutes_per_month === -1
-                          ? `${t('billing.unlimited')} ${t('billing.speechMinutesShort')}`
-                          : plan.speech_minutes_per_month === 0
-                            ? t('billing.noSpeech')
-                            : `${plan.speech_minutes_per_month} ${t('billing.speechMinutesShort')}`}
-                      </span>
-                    </li>
-                    <li className="flex items-start gap-2 text-[#F5F5F0]/90">
-                      <Check className="w-5 h-5 text-[#FCF6BA] flex-shrink-0 mt-0.5" />
-                      <span>{getFeatureText(plan)}</span>
+                    <li className="flex items-center gap-2 text-[#94a3b8] text-sm">
+                      <Check className="w-4 h-4 text-[#64748b] flex-shrink-0" />
+                      {getFeatureText(plan)}
                     </li>
                     {plan.features?.journal_access && (
-                      <li className="flex items-start gap-2 text-[#F5F5F0]/90">
-                        <Check className="w-5 h-5 text-[#FCF6BA] flex-shrink-0 mt-0.5" />
-                        <span>{i18n.language === 'he' ? 'יומן אישי' : 'Personal journal'}</span>
+                      <li className="flex items-center gap-2 text-[#94a3b8] text-sm">
+                        <Check className="w-4 h-4 text-[#64748b] flex-shrink-0" />
+                        {i18n.language === 'he' ? 'יומן אישי' : 'Personal journal'}
                       </li>
                     )}
                     {plan.features?.priority_support && (
-                      <li className="flex items-start gap-2 text-[#F5F5F0]/90">
-                        <Check className="w-5 h-5 text-[#FCF6BA] flex-shrink-0 mt-0.5" />
-                        <span>{t('billing.personalSupport')}</span>
+                      <li className="flex items-center gap-2 text-[#94a3b8] text-sm">
+                        <Check className="w-4 h-4 text-[#64748b] flex-shrink-0" />
+                        {t('billing.personalSupport')}
                       </li>
                     )}
                   </ul>
-
                   {!isCurrent && plan.price > 0 && (
                     <button
-                      className="w-full py-3 rounded-xl font-bold transition-all hover:opacity-95"
-                      style={{ background: GOLD_GRADIENT, color: '#020617' }}
+                      onClick={() => setShowUpgradeNote(true)}
+                      className="w-full py-2.5 rounded-lg bg-white/10 text-[#F5F5F0] text-sm font-medium hover:bg-white/15 transition-colors"
                     >
                       {i18n.language === 'he' ? 'שדרג עכשיו' : 'Upgrade now'}
                     </button>
                   )}
-                </motion.div>
+                </div>
               );
             })}
           </div>
         </div>
 
-        {/* Tip */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="bg-[#FCF6BA]/10 rounded-2xl p-6 text-center border border-[#FCF6BA]/20"
-        >
-          <p className="text-[#F5F5F0]/90">
-            💡 <strong>{t('billing.tipTitle')}</strong>{' '}
-            <code className="bg-white/10 px-3 py-1 rounded-lg font-mono text-[#FCF6BA] font-bold">BSD100</code>{' '}
-            {t('billing.tipText')}
-          </p>
-        </motion.div>
+        {/* Payment / Credit Card Section */}
+        <div className="bg-white/[0.03] rounded-lg p-6 border border-white/[0.06]">
+          <div className="flex items-start gap-3">
+            <CreditCard className="w-5 h-5 text-[#64748b] flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-medium text-[#F5F5F0] mb-1">
+                {i18n.language === 'he' ? 'פרטי תשלום' : 'Payment details'}
+              </h3>
+              <p className="text-[#94a3b8] text-sm">
+                {i18n.language === 'he'
+                  ? 'חיבור כרטיס אשראי ותשלום מאובטח יעלה בקרוב. בינתיים ניתן להשתמש בקוד קופון למעלה.'
+                  : 'Credit card connection and secure payment coming soon. You can use a coupon code above for now.'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Upgrade note modal */}
+        {showUpgradeNote && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={() => setShowUpgradeNote(false)}>
+            <div className="bg-[#1e293b] rounded-lg p-6 max-w-sm border border-white/10" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-lg font-medium text-[#F5F5F0] mb-2">
+                {i18n.language === 'he' ? 'שדרוג חבילה' : 'Upgrade plan'}
+              </h3>
+              <p className="text-[#94a3b8] text-sm mb-4">
+                {i18n.language === 'he'
+                  ? 'טופס חיבור כרטיס אשראי יעלה בקרוב. בינתיים ניתן להשתמש בקוד BSD100 לקבלת גישה חינמית ל-PRO.'
+                  : 'Credit card form coming soon. You can use code BSD100 for free PRO access in the meantime.'}
+              </p>
+              <button
+                onClick={() => setShowUpgradeNote(false)}
+                className="w-full py-2 rounded-lg bg-white/10 text-[#F5F5F0] text-sm font-medium hover:bg-white/15"
+              >
+                {i18n.language === 'he' ? 'הבנתי' : 'Got it'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

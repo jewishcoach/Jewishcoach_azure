@@ -40,11 +40,13 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
     if (!stages || stages.length === 0) return;
     const container = messagesScrollRef.current;
     if (!container) return;
-    const firstMatch = container.querySelector(
-      stages.map(s => `[data-phase="${s}"]`).join(',')
-    ) as HTMLElement | null;
+    const selector = stages.map(s => `[data-phase="${s}"]`).join(',');
+    const firstMatch = container.querySelector(selector) as HTMLElement | null;
     if (firstMatch) {
       firstMatch.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      // שלב טרם הושג – גלילה לסוף השיחה
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
   }, []);
 
@@ -258,12 +260,12 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
               {loading && (
                 <div className="flex justify-start">
                   <div
-                    className="rounded-xl px-6 py-4 flex items-center gap-3 bg-white/80 border border-[#E2E4E8] shadow-sm"
+                    className="rounded-xl px-6 py-4 flex items-center gap-3 bg-white shadow-md border border-[#E2E4E8]"
                   >
                     <div className="flex gap-1">
-                      <span className="w-2 h-2 rounded-full bg-[#B38728] animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <span className="w-2 h-2 rounded-full bg-[#B38728] animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <span className="w-2 h-2 rounded-full bg-[#B38728] animate-bounce" style={{ animationDelay: '300ms' }} />
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#AA771C] animate-bounce shadow-sm" style={{ animationDelay: '0ms' }} />
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#AA771C] animate-bounce shadow-sm" style={{ animationDelay: '150ms' }} />
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#AA771C] animate-bounce shadow-sm" style={{ animationDelay: '300ms' }} />
                     </div>
                     <span className="text-[14px] font-light text-[#2E3A56]/80" style={{ fontFamily: 'Inter, sans-serif' }}>
                       {i18n.language === 'he' ? 'המאמן חושב...' : 'Coach is thinking...'}
