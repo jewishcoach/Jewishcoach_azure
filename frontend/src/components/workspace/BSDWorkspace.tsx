@@ -206,53 +206,61 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
         }}
       />
     <div
-      className="flex flex-col md:flex-row h-full w-full bg-[#020617] overflow-y-auto md:overflow-hidden"
+      className="flex flex-col md:flex-row h-full w-full bg-[#020617] overflow-hidden"
       dir={i18n.dir()}
     >
-      {/* RIGHT in RTL: Cognitive HUD - Mekor, Teva, Archive, Videos. On mobile: below chat */}
-      <div className="order-2 md:order-1 w-full md:w-64 lg:w-72 flex-shrink-0 border-t md:border-t-0 md:border-r border-white/[0.08] bg-[#1e293b] overflow-hidden min-h-0 max-h-[30vh] md:max-h-none">
-        <HudPanel
-          conversationId={conversationId}
-          currentPhase={currentPhase}
-          loading={loading}
-          onArchiveClick={() => setArchiveOpen(true)}
-          activeTool={activeTool ?? null}
-          onToolSubmit={handleToolSubmit}
+      {/* Mobile: [Stages strip | Chat] row, then HUD below. Desktop: HUD | Chat | Ladder */}
+      <div className="flex flex-1 min-h-0 flex-col md:flex-row w-full">
+        {/* HUD - desktop: left. Mobile: bottom */}
+        <div className="order-3 md:order-1 w-full md:w-64 lg:w-72 flex-shrink-0 border-t md:border-t-0 md:border-r border-white/[0.08] bg-[#1e293b] overflow-hidden min-h-0 max-h-[25vh] md:max-h-none flex flex-col">
+          <HudPanel
+            conversationId={conversationId}
+            currentPhase={currentPhase}
+            loading={loading}
+            onArchiveClick={() => setArchiveOpen(true)}
+            activeTool={activeTool ?? null}
+            onToolSubmit={handleToolSubmit}
+          />
+        </div>
+
+        {/* Archive Drawer */}
+        <ArchiveDrawer
+          isOpen={archiveOpen}
+          onClose={() => setArchiveOpen(false)}
+          conversations={conversations}
+          activeId={conversationId}
+          onSelect={handleSelectConversation}
+          onNewChat={handleNewChat}
+          onDelete={handleDeleteConversation}
+          onShare={handleShareConversation}
+          isRTL={isRTL}
         />
-      </div>
 
-      {/* Archive Drawer */}
-      <ArchiveDrawer
-        isOpen={archiveOpen}
-        onClose={() => setArchiveOpen(false)}
-        conversations={conversations}
-        activeId={conversationId}
-        onSelect={handleSelectConversation}
-        onNewChat={handleNewChat}
-        onDelete={handleDeleteConversation}
-        onShare={handleShareConversation}
-        isRTL={isRTL}
-      />
+        {/* Chat + Stages row on mobile; Chat only on desktop */}
+        <div className="order-1 md:order-2 flex flex-1 min-w-0 min-h-0 flex-row">
+          {/* Mobile: compact stages strip on side */}
+          <div className="md:hidden flex-shrink-0">
+            <VisionLadder currentStep={currentPhase} onPhaseClick={handlePhaseClick} compact />
+          </div>
+          {/* Chat area */}
+          <div className="flex flex-col min-w-0 flex-1 relative overflow-hidden bg-[#F5F5F0]">
+            <ShehiyaProgress loading={loading} />
 
-      {/* CENTER: Chat area - cream background. On mobile: first, must not shrink */}
-      <div className="order-1 md:order-2 flex flex-col min-w-0 min-h-[50vh] md:min-h-0 relative overflow-hidden bg-[#F5F5F0] flex-1 flex-shrink-0 md:flex-shrink">
-        <ShehiyaProgress loading={loading} />
-
-        <div ref={messagesScrollRef} className="flex-1 overflow-y-auto px-4 py-6 md:px-10 md:py-10 custom-scrollbar bg-[#F5F5F0]">
+            <div ref={messagesScrollRef} className="flex-1 overflow-y-auto px-3 py-4 md:px-10 md:py-10 custom-scrollbar bg-[#F5F5F0]">
           {messages.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="flex flex-col items-center justify-center h-full text-center py-16 md:py-24 px-4 md:px-10"
             >
-              <p className="text-[#2E3A56]/90 text-[16px] max-w-md" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 300, lineHeight: 1.6 }}>
+              <p className="text-[#2E3A56]/90 text-[14px] md:text-[16px] max-w-md" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 300, lineHeight: 1.6 }}>
                 {i18n.language === 'he'
                   ? 'שלום! על מה תרצה להתאמן היום?'
                   : 'Hello! What would you like to work on today?'}
               </p>
             </motion.div>
           ) : (
-            <div className="space-y-9">
+            <div className="space-y-5 md:space-y-9">
               <AnimatePresence>
                 {messages.map((message, idx) => {
                   const phase = message.role === 'assistant' && message.meta?.phase
@@ -299,7 +307,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
                   onKeyDown={handleKeyDown}
                   placeholder={t('chat.placeholder')}
                   disabled={loading}
-                  className="flex-1 min-w-0 resize-none rounded-xl px-4 md:px-6 py-4 md:py-5 text-[16px] max-h-28 placeholder-[#5A6B8A]/60 focus:border-[#B38728]/50 focus:ring-2 focus:ring-[#B38728]/20 focus:outline-none"
+                  className="flex-1 min-w-0 resize-none rounded-xl px-4 md:px-6 py-3 md:py-5 text-[14px] md:text-[16px] max-h-28 placeholder-[#5A6B8A]/60 focus:border-[#B38728]/50 focus:ring-2 focus:ring-[#B38728]/20 focus:outline-none"
                   style={{
                     fontFamily: 'Inter, sans-serif',
                     fontWeight: 300,
@@ -337,11 +345,13 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
                 </button>
             </form>
         </div>
-      </div>
+          </div>
+        </div>
 
-      {/* LEFT in RTL: Vision Ladder. On mobile: full width, last (scroll to see) */}
-      <div className="order-3 w-full md:w-[280px] min-w-0 md:min-w-[280px] flex-shrink-0 h-full min-h-[200px] md:min-h-[400px] border-t md:border-t-0 md:border-l border-white/[0.08] bg-[#1e293b] overflow-hidden">
-        <VisionLadder currentStep={currentPhase} onPhaseClick={handlePhaseClick} />
+        {/* Desktop: Vision Ladder full */}
+        <div className="hidden md:flex order-3 w-[280px] min-w-[280px] flex-shrink-0 h-full min-h-[400px] border-l border-white/[0.08] bg-[#1e293b] overflow-hidden">
+          <VisionLadder currentStep={currentPhase} onPhaseClick={handlePhaseClick} />
+        </div>
       </div>
     </div>
     </>

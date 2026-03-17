@@ -43,7 +43,7 @@ export const WorkspaceMessageBubble = ({ message, animateTyping = false }: Props
     >
       <div
         className={`
-          max-w-[85%] rounded-xl px-9 py-6 shadow-sm
+          max-w-[90%] md:max-w-[85%] rounded-xl px-5 py-4 md:px-9 md:py-6 shadow-sm
           ${isUser ? '' : ''}
         `}
         style={{
@@ -57,10 +57,10 @@ export const WorkspaceMessageBubble = ({ message, animateTyping = false }: Props
             components={{
               p: ({ children }) => {
                 const safe = Array.isArray(children) ? children.filter((c: unknown) => c != null && String(c) !== 'undefined') : (children != null ? [children] : []);
-                return <p className="mb-4 last:mb-0 leading-relaxed text-[16px]" style={{ lineHeight: 1.7, textAlign: 'justify' }}>{safe.length ? safe : null}</p>;
+                return <p className="mb-3 md:mb-4 last:mb-0 leading-relaxed text-[14px] md:text-[16px]" style={{ lineHeight: 1.65, textAlign: 'justify' }}>{safe.length ? safe : null}</p>;
               },
-              ul: ({ children }) => <ul className="list-disc list-inside mb-4 space-y-2 text-[16px]" style={{ lineHeight: 1.7 }}>{children}</ul>,
-              ol: ({ children }) => <ol className="list-decimal list-inside mb-4 space-y-2 text-[16px]" style={{ lineHeight: 1.7 }}>{children}</ol>,
+              ul: ({ children }) => <ul className="list-disc list-inside mb-3 md:mb-4 space-y-1 md:space-y-2 text-[14px] md:text-[16px]" style={{ lineHeight: 1.65 }}>{children}</ul>,
+              ol: ({ children }) => <ol className="list-decimal list-inside mb-3 md:mb-4 space-y-1 md:space-y-2 text-[14px] md:text-[16px]" style={{ lineHeight: 1.65 }}>{children}</ol>,
               li: ({ children }) => <li className="mb-1">{children}</li>,
               strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
               a: ({ href, children }) => (

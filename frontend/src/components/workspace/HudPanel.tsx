@@ -64,7 +64,7 @@ const InsightTag = ({ label, value }: { label: string; value: string }) => (
 );
 
 export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = false, onArchiveClick, activeTool, onToolSubmit }: HudPanelProps) => {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [data, setData] = useState<CognitiveData | null>(null);
   const [insightsPhase, setInsightsPhase] = useState<string>(currentPhase);
   const [wasLoading, setWasLoading] = useState(false);
@@ -185,15 +185,17 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
 
   return (
     <div className="w-full md:w-72 flex flex-col h-full bg-[#1e293b] min-h-0">
-      {/* Archive button - top corner */}
+      {/* Previous conversations button */}
       {onArchiveClick && (
-        <div className="p-5 border-b border-white/[0.06] flex justify-end">
+        <div className="p-4 border-b border-white/[0.06]">
           <button
             onClick={onArchiveClick}
-            className="p-3 rounded-xl text-white/40 hover:text-[#FCF6BA]/95 hover:bg-white/5 hover:[filter:drop-shadow(0_0_6px_rgba(212,175,55,0.4))] transition-colors"
-            aria-label="ארכיון"
+            title={t('chat.previousConversationsHint')}
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-white/60 hover:text-[#FCF6BA]/95 hover:bg-white/5 transition-colors text-sm font-light"
+            style={{ fontFamily: 'Inter, sans-serif' }}
           >
-            <Archive size={18} strokeWidth={1.5} />
+            <Archive size={18} strokeWidth={1.5} className="flex-shrink-0" />
+            <span>{t('chat.previousConversations')}</span>
           </button>
         </div>
       )}
