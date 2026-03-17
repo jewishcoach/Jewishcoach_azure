@@ -1348,6 +1348,97 @@ def get_explanatory_response_for_missing_details(reason: str, language: str) -> 
         return prefix + " ".join(q)
 
 
+def _is_recall_request(user_message: Optional[str], language: str = "he") -> bool:
+    """Detect requests to summarize/recall previous content without changing stage."""
+    if not user_message:
+        return False
+    msg = user_message.lower().strip()
+    if not msg:
+        return False
+
+    if language == "he":
+        recall_keywords = [
+            "תזכיר", "תזכירי", "תזכרי", "תזכור", "סכם", "סיכום", "תסכם",
+            "מה היה", "מה היתה", "מה הייתה", "מה אמרתי", "מה כתבתי",
+            "מה העמדה", "מה הדפוס", "מה בחרתי", "תחזור", "תחזרי", "נזכיר"
+        ]
+    else:
+        recall_keywords = [
+            "remind me", "summarize", "summary", "what did i say", "what was",
+            "recap", "go over", "old stance", "previous stance", "pattern was"
+        ]
+
+    return any(k in msg for k in recall_keywords)
+
+
+def _build_recall_response(state: Dict[str, Any], old_step: str, language: str = "he") -> str:
+    """Build a concise recall/summary response from collected_data while keeping current step."""
+    collected = _safe_collected_dict(state.get("collected_data"))
+
+    topic = collected.get("topic")
+    event_description = collected.get("event_description")
+    emotions = collected.get("emotions") or []
+    thought = collected.get("thought")
+    pattern = collected.get("pattern")
+    renewal = collected.get("renewal")
+    commitment = collected.get("commitment")
+    stance = collected.get("stance") or {}
+
+    if language == "he":
+        parts: List[str] = ["בטח. הנה תזכורת קצרה:"]
+        if topic:
+            parts.append(f"- נושא: {topic}")
+        if event_description:
+            parts.append(f"- האירוע: {event_description}")
+        if emotions:
+            parts.append(f"- רגשות: {', '.join(emotions[:5])}")
+        if thought:
+            parts.append(f"- מחשבה מרכזית: {thought}")
+        if pattern:
+            parts.append(f"- דפוס: {pattern}")
+        if isinstance(stance, dict):
+            gains = stance.get("gains") or []
+            losses = stance.get("losses") or []
+            if gains or losses:
+                if gains:
+                    parts.append(f"- רווחים בדפוס: {', '.join(gains[:3])}")
+                if losses:
+                    parts.append(f"- מחירים בדפוס: {', '.join(losses[:3])}")
+        if renewal:
+            parts.append(f"- בחירה חדשה: {renewal}")
+        if commitment:
+            parts.append(f"- מחויבות: {commitment}")
+
+        parts.append(f"\nאנחנו כרגע בשלב {old_step}. רוצה שנמשיך מכאן?")
+        return "\n".join(parts)
+
+    parts_en: List[str] = ["Sure. Here is a short recap:"]
+    if topic:
+        parts_en.append(f"- Topic: {topic}")
+    if event_description:
+        parts_en.append(f"- Event: {event_description}")
+    if emotions:
+        parts_en.append(f"- Emotions: {', '.join(emotions[:5])}")
+    if thought:
+        parts_en.append(f"- Core thought: {thought}")
+    if pattern:
+        parts_en.append(f"- Pattern: {pattern}")
+    if isinstance(stance, dict):
+        gains = stance.get("gains") or []
+        losses = stance.get("losses") or []
+        if gains:
+            parts_en.append(f"- Gains from pattern: {', '.join(gains[:3])}")
+        if losses:
+            parts_en.append(f"- Costs of pattern: {', '.join(losses[:3])}")
+    if renewal:
+        parts_en.append(f"- New choice: {renewal}")
+    if commitment:
+        parts_en.append(f"- Commitment: {commitment}")
+
+    parts_en.append(f"\nWe are currently in {old_step}. Want to continue from here?")
+    return "\n".join(parts_en)
+
+
 def _safe_stage_index(step: Any, stage_order: List[str]) -> int:
     """Return stage index or -1 if invalid. Never raises."""
     if step is None or not isinstance(step, str):
@@ -1492,6 +1583,9 @@ def validate_stage_transition(
     # 🚨 CRITICAL: Block backwards transitions (can't go backwards!)
     # Don't allow going backwards (except to S0/S1 which are resets)
     if old_idx >= 2 and new_idx >= 2 and new_idx < old_idx:
+        if _is_recall_request(user_message, language):
+            logger.info(f"[Safety Net] Recall request detected during backward transition {old_step}→{new_step} - returning summary without stage change")
+            return False, _build_recall_response(state, old_step, language)
         logger.error(f"[Safety Net] 🚫 BLOCKED backwards transition {old_step}→{new_step}")
         if language == "he":
             return False, "בוא נמשיך הלאה במקום לחזור אחורה."
