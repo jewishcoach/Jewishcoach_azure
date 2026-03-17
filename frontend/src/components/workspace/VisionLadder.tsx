@@ -38,7 +38,10 @@ export const VisionLadder = ({ currentStep, onPhaseClick, compact = false }: Vis
 
   if (compact) {
     return (
-      <div className="w-11 flex-shrink-0 flex flex-col items-center py-3 gap-1 bg-[#1e293b] border-l border-white/[0.08]" dir="ltr">
+      <div
+        className="w-[78px] flex-shrink-0 flex flex-col justify-between py-2 h-full bg-[#1e293b] border-l border-white/[0.08]"
+        dir={isRTL ? 'rtl' : 'ltr'}
+      >
         {PHASE_IDS.map((phaseId, i) => {
           const isActive = i === activePhaseIndex;
           const isPast = i < activePhaseIndex;
@@ -50,12 +53,23 @@ export const VisionLadder = ({ currentStep, onPhaseClick, compact = false }: Vis
               type="button"
               onClick={() => onPhaseClick?.(i)}
               title={`${title} - ${scrollHint}`}
-              className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium transition-all flex-shrink-0 ${
-                isActive ? 'bg-[#FCF6BA]/90 text-[#020617] ring-2 ring-[#B38728]/60' : isPast ? 'bg-white/30 text-white/80' : 'bg-white/15 text-white/50'
-              }`}
+              className="flex flex-col items-center gap-0.5 py-0.5 min-w-0 transition-all"
               aria-label={`${title} - ${scrollHint}`}
             >
-              {i + 1}
+              <span
+                className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium flex-shrink-0 ${
+                  isActive ? 'bg-[#FCF6BA]/90 text-[#020617] ring-2 ring-[#B38728]/60' : isPast ? 'bg-white/30 text-white/80' : 'bg-white/15 text-white/50'
+                }`}
+              >
+                {i + 1}
+              </span>
+              <span
+                className={`text-[9px] leading-tight text-center truncate max-w-full px-0.5 ${
+                  isActive ? 'text-[#FCF6BA]/95' : isPast ? 'text-white/70' : 'text-white/45'
+                }`}
+              >
+                {title}
+              </span>
             </button>
           );
         })}

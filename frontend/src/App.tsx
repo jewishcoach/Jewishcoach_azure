@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { SignedIn, SignedOut, UserButton, useUser, useClerk, useAuth } from '@clerk/clerk-react';
-import { Shield, BarChart3 } from 'lucide-react';
+import { Shield, BarChart3, Archive } from 'lucide-react';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { BSDWorkspace } from './components/workspace/BSDWorkspace';
 import { LandingPage } from './components/LandingPage';
@@ -38,8 +38,11 @@ function SignedInContent() {
   const [showAdmin, setShowAdmin] = useState(false);
   const [showBilling, setShowBilling] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
   const [checkingAdmin, setCheckingAdmin] = useState(true);
   const [displayName, setDisplayName] = useState<string | null>(null);
+
+  const isChatView = !showBilling && !showDashboard && !showAdmin && !checkingAdmin;
 
   useEffect(() => {
     const checkAdminStatus = async () => {
@@ -114,6 +117,16 @@ function SignedInContent() {
               })()}
             </span>
           )}
+          {isChatView && (
+            <button
+              onClick={() => setArchiveOpen(true)}
+              title={t('chat.previousConversationsHint')}
+              className="md:hidden flex items-center justify-center p-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white transition-colors min-h-[44px] min-w-[44px]"
+              aria-label={t('chat.previousConversations')}
+            >
+              <Archive className="w-5 h-5 flex-shrink-0" />
+            </button>
+          )}
           <button
             onClick={() => {
               setShowDashboard(!showDashboard);
@@ -154,6 +167,8 @@ function SignedInContent() {
               setShowBilling(true);
               setShowDashboard(false);
             }}
+            archiveOpen={archiveOpen}
+            onArchiveOpenChange={setArchiveOpen}
           />
         )}
       </main>
@@ -183,7 +198,9 @@ function DemoModeContent() {
   const { t } = useTranslation();
   const [showDashboard, setShowDashboard] = useState(false);
   const [showBilling, setShowBilling] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(!hasSeenOnboarding());
+  const isChatView = !showBilling && !showDashboard;
 
   useEffect(() => {
     // Set demo token for API client (backend will recognize this)
@@ -223,6 +240,16 @@ function DemoModeContent() {
         </div>
         <div className="flex-1" />
         <div className="flex items-center gap-3 flex-shrink-0">
+          {isChatView && (
+            <button
+              onClick={() => setArchiveOpen(true)}
+              title={t('chat.previousConversationsHint')}
+              className="md:hidden flex items-center justify-center p-2 rounded-lg bg-accent/80 hover:bg-accent text-white transition-colors"
+              aria-label={t('chat.previousConversations')}
+            >
+              <Archive className="w-5 h-5" />
+            </button>
+          )}
           <button
             onClick={() => {
               setShowDashboard(!showDashboard);
@@ -246,6 +273,8 @@ function DemoModeContent() {
               setShowBilling(true);
               setShowDashboard(false);
             }}
+            archiveOpen={archiveOpen}
+            onArchiveOpenChange={setArchiveOpen}
           />
         )}
       </main>

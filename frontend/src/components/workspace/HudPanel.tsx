@@ -185,9 +185,9 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
 
   return (
     <div className="w-full md:w-72 flex flex-col h-full bg-[#1e293b] min-h-0">
-      {/* Previous conversations button */}
+      {/* Previous conversations button - desktop only; on mobile it's in the app header */}
       {onArchiveClick && (
-        <div className="p-4 border-b border-white/[0.06]">
+        <div className="hidden md:block p-4 border-b border-white/[0.06]">
           <button
             onClick={onArchiveClick}
             title={t('chat.previousConversationsHint')}

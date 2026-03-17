@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import {
   User, Settings, Save, X, ArrowRight, Target, History,
   Loader2, CreditCard, FileText, ExternalLink, BookOpen,
-  ScanEye, MoreVertical
+  ScanEye
 } from 'lucide-react';
 import { CoachingCalendar } from './CoachingCalendar';
 import { RemindersManager } from './RemindersManager';
@@ -84,7 +84,6 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
   const [editForm, setEditForm] = useState({ display_name: '', gender: '' });
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<DashboardTab>('summary');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     loadDashboard();
@@ -179,54 +178,58 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
   }
   const isNewUser = stats.total_conversations === 0;
 
-  const LinksSection = () => (
-    <div className="flex flex-col gap-1">
+  const HeaderLinks = () => (
+    <div className="flex items-center gap-1 md:gap-2">
       {onShowBilling && (
         <button
-          onClick={() => { onShowBilling(); setMobileMenuOpen(false); }}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full transition-colors hover:bg-gray-50 text-start"
+          onClick={() => onShowBilling()}
+          className="p-2 rounded-lg transition-colors hover:bg-gray-100"
           style={{ color: COLORS.textMuted }}
+          title={t('billing.button')}
+          aria-label={t('billing.button')}
         >
-          <CreditCard className="w-4 h-4 flex-shrink-0" />
-          {t('billing.button')}
+          <CreditCard className="w-4 h-4 md:w-4 md:h-4" />
         </button>
       )}
       <a
         href={`${BSD_WEBSITE_URL}/privacy`}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full transition-colors hover:bg-gray-50"
+        className="p-2 rounded-lg transition-colors hover:bg-gray-100"
         style={{ color: COLORS.textMuted }}
+        title={t('sidebar.policy')}
+        aria-label={t('sidebar.policy')}
       >
-        <FileText className="w-4 h-4 flex-shrink-0" />
-        {t('sidebar.policy')}
+        <FileText className="w-4 h-4 md:w-4 md:h-4" />
       </a>
       <a
         href={BSD_BOOKS_URL}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full transition-colors hover:bg-gray-50"
+        className="p-2 rounded-lg transition-colors hover:bg-gray-100"
         style={{ color: COLORS.textMuted }}
+        title={t('sidebar.book')}
+        aria-label={t('sidebar.book')}
       >
-        <BookOpen className="w-4 h-4 flex-shrink-0" />
-        {t('sidebar.book')}
+        <BookOpen className="w-4 h-4 md:w-4 md:h-4" />
       </a>
       <a
         href={BSD_WEBSITE_URL}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full transition-colors hover:bg-gray-50"
+        className="p-2 rounded-lg transition-colors hover:bg-gray-100"
         style={{ color: COLORS.textMuted }}
+        title={t('sidebar.website')}
+        aria-label={t('sidebar.website')}
       >
-        <ExternalLink className="w-4 h-4 flex-shrink-0" />
-        {t('sidebar.website')}
+        <ExternalLink className="w-4 h-4 md:w-4 md:h-4" />
       </a>
     </div>
   );
 
   return (
     <div className="flex flex-col md:flex-row h-full overflow-hidden dashboard-container" dir="rtl" style={{ background: COLORS.bg }}>
-      {/* Mobile: Sticky top bar with profile + more menu */}
+      {/* Mobile: Sticky top bar with profile + header links */}
       <div className="md:hidden sticky top-0 z-10 flex items-center justify-between gap-3 px-4 py-3 border-b" style={{ background: COLORS.card, borderColor: COLORS.border, boxShadow: COLORS.shadow }}>
         <div className="flex items-center gap-3 min-w-0 flex-1">
           {onBack && (
@@ -255,41 +258,26 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
             </div>
           </div>
         </div>
-        <div className="relative flex-shrink-0">
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 rounded-xl transition-colors hover:bg-gray-100"
-            style={{ color: COLORS.textMuted }}
-            aria-label="תפריט"
-          >
-            <MoreVertical className="w-5 h-5" />
-          </button>
-          {mobileMenuOpen && (
-            <>
-              <div className="fixed inset-0 z-20" onClick={() => setMobileMenuOpen(false)} aria-hidden="true" />
-              <div
-                className="absolute top-full end-0 mt-2 w-56 rounded-xl shadow-lg py-2 z-30"
-                style={{ background: COLORS.card, boxShadow: '0 10px 40px rgba(0,0,0,0.15)' }}
-              >
-                <LinksSection />
-              </div>
-            </>
-          )}
-        </div>
+        <HeaderLinks />
       </div>
 
       {/* Desktop: Left Sidebar */}
       <aside className="hidden md:flex w-56 flex-shrink-0 flex-col py-6 px-3" style={{ background: COLORS.card, boxShadow: COLORS.shadow }}>
-        {onBack && (
-          <button
-            onClick={onBack}
-            className="flex items-center gap-2 px-3 py-2 mb-4 rounded-xl text-sm transition-colors hover:bg-gray-50"
-            style={{ color: COLORS.textMuted }}
-          >
-            <ArrowRight className="w-4 h-4" />
-            {t('chat.button')}
-          </button>
-        )}
+        <div className="flex items-center justify-between gap-2 mb-4">
+          {onBack ? (
+            <button
+              onClick={onBack}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-colors hover:bg-gray-50"
+              style={{ color: COLORS.textMuted }}
+            >
+              <ArrowRight className="w-4 h-4" />
+              {t('chat.button')}
+            </button>
+          ) : (
+            <div />
+          )}
+          <HeaderLinks />
+        </div>
         <nav className="flex flex-col gap-1 flex-1">
           {NAV_ITEMS.map((item) => (
             <button
@@ -306,9 +294,6 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
             </button>
           ))}
         </nav>
-        <div className="mt-auto pt-4 border-t" style={{ borderColor: COLORS.border }}>
-          <LinksSection />
-        </div>
       </aside>
 
       {/* Mobile: Bottom tab bar */}

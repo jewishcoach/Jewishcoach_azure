@@ -21,14 +21,18 @@ interface BSDWorkspaceProps {
   showDashboard?: boolean;
   onCloseDashboard?: () => void;
   onShowBilling?: () => void;
+  archiveOpen?: boolean;
+  onArchiveOpenChange?: (open: boolean) => void;
 }
 
-export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashboard, onShowBilling }: BSDWorkspaceProps) => {
+export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashboard, onShowBilling, archiveOpen: archiveOpenProp, onArchiveOpenChange }: BSDWorkspaceProps) => {
   const { t, i18n } = useTranslation();
   const { getToken } = useAuth();
   const [inputValue, setInputValue] = useState('');
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [archiveOpenLocal, setArchiveOpenLocal] = useState(false);
+  const archiveOpen = archiveOpenProp ?? archiveOpenLocal;
+  const setArchiveOpen = onArchiveOpenChange ?? setArchiveOpenLocal;
   const { messages, loading, currentPhase, conversationId, activeTool, quotaExceeded, dismissQuotaModal, sendMessage, loadConversation, startNewConversation, applyToolResponse } = useChat(displayName);
   const { isRecording, startRecording, stopRecording } = useVoiceRecord(i18n.language);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -238,8 +242,8 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
 
         {/* Chat + Stages row on mobile; Chat only on desktop */}
         <div className="order-1 md:order-2 flex flex-1 min-w-0 min-h-0 flex-row">
-          {/* Mobile: compact stages strip on side */}
-          <div className="md:hidden flex-shrink-0">
+          {/* Mobile: compact stages strip - full height alongside chat */}
+          <div className="md:hidden flex-shrink-0 self-stretch min-h-0">
             <VisionLadder currentStep={currentPhase} onPhaseClick={handlePhaseClick} compact />
           </div>
           {/* Chat area */}
