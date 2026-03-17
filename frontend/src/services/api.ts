@@ -106,6 +106,16 @@ class ApiClient {
     return response.data;
   }
 
+  // Dashboard (profile + stats + recent conversations)
+  async getDashboard() {
+    const response = await this.client.get('/profile/dashboard');
+    return response.data;
+  }
+
+  async updateProfile(data: { display_name?: string; gender?: string }) {
+    await this.client.patch('/profile/me', data);
+  }
+
   // User Preferences
   async getUserPreferences() {
     const response = await this.client.get('/users/me/preferences');

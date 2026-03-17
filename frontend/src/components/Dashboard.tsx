@@ -13,9 +13,7 @@ import { GoalsManager } from './GoalsManager';
 import { ActivityBarChart } from './dashboard/ActivityBarChart';
 import { PhaseDonutChart } from './dashboard/PhaseDonutChart';
 import { InsightsTab } from './InsightsTab';
-import { getApiBase } from '../config';
-
-const API_BASE = getApiBase();
+import { apiClient } from '../services/api';
 
 // BSD palette: navy primary, minimal red - gold for soft accents
 const COLORS = {
@@ -81,6 +79,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
   const { t, i18n } = useTranslation();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({ display_name: '', gender: '' });
   const [saving, setSaving] = useState(false);
@@ -91,13 +90,18 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
   }, []);
 
   const loadDashboard = async () => {
+    setError(null);
+    setLoading(true);
     try {
       const token = await getToken();
-      const response = await fetch(`${API_BASE}/profile/dashboard`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const dashboardData = await response.json();
-      if (response.ok && dashboardData?.profile) {
+      if (!token && !apiClient.getToken()) {
+        setError('יש להתחבר מחדש');
+        setData(null);
+        return;
+      }
+      if (token) apiClient.setToken(token);
+      const dashboardData = await apiClient.getDashboard();
+      if (dashboardData?.profile && dashboardData?.stats) {
         setData(dashboardData);
         setEditForm({
           display_name: dashboardData.profile.display_name || '',
@@ -105,10 +109,14 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
         });
       } else {
         setData(null);
+        setError('שגיאה בטעינת נתונים');
       }
-    } catch (error) {
-      console.error('Error loading dashboard:', error);
+    } catch (err: any) {
+      console.error('Error loading dashboard:', err);
       setData(null);
+      const status = err?.response?.status;
+      const msg = err?.response?.data?.detail || err?.message;
+      setError(status === 401 ? 'יש להתחבר מחדש' : msg || 'שגיאה בטעינת נתונים');
     } finally {
       setLoading(false);
     }
@@ -117,12 +125,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
-      const token = await getToken();
-      await fetch(`${API_BASE}/profile/me`, {
-        method: 'PATCH',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(editForm)
-      });
+      await apiClient.updateProfile(editForm);
       await loadDashboard();
       setEditing(false);
     } catch (error) {
@@ -143,9 +146,36 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
     );
   }
 
-  if (!data) return <div className="flex-1 flex items-center justify-center p-8" style={{ background: COLORS.bg, color: COLORS.text }}>שגיאה בטעינת נתונים</div>;
+  if (!data) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8" style={{ background: COLORS.bg, color: COLORS.text }}>
+        <p>{error || 'שגיאה בטעינת נתונים'}</p>
+        {onBack && (
+          <button
+            onClick={() => { setError(null); loadDashboard(); }}
+            className="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+            style={{ background: COLORS.accent, color: '#fff' }}
+          >
+            נסה שוב
+          </button>
+        )}
+        {onBack && (
+          <button onClick={onBack} className="text-sm" style={{ color: COLORS.textMuted }}>
+            חזרה
+          </button>
+        )}
+      </div>
+    );
+  }
 
   const { profile, stats, recent_conversations } = data;
+  if (!profile || !stats) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-8" style={{ background: COLORS.bg, color: COLORS.text }}>
+        שגיאה בנתונים – נסה שוב
+      </div>
+    );
+  }
   const isNewUser = stats.total_conversations === 0;
 
   return (
