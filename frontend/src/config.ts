@@ -14,9 +14,16 @@
  */
 export const BSD_VERSION = (localStorage.getItem('bsd_version') || 'v2') as 'v1' | 'v2';
 
+const PRODUCTION_API = 'https://jewishcoach-api.azurewebsites.net/api';
+
 /** Normalize API base URL - backend expects /api prefix. Exported for api.ts */
 export function getApiBase(): string {
-  const base = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+  let base = import.meta.env.VITE_API_URL;
+  if (!base || base.trim() === '') {
+    base = typeof window !== 'undefined' && !window.location.hostname.includes('localhost')
+      ? PRODUCTION_API
+      : 'http://localhost:8000/api';
+  }
   return base.endsWith('/api') ? base : `${base.replace(/\/$/, '')}/api`;
 }
 
