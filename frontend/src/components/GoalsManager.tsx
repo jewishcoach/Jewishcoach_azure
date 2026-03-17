@@ -3,8 +3,9 @@ import { useAuth } from '@clerk/clerk-react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Target, Plus, X, Save, Trash2, TrendingUp, Check } from 'lucide-react';
+import { getApiBase } from '../config';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE = getApiBase();
 
 interface Goal {
   id: number;
@@ -49,13 +50,14 @@ export const GoalsManager = ({ variant = 'dark' }: GoalsManagerProps) => {
   const loadGoals = async () => {
     try {
       const token = await getToken();
-      const response = await fetch(`${API_URL}/calendar/goals?status=active`, {
+      const response = await fetch(`${API_BASE}/calendar/goals?status=active`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
-      setGoals(data);
+      setGoals(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error loading goals:', error);
+      setGoals([]);
     } finally {
       setLoading(false);
     }
@@ -65,7 +67,7 @@ export const GoalsManager = ({ variant = 'dark' }: GoalsManagerProps) => {
     e.preventDefault();
     try {
       const token = await getToken();
-      await fetch(`${API_URL}/calendar/goals`, {
+      await fetch(`${API_BASE}/calendar/goals`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -88,7 +90,7 @@ export const GoalsManager = ({ variant = 'dark' }: GoalsManagerProps) => {
   const handleComplete = async (goalId: number) => {
     try {
       const token = await getToken();
-      await fetch(`${API_URL}/calendar/goals/${goalId}`, {
+      await fetch(`${API_BASE}/calendar/goals/${goalId}`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -107,7 +109,7 @@ export const GoalsManager = ({ variant = 'dark' }: GoalsManagerProps) => {
     
     try {
       const token = await getToken();
-      await fetch(`${API_URL}/calendar/goals/${goalId}`, {
+      await fetch(`${API_BASE}/calendar/goals/${goalId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

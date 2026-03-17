@@ -3,8 +3,9 @@ import { useAuth } from '@clerk/clerk-react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, Plus, X, Edit2, Save, Trash2, Clock } from 'lucide-react';
+import { getApiBase } from '../config';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE = getApiBase();
 
 interface Reminder {
   id: number;
@@ -48,13 +49,14 @@ export const RemindersManager = ({ variant = 'dark' }: RemindersManagerProps) =>
   const loadReminders = async () => {
     try {
       const token = await getToken();
-      const response = await fetch(`${API_URL}/calendar/reminders`, {
+      const response = await fetch(`${API_BASE}/calendar/reminders`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
-      setReminders(data);
+      setReminders(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error loading reminders:', error);
+      setReminders([]);
     } finally {
       setLoading(false);
     }
@@ -65,8 +67,8 @@ export const RemindersManager = ({ variant = 'dark' }: RemindersManagerProps) =>
     try {
       const token = await getToken();
       const url = editingId 
-        ? `${API_URL}/calendar/reminders/${editingId}`
-        : `${API_URL}/calendar/reminders`;
+        ? `${API_BASE}/calendar/reminders/${editingId}`
+        : `${API_BASE}/calendar/reminders`;
       
       const method = editingId ? 'PATCH' : 'POST';
       
@@ -94,7 +96,7 @@ export const RemindersManager = ({ variant = 'dark' }: RemindersManagerProps) =>
     
     try {
       const token = await getToken();
-      await fetch(`${API_URL}/calendar/reminders/${id}`, {
+      await fetch(`${API_BASE}/calendar/reminders/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
