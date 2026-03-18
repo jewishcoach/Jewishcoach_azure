@@ -129,20 +129,6 @@ export const LandingPage = ({ onGetStarted }: Props) => {
           })}
         </motion.div>
 
-        {/* Footer Quote */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.8 }}
-          className="text-center mt-16"
-        >
-          <p className="text-blue-200 italic text-lg">
-            {i18n.language === 'he'
-              ? '"גלה את המקור שלך, בחר את הדרך החדשה"'
-              : '"Discover your Source, Choose your new path"'}
-          </p>
-          <p className="text-blue-300 text-sm mt-2">בס״ד</p>
-        </motion.div>
       </div>
     </div>
   );

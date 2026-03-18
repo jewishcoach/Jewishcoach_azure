@@ -113,7 +113,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               </a>
             )}
 
-            <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+            <div className="flex flex-row gap-3 justify-center items-center">
               {step > 0 && (
                 <button
                   onClick={() => setStep(step - 1)}
