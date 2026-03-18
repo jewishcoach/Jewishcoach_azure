@@ -41,7 +41,7 @@ export const useChat = (displayName?: string | null) => {
       // Add welcome message with animation delay
       setTimeout(() => {
         const name = getNameForGreeting(displayName, clerkUser?.firstName, i18n.language);
-        const greeting = stripUndefined(String(t('welcome_message', { name }) ?? ''));
+        const greeting = stripUndefined(String(t('welcome_message', name ? { name } : {}) ?? ''));
 
         const welcomeMessage: Message = {
           id: Date.now(),
@@ -102,7 +102,7 @@ export const useChat = (displayName?: string | null) => {
     setLoading(false); // Clear any loading state when starting new chat
     
     const name = getNameForGreeting(displayName, clerkUser?.firstName, i18n.language);
-    const greeting = stripUndefined(String(t('welcome_message', { name }) ?? ''));
+    const greeting = stripUndefined(String(t('welcome_message', name ? { name } : {}) ?? ''));
 
     // Add welcome message immediately to prevent visual "jump"
     const welcomeMessage: Message = {
