@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Sparkles, Heart, Brain, Target } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 interface Props {
@@ -11,25 +11,22 @@ export const LandingPage = ({ onGetStarted }: Props) => {
 
   const features = [
     {
-      icon: Heart,
       titleHe: 'אימון אמפתי',
       titleEn: 'Empathetic Coaching',
       descHe: 'מאמן שמקשיב, מבין, ומוביל עם חום ואכפתיות',
       descEn: 'A coach that listens, understands, and leads with warmth',
     },
     {
-      icon: Brain,
       titleHe: 'מתודולוגיה יהודית',
       titleEn: 'Jewish Methodology',
       descHe: 'מבוסס על עקרונות עמוקים של חכמת היהדות',
       descEn: 'Based on deep principles of Jewish wisdom',
     },
     {
-      icon: Target,
       titleHe: 'התקדמות מובנית',
       titleEn: 'Structured Progress',
-      descHe: 'מעבר שיטתי דרך 9 שלבי גילוי עצמי',
-      descEn: 'Systematic journey through 9 phases of self-discovery',
+      descHe: 'מעבר שיטתי דרך 11 שלבי גילוי עצמי',
+      descEn: 'Systematic journey through 11 phases of self-discovery',
     },
   ];
 
@@ -98,35 +95,29 @@ export const LandingPage = ({ onGetStarted }: Props) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1 }}
-          className="grid md:grid-cols-3 gap-6 mt-16"
+          className="grid md:grid-cols-3 gap-4 mt-12"
         >
-          {features.map((feature, index) => {
-            const Icon = feature.icon;
-            return (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1 + index * 0.2 }}
-                whileHover={{ y: -5 }}
-                className="
-                  bg-white/10 backdrop-blur-md rounded-2xl p-6
-                  border border-white/20 shadow-glass
-                  hover:bg-white/20 transition-all duration-300
-                "
-              >
-                <div className="flex items-center justify-center w-12 h-12 bg-accent/20 rounded-xl mb-4">
-                  <Icon className="w-6 h-6 text-accent" />
-                </div>
-                <h3 className="text-xl font-serif font-bold text-white mb-2">
-                  {i18n.language === 'he' ? feature.titleHe : feature.titleEn}
-                </h3>
-                <p className="text-blue-100">
-                  {i18n.language === 'he' ? feature.descHe : feature.descEn}
-                </p>
-              </motion.div>
-            );
-          })}
+          {features.map((feature, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1 + index * 0.2 }}
+              whileHover={{ y: -3 }}
+              className="
+                bg-white/10 backdrop-blur-md rounded-xl px-4 py-3
+                border border-white/20 shadow-glass
+                hover:bg-white/20 transition-all duration-300
+              "
+            >
+              <h3 className="text-base font-serif font-bold text-white mb-1">
+                {i18n.language === 'he' ? feature.titleHe : feature.titleEn}
+              </h3>
+              <p className="text-blue-100 text-sm leading-relaxed">
+                {i18n.language === 'he' ? feature.descHe : feature.descEn}
+              </p>
+            </motion.div>
+          ))}
         </motion.div>
 
       </div>

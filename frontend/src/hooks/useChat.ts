@@ -14,6 +14,21 @@ function getNameForGreeting(displayName?: string | null, clerkFirstName?: string
   return lang === 'he' ? 'רב' : 'there';
 }
 
+/** Build welcome message - guarantees no "undefined" in output */
+function buildWelcomeMessage(
+  displayName: string | null | undefined,
+  clerkFirstName: string | null | undefined,
+  lang: string,
+  t: (key: string, opts?: object) => string
+): string {
+  const fallback = lang === 'he' ? 'רב' : 'there';
+  const name = getNameForGreeting(displayName, clerkFirstName, lang) || fallback;
+  let greeting = String(t('welcome_message', { name }) ?? '');
+  // Replace any "undefined" that slipped through (i18n can stringify undefined)
+  greeting = greeting.replace(/\bundefined\b/gi, fallback);
+  return stripUndefined(greeting);
+}
+
 export const useChat = (displayName?: string | null) => {
   const { t, i18n } = useTranslation();
   const { user: clerkUser } = useUser();
@@ -40,8 +55,7 @@ export const useChat = (displayName?: string | null) => {
 
       // Add welcome message with animation delay
       setTimeout(() => {
-        const name = getNameForGreeting(displayName, clerkUser?.firstName, i18n.language);
-        const greeting = stripUndefined(String(t('welcome_message', name ? { name } : {}) ?? ''));
+        const greeting = buildWelcomeMessage(displayName, clerkUser?.firstName, i18n.language, t);
 
         const welcomeMessage: Message = {
           id: Date.now(),
@@ -101,8 +115,7 @@ export const useChat = (displayName?: string | null) => {
   const startNewConversation = async () => {
     setLoading(false); // Clear any loading state when starting new chat
     
-    const name = getNameForGreeting(displayName, clerkUser?.firstName, i18n.language);
-    const greeting = stripUndefined(String(t('welcome_message', name ? { name } : {}) ?? ''));
+    const greeting = buildWelcomeMessage(displayName, clerkUser?.firstName, i18n.language, t);
 
     // Add welcome message immediately to prevent visual "jump"
     const welcomeMessage: Message = {
@@ -424,27 +437,18 @@ export const useChat = (displayName?: string | null) => {
     } catch (error) {
       console.error('Error sending message:', error);
       const errorCode = error instanceof Error ? error.message : '';
-      const isHebrew = i18n.language === 'he' || i18n.language?.startsWith('he');
       let userFacingMessage: string;
       if (errorCode.includes('V2_ERROR_404') || errorCode.includes('V2_ERROR_401')) {
-        userFacingMessage = isHebrew
-          ? 'השיחה לא נמצאה. לחץ על "שיחה חדשה" כדי להתחיל מחדש.'
-          : 'Session not found. Please start a new conversation.';
+        userFacingMessage = t('chat.errorSessionNotFound');
       } else if (errorCode.includes('V2_ERROR_429_QUOTA')) {
         setQuotaExceeded(true);
         return; // Modal will be shown by parent - no chat message
       } else if (errorCode.includes('V2_ERROR_429')) {
-        userFacingMessage = isHebrew
-          ? 'שולחים הודעות מהר מדי. המתן רגע ונסה שוב.'
-          : 'Sending messages too fast. Please wait a moment and try again.';
+        userFacingMessage = t('chat.errorTooFast');
       } else if (errorCode.includes('V2_ERROR_5') || errorCode.includes('NetworkError') || errorCode.includes('Failed to fetch') || errorCode.includes('Network Error')) {
-        userFacingMessage = isHebrew
-          ? 'אירעה שגיאה בשרת. נסה שוב בעוד רגע.'
-          : 'Server error. Please try again in a moment.';
+        userFacingMessage = t('chat.errorServer');
       } else {
-        userFacingMessage = isHebrew
-          ? 'מצטער, אירעה שגיאה. נסה שוב.'
-          : 'Sorry, something went wrong. Please try again.';
+        userFacingMessage = t('chat.errorGeneric');
       }
       setMessages(prev => [...prev, {
         id: Date.now() + 2,

@@ -9,6 +9,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/clerk-react';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Lock,
@@ -251,7 +252,7 @@ function ExpandableBlock({ block }: { block: Block }) {
   );
 }
 
-function GrowthItem({ point }: { point: GrowthPoint }) {
+function GrowthItem({ point, t }: { point: GrowthPoint; t: (k: string) => string }) {
   const icon =
     point.direction === 'positive' ? (
       <TrendingUp className="w-4 h-4" style={{ color: C.green }} />
@@ -279,13 +280,13 @@ function GrowthItem({ point }: { point: GrowthPoint }) {
       <div className="grid grid-cols-2 gap-3 text-xs" style={{ color: C.muted }}>
         <div>
           <p className="font-medium mb-1" style={{ color: C.muted }}>
-            אז
+            {t('insights.then')}
           </p>
           <p className="italic">"{point.early_example}"</p>
         </div>
         <div>
           <p className="font-medium mb-1" style={{ color: C.green }}>
-            עכשיו
+            {t('insights.now')}
           </p>
           <p className="italic">"{point.recent_example}"</p>
         </div>
@@ -298,6 +299,7 @@ function GrowthItem({ point }: { point: GrowthPoint }) {
 
 export function InsightsTab() {
   const { getToken } = useAuth();
+  const { t, i18n } = useTranslation();
   const [status, setStatus] = useState<InsightStatus | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
@@ -324,7 +326,7 @@ export function InsightsTab() {
         fetchAnalysis(false);
       }
     } catch (e) {
-      setError('לא ניתן לטעון את הנתונים');
+      setError(t('insights.cannotLoad'));
     } finally {
       setLoadingStatus(false);
     }
@@ -341,7 +343,7 @@ export function InsightsTab() {
       await fetchStatus();
       fetchAnalysis(false);
     } catch {
-      setError('שגיאה בשמירת ההסכמה');
+      setError(t('insights.consentSaveError'));
     } finally {
       setGrantingConsent(false);
     }
@@ -369,7 +371,7 @@ export function InsightsTab() {
       if (!res.ok) throw new Error(await res.text());
       setAnalysis(await res.json());
     } catch (e: any) {
-      setError('הניתוח נכשל. נסה שוב מאוחר יותר.');
+      setError(t('insights.analysisFailed'));
     } finally {
       setLoadingAnalysis(false);
     }
@@ -390,14 +392,14 @@ export function InsightsTab() {
       <div className="flex flex-col items-center justify-center py-16 gap-3">
         <AlertTriangle className="w-8 h-8" style={{ color: C.amber }} />
         <p className="text-sm" style={{ color: C.muted }}>
-          {error || 'לא ניתן לטעון את נתוני הניתוח'}
+          {error || t('insights.cannotLoad')}
         </p>
         <button
           onClick={fetchStatus}
           className="text-sm px-4 py-2 rounded-xl"
           style={{ background: C.accentLight, color: C.accent }}
         >
-          נסה שוב
+          {t('insights.tryAgain')}
         </button>
       </div>
     );
@@ -419,16 +421,15 @@ export function InsightsTab() {
           <Lock className="w-7 h-7" style={{ color: C.accent }} />
         </div>
         <h2 className="text-lg font-semibold mb-2" style={{ color: C.text }}>
-          המבט הפנימי עדיין ננעל
+          {t('insights.locked')}
         </h2>
         <p className="text-sm mb-8 max-w-xs" style={{ color: C.muted }}>
-          לניתוח עמוק נדרשות לפחות {status.min_words_required} מילים של שיחה. המשך להתאמן כדי לפתוח
-          את הפיצ'ר.
+          {t('insights.lockedDesc', { count: status.min_words_required })}
         </p>
         <div className="w-full max-w-xs">
           <div className="flex justify-between text-xs mb-1.5" style={{ color: C.muted }}>
-            <span>{status.total_user_words} מילים</span>
-            <span>{status.min_words_required} מילים</span>
+            <span>{status.total_user_words} {t('insights.words')}</span>
+            <span>{status.min_words_required} {t('insights.words')}</span>
           </div>
           <div className="h-2 rounded-full overflow-hidden" style={{ background: C.border }}>
             <motion.div
@@ -440,7 +441,7 @@ export function InsightsTab() {
             />
           </div>
           <p className="text-xs mt-2" style={{ color: C.muted }}>
-            {pct}% מהדרך
+            {t('insights.percentOfWay', { pct })}
           </p>
         </div>
       </motion.div>
@@ -462,19 +463,18 @@ export function InsightsTab() {
           <ShieldCheck className="w-7 h-7" style={{ color: C.gold }} />
         </div>
         <h2 className="text-lg font-semibold mb-3" style={{ color: C.text }}>
-          מבט פנימי — ניתוח פסיכולוגי עמוק
+          {t('insights.consentTitle')}
         </h2>
         <p className="text-sm mb-6 leading-relaxed" style={{ color: C.muted }}>
-          כדי ליצור את הניתוח, הבינה המלאכותית תעבור על נושאי השיחות, הרגשות, הדפוסים והשפה
-          שחלקת בשיחות האימון שלך.
+          {t('insights.consentDesc')}
         </p>
 
         <div className="w-full rounded-xl p-4 mb-6 text-right space-y-2.5" style={{ background: C.accentLight }}>
           {[
-            'המידע נשמר אצלך בלבד',
-            'לא נעביר לגורמים שלישיים',
-            'ניתן למחוק את הניתוח בכל עת',
-            'זהו ניתוח עזר — לא תחליף לטיפול מקצועי',
+            t('insights.consentItem1'),
+            t('insights.consentItem2'),
+            t('insights.consentItem3'),
+            t('insights.consentItem4'),
           ].map((item, i) => (
             <div key={i} className="flex items-start gap-2.5">
               <ShieldCheck className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: C.accent }} />
@@ -502,7 +502,7 @@ export function InsightsTab() {
           ) : (
             <ShieldCheck className="w-4 h-4" />
           )}
-          אני מסכים/ה לנתח את שיחותיי
+          {t('insights.consentButton')}
         </button>
       </motion.div>
     );
@@ -514,7 +514,7 @@ export function InsightsTab() {
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <Loader2 className="w-8 h-8 animate-spin" style={{ color: C.accent }} />
         <p className="text-sm" style={{ color: C.muted }}>
-          מנתח את השיחות שלך… זה עשוי לקחת כמה שניות
+          {t('insights.analyzing')}
         </p>
       </div>
     );
@@ -533,7 +533,7 @@ export function InsightsTab() {
           className="text-sm px-4 py-2 rounded-xl"
           style={{ background: C.accentLight, color: C.accent }}
         >
-          נסה שוב
+          {t('insights.tryAgain')}
         </button>
       </div>
     );
@@ -542,7 +542,8 @@ export function InsightsTab() {
   if (!analysis) return null;
 
   // ── Full analysis view ──
-  const generatedDate = new Date(analysis.generated_at).toLocaleDateString('he-IL', {
+  const locale = i18n.language === 'he' ? 'he-IL' : 'en-US';
+  const generatedDate = new Date(analysis.generated_at).toLocaleDateString(locale, {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -557,8 +558,8 @@ export function InsightsTab() {
       >
         <div>
           <p className="text-xs" style={{ color: C.muted }}>
-            מבוסס על {analysis.conversations_analyzed} שיחות •{' '}
-            {analysis.total_user_words.toLocaleString('he-IL')} מילים • {generatedDate}
+            {t('insights.basedOn', { count: analysis.conversations_analyzed })} •{' '}
+            {analysis.total_user_words.toLocaleString(locale)} {t('insights.words')} • {generatedDate}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -567,13 +568,13 @@ export function InsightsTab() {
               className="text-xs px-2 py-1 rounded-lg"
               style={{ background: C.amberLight, color: C.amber }}
             >
-              יש שיחות חדשות
+              {t('insights.newConversations')}
             </span>
           )}
           <button
             onClick={() => fetchAnalysis(true)}
             className="p-1.5 rounded-lg transition-colors hover:bg-gray-100"
-            title="רענן ניתוח"
+            title={t('insights.refreshAnalysis')}
             style={{ color: C.muted }}
           >
             <RefreshCw className="w-4 h-4" />
@@ -581,7 +582,7 @@ export function InsightsTab() {
           <button
             onClick={revokeConsent}
             className="p-1.5 rounded-lg transition-colors hover:bg-gray-100"
-            title="מחק ניתוח ובטל הסכמה"
+            title={t('insights.deleteAnalysis')}
             style={{ color: C.muted }}
           >
             <ShieldOff className="w-4 h-4" />
@@ -602,7 +603,7 @@ export function InsightsTab() {
         <div className="flex items-center gap-2 mb-3">
           <Sparkles className="w-4 h-4" style={{ color: C.gold }} />
           <span className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            פורטרט אישי
+            {t('insights.personalPortrait')}
           </span>
         </div>
         <p className="text-sm leading-relaxed mb-4" style={{ color: 'rgba(255,255,255,0.9)' }}>
@@ -623,7 +624,7 @@ export function InsightsTab() {
       <div className="grid grid-cols-3 gap-4">
         <SectionCard
           icon={<MessageSquareText className="w-4 h-4" />}
-          title="עומק שפה"
+          title={t('insights.languageDepth')}
           delay={0.05}
         >
           <ScoreBar value={analysis.language_depth_score} color={C.accent} />
@@ -637,7 +638,7 @@ export function InsightsTab() {
 
         <SectionCard
           icon={<Waves className="w-4 h-4" />}
-          title="ביטוי רגשי"
+          title={t('insights.emotionalExpression')}
           delay={0.1}
         >
           <ScoreBar value={analysis.emotional_richness_score} color={C.gold} />
@@ -804,7 +805,7 @@ export function InsightsTab() {
         >
           <div className="space-y-3">
             {analysis.growth_points.map((gp, i) => (
-              <GrowthItem key={i} point={gp} />
+              <GrowthItem key={i} point={gp} t={t} />
             ))}
           </div>
         </SectionCard>

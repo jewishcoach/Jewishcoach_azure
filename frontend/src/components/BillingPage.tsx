@@ -111,11 +111,11 @@ export const BillingPage = () => {
 
   if (loading) {
     return (
-      <div className="flex-1 w-full bg-[#0F172A] flex items-center justify-center min-h-0" dir="rtl">
+      <div className="flex-1 w-full bg-[#0F172A] flex items-center justify-center min-h-0" dir={i18n.dir()}>
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-10 h-10 text-[#94a3b8] animate-spin" />
           <p className="text-[#94a3b8] text-sm font-medium" style={{ fontFamily: 'Heebo, Inter, sans-serif' }}>
-            {i18n.language === 'he' ? 'טוען...' : 'Loading...'}
+            {t('chat.loading')}
           </p>
         </div>
       </div>
@@ -124,16 +124,16 @@ export const BillingPage = () => {
 
   if (!overview) {
     return (
-      <div className="flex-1 w-full bg-[#0F172A] flex items-center justify-center min-h-0 p-8" dir="rtl">
+      <div className="flex-1 w-full bg-[#0F172A] flex items-center justify-center min-h-0 p-8" dir={i18n.dir()}>
         <div className="bg-white/[0.03] rounded-lg p-8 border border-white/[0.06] max-w-md text-center">
           <p className="text-[#94a3b8] font-medium mb-4">
-            {i18n.language === 'he' ? 'שגיאה בטעינת נתונים' : 'Error loading data'}
+            {t('error.loadData')}
           </p>
           <button
             onClick={loadBillingData}
             className="px-5 py-2.5 rounded-lg bg-white/10 text-[#F5F5F0] text-sm font-medium hover:bg-white/15 transition-colors"
           >
-            {i18n.language === 'he' ? 'נסה שוב' : 'Try again'}
+            {t('error.tryAgain')}
           </button>
         </div>
       </div>
@@ -144,7 +144,7 @@ export const BillingPage = () => {
   const messagesPercent = usage.messages_limit === -1 ? 0 : Math.min((usage.messages_used / usage.messages_limit) * 100, 100);
 
   return (
-    <div className="flex-1 w-full bg-[#0F172A] overflow-y-auto custom-scrollbar" dir="rtl">
+    <div className="flex-1 w-full bg-[#0F172A] overflow-y-auto custom-scrollbar" dir={i18n.dir()}>
       <div className="max-w-4xl mx-auto p-6 md:p-8">
         {/* Header */}
         <div className="mb-8">
@@ -158,7 +158,7 @@ export const BillingPage = () => {
         {overview.has_active_coupon && (
           <div className="mb-6 py-3 px-4 rounded-lg bg-white/[0.03] border border-white/[0.06]">
             <span className="text-[#F5F5F0] text-sm">
-              {i18n.language === 'he' ? 'קופון פעיל:' : 'Active coupon:'} <span className="font-medium">{overview.coupon_code}</span>
+              {t('billing.activeCoupon')} <span className="font-medium">{overview.coupon_code}</span>
             </span>
           </div>
         )}
@@ -167,7 +167,7 @@ export const BillingPage = () => {
         <div className="mb-8">
           <div className="bg-white/[0.03] rounded-lg p-5 border border-white/[0.06]">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-[#94a3b8] text-sm font-medium">{i18n.language === 'he' ? 'שימוש בהודעות' : 'Messages used'}</span>
+              <span className="text-[#94a3b8] text-sm font-medium">{t('billing.messagesUsed')}</span>
               <span className="text-[#F5F5F0] text-sm">
                 {usage.messages_used} / {usage.messages_limit === -1 ? '∞' : usage.messages_limit}
               </span>
@@ -180,7 +180,7 @@ export const BillingPage = () => {
             </div>
             {usage.messages_limit !== -1 && (
               <p className="text-[#64748b] text-xs mt-2">
-                {i18n.language === 'he' ? `נותרו ${usage.messages_limit - usage.messages_used} הודעות` : `${usage.messages_limit - usage.messages_used} remaining`}
+                {t('billing.remaining', { count: usage.messages_limit - usage.messages_used })}
               </p>
             )}
           </div>
@@ -236,10 +236,10 @@ export const BillingPage = () => {
                       {t('billing.currentBadge')}
                     </span>
                   )}
-                  <h3 className="text-lg font-medium text-[#F5F5F0] mt-1">{plan.name_he}</h3>
+                  <h3 className="text-lg font-medium text-[#F5F5F0] mt-1">{i18n.language === 'he' ? plan.name_he : plan.name_en}</h3>
                   <div className="mt-2 mb-4">
                     <span className="text-2xl font-semibold text-[#F5F5F0]">
-                      {plan.price === 0 ? (i18n.language === 'he' ? 'חינם' : 'Free') : `₪${plan.price}`}
+                      {plan.price === 0 ? t('billing.free') : `₪${plan.price}`}
                     </span>
                     {plan.price > 0 && <span className="text-[#94a3b8] text-sm mr-1">{t('billing.perMonth')}</span>}
                   </div>
@@ -247,7 +247,7 @@ export const BillingPage = () => {
                     <li className="flex items-center gap-2 text-[#94a3b8] text-sm">
                       <Check className="w-4 h-4 text-[#64748b] flex-shrink-0" />
                       {plan.messages_per_month === -1
-                        ? `${t('billing.unlimited')} ${i18n.language === 'he' ? 'הודעות' : 'messages'}`
+                        ? `${t('billing.unlimited')} ${t('dashboard.messages')}`
                         : `${plan.messages_per_month} ${t('billing.messagesPerMonthShort')}`}
                     </li>
                     <li className="flex items-center gap-2 text-[#94a3b8] text-sm">
@@ -257,7 +257,7 @@ export const BillingPage = () => {
                     {plan.features?.journal_access && (
                       <li className="flex items-center gap-2 text-[#94a3b8] text-sm">
                         <Check className="w-4 h-4 text-[#64748b] flex-shrink-0" />
-                        {i18n.language === 'he' ? 'יומן אישי' : 'Personal journal'}
+                        {t('billing.personalJournal')}
                       </li>
                     )}
                     {(plan.features?.priority_support || plan.features?.advanced_tools) && (
@@ -272,7 +272,7 @@ export const BillingPage = () => {
                       onClick={() => setShowUpgradeNote(true)}
                       className="w-full py-2.5 rounded-lg bg-white/10 text-[#F5F5F0] text-sm font-medium hover:bg-white/15 transition-colors"
                     >
-                      {i18n.language === 'he' ? 'שדרג עכשיו' : 'Upgrade now'}
+                      {t('billing.upgradeNow')}
                     </button>
                   )}
                 </div>
@@ -287,12 +287,10 @@ export const BillingPage = () => {
             <CreditCard className="w-5 h-5 text-[#64748b] flex-shrink-0 mt-0.5" />
             <div>
               <h3 className="text-sm font-medium text-[#F5F5F0] mb-1">
-                {i18n.language === 'he' ? 'פרטי תשלום' : 'Payment details'}
+                {t('billing.paymentDetails')}
               </h3>
               <p className="text-[#94a3b8] text-sm">
-                {i18n.language === 'he'
-                  ? 'חיבור כרטיס אשראי ותשלום מאובטח יעלה בקרוב. בינתיים ניתן להשתמש בקוד קופון למעלה.'
-                  : 'Credit card connection and secure payment coming soon. You can use a coupon code above for now.'}
+                {t('billing.paymentComingSoon')}
               </p>
             </div>
           </div>
@@ -303,18 +301,16 @@ export const BillingPage = () => {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={() => setShowUpgradeNote(false)}>
             <div className="bg-[#1e293b] rounded-lg p-6 max-w-sm border border-white/10" onClick={(e) => e.stopPropagation()}>
               <h3 className="text-lg font-medium text-[#F5F5F0] mb-2">
-                {i18n.language === 'he' ? 'שדרוג חבילה' : 'Upgrade plan'}
+                {t('billing.upgradePlan')}
               </h3>
               <p className="text-[#94a3b8] text-sm mb-4">
-                {i18n.language === 'he'
-                  ? 'טופס חיבור כרטיס אשראי יעלה בקרוב. בינתיים ניתן להשתמש בקוד BSD100 לקבלת גישה חינמית ל-PRO.'
-                  : 'Credit card form coming soon. You can use code BSD100 for free PRO access in the meantime.'}
+                {t('billing.upgradeNote')}
               </p>
               <button
                 onClick={() => setShowUpgradeNote(false)}
                 className="w-full py-2 rounded-lg bg-white/10 text-[#F5F5F0] text-sm font-medium hover:bg-white/15"
               >
-                {i18n.language === 'he' ? 'הבנתי' : 'Got it'}
+                {t('billing.gotIt')}
               </button>
             </div>
           </div>

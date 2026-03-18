@@ -9,9 +9,10 @@ const TYPING_MS_PER_WORD = 28;
 interface Props {
   message: Message;
   animateTyping?: boolean;
+  dir?: 'ltr' | 'rtl';
 }
 
-export const WorkspaceMessageBubble = ({ message, animateTyping = false }: Props) => {
+export const WorkspaceMessageBubble = ({ message, animateTyping = false, dir = 'rtl' }: Props) => {
   const isUser = message.role === 'user';
   const fullContent = stripUndefined(message.content ?? '');
   const [displayedContent, setDisplayedContent] = useState(
@@ -52,12 +53,24 @@ export const WorkspaceMessageBubble = ({ message, animateTyping = false }: Props
           ...(isUser && { borderRight: '3px solid rgba(179, 135, 40, 0.5)' }),
         }}
       >
-        <div className={`prose prose-sm max-w-none ${isUser ? '' : ''}`} dir="rtl" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 300, lineHeight: 1.6, color: isUser ? '#2E3A56' : '#2E3A56', textAlign: 'justify' }}>
+        <div
+          className={`prose prose-sm max-w-none ${isUser ? '' : ''}`}
+          dir={dir}
+          style={{
+            fontFamily: 'Inter, sans-serif',
+            fontWeight: 300,
+            lineHeight: 1.6,
+            color: isUser ? '#2E3A56' : '#2E3A56',
+            textAlign: dir === 'rtl' ? 'justify' : 'left',
+            direction: dir,
+            unicodeBidi: 'isolate',
+          }}
+        >
           <ReactMarkdown
             components={{
               p: ({ children }) => {
                 const safe = Array.isArray(children) ? children.filter((c: unknown) => c != null && String(c) !== 'undefined') : (children != null ? [children] : []);
-                return <p className="mb-3 md:mb-4 last:mb-0 leading-relaxed text-[14px] md:text-[16px]" style={{ lineHeight: 1.65, textAlign: 'justify' }}>{safe.length ? safe : null}</p>;
+                return <p className="mb-3 md:mb-4 last:mb-0 leading-relaxed text-[14px] md:text-[16px]" style={{ lineHeight: 1.65, textAlign: dir === 'rtl' ? 'justify' : 'left' }}>{safe.length ? safe : null}</p>;
               },
               ul: ({ children }) => <ul className="list-disc list-inside mb-3 md:mb-4 space-y-1 md:space-y-2 text-[14px] md:text-[16px]" style={{ lineHeight: 1.65 }}>{children}</ul>,
               ol: ({ children }) => <ol className="list-decimal list-inside mb-3 md:mb-4 space-y-1 md:space-y-2 text-[14px] md:text-[16px]" style={{ lineHeight: 1.65 }}>{children}</ol>,

@@ -95,7 +95,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
     try {
       const token = await getToken();
       if (!token && !apiClient.getToken()) {
-        setError('יש להתחבר מחדש');
+        setError(t('error.reconnect'));
         setData(null);
         return;
       }
@@ -109,14 +109,14 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
         });
       } else {
         setData(null);
-        setError('שגיאה בטעינת נתונים');
+        setError(t('error.loadData'));
       }
     } catch (err: any) {
       console.error('Error loading dashboard:', err);
       setData(null);
       const status = err?.response?.status;
       const msg = err?.response?.data?.detail || err?.message;
-      setError(status === 401 ? 'יש להתחבר מחדש' : msg || 'שגיאה בטעינת נתונים');
+      setError(status === 401 ? t('error.reconnect') : msg || t('error.loadData'));
     } finally {
       setLoading(false);
     }
@@ -149,19 +149,19 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
   if (!data) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8" style={{ background: COLORS.bg, color: COLORS.text }}>
-        <p>{error || 'שגיאה בטעינת נתונים'}</p>
+        <p>{error || t('error.loadData')}</p>
         {onBack && (
           <button
             onClick={() => { setError(null); loadDashboard(); }}
             className="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
             style={{ background: COLORS.accent, color: '#fff' }}
           >
-            נסה שוב
+            {t('error.tryAgain')}
           </button>
         )}
         {onBack && (
           <button onClick={onBack} className="text-sm" style={{ color: COLORS.textMuted }}>
-            חזרה
+            {t('error.back')}
           </button>
         )}
       </div>
@@ -289,7 +289,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
         </button>
         <div className="min-w-0 flex-1 flex items-center gap-1.5 overflow-hidden">
           <p className="font-semibold truncate text-sm" style={{ color: COLORS.text }}>
-            {profile.display_name || profile.email?.split('@')[0] || 'משתמש'}
+            {profile.display_name || profile.email?.split('@')[0] || t('dashboard.userDefault')}
           </p>
           <div className="flex items-center gap-1 flex-shrink-0">
             {profile.gender && (
@@ -469,7 +469,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
             transition={{ delay: 0.05 }}
           >
             <h1 className="text-xl font-semibold mb-0.5" style={{ color: COLORS.text }}>
-              {profile.display_name || profile.email?.split('@')[0] || 'משתמש'}
+              {profile.display_name || profile.email?.split('@')[0] || t('dashboard.userDefault')}
             </h1>
             <p className="text-sm mb-5" style={{ color: COLORS.textMuted }}>{profile.email}</p>
 
@@ -702,11 +702,11 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
                         <div>
                           <div className="text-sm font-medium" style={{ color: COLORS.text }}>{conv.title}</div>
                           <div className="text-xs" style={{ color: COLORS.textMuted }}>
-                            {conv.message_count} הודעות • {translatePhase(conv.current_phase)}
+                            {t('dashboard.convMessages', { count: conv.message_count })} • {translatePhase(conv.current_phase, t)}
                           </div>
                         </div>
                         <div className="text-xs" style={{ color: COLORS.textMuted }}>
-                          {new Date(conv.created_at).toLocaleDateString('he-IL')}
+                          {new Date(conv.created_at).toLocaleDateString(i18n.language === 'he' ? 'he-IL' : 'en-US')}
                         </div>
                       </div>
                     ))}
@@ -721,13 +721,8 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
   );
 };
 
-function translatePhase(phase: string): string {
-  const translations: Record<string, string> = {
-    'Situation': 'המצוי', 'Gap': 'הפער', 'Pattern': 'הדפוס', 'Paradigm': 'פרדיגמה',
-    'Stance': 'עמדה', 'KMZ': 'כמ"ז', 'New_Choice': 'בחירה חדשה', 'Vision': 'חזון', 'PPD': 'תכנית',
-    'S0': 'רשות', 'S1': 'נושא', 'S2': 'אירוע', 'S3': 'רגשות', 'S4': 'מחשבה', 'S5': 'מעשה',
-    'S6': 'רצוי', 'S7': 'פער', 'S8': 'דפוס', 'S9': 'פרדיגמה', 'S10': 'עמדה+טריגר', 'S11': 'רווחים', 'S12': 'כוחות', 'S13': 'בחירה',
-    'S14': 'חזון', 'S15': 'מחויבות',
-  };
-  return translations[phase] || phase;
+function translatePhase(phase: string, t: (k: string) => string): string {
+  const key = `phase.${phase}`;
+  const translated = t(key);
+  return translated !== key ? translated : phase;
 }

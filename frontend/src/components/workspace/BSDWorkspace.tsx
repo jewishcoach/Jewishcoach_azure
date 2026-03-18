@@ -136,7 +136,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
   };
 
   const handleDeleteConversation = async (id: number) => {
-    const confirmMessage = i18n.language === 'he' ? 'למחוק את השיחה הזו?' : 'Delete this conversation?';
+    const confirmMessage = t('chat.deleteConfirm');
     if (!window.confirm(confirmMessage)) return;
     try {
       const token = await getToken();
@@ -157,9 +157,9 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
       if (!token) return;
       apiClient.setToken(token);
       const conv = await apiClient.getConversation(id);
-      const lines = [(conv.title || 'שיחה'), ...(conv.messages || []).map((m: any) => `${m.role === 'assistant' ? 'מאמן' : 'אני'}: ${m.content}`)];
+      const lines = [(conv.title || t('chat.conversation')), ...(conv.messages || []).map((m: any) => `${m.role === 'assistant' ? t('chat.coach') : t('chat.me')}: ${m.content}`)];
       await navigator.clipboard.writeText(lines.join('\n'));
-      window.alert(i18n.language === 'he' ? 'הועתק ללוח' : 'Copied to clipboard');
+      window.alert(t('chat.copied'));
     } catch (error) {
       console.error('Error sharing:', error);
     }
@@ -250,7 +250,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
             </div>
             <div className="flex flex-col min-w-0 flex-1 relative overflow-hidden bg-[#F5F5F0]">
               <ShehiyaProgress loading={loading} />
-              <div ref={messagesScrollRef} className="flex-1 overflow-y-auto px-3 py-4 md:px-10 md:py-10 custom-scrollbar bg-[#F5F5F0]">
+              <div ref={messagesScrollRef} className="flex-1 overflow-y-auto px-3 py-4 md:px-10 md:py-10 custom-scrollbar bg-[#F5F5F0]" dir={i18n.dir()}>
           {messages.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
@@ -258,9 +258,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
               className="flex flex-col items-center justify-center h-full text-center py-16 md:py-24 px-4 md:px-10"
             >
               <p className="text-[#2E3A56]/90 text-[14px] md:text-[16px] max-w-md" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 300, lineHeight: 1.6 }}>
-                {i18n.language === 'he'
-                  ? 'שלום! על מה תרצה להתאמן היום?'
-                  : 'Hello! What would you like to work on today?'}
+                {t('chat.emptyHint')}
               </p>
             </motion.div>
           ) : (
@@ -275,6 +273,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
                       <WorkspaceMessageBubble
                         message={message}
                         animateTyping={idx === 0 && message.role === 'assistant' && messages.length === 1}
+                        dir={i18n.dir() as 'ltr' | 'rtl'}
                       />
                     </div>
                   );
@@ -291,7 +290,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
                       <span className="w-2.5 h-2.5 rounded-full bg-[#AA771C] animate-bounce shadow-sm" style={{ animationDelay: '300ms' }} />
                     </div>
                     <span className="text-[14px] font-light text-[#2E3A56]/80" style={{ fontFamily: 'Inter, sans-serif' }}>
-                      {i18n.language === 'he' ? 'המאמן חושב...' : 'Coach is thinking...'}
+                      {t('chat.thinkingCoach')}
                     </span>
                   </div>
                 </div>
@@ -329,7 +328,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
                   type="button"
                   onClick={handleMicClick}
                   disabled={loading}
-                  title={isRecording ? (i18n.language === 'he' ? 'עצור הקלטה' : 'Stop recording') : (i18n.language === 'he' ? 'הקלט קול' : 'Record voice')}
+                  title={isRecording ? t('chat.stopRecording') : t('chat.recordVoice')}
                   className={`p-3 md:p-4 rounded-xl border transition-colors shadow-sm min-h-[44px] min-w-[44px] flex items-center justify-center ${
                     isRecording
                       ? 'bg-[#2E3A56]/15 border-[#2E3A56]/40 text-[#2E3A56] hover:bg-[#2E3A56]/25'

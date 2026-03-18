@@ -56,7 +56,7 @@ export const VisionLadder = ({ currentStep, onPhaseClick, compact = false, conve
         const res = await apiClient.getConversationInsights(conversationId);
         if (res.exists === false || !res.cognitive_data) return;
         const phase = res.current_stage ?? currentStep;
-        const map = buildInsightsByPhase(res.cognitive_data, phase);
+        const map = buildInsightsByPhase(res.cognitive_data, phase, t);
         setInsightsByPhase(map);
       } catch {
         setInsightsByPhase({});
@@ -65,7 +65,7 @@ export const VisionLadder = ({ currentStep, onPhaseClick, compact = false, conve
     fetchData();
     interval = setInterval(fetchData, 3000);
     return () => { if (interval) clearInterval(interval); };
-  }, [compact, conversationId, currentStep]);
+  }, [compact, conversationId, currentStep, t]);
 
   if (compact) {
     return (
