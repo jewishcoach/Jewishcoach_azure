@@ -5,6 +5,7 @@ import { UserButton } from '@clerk/clerk-react';
 import { Sparkles, MessageCircle, BookOpen, User, ChevronRight, ExternalLink } from 'lucide-react';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { setOnboardingComplete } from '../lib/onboardingStorage';
+import beniGalImg from '../assets/beni-gal.png';
 
 interface OnboardingFlowProps {
   onComplete: () => void;
@@ -30,6 +31,14 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       ctaKey: 'onboarding.next',
     },
     {
+      icon: User,
+      titleKey: 'onboarding.founder.title',
+      descKey: 'onboarding.founder.desc',
+      ctaKey: 'onboarding.next',
+      linkKey: 'onboarding.learnMore',
+      image: beniGalImg,
+    },
+    {
       icon: MessageCircle,
       titleKey: 'onboarding.coach.title',
       descKey: 'onboarding.coach.desc',
@@ -40,13 +49,6 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       icon: BookOpen,
       titleKey: 'onboarding.method.title',
       descKey: 'onboarding.method.desc',
-      ctaKey: 'onboarding.next',
-      linkKey: 'onboarding.learnMore',
-    },
-    {
-      icon: User,
-      titleKey: 'onboarding.founder.title',
-      descKey: 'onboarding.founder.desc',
       ctaKey: 'onboarding.next',
       linkKey: 'onboarding.learnMore',
     },
@@ -79,9 +81,19 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             transition={{ duration: 0.3 }}
             className="text-center"
           >
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#FCF6BA]/15 mb-8">
-              <Icon className="w-8 h-8 text-[#FCF6BA]" />
-            </div>
+            {currentScreen.image ? (
+              <div className="flex justify-center mb-8">
+                <img
+                  src={currentScreen.image}
+                  alt=""
+                  className="w-40 h-40 md:w-48 md:h-48 rounded-full object-cover border-4 border-[#FCF6BA]/30 shadow-lg"
+                />
+              </div>
+            ) : (
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#FCF6BA]/15 mb-8">
+                <Icon className="w-8 h-8 text-[#FCF6BA]" />
+              </div>
+            )}
             <h1 className="text-2xl md:text-3xl font-bold text-[#F5F5F0] mb-4" style={{ fontFamily: 'Cormorant Garamond, serif' }}>
               {t(currentScreen.titleKey)}
             </h1>
