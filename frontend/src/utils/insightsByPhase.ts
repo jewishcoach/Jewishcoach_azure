@@ -37,7 +37,8 @@ export interface InsightItem {
 
 const stepIndex = (s: string) => parseInt(s.replace('S', ''), 10) || 0;
 
-type TranslateFn = (key: string) => string;
+/** Compatible with i18next TFunction */
+type TranslateFn = (key: string, opts?: object) => string;
 
 /** Build map of phase index (0-10) to insight items for VisionLadder compact */
 export function buildInsightsByPhase(

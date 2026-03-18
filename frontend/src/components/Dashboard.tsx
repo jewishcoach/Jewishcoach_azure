@@ -525,9 +525,10 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.05 }}
                 >
-                  <h3 className="text-base font-semibold mb-4" style={{ color: COLORS.text }}>התפלגות שלבים</h3>
+                  <h3 className="text-base font-semibold mb-4" style={{ color: COLORS.text }}>{t('dashboard.phaseDistribution')}</h3>
                   {recent_conversations.length > 0 ? (
                     <PhaseDonutChart
+                      conversationsLabel={t('dashboard.conversations')}
                       data={(() => {
                         const byPhase: Record<string, number> = {};
                         recent_conversations.forEach((c) => {
@@ -535,14 +536,14 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
                           byPhase[p] = (byPhase[p] || 0) + 1;
                         });
                         return Object.entries(byPhase)
-                          .map(([phase, count]) => ({ phase, label: translatePhase(phase), count }))
+                          .map(([phase, count]) => ({ phase, label: translatePhase(phase, t), count }))
                           .sort((a, b) => b.count - a.count)
                           .slice(0, 6);
                       })()}
                     />
                   ) : (
                     <div className="flex items-center justify-center py-12 text-sm" style={{ color: COLORS.textMuted }}>
-                      אין עדיין שיחות
+                      {t('dashboard.noConversations')}
                     </div>
                   )}
                 </motion.div>
@@ -632,13 +633,13 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
                     {stats.current_phase && (
                       <div className="flex justify-between">
                         <span style={{ color: COLORS.textMuted }}>{t('dashboard.currentStage')}</span>
-                        <span className="font-medium" style={{ color: COLORS.accent }}>{translatePhase(stats.current_phase)}</span>
+                        <span className="font-medium" style={{ color: COLORS.accent }}>{translatePhase(stats.current_phase, t)}</span>
                       </div>
                     )}
                     {stats.favorite_coaching_phase && (
                       <div className="flex justify-between">
                         <span style={{ color: COLORS.textMuted }}>{t('dashboard.favoriteStage')}</span>
-                        <span className="font-medium" style={{ color: COLORS.text }}>{translatePhase(stats.favorite_coaching_phase)}</span>
+                        <span className="font-medium" style={{ color: COLORS.text }}>{translatePhase(stats.favorite_coaching_phase, t)}</span>
                       </div>
                     )}
                     <div className="flex justify-between">

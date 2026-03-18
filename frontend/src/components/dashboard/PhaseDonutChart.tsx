@@ -1,11 +1,5 @@
 import { motion } from 'framer-motion';
 
-const PHASE_COLORS = [
-  '#B38728', '#D4AF37', '#FCF6BA', '#AA771C', '#C9A227',
-  '#2E3A56', '#5A6B8A', '#8B9BB3',
-];
-const COLORS = { text: '#2E3A56', textMuted: '#5A6B8A' };
-
 interface PhaseCount {
   phase: string;
   label: string;
@@ -15,9 +9,17 @@ interface PhaseCount {
 interface PhaseDonutChartProps {
   data: PhaseCount[];
   size?: number;
+  /** Translated label for "conversations" (e.g. "שיחות" / "Conversations") */
+  conversationsLabel?: string;
 }
 
-export function PhaseDonutChart({ data, size = 140 }: PhaseDonutChartProps) {
+const PHASE_COLORS = [
+  '#B38728', '#D4AF37', '#FCF6BA', '#AA771C', '#C9A227',
+  '#2E3A56', '#5A6B8A', '#8B9BB3',
+];
+const COLORS = { text: '#2E3A56', textMuted: '#5A6B8A' };
+
+export function PhaseDonutChart({ data, size = 140, conversationsLabel = 'שיחות' }: PhaseDonutChartProps) {
   const total = data.reduce((s, d) => s + d.count, 0);
   if (total === 0) return null;
 
@@ -66,7 +68,7 @@ export function PhaseDonutChart({ data, size = 140 }: PhaseDonutChartProps) {
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center">
             <div className="text-2xl font-semibold" style={{ color: COLORS.text }}>{total}</div>
-            <div className="text-xs" style={{ color: COLORS.textMuted }}>שיחות</div>
+            <div className="text-xs" style={{ color: COLORS.textMuted }}>{conversationsLabel}</div>
           </div>
         </div>
       </div>

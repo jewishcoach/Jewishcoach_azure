@@ -160,7 +160,7 @@ export const CoachingCalendar = ({ conversations, variant = 'dark', stats }: Coa
                       {conv.current_phase && (
                         <div className={`flex items-center gap-1 ${theme.accent}`}>
                           <TrendingUp className="w-4 h-4" />
-                          <span>{translatePhase(conv.current_phase)}</span>
+                          <span>{translatePhase(conv.current_phase, t)}</span>
                         </div>
                       )}
                     </div>
@@ -203,35 +203,10 @@ export const CoachingCalendar = ({ conversations, variant = 'dark', stats }: Coa
   );
 };
 
-// Helper function to translate phase names
-function translatePhase(phase: string): string {
-  const translations: Record<string, string> = {
-    'Situation': 'המצוי',
-    'Gap': 'הפער',
-    'Pattern': 'הדפוס',
-    'Paradigm': 'פרדיגמה',
-    'Stance': 'עמדה',
-    'KMZ': 'כמ"ז',
-    'New_Choice': 'בחירה חדשה',
-    'Vision': 'חזון',
-    'PPD': 'תכנית',
-    'S0': 'רשות',
-    'S1': 'נושא',
-    'S2': 'אירוע',
-    'S3': 'רגשות',
-    'S4': 'מחשבה',
-    'S5': 'מעשה',
-    'S6': 'רצוי',
-    'S7': 'פער',
-    'S8': 'דפוס',
-    'S9': 'עמדה',
-    'S10': 'עמדה+טריגר',
-    'S11': 'רווחים',
-    'S12': 'כוחות',
-    'S13': 'בחירה',
-    'S14': 'חזון',
-    'S15': 'מחויבות',
-  };
-  return translations[phase] || phase;
+// Helper function to translate phase names (uses i18n phase.* keys)
+function translatePhase(phase: string, t: (k: string, opts?: object) => string): string {
+  const key = `phase.${phase}`;
+  const translated = t(key);
+  return translated !== key ? translated : phase;
 }
 

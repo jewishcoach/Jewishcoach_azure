@@ -252,7 +252,7 @@ function ExpandableBlock({ block }: { block: Block }) {
   );
 }
 
-function GrowthItem({ point, t }: { point: GrowthPoint; t: (k: string) => string }) {
+function GrowthItem({ point, t }: { point: GrowthPoint; t: (k: string, opts?: object) => string }) {
   const icon =
     point.direction === 'positive' ? (
       <TrendingUp className="w-4 h-4" style={{ color: C.green }} />
