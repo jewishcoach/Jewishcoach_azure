@@ -178,6 +178,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
   }
   const isNewUser = stats.total_conversations === 0;
 
+  /** Mobile: horizontal compact links in header */
   const HeaderLinks = () => (
     <div className="flex items-center gap-1 md:gap-2 flex-nowrap flex-shrink-0">
       {onShowBilling && (
@@ -188,7 +189,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
           aria-label={t('billing.button')}
         >
           <CreditCard className="w-4 h-4 flex-shrink-0" />
-          <span className="text-[9px] md:text-sm truncate"><span className="md:hidden">{t('billing.button.short')}</span><span className="hidden md:inline">{t('billing.button')}</span></span>
+          <span className="text-[9px] md:text-sm truncate">{t('billing.button.short')}</span>
         </button>
       )}
       <a
@@ -200,7 +201,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
         aria-label={t('sidebar.policy')}
       >
         <FileText className="w-4 h-4 flex-shrink-0" />
-        <span className="text-[9px] md:text-sm truncate"><span className="md:hidden">{t('sidebar.policy.short')}</span><span className="hidden md:inline">{t('sidebar.policy')}</span></span>
+        <span className="text-[9px] md:text-sm truncate">{t('sidebar.policy.short')}</span>
       </a>
       <a
         href={BSD_BOOKS_URL}
@@ -211,7 +212,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
         aria-label={t('sidebar.book')}
       >
         <BookOpen className="w-4 h-4 flex-shrink-0" />
-        <span className="text-[9px] md:text-sm truncate"><span className="md:hidden">{t('sidebar.book.short')}</span><span className="hidden md:inline">{t('sidebar.book')}</span></span>
+        <span className="text-[9px] md:text-sm truncate">{t('sidebar.book.short')}</span>
       </a>
       <a
         href={BSD_WEBSITE_URL}
@@ -222,7 +223,53 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
         aria-label={t('sidebar.website')}
       >
         <ExternalLink className="w-4 h-4 flex-shrink-0" />
-        <span className="text-[9px] md:text-sm truncate"><span className="md:hidden">{t('sidebar.website.short')}</span><span className="hidden md:inline">{t('sidebar.website')}</span></span>
+        <span className="text-[9px] md:text-sm truncate">{t('sidebar.website.short')}</span>
+      </a>
+    </div>
+  );
+
+  /** Desktop: vertical links at bottom of sidebar (original placement) */
+  const SidebarLinks = () => (
+    <div className="flex flex-col gap-1">
+      {onShowBilling && (
+        <button
+          onClick={() => onShowBilling()}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full transition-colors hover:bg-gray-50 text-start"
+          style={{ color: COLORS.textMuted }}
+        >
+          <CreditCard className="w-4 h-4 flex-shrink-0" />
+          {t('billing.button')}
+        </button>
+      )}
+      <a
+        href={`${BSD_WEBSITE_URL}/privacy`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full transition-colors hover:bg-gray-50"
+        style={{ color: COLORS.textMuted }}
+      >
+        <FileText className="w-4 h-4 flex-shrink-0" />
+        {t('sidebar.policy')}
+      </a>
+      <a
+        href={BSD_BOOKS_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full transition-colors hover:bg-gray-50"
+        style={{ color: COLORS.textMuted }}
+      >
+        <BookOpen className="w-4 h-4 flex-shrink-0" />
+        {t('sidebar.book')}
+      </a>
+      <a
+        href={BSD_WEBSITE_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full transition-colors hover:bg-gray-50"
+        style={{ color: COLORS.textMuted }}
+      >
+        <ExternalLink className="w-4 h-4 flex-shrink-0" />
+        {t('sidebar.website')}
       </a>
     </div>
   );
@@ -331,21 +378,16 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
 
       {/* Desktop: Left Sidebar */}
       <aside className="hidden md:flex w-56 flex-shrink-0 flex-col py-6 px-3" style={{ background: COLORS.card, boxShadow: COLORS.shadow }}>
-        <div className="flex items-center justify-between gap-2 mb-4">
-          {onBack ? (
-            <button
-              onClick={onBack}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-colors hover:bg-gray-50"
-              style={{ color: COLORS.textMuted }}
-            >
-              <ArrowRight className="w-4 h-4" />
-              {t('chat.button')}
-            </button>
-          ) : (
-            <div />
-          )}
-          <HeaderLinks />
-        </div>
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 px-3 py-2 mb-4 rounded-xl text-sm transition-colors hover:bg-gray-50"
+            style={{ color: COLORS.textMuted }}
+          >
+            <ArrowRight className="w-4 h-4" />
+            {t('chat.button')}
+          </button>
+        )}
         <nav className="flex flex-col gap-1 flex-1">
           {NAV_ITEMS.map((item) => (
             <button
@@ -362,6 +404,9 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
             </button>
           ))}
         </nav>
+        <div className="mt-auto pt-4 border-t" style={{ borderColor: COLORS.border }}>
+          <SidebarLinks />
+        </div>
       </aside>
 
       {/* Mobile: Bottom tab bar */}
