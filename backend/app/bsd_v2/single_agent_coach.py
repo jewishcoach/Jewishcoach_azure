@@ -1186,25 +1186,6 @@ async def validate_situation_quality(state: Dict[str, Any], llm, language: str =
     return True, None
 
 
-def user_questions_unrelated_event(user_message: str) -> bool:
-    """
-    Check if user is asking why the event doesn't have to be related to coaching topic.
-    """
-    questions_he = [
-        "למה לא", "למה אירוע", "למה סיטואציה", "למה דווקא",
-        "מה הקשר", "צריך להיות קשור", "לא קשור",
-        "אירוע אחר", "אירוע שלא", "למה לא קשור"
-    ]
-    questions_en = [
-        "why not", "why event", "why situation",
-        "what's the connection", "needs to be related", "not related",
-        "different event", "unrelated event"
-    ]
-    
-    msg_lower = user_message.lower()
-    return any(q in msg_lower for q in questions_he + questions_en)
-
-
 def user_wants_to_continue(user_message: str) -> bool:
     """
     Check if user is signaling they want to move forward.
@@ -1961,36 +1942,6 @@ async def handle_conversation(
     logger.info(f"[BSD V2] Handling message: '{user_message[:50]}...'")
     logger.info(f"[BSD V2] Current step: {state['current_step']}, saturation: {state['saturation_score']:.2f}")
     logger.info(f"[BSD V2] Message count in state: {len(state.get('messages', []))}")
-    
-    # 🚨 CRITICAL: Check if user is asking about unrelated event
-    if not SAFETY_NET_DISABLED and state["current_step"] == "S2" and user_questions_unrelated_event(user_message):
-        logger.info(f"[Safety Net] User asking about unrelated event - explaining directly")
-        if language == "he":
-            explanation = """שאלה מעולה! הסיטואציה **לא חייבת** להיות קשורה לנושא האימון.
-
-למה? כי **הדפוס שלך הולך איתך לכל מקום** - לבית, לעבודה, לחברים, לכל תחום בחיים.
-
-לפעמים דווקא באירוע מתחום **אחר לגמרי** (למשל: שיחה עם חבר, מצב בעבודה, אינטראקציה עם בן משפחה) הדפוס מתגלה בצורה הכי **נקייה וברורה** - בלי הרבה "רעש" סביב.
-
-אז תרגיש חופשי לשתף אירוע מכל תחום שבו היית באינטראקציה עם אנשים והרגשת סערה רגשית. מה עולה לך?"""
-        else:
-            explanation = """Great question! The situation **doesn't have to** be related to the coaching topic.
-
-Why? Because **your pattern goes with you everywhere** - home, work, friends, every area of life.
-
-Sometimes a situation from a **completely different area** (e.g., conversation with a friend, situation at work, interaction with family) reveals the pattern most **clearly** - without a lot of "noise" around it.
-
-So feel free to share an event from any area where you interacted with people and felt emotional turmoil. What comes to mind?"""
-        
-        # Add this as a coach response directly, no need for LLM
-        internal_state = {
-            "current_step": state["current_step"],  # Stay in same stage
-            "saturation_score": state.get("saturation_score", 0.3),
-            "reflection": "Explained why event doesn't need to be related to topic"
-        }
-        state = add_message(state, "user", user_message)
-        state = add_message(state, "coach", explanation, internal_state)
-        return explanation, state
     
     # 🚨 CRITICAL: Clarification requests ("אתה יכול להסביר?", "מה כוונתך?") ≠ frustration!
     # Per s1_topic.md: user wants EXPLANATION, not to move on. Give explanation, stay in S1.

@@ -6,6 +6,15 @@ Identify **only** the general topic to coach on.
 
 ---
 
+## What is a Coaching Topic? (Definition)
+
+**Coaching topic** = A domain, ability, or behavioral challenge that can be explored through specific events and patterns. A measurable topic – one can identify when it happens and when it doesn't.
+* ✅ **Valid topics:** "setting boundaries with children", "relationship commitment", "saying no", "emotional sharing", "procrastination when everything feels heavy"
+* ❌ **Not a topic:** Emotion alone ("heavy", "disappointed"); scattered cluster of ideas ("procrastination, energy, motivation, heaviness")
+* **When user gives multiple directions:** Ask "Which of these is most challenging for you? How would you phrase the topic in one sentence?"
+
+---
+
 ## S2 Transition Rule (Single, Absolute)
 
 **Move to S2 only if:** There are 2+ user messages about the topic **and** enough content to understand what to coach on.
