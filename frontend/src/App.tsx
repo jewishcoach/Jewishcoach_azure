@@ -95,7 +95,7 @@ function SignedInContent() {
         initial={{ opacity: 0, y: -50 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 120, damping: 14 }}
-        className="relative z-20 flex justify-between items-center p-4 md:p-6 bg-[#0f172a] backdrop-blur-[25px] border-b border-white/[0.08]"
+        className="relative z-20 flex justify-between items-center p-4 md:p-6 bg-[#0f172a] backdrop-blur-[25px] border-b border-white/[0.14] shadow-[0_4px_18px_-2px_rgba(0,0,0,0.45),0_1px_0_0_rgba(255,255,255,0.06)_inset]"
       >
         <div className="flex items-center gap-2 md:gap-[1.2em] flex-shrink-0 min-w-0">
           <img src="/bsd-logo.png" alt="BSD אימון יהודי" className="h-12 md:h-[69px] object-contain flex-shrink-0" />
@@ -109,7 +109,7 @@ function SignedInContent() {
         <div className="flex-1 min-w-2" />
         <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
           {user && (
-            <span className="text-white/80 text-xs md:text-sm font-light tracking-[0.02em] hidden sm:inline" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <span className="text-white text-sm md:text-base font-light tracking-[0.02em] hidden sm:inline" style={{ fontFamily: 'Inter, sans-serif' }}>
               {(() => {
                 const raw = displayName ?? user?.firstName ?? user?.emailAddresses?.[0]?.emailAddress ?? '';
                 const name = (typeof raw === 'string' ? raw : '').replace(/^undefined$/i, '').trim();
@@ -119,38 +119,43 @@ function SignedInContent() {
           )}
           {isChatView && (
             <button
+              type="button"
               onClick={() => setArchiveOpen(true)}
               title={t('chat.previousConversationsHint')}
-              className="md:hidden flex items-center justify-center p-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white transition-colors min-h-[44px] min-w-[44px]"
+              className="md:hidden flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] text-xs font-medium shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors min-h-[44px] max-w-[9.5rem]"
+              style={{ fontFamily: 'Inter, sans-serif' }}
               aria-label={t('chat.previousConversations')}
             >
-              <Archive className="w-5 h-5 flex-shrink-0" />
+              <Archive className="w-4 h-4 flex-shrink-0 text-[#2E3A56]" strokeWidth={2} />
+              <span className="truncate">{t('chat.previousConversations')}</span>
             </button>
           )}
           <button
+            type="button"
             onClick={() => {
               setShowDashboard(!showDashboard);
               setShowBilling(false);
               setShowAdmin(false);
             }}
-            className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs md:text-sm font-light transition-colors min-h-[44px]"
+            className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] text-xs md:text-sm font-medium shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors min-h-[44px]"
             style={{ fontFamily: 'Inter, sans-serif' }}
           >
-            <BarChart3 className="w-4 h-4 flex-shrink-0" />
-            <span className="hidden sm:inline">{showDashboard ? t('chat.button') : t('dashboard.button')}</span>
+            <BarChart3 className="w-4 h-4 flex-shrink-0 text-[#2E3A56]" strokeWidth={2} />
+            <span>{showDashboard ? t('chat.button') : t('dashboard.button')}</span>
           </button>
           {isAdmin && !checkingAdmin && (
             <button
+              type="button"
               onClick={() => {
                 setShowAdmin(!showAdmin);
                 setShowBilling(false);
                 setShowDashboard(false);
               }}
-              className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white text-xs md:text-sm font-light transition-colors min-h-[44px]"
+              className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] text-xs md:text-sm font-medium shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors min-h-[44px]"
               style={{ fontFamily: 'Inter, sans-serif' }}
             >
-              <Shield className="w-4 h-4 flex-shrink-0" />
-              <span className="hidden sm:inline">{showAdmin ? t('chat.button') : t('admin.button')}</span>
+              <Shield className="w-4 h-4 flex-shrink-0 text-[#2E3A56]" strokeWidth={2} />
+              <span>{showAdmin ? t('chat.button') : t('admin.button')}</span>
             </button>
           )}
           <LanguageSwitcher />
@@ -224,7 +229,7 @@ function DemoModeContent() {
       <motion.header
         initial={{ y: -100 }}
         animate={{ y: 0 }}
-        className="sticky top-0 z-50 flex items-center justify-between p-4 md:p-6 bg-[#0F172A]/95 backdrop-blur-sm border-b border-white/10"
+        className="sticky top-0 z-50 flex items-center justify-between p-4 md:p-6 bg-[#0F172A]/95 backdrop-blur-sm border-b border-white/[0.14] shadow-[0_4px_18px_-2px_rgba(0,0,0,0.45),0_1px_0_0_rgba(255,255,255,0.06)_inset]"
       >
         <div className="flex items-center gap-2 md:gap-[1.2em] flex-shrink-0 min-w-0">
           <img src="/bsd-logo.png" alt="BSD אימון יהודי" className="h-12 md:h-[69px] object-contain flex-shrink-0" />
@@ -242,22 +247,27 @@ function DemoModeContent() {
         <div className="flex items-center gap-3 flex-shrink-0">
           {isChatView && (
             <button
+              type="button"
               onClick={() => setArchiveOpen(true)}
               title={t('chat.previousConversationsHint')}
-              className="md:hidden flex items-center justify-center p-2 rounded-lg bg-accent/80 hover:bg-accent text-white transition-colors"
+              className="md:hidden flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] text-xs font-medium shadow-sm hover:bg-[#F4F6F9] transition-colors min-h-[44px] max-w-[9.5rem]"
+              style={{ fontFamily: 'Inter, sans-serif' }}
               aria-label={t('chat.previousConversations')}
             >
-              <Archive className="w-5 h-5" />
+              <Archive className="w-4 h-4 flex-shrink-0 text-[#2E3A56]" strokeWidth={2} />
+              <span className="truncate">{t('chat.previousConversations')}</span>
             </button>
           )}
           <button
+            type="button"
             onClick={() => {
               setShowDashboard(!showDashboard);
               setShowBilling(false);
             }}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent hover:bg-accent-dark text-white transition-colors"
+            className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] text-xs md:text-sm font-medium shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors min-h-[44px]"
+            style={{ fontFamily: 'Inter, sans-serif' }}
           >
-            <BarChart3 className="w-4 h-4" />
+            <BarChart3 className="w-4 h-4 flex-shrink-0 text-[#2E3A56]" strokeWidth={2} />
             {showDashboard ? t('chat.button') : t('dashboard.button')}
           </button>
           <LanguageSwitcher />

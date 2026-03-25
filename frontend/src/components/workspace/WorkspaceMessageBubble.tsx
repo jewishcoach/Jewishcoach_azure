@@ -64,14 +64,13 @@ export const WorkspaceMessageBubble = ({ message, animateTyping = false, dir = '
       transition={{ duration: 0.25 }}
     >
       <div
-        className={`
-          max-w-[90%] md:max-w-[85%] rounded-xl px-5 py-4 md:px-9 md:py-6 shadow-sm
-          ${isUser ? '' : ''}
-        `}
+        className="max-w-[90%] md:max-w-[85%] rounded-2xl px-5 py-4 md:px-9 md:py-6"
         style={{
-          background: isUser ? 'rgba(46, 58, 86, 0.08)' : '#FFFFFF',
-          border: isUser ? '1px solid rgba(46, 58, 86, 0.15)' : '1px solid #E2E4E8',
-          ...(isUser && { borderRight: '3px solid rgba(179, 135, 40, 0.5)' }),
+          background: isUser ? 'rgba(46, 58, 86, 0.07)' : '#FFFFFF',
+          border: 'none',
+          boxShadow: isUser
+            ? '0 1px 2px rgba(15, 23, 42, 0.045), 0 4px 20px rgba(46, 58, 86, 0.075), 0 8px 28px rgba(179, 135, 40, 0.06)'
+            : '0 1px 2px rgba(15, 23, 42, 0.035), 0 6px 22px rgba(46, 58, 86, 0.05)',
         }}
       >
         <div

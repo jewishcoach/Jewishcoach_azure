@@ -265,20 +265,26 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
                   onClick={() => void handleNewChat()}
                   disabled={loading}
                   title={t('chat.newConversation')}
-                  className="w-full flex items-center justify-center gap-2 min-h-[44px] py-2 px-3 rounded-xl text-sm font-light text-[#2E3A56]/90 hover:bg-white border border-[#E2E4E8] bg-white/70 active:bg-white disabled:opacity-45 disabled:cursor-not-allowed"
+                  className="w-full flex items-center justify-center gap-2 min-h-[44px] py-2 px-3 rounded-xl text-sm font-medium text-[#2E3A56] bg-white border border-[#E2E4E8] shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] active:bg-[#EEF1F4] disabled:opacity-45 disabled:cursor-not-allowed disabled:hover:bg-white"
                   style={{ fontFamily: 'Inter, sans-serif' }}
                 >
-                  <MessageSquarePlus size={18} strokeWidth={1.5} className="flex-shrink-0 text-[#5A6B8A]" />
+                  <MessageSquarePlus size={18} strokeWidth={2} className="flex-shrink-0 text-[#2E3A56]" />
                   <span>{t('chat.newConversation')}</span>
                 </button>
               </div>
               <ShehiyaProgress loading={loading} />
-              <div ref={messagesScrollRef} className="flex-1 overflow-y-auto px-3 py-4 md:px-10 md:py-10 custom-scrollbar bg-[#F5F5F0]" dir={i18n.dir()}>
+              {/* dir=ltr כאן קובע יישור פיזי: מאמן משמאל, משתמש מימין (גם בעברית). כיוון טקסט בבועות — ב-WorkspaceMessageBubble */}
+              <div
+                ref={messagesScrollRef}
+                className="flex-1 overflow-y-auto px-3 py-4 md:px-10 md:py-10 custom-scrollbar bg-[#F5F5F0]"
+                dir="ltr"
+              >
           {messages.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="flex flex-col items-center justify-center h-full text-center py-16 md:py-24 px-4 md:px-10"
+              dir={i18n.dir()}
             >
               <p className="text-[#2E3A56]/90 text-[14px] md:text-[16px] max-w-md" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 300, lineHeight: 1.6 }}>
                 {t('chat.emptyHint')}
@@ -326,7 +332,11 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
                       <span className="w-2.5 h-2.5 rounded-full bg-[#AA771C] animate-bounce shadow-sm" style={{ animationDelay: '150ms' }} />
                       <span className="w-2.5 h-2.5 rounded-full bg-[#AA771C] animate-bounce shadow-sm" style={{ animationDelay: '300ms' }} />
                     </div>
-                    <span className="text-[14px] font-light text-[#2E3A56]/80" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <span
+                      className="text-[14px] font-light text-[#2E3A56]/80"
+                      style={{ fontFamily: 'Inter, sans-serif' }}
+                      dir={i18n.dir()}
+                    >
                       {t('chat.thinkingCoach')}
                     </span>
                   </div>

@@ -190,10 +190,10 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
               type="button"
               onClick={onArchiveClick}
               title={t('chat.previousConversationsHint')}
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-white/60 hover:text-[#FCF6BA]/95 hover:bg-white/5 transition-colors text-sm font-light"
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] text-sm font-medium shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors"
               style={{ fontFamily: 'Inter, sans-serif' }}
             >
-              <Archive size={18} strokeWidth={1.5} className="flex-shrink-0" />
+              <Archive size={18} strokeWidth={2} className="flex-shrink-0 text-[#2E3A56]" />
               <span>{t('chat.previousConversations')}</span>
             </button>
           )}
@@ -203,10 +203,10 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
               onClick={onNewChat}
               disabled={loading}
               title={t('chat.newConversation')}
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-white/60 hover:text-[#FCF6BA]/95 hover:bg-white/5 transition-colors text-sm font-light disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] text-sm font-medium shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors disabled:opacity-45 disabled:cursor-not-allowed disabled:hover:bg-white"
               style={{ fontFamily: 'Inter, sans-serif' }}
             >
-              <MessageSquarePlus size={18} strokeWidth={1.5} className="flex-shrink-0" />
+              <MessageSquarePlus size={18} strokeWidth={2} className="flex-shrink-0 text-[#2E3A56]" />
               <span>{t('chat.newConversation')}</span>
             </button>
           )}
