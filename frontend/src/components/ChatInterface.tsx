@@ -312,7 +312,7 @@ export const ChatInterface = ({ displayName }: ChatInterfaceProps) => {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0, scale: 0.8 }}
                         transition={{ duration: 0.2 }}
-                        className="flex justify-start mb-6"
+                        className="flex justify-end mb-6"
                       >
                   <div className="bg-white/80 backdrop-blur-sm rounded-2xl px-6 py-4 shadow-glass border border-accent/20">
                     <div className="flex space-x-2 rtl:space-x-reverse">

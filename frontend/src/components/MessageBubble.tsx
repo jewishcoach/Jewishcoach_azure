@@ -11,8 +11,8 @@ export const MessageBubble = ({ message }: Props) => {
 
   return (
     <motion.div 
-      className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
-      initial={{ opacity: 0, x: isUser ? 20 : -20 }}
+      className={`flex ${isUser ? 'justify-start' : 'justify-end'}`}
+      initial={{ opacity: 0, x: isUser ? -20 : 20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.3 }}
     >
@@ -20,12 +20,13 @@ export const MessageBubble = ({ message }: Props) => {
         className={`
           max-w-[95%] rounded-2xl px-5 py-4 shadow-md
           ${isUser
-            ? 'bg-gradient-to-br from-primary to-primary-light text-white'
-            : 'bg-white/90 backdrop-blur-sm text-gray-900 border-s-4 border-accent shadow-glass'
+            ? 'border border-[rgba(179,135,40,0.14)] text-[#2E3A56] shadow-[0_1px_2px_rgba(139,90,43,0.06),0_6px_24px_rgba(46,58,86,0.06),0_10px_36px_rgba(179,135,40,0.08)]'
+            : 'bg-white/90 backdrop-blur-sm text-neutral-950 border-s-4 border-accent shadow-glass'
           }
         `}
+        style={isUser ? { background: '#FCF7F0' } : undefined}
       >
-        <div className={`prose prose-sm max-w-none ${isUser ? 'prose-invert' : ''}`}>
+        <div className={`prose prose-sm max-w-none ${isUser ? '' : 'text-neutral-950'}`}>
           <ReactMarkdown
             components={{
               p: ({ children }) => {
@@ -36,12 +37,14 @@ export const MessageBubble = ({ message }: Props) => {
               ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
               ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
               li: ({ children }) => <li className="mb-1">{children}</li>,
-              strong: ({ children }) => <strong className={isUser ? 'text-white font-bold' : 'text-accent-dark font-bold'}>{children}</strong>,
+              strong: ({ children }) => (
+                <strong className={isUser ? 'text-[#24324A] font-bold' : 'text-[#0a0a0a] font-bold'}>{children}</strong>
+              ),
               a: ({ href, children }) => (
                 <a
                   href={href}
                   onClick={(e) => { if (href?.startsWith('/')) { e.preventDefault(); window.location.href = href; } }}
-                  className={isUser ? 'text-blue-200 underline' : 'text-accent underline'}
+                  className={isUser ? 'text-[#2563eb] underline' : 'text-accent underline'}
                   style={{ fontWeight: 500, cursor: 'pointer' }}
                 >
                   {children}
@@ -52,7 +55,7 @@ export const MessageBubble = ({ message }: Props) => {
             {message.content}
           </ReactMarkdown>
         </div>
-        <div className={`text-xs mt-2 ${isUser ? 'text-blue-100' : 'text-gray-500'}`}>
+        <div className={`text-xs mt-2 ${isUser ? 'text-[#5A6B8A]/70' : 'text-[#0D0D0D]/42'}`}>
           {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </div>
       </div>

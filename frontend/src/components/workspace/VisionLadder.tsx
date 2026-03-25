@@ -27,6 +27,8 @@ const STEP_TO_PHASE: Record<string, number> = {
 const PHASE_IDS = ['p0', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p10'];
 
 const CREAM_WHITE = '#F5F5F0';
+/** רקע מלא לשלב הפעיל — מעט בהיר מ־#1e293b כדי שיבלוט מיד */
+const LADDER_ACTIVE_FILL = '#3d5266';
 
 interface VisionLadderProps {
   currentStep: string;
@@ -92,12 +94,15 @@ export const VisionLadder = ({ currentStep, onPhaseClick, compact = false, conve
                   else setPopoverPhase(null);
                 }}
                 title={`${title} - ${scrollHint}`}
-                className="flex flex-col items-center gap-0.5 py-0.5 min-w-0 transition-all"
+                className={`flex flex-col items-center gap-0.5 py-0.5 min-w-0 transition-all rounded-lg ${
+                  isActive ? 'px-1 -mx-0.5 ring-1 ring-[#B38728]/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]' : ''
+                }`}
+                style={isActive ? { background: LADDER_ACTIVE_FILL } : undefined}
                 aria-label={`${title} - ${scrollHint}`}
               >
                 <span
                   className={`relative w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium flex-shrink-0 ${
-                    isActive ? 'bg-[#FCF6BA]/90 text-[#020617] ring-2 ring-[#B38728]/60' : isPast ? 'bg-white/30 text-white/80' : 'bg-white/15 text-white/50'
+                    isActive ? 'bg-[#FCF6BA]/90 text-[#020617] ring-2 ring-[#B38728]/60' : isPast ? 'bg-white/35 text-white/[0.88]' : 'bg-white/20 text-white/60'
                   }`}
                 >
                   {i + 1}
@@ -110,7 +115,7 @@ export const VisionLadder = ({ currentStep, onPhaseClick, compact = false, conve
                 </span>
                 <span
                   className={`text-[9px] leading-tight text-center truncate max-w-full px-0.5 ${
-                    isActive ? 'text-[#FCF6BA]/95' : isPast ? 'text-white/70' : 'text-white/45'
+                    isActive ? 'text-[#FCF6BA]/95' : isPast ? 'text-white/[0.82]' : 'text-white/[0.58]'
                   }`}
                 >
                   {title}
@@ -170,17 +175,25 @@ export const VisionLadder = ({ currentStep, onPhaseClick, compact = false, conve
                 aria-label={isClickable ? `${title} - ${scrollHint}` : undefined}
                 onClick={isClickable ? () => onPhaseClick(i) : undefined}
                 onKeyDown={isClickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPhaseClick(i); } } : undefined}
-                className={`group relative rounded-xl px-4 py-3 border transition-all duration-300 ${isClickable ? 'cursor-pointer hover:bg-white/[0.06]' : 'cursor-default'}`}
+                className={`group relative rounded-xl px-4 py-3 border transition-all duration-300 ${
+                  isClickable ? `cursor-pointer ${isActive ? 'hover:brightness-[1.03]' : 'hover:bg-white/[0.06]'}` : 'cursor-default'
+                }`}
                 style={{
-                  background: isActive ? 'rgba(212, 175, 55, 0.12)' : 'rgba(255, 255, 255, 0.03)',
-                  borderColor: isActive ? 'rgba(212, 175, 55, 0.4)' : 'rgba(255, 255, 255, 0.08)',
-                  boxShadow: isActive ? '0 0 12px rgba(212, 175, 55, 0.15)' : 'none',
+                  background: isActive ? LADDER_ACTIVE_FILL : 'rgba(255, 255, 255, 0.03)',
+                  borderColor: isActive ? 'rgba(212, 175, 55, 0.5)' : 'rgba(255, 255, 255, 0.08)',
+                  boxShadow: isActive
+                    ? '0 0 18px rgba(212, 175, 55, 0.18), inset 0 1px 0 rgba(255,255,255,0.1)'
+                    : 'none',
                 }}
               >
                 <div
                   className="text-center font-light text-[15px] tracking-[0.06em] leading-snug w-full"
                   style={{
-                    color: isActive ? CREAM_WHITE : isPast ? 'rgba(245,245,240,0.6)' : 'rgba(245,245,240,0.35)',
+                    color: isActive
+                      ? CREAM_WHITE
+                      : isPast
+                        ? 'rgba(245,245,240,0.74)'
+                        : 'rgba(245,245,240,0.48)',
                   }}
                 >
                   {title}

@@ -58,7 +58,7 @@ export const WorkspaceMessageBubble = ({ message, animateTyping = false, dir = '
 
   return (
     <motion.div
-      className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
+      className={`flex ${isUser ? 'justify-start' : 'justify-end'}`}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
@@ -66,10 +66,10 @@ export const WorkspaceMessageBubble = ({ message, animateTyping = false, dir = '
       <div
         className="max-w-[90%] md:max-w-[85%] rounded-2xl px-5 py-4 md:px-9 md:py-6"
         style={{
-          background: isUser ? 'rgba(46, 58, 86, 0.07)' : '#FFFFFF',
-          border: 'none',
+          background: isUser ? '#FCF7F0' : '#FFFFFF',
+          border: isUser ? '1px solid rgba(179, 135, 40, 0.14)' : 'none',
           boxShadow: isUser
-            ? '0 1px 2px rgba(15, 23, 42, 0.045), 0 4px 20px rgba(46, 58, 86, 0.075), 0 8px 28px rgba(179, 135, 40, 0.06)'
+            ? '0 1px 2px rgba(139, 90, 43, 0.06), 0 6px 24px rgba(46, 58, 86, 0.06), 0 10px 36px rgba(179, 135, 40, 0.08)'
             : '0 1px 2px rgba(15, 23, 42, 0.035), 0 6px 22px rgba(46, 58, 86, 0.05)',
         }}
       >
@@ -80,7 +80,7 @@ export const WorkspaceMessageBubble = ({ message, animateTyping = false, dir = '
             fontFamily: 'Inter, sans-serif',
             fontWeight: 300,
             lineHeight: 1.6,
-            color: isUser ? '#2E3A56' : '#2E3A56',
+            color: isUser ? '#2E3A56' : '#0D0D0D',
             textAlign: dir === 'rtl' ? 'justify' : 'left',
             direction: dir,
             unicodeBidi: 'isolate',
@@ -103,7 +103,9 @@ export const WorkspaceMessageBubble = ({ message, animateTyping = false, dir = '
                 ul: ({ children }) => <ul className="list-disc list-inside mb-3 md:mb-4 space-y-1 md:space-y-2 text-[14px] md:text-[16px]" style={{ lineHeight: 1.65 }}>{children}</ul>,
                 ol: ({ children }) => <ol className="list-decimal list-inside mb-3 md:mb-4 space-y-1 md:space-y-2 text-[14px] md:text-[16px]" style={{ lineHeight: 1.65 }}>{children}</ol>,
                 li: ({ children }) => <li className="mb-1">{children}</li>,
-                strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                strong: ({ children }) => (
+                  <strong className={`font-semibold ${isUser ? '' : 'text-[#0a0a0a]'}`}>{children}</strong>
+                ),
                 a: ({ href, children }) => (
                   <a
                     href={href}
@@ -119,7 +121,7 @@ export const WorkspaceMessageBubble = ({ message, animateTyping = false, dir = '
             </ReactMarkdown>
           )}
         </div>
-        <div className={`text-[11px] mt-2 ${isUser ? 'text-[#5A6B8A]/70' : 'text-[#5A6B8A]/60'}`}>
+        <div className={`text-[11px] mt-2 ${isUser ? 'text-[#5A6B8A]/70' : 'text-[#0D0D0D]/42'}`}>
           {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </div>
       </div>

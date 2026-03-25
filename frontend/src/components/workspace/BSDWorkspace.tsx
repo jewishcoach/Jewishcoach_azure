@@ -273,7 +273,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
                 </button>
               </div>
               <ShehiyaProgress loading={loading} />
-              {/* dir=ltr כאן קובע יישור פיזי: מאמן משמאל, משתמש מימין (גם בעברית). כיוון טקסט בבועות — ב-WorkspaceMessageBubble */}
+              {/* dir=ltr כאן קובע יישור פיזי: מאמן מימין, משתמש משמאל (גם בעברית). כיוון טקסט בבועות — ב-WorkspaceMessageBubble */}
               <div
                 ref={messagesScrollRef}
                 className="flex-1 overflow-y-auto px-3 py-4 md:px-10 md:py-10 custom-scrollbar bg-[#F5F5F0]"
@@ -299,9 +299,10 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
                     : messages.slice(0, idx).reverse().find(m => m.role === 'assistant' && m.meta?.phase)?.meta?.phase ?? 'S0';
                   return (
                     <div key={message.id} data-phase={phase} data-message-id={message.id}>
+                      {/* No word-by-word typing: partial Hebrew breaks RTL/BiDi until the full string is shown */}
                       <WorkspaceMessageBubble
                         message={message}
-                        animateTyping={idx === 0 && message.role === 'assistant' && messages.length === 1}
+                        animateTyping={false}
                         dir={i18n.dir() as 'ltr' | 'rtl'}
                       />
                     </div>
@@ -309,7 +310,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
                 })}
               </AnimatePresence>
               {activeTool && (
-                <div ref={chatToolRef} className="flex justify-start">
+                <div ref={chatToolRef} className="flex justify-end">
                   <div
                     className="w-full max-w-[90%] md:max-w-[85%] rounded-xl px-5 py-4 md:px-9 md:py-6 shadow-sm bg-white border border-[#E2E4E8]"
                     dir={i18n.dir()}
@@ -323,7 +324,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
                 </div>
               )}
               {loading && (
-                <div className="flex justify-start">
+                <div className="flex justify-end">
                   <div
                     className="rounded-xl px-6 py-4 flex items-center gap-3 bg-white shadow-md border border-[#E2E4E8]"
                   >
