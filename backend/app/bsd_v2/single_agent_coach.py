@@ -1040,6 +1040,206 @@ def user_already_gave_emotions(state: Dict[str, Any], last_turns: int = 3) -> bo
     return user_already_gave_emotions_simple(state, last_turns)
 
 
+# ── S3: emotional congruence (prompt says probe joy-in-tragedy etc.; LLM often skips) ──
+_S3_POSITIVE_EMOTION_HE = (
+    "שמחה",
+    "אושר",
+    "הקלה",
+    "נחת",
+    "שמח",
+    "מאושר",
+    "עליז",
+    "נהנה",
+    "מרוצה",
+)
+_S3_NEGATIVE_EMOTION_HE = (
+    "עצב",
+    "כעס",
+    "פחד",
+    "בושה",
+    "אשמה",
+    "תסכול",
+    "דכאון",
+    "דכדוך",
+    "עלבון",
+    "חרדה",
+    "בדידות",
+    "אכזבה",
+    "זעם",
+)
+_DISTRESS_CONTEXT_HE = (
+    "הרבצ",
+    "הכיתי",
+    "מכות",
+    "אלימות",
+    "כמו זבל",
+    " זבל",
+    "אבא בלאי",
+    "התפרצ",
+    "צעקתי",
+    "בכיתי",
+)
+
+_S3_POSITIVE_EMOTION_EN = (
+    "joy",
+    "happy",
+    "happiness",
+    "relief",
+    "relieved",
+    "glad",
+    "cheerful",
+    "pleased",
+    "delighted",
+)
+_S3_NEGATIVE_EMOTION_EN = (
+    "sad",
+    "sadness",
+    "anger",
+    "angry",
+    "fear",
+    "afraid",
+    "shame",
+    "guilty",
+    "guilt",
+    "frustrat",
+    "anxious",
+    "anxiety",
+    "disappoint",
+    "lonely",
+    "hurt",
+    "rage",
+)
+_DISTRESS_CONTEXT_EN = (
+    " hit ",
+    "beating",
+    "violence",
+    "trash",
+    "terrible",
+    "awful",
+    " cried",
+    " yelled",
+    " hit my",
+)
+
+
+def _s3_token_padded_blob(text: str) -> str:
+    """Spaces around tokens for substring checks; normalize punctuation."""
+    t = (text or "").lower()
+    t = re.sub(r"[\.,;:!?\u2026…]+", " ", t)
+    t = re.sub(r"\s+", " ", t).strip()
+    return f" {t} " if t else "  "
+
+
+def _s3_recent_user_blob(state: Dict[str, Any], user_message: Optional[str], max_msgs: int = 16) -> str:
+    parts: List[str] = []
+    for msg in (state.get("messages") or [])[-max_msgs:]:
+        if msg.get("sender") == "user" and msg.get("content"):
+            parts.append(str(msg.get("content", "")))
+    if user_message and user_message.strip():
+        parts.append(user_message.strip())
+    return _s3_token_padded_blob("\n".join(parts))
+
+
+def _s3_he_word_present(pad: str, word: str) -> bool:
+    w = word.lower().strip()
+    if not w or len(pad) < 3:
+        return False
+    if f" לא {w} " in pad or pad.startswith(f"לא {w} "):
+        return False
+    if f" {w} " in pad:
+        return True
+    return False
+
+
+def _s3_en_word_present(pad: str, word: str) -> bool:
+    w = word.lower().strip()
+    if not w:
+        return False
+    if re.search(rf"\bnot\s+{re.escape(w)}\b", pad):
+        return False
+    if re.search(rf"\b{re.escape(w)}\b", pad):
+        return True
+    return False
+
+
+def s3_emotional_congruence_emotion_needed(
+    user_message: Optional[str],
+    state: Dict[str, Any],
+    language: str,
+) -> Optional[str]:
+    """
+    If the user named a typically 'positive' emotion in a painful / mixed context,
+    return one surface label (Hebrew or English) we must ask about before leaving S3.
+
+    Heuristic only (no extra LLM call). Mirrors s3_emotions.md / persona emotional-congruence rule.
+    """
+    if not user_message or not str(user_message).strip():
+        return None
+    um_pad = _s3_token_padded_blob(user_message)
+    blob_pad = _s3_recent_user_blob(state, user_message)
+
+    if language == "he":
+        pos_found = [w for w in _S3_POSITIVE_EMOTION_HE if _s3_he_word_present(um_pad, w)]
+        if not pos_found:
+            return None
+        neg_same_turn = any(_s3_he_word_present(um_pad, w) for w in _S3_NEGATIVE_EMOTION_HE)
+        distress = any(d in blob_pad for d in _DISTRESS_CONTEXT_HE)
+        neg_in_blob = any(_s3_he_word_present(blob_pad, w) for w in _S3_NEGATIVE_EMOTION_HE)
+        if neg_same_turn or (distress and (neg_in_blob or distress)):
+            return pos_found[0]
+        return None
+
+    pos_found = [w for w in _S3_POSITIVE_EMOTION_EN if _s3_en_word_present(um_pad, w)]
+    if not pos_found:
+        return None
+    neg_same_turn = any(_s3_en_word_present(um_pad, w) for w in _S3_NEGATIVE_EMOTION_EN)
+    distress = any(d in blob_pad for d in _DISTRESS_CONTEXT_EN)
+    neg_in_blob = any(_s3_en_word_present(blob_pad, w) for w in _S3_NEGATIVE_EMOTION_EN)
+    if neg_same_turn or (distress and (neg_in_blob or distress)):
+        return pos_found[0]
+    return None
+
+
+def coach_addresses_s3_emotional_congruence(
+    coach_message: str, positive_emotion: str, language: str
+) -> bool:
+    """True if coach already probed incongruence for this emotion (or generic surprise probe)."""
+    if not coach_message or not positive_emotion:
+        return False
+    cm = coach_message.lower()
+    pe = positive_emotion.lower()
+    if language == "he":
+        if "מפתיע" in cm:
+            return True
+        if "מפתיעה" in cm:
+            return True
+        if "הופיע" in cm and "איך" in cm:
+            return True
+        if pe in cm and any(x in cm for x in ("ספר", "תספר", "יותר על", "איך דווקא", "באותו רגע")):
+            return True
+    else:
+        if "surpris" in cm:
+            return True
+        if "show up" in cm or "showed up" in cm:
+            return True
+        if pe in cm and any(x in cm for x in ("tell me more", "how did", "in that moment")):
+            return True
+    return False
+
+
+def s3_emotional_congruence_followup_message(positive_emotion: str, language: str) -> str:
+    if language == "he":
+        return (
+            f"{positive_emotion} לצד הרגשות הקשים שתיארת – זה מפתיע אותי קצת. "
+            f"איך דווקא {positive_emotion} הופיעה שם, באותו רגע?"
+        )
+    pe = positive_emotion.strip()
+    return (
+        f"{pe.capitalize()} alongside the harder feelings you described – that surprises me a little. "
+        f"How did {pe} show up there, in that moment?"
+    )
+
+
 def detect_stuck_loop(state: Dict[str, Any], last_n: int = 4) -> bool:
     """
     Detect if coach is stuck repeating the same question.
@@ -2221,6 +2421,26 @@ async def handle_conversation(
             coach_message = correction
             # Keep current step (don't advance)
             internal_state["current_step"] = old_step
+
+        # 6.4 S3 emotional congruence: enforce prompt rule when LLM skips probing (e.g. joy + anger same breath)
+        if (
+            not SAFETY_NET_DISABLED
+            and state["current_step"] == "S3"
+            and user_message
+        ):
+            pend = s3_emotional_congruence_emotion_needed(user_message, state, language)
+            if pend and not coach_addresses_s3_emotional_congruence(coach_message, pend, language):
+                coach_message = s3_emotional_congruence_followup_message(pend, language)
+                internal_state["current_step"] = "S3"
+                internal_state["saturation_score"] = min(
+                    float(internal_state.get("saturation_score") or 0.5),
+                    0.85,
+                )
+                overrides_applied.append("s3_congruence")
+                _bsd_log("S3_CONGRUENCE_OVERRIDE", emotion=pend, user_preview=(user_message or "")[:60])
+                logger.warning(
+                    f"[Safety Net] S3 emotional congruence — overriding coach reply to probe '{pend}'"
+                )
         
         # 6b. Replace placeholder [נושא] in coach_message with actual topic
         topic_for_msg = _safe_get_topic_from_collected(internal_state.get("collected_data"))
