@@ -14,6 +14,7 @@ import { ActivityBarChart } from './dashboard/ActivityBarChart';
 import { PhaseDonutChart } from './dashboard/PhaseDonutChart';
 import { InsightsTab } from './InsightsTab';
 import { apiClient } from '../services/api';
+import type { I18nT } from '../i18nT';
 
 // BSD palette: navy primary, minimal red - gold for soft accents
 const COLORS = {
@@ -722,8 +723,8 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
   );
 };
 
-function translatePhase(phase: string, t: (k: string) => string): string {
+function translatePhase(phase: string, t: I18nT): string {
   const key = `phase.${phase}`;
-  const translated = t(key);
+  const translated = String(t(key));
   return translated !== key ? translated : phase;
 }

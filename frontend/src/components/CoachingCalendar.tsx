@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Calendar from 'react-calendar';
 import { useTranslation } from 'react-i18next';
+import type { I18nT } from '../i18nT';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, Calendar as CalendarIcon, TrendingUp } from 'lucide-react';
 import 'react-calendar/dist/Calendar.css';
@@ -204,9 +205,9 @@ export const CoachingCalendar = ({ conversations, variant = 'dark', stats }: Coa
 };
 
 // Helper function to translate phase names (uses i18n phase.* keys)
-function translatePhase(phase: string, t: (k: string, opts?: object) => string): string {
+function translatePhase(phase: string, t: I18nT): string {
   const key = `phase.${phase}`;
-  const translated = t(key);
+  const translated = String(t(key));
   return translated !== key ? translated : phase;
 }
 

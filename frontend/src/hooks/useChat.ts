@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useUser } from '@clerk/clerk-react';
 import type { Message, Conversation, ToolCall } from '../types';
+import type { I18nT } from '../i18nT';
 import { apiClient } from '../services/api';
 import { BSD_VERSION, getBsdEndpoint } from '../config';
 import { stripUndefined } from '../utils/messageContent';
@@ -29,7 +30,7 @@ function buildWelcomeMessage(
   displayName: string | null | undefined,
   clerkFirstName: string | null | undefined,
   lang: string,
-  t: (key: string, opts?: object) => string
+  t: I18nT
 ): string {
   const fallback = lang === 'he' ? 'רב' : 'there';
   const name = getNameForGreeting(displayName, clerkFirstName, lang) || fallback;

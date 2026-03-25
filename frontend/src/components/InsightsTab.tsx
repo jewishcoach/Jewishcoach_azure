@@ -10,6 +10,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { useTranslation } from 'react-i18next';
+import type { I18nT } from '../i18nT';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Lock,
@@ -252,7 +253,7 @@ function ExpandableBlock({ block }: { block: Block }) {
   );
 }
 
-function GrowthItem({ point, t }: { point: GrowthPoint; t: (k: string, opts?: object) => string }) {
+function GrowthItem({ point, t }: { point: GrowthPoint; t: I18nT }) {
   const icon =
     point.direction === 'positive' ? (
       <TrendingUp className="w-4 h-4" style={{ color: C.green }} />

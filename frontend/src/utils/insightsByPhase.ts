@@ -3,6 +3,8 @@
  * Used by HudPanel and VisionLadder compact for stage-specific insight display.
  */
 
+import type { I18nT } from '../i18nT';
+
 export interface CognitiveData {
   topic?: string;
   emotions?: string[];
@@ -37,14 +39,11 @@ export interface InsightItem {
 
 const stepIndex = (s: string) => parseInt(s.replace('S', ''), 10) || 0;
 
-/** Compatible with i18next TFunction */
-type TranslateFn = (key: string, opts?: object) => string;
-
 /** Build map of phase index (0-10) to insight items for VisionLadder compact */
 export function buildInsightsByPhase(
   data: CognitiveData | null | undefined,
   currentStage: string,
-  t: TranslateFn
+  t: I18nT
 ): Record<number, InsightItem[]> {
   const result: Record<number, InsightItem[]> = {};
   if (!data) return result;
