@@ -20,20 +20,41 @@ export const WorkspaceMessageBubble = ({ message, animateTyping = false, dir = '
   );
 
   useEffect(() => {
-    if (!animateTyping || !fullContent) return;
+    if (!animateTyping) {
+      setDisplayedContent(fullContent);
+      return;
+    }
+    if (!fullContent) {
+      setDisplayedContent('');
+      return;
+    }
+    let cancelled = false;
+    let pending: ReturnType<typeof setTimeout> | null = null;
     const words = fullContent.split(/(\s+)/);
     let i = 0;
-    const next = () => {
+    setDisplayedContent('');
+    const step = () => {
+      if (cancelled) return;
       if (i >= words.length) return;
       setDisplayedContent((prev) => prev + words[i]);
       i++;
-      if (i < words.length) setTimeout(next, TYPING_MS_PER_WORD);
+      if (i < words.length) {
+        pending = setTimeout(step, TYPING_MS_PER_WORD);
+      }
     };
-    const t = setTimeout(next, 50);
-    return () => clearTimeout(t);
+    pending = setTimeout(step, 50);
+    return () => {
+      cancelled = true;
+      if (pending != null) clearTimeout(pending);
+    };
   }, [animateTyping, fullContent]);
 
-  const contentToRender = animateTyping ? displayedContent : fullContent;
+  /**
+   * Feeding growing Hebrew (or mixed) text into ReactMarkdown breaks the parser (merged words,
+   * stray "undefined"). During typing, render plain text; run Markdown only on the final string.
+   */
+  const showPlainTyping = animateTyping && displayedContent !== fullContent;
+  const contentToRender = showPlainTyping ? displayedContent : fullContent;
 
   return (
     <motion.div
@@ -66,29 +87,38 @@ export const WorkspaceMessageBubble = ({ message, animateTyping = false, dir = '
             unicodeBidi: 'isolate',
           }}
         >
-          <ReactMarkdown
-            components={{
-              p: ({ children }) => {
-                const safe = Array.isArray(children) ? children.filter((c: unknown) => c != null && String(c) !== 'undefined') : (children != null ? [children] : []);
-                return <p className="mb-3 md:mb-4 last:mb-0 leading-relaxed text-[14px] md:text-[16px]" style={{ lineHeight: 1.65, textAlign: dir === 'rtl' ? 'justify' : 'left' }}>{safe.length ? safe : null}</p>;
-              },
-              ul: ({ children }) => <ul className="list-disc list-inside mb-3 md:mb-4 space-y-1 md:space-y-2 text-[14px] md:text-[16px]" style={{ lineHeight: 1.65 }}>{children}</ul>,
-              ol: ({ children }) => <ol className="list-decimal list-inside mb-3 md:mb-4 space-y-1 md:space-y-2 text-[14px] md:text-[16px]" style={{ lineHeight: 1.65 }}>{children}</ol>,
-              li: ({ children }) => <li className="mb-1">{children}</li>,
-              strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-              a: ({ href, children }) => (
-                <a
-                  href={href}
-                  onClick={(e) => { if (href?.startsWith('/')) { e.preventDefault(); window.location.href = href; } }}
-                  style={{ color: '#B38728', textDecoration: 'underline', fontWeight: 500, cursor: 'pointer' }}
-                >
-                  {children}
-                </a>
-              ),
-            }}
-          >
-            {contentToRender}
-          </ReactMarkdown>
+          {showPlainTyping ? (
+            <div
+              className="whitespace-pre-wrap break-words leading-relaxed text-[14px] md:text-[16px]"
+              style={{ lineHeight: 1.65, textAlign: dir === 'rtl' ? 'justify' : 'left' }}
+            >
+              {displayedContent}
+            </div>
+          ) : (
+            <ReactMarkdown
+              components={{
+                p: ({ children }) => {
+                  const safe = Array.isArray(children) ? children.filter((c: unknown) => c != null && String(c) !== 'undefined') : (children != null ? [children] : []);
+                  return <p className="mb-3 md:mb-4 last:mb-0 leading-relaxed text-[14px] md:text-[16px]" style={{ lineHeight: 1.65, textAlign: dir === 'rtl' ? 'justify' : 'left' }}>{safe.length ? safe : null}</p>;
+                },
+                ul: ({ children }) => <ul className="list-disc list-inside mb-3 md:mb-4 space-y-1 md:space-y-2 text-[14px] md:text-[16px]" style={{ lineHeight: 1.65 }}>{children}</ul>,
+                ol: ({ children }) => <ol className="list-decimal list-inside mb-3 md:mb-4 space-y-1 md:space-y-2 text-[14px] md:text-[16px]" style={{ lineHeight: 1.65 }}>{children}</ol>,
+                li: ({ children }) => <li className="mb-1">{children}</li>,
+                strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                a: ({ href, children }) => (
+                  <a
+                    href={href}
+                    onClick={(e) => { if (href?.startsWith('/')) { e.preventDefault(); window.location.href = href; } }}
+                    style={{ color: '#B38728', textDecoration: 'underline', fontWeight: 500, cursor: 'pointer' }}
+                  >
+                    {children}
+                  </a>
+                ),
+              }}
+            >
+              {contentToRender}
+            </ReactMarkdown>
+          )}
         </div>
         <div className={`text-[11px] mt-2 ${isUser ? 'text-[#5A6B8A]/70' : 'text-[#5A6B8A]/60'}`}>
           {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

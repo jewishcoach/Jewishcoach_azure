@@ -1,10 +1,8 @@
 import { useEffect, useState, memo } from 'react';
-import { Sparkles, Archive } from 'lucide-react';
+import { Sparkles, Archive, MessageSquarePlus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { apiClient } from '../../services/api';
 import { EnrichmentVideos } from './EnrichmentVideos';
-import { ActiveToolRenderer } from '../InsightHub/ActiveToolRenderer';
-import type { ToolCall } from '../../types';
 
 interface CognitiveData {
   topic?: string;
@@ -38,9 +36,8 @@ interface HudPanelProps {
   currentPhase?: string;
   loading?: boolean;
   onArchiveClick?: () => void;
-  /** כלי אינטראקטיבי (כמ"ז, רווח/הפסד) - מוצג כשהמאמן נכנס ל-S11/S12 */
-  activeTool?: ToolCall | null;
-  onToolSubmit?: (submission: { tool_type: string; data: any }) => Promise<void>;
+  /** שיחה חדשה — מתחת לכפתור שיחות קודמות */
+  onNewChat?: () => void;
 }
 
 /** Compact tag for insight - appears at top of right panel. Wraps long text, max 4 lines with scroll. */
@@ -63,7 +60,7 @@ const InsightTag = ({ label, value }: { label: string; value: string }) => (
   </div>
 );
 
-export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = false, onArchiveClick, activeTool, onToolSubmit }: HudPanelProps) => {
+export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = false, onArchiveClick, onNewChat }: HudPanelProps) => {
   const { t, i18n } = useTranslation();
   const [data, setData] = useState<CognitiveData | null>(null);
   const [insightsPhase, setInsightsPhase] = useState<string>(currentPhase);
@@ -185,31 +182,37 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
 
   return (
     <div className="w-full md:w-72 flex flex-col h-full bg-[#1e293b] min-h-0">
-      {/* Previous conversations button - desktop only; on mobile it's in the app header */}
-      {onArchiveClick && (
-        <div className="hidden md:block p-4 border-b border-white/[0.06]">
-          <button
-            onClick={onArchiveClick}
-            title={t('chat.previousConversationsHint')}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-white/60 hover:text-[#FCF6BA]/95 hover:bg-white/5 transition-colors text-sm font-light"
-            style={{ fontFamily: 'Inter, sans-serif' }}
-          >
-            <Archive size={18} strokeWidth={1.5} className="flex-shrink-0" />
-            <span>{t('chat.previousConversations')}</span>
-          </button>
+      {/* שיחות קודמות + שיחה חדשה — דסקטופ בלבד; במובייל הארכיון בהדר */}
+      {(onArchiveClick || onNewChat) && (
+        <div className="hidden md:flex md:flex-col p-4 border-b border-white/[0.06] gap-2">
+          {onArchiveClick && (
+            <button
+              type="button"
+              onClick={onArchiveClick}
+              title={t('chat.previousConversationsHint')}
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-white/60 hover:text-[#FCF6BA]/95 hover:bg-white/5 transition-colors text-sm font-light"
+              style={{ fontFamily: 'Inter, sans-serif' }}
+            >
+              <Archive size={18} strokeWidth={1.5} className="flex-shrink-0" />
+              <span>{t('chat.previousConversations')}</span>
+            </button>
+          )}
+          {onNewChat && (
+            <button
+              type="button"
+              onClick={onNewChat}
+              disabled={loading}
+              title={t('chat.newConversation')}
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-white/60 hover:text-[#FCF6BA]/95 hover:bg-white/5 transition-colors text-sm font-light disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ fontFamily: 'Inter, sans-serif' }}
+            >
+              <MessageSquarePlus size={18} strokeWidth={1.5} className="flex-shrink-0" />
+              <span>{t('chat.newConversation')}</span>
+            </button>
+          )}
         </div>
       )}
       <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col min-h-0">
-        {/* כלי אינטראקטיבי (כמ"ז, רווח/הפסד) - מופיע ב-S11/S12 */}
-        {activeTool && onToolSubmit && (
-          <section className="p-4 border-b border-white/[0.08] flex-shrink-0 bg-[#0f172a]/80">
-            <ActiveToolRenderer
-              tool={activeTool}
-              onSubmit={onToolSubmit}
-              language={i18n.language as 'he' | 'en'}
-            />
-          </section>
-        )}
         {/* תובנות - תגיות למעלה */}
         {insightTags.length > 0 ? (
           <section className="p-5 border-b border-white/[0.06] flex-shrink-0">

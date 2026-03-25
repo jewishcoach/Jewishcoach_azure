@@ -6,10 +6,20 @@ import { apiClient } from '../services/api';
 import { BSD_VERSION, getBsdEndpoint } from '../config';
 import { stripUndefined } from '../utils/messageContent';
 
+/** Strip bidi / zero-width so "שלום" + name does not visually glue spaces (שלוםישי) */
+function normalizeGreetingName(s: string): string {
+  return s
+    .replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, '')
+    .replace(/[\u200b-\u200d\ufeff]/g, '')
+    .trim();
+}
+
 /** Safe name for greeting - never undefined, never literal "undefined" */
 function getNameForGreeting(displayName?: string | null, clerkFirstName?: string | null, lang: string = 'he'): string {
   const raw = displayName ?? clerkFirstName ?? '';
-  const cleaned = (typeof raw === 'string' ? raw : '').replace(/^undefined$/i, '').trim();
+  const cleaned = normalizeGreetingName(
+    (typeof raw === 'string' ? raw : '').replace(/^undefined$/i, '').trim()
+  );
   if (cleaned) return cleaned;
   return lang === 'he' ? 'רב' : 'there';
 }

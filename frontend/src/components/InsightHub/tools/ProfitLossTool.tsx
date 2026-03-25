@@ -82,7 +82,13 @@ export const ProfitLossTool = ({ onSubmit, language }: ProfitLossToolProps) => {
   }
 
   return (
-    <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
+    <form
+      className="bg-white rounded-xl p-6 shadow-lg border border-gray-200"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void handleSubmit();
+      }}
+    >
       <div className="grid grid-cols-2 gap-4 mb-6">
         {/* Gains Column */}
         <Column
@@ -107,11 +113,11 @@ export const ProfitLossTool = ({ onSubmit, language }: ProfitLossToolProps) => {
         />
       </div>
 
-      {/* Submit Button */}
+      {/* Submit: type="submit" so Enter in inputs works reliably */}
       <motion.button
+        type="submit"
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
-        onClick={handleSubmit}
         disabled={isSubmitting}
         className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-accent to-accent-dark text-white rounded-xl font-semibold hover:shadow-glow transition-all disabled:opacity-50 disabled:cursor-not-allowed"
       >
@@ -120,7 +126,7 @@ export const ProfitLossTool = ({ onSubmit, language }: ProfitLossToolProps) => {
           ? (language === 'he' ? 'שולח...' : 'Submitting...')
           : (language === 'he' ? 'שלח למאמן' : 'Send to Coach')}
       </motion.button>
-    </div>
+    </form>
   );
 };
 
@@ -154,6 +160,7 @@ const Column = ({ title, items, onUpdate, onRemove, onAdd, color, isRTL }: Colum
             />
             {items.length > 1 && (
               <button
+                type="button"
                 onClick={() => onRemove(index)}
                 className="p-1 text-gray-400 hover:text-red-500 transition-colors"
               >
@@ -164,6 +171,7 @@ const Column = ({ title, items, onUpdate, onRemove, onAdd, color, isRTL }: Colum
         ))}
       </div>
       <button
+        type="button"
         onClick={onAdd}
         className="flex items-center gap-1 text-sm text-accent hover:text-accent-dark font-medium"
       >

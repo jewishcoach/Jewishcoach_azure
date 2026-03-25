@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { PHASE_TO_STAGES } from './phaseMapping';
 import { useTranslation } from 'react-i18next';
-import { Send, Mic, Square } from 'lucide-react';
+import { Send, Mic, Square, MessageSquarePlus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@clerk/clerk-react';
 import { useChat } from '../../hooks/useChat';
@@ -11,6 +11,7 @@ import { ArchiveDrawer } from './ArchiveDrawer';
 import { HudPanel } from './HudPanel';
 import { ShehiyaProgress } from './ShehiyaProgress';
 import { WorkspaceMessageBubble } from './WorkspaceMessageBubble';
+import { ActiveToolRenderer } from '../InsightHub/ActiveToolRenderer';
 import { Dashboard } from '../Dashboard';
 import { QuotaExceededModal } from '../QuotaExceededModal';
 import { apiClient } from '../../services/api';
@@ -36,6 +37,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
   const { messages, loading, currentPhase, conversationId, activeTool, quotaExceeded, dismissQuotaModal, sendMessage, loadConversation, startNewConversation, applyToolResponse } = useChat(displayName);
   const { isRecording, startRecording, stopRecording } = useVoiceRecord(i18n.language);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatToolRef = useRef<HTMLDivElement>(null);
   const messagesScrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isSendingRef = useRef(false);
@@ -58,6 +60,14 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => {
+    if (!activeTool) return;
+    const t = window.setTimeout(() => {
+      chatToolRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 120);
+    return () => window.clearTimeout(t);
+  }, [activeTool]);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -222,8 +232,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
             currentPhase={currentPhase}
             loading={loading}
             onArchiveClick={() => setArchiveOpen(true)}
-            activeTool={activeTool ?? null}
-            onToolSubmit={handleToolSubmit}
+            onNewChat={() => void handleNewChat()}
           />
         </div>
 
@@ -249,6 +258,20 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
               <VisionLadder currentStep={currentPhase} onPhaseClick={handlePhaseClick} compact conversationId={conversationId} />
             </div>
             <div className="flex flex-col min-w-0 flex-1 relative overflow-hidden bg-[#F5F5F0]">
+              {/* מובייל: שיחה חדשה (בדסקטופ — ב-HudPanel מתחת לארכיון) */}
+              <div className="md:hidden flex-shrink-0 px-2 pt-2 pb-1 border-b border-[#E2E4E8] bg-[#F5F5F0]">
+                <button
+                  type="button"
+                  onClick={() => void handleNewChat()}
+                  disabled={loading}
+                  title={t('chat.newConversation')}
+                  className="w-full flex items-center justify-center gap-2 min-h-[44px] py-2 px-3 rounded-xl text-sm font-light text-[#2E3A56]/90 hover:bg-white border border-[#E2E4E8] bg-white/70 active:bg-white disabled:opacity-45 disabled:cursor-not-allowed"
+                  style={{ fontFamily: 'Inter, sans-serif' }}
+                >
+                  <MessageSquarePlus size={18} strokeWidth={1.5} className="flex-shrink-0 text-[#5A6B8A]" />
+                  <span>{t('chat.newConversation')}</span>
+                </button>
+              </div>
               <ShehiyaProgress loading={loading} />
               <div ref={messagesScrollRef} className="flex-1 overflow-y-auto px-3 py-4 md:px-10 md:py-10 custom-scrollbar bg-[#F5F5F0]" dir={i18n.dir()}>
           {messages.length === 0 ? (
@@ -279,6 +302,20 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
                   );
                 })}
               </AnimatePresence>
+              {activeTool && (
+                <div ref={chatToolRef} className="flex justify-start">
+                  <div
+                    className="w-full max-w-[90%] md:max-w-[85%] rounded-xl px-5 py-4 md:px-9 md:py-6 shadow-sm bg-white border border-[#E2E4E8]"
+                    dir={i18n.dir()}
+                  >
+                    <ActiveToolRenderer
+                      tool={activeTool}
+                      onSubmit={handleToolSubmit}
+                      language={i18n.language as 'he' | 'en'}
+                    />
+                  </div>
+                </div>
+              )}
               {loading && (
                 <div className="flex justify-start">
                   <div

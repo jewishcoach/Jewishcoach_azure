@@ -98,6 +98,7 @@ export const TraitPickerTool = ({ onSubmit, language }: TraitPickerToolProps) =>
             >
               {trait}
               <button
+                type="button"
                 onClick={() => removeTrait(trait, traits, setTraits)}
                 className="text-gray-400 hover:text-red-500 transition-colors ml-1"
               >
@@ -120,6 +121,7 @@ export const TraitPickerTool = ({ onSubmit, language }: TraitPickerToolProps) =>
           className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/40 bg-white"
         />
         <button
+          type="button"
           onClick={() => addTrait(input, setInput, traits, setTraits)}
           disabled={!input.trim()}
           className="p-2 rounded-lg bg-accent/20 text-primary hover:bg-accent/40 disabled:opacity-40 transition-colors"
@@ -131,7 +133,15 @@ export const TraitPickerTool = ({ onSubmit, language }: TraitPickerToolProps) =>
   );
 
   return (
-    <div className={`bg-white rounded-xl p-5 shadow-lg border border-gray-200 space-y-4 ${isRTL ? 'text-right' : 'text-left'}`} dir={isRTL ? 'rtl' : 'ltr'}>
+    <form
+      className={`bg-white rounded-xl p-5 shadow-lg border border-gray-200 space-y-4 ${isRTL ? 'text-right' : 'text-left'}`}
+      dir={isRTL ? 'rtl' : 'ltr'}
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (sourceTraits.length === 0 && natureTraits.length === 0) return;
+        void handleSubmit();
+      }}
+    >
       <Section
         title={isRTL ? 'מקור – ערכים ואמונות' : 'Source – Values & Beliefs'}
         subtitle={isRTL ? 'מה מניע אותך? מה חשוב לך?' : 'What drives you? What matters to you?'}
@@ -155,13 +165,13 @@ export const TraitPickerTool = ({ onSubmit, language }: TraitPickerToolProps) =>
       />
 
       <button
-        onClick={handleSubmit}
+        type="submit"
         disabled={isSubmitting || (sourceTraits.length === 0 && natureTraits.length === 0)}
         className="w-full flex items-center justify-center gap-2 bg-primary text-white py-3 rounded-xl font-medium text-sm hover:bg-primary/90 disabled:opacity-50 transition-colors"
       >
         <Send size={16} />
         {isRTL ? 'שלח' : 'Send'}
       </button>
-    </div>
+    </form>
   );
 };
