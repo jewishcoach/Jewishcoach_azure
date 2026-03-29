@@ -42,7 +42,7 @@ interface HudPanelProps {
   onNewChat?: () => void;
 }
 
-/** Compact tag for insight - appears at top of right panel. Wraps long text, max 4 lines with scroll. */
+/** Compact tag for insight - appears at top of right panel. Long text uses parent panel scroll only. */
 const InsightTag = ({ label, value }: { label: string; value: string }) => (
   <div
     className="px-3 py-2 rounded-xl border min-h-[2.5rem]"
@@ -54,7 +54,7 @@ const InsightTag = ({ label, value }: { label: string; value: string }) => (
   >
     <span className="text-[11px] uppercase tracking-wider text-[#FCF6BA]/70">{label}</span>
     <p
-      className="text-[13px] font-light text-[#F5F5F0]/95 mt-0.5 break-words whitespace-pre-wrap max-h-20 overflow-y-auto"
+      className="text-[13px] font-light text-[#F5F5F0]/95 mt-0.5 break-words whitespace-pre-wrap"
       style={{ lineHeight: 1.45 }}
     >
       {value}
