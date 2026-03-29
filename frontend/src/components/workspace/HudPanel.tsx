@@ -3,6 +3,7 @@ import { Sparkles, Archive, MessageSquarePlus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { apiClient } from '../../services/api';
 import { EnrichmentVideos } from './EnrichmentVideos';
+import { WORKSPACE_CHAT_FONT } from '../../constants/workspaceFonts';
 
 interface CognitiveData {
   topic?: string;
@@ -47,7 +48,7 @@ const InsightTag = ({ label, value }: { label: string; value: string }) => (
     style={{
       background: 'rgba(255, 255, 255, 0.04)',
       borderColor: 'rgba(252, 246, 186, 0.2)',
-      fontFamily: 'Inter, sans-serif',
+      fontFamily: WORKSPACE_CHAT_FONT,
     }}
   >
     <span className="text-[11px] uppercase tracking-wider text-[#FCF6BA]/70">{label}</span>
@@ -191,7 +192,7 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
               onClick={onArchiveClick}
               title={t('chat.previousConversationsHint')}
               className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] text-sm font-medium shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors"
-              style={{ fontFamily: 'Inter, sans-serif' }}
+              style={{ fontFamily: WORKSPACE_CHAT_FONT }}
             >
               <Archive size={18} strokeWidth={2} className="flex-shrink-0 text-[#2E3A56]" />
               <span>{t('chat.previousConversations')}</span>
@@ -204,7 +205,7 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
               disabled={loading}
               title={t('chat.newConversation')}
               className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] text-sm font-medium shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors disabled:opacity-45 disabled:cursor-not-allowed disabled:hover:bg-white"
-              style={{ fontFamily: 'Inter, sans-serif' }}
+              style={{ fontFamily: WORKSPACE_CHAT_FONT }}
             >
               <MessageSquarePlus size={18} strokeWidth={2} className="flex-shrink-0 text-[#2E3A56]" />
               <span>{t('chat.newConversation')}</span>
@@ -232,7 +233,7 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
               <Sparkles size={16} className="text-[#FCF6BA]/50" />
               <h4 className="text-[12px] font-light uppercase tracking-[0.15em]" style={{ color: 'rgba(245,245,240,0.5)' }}>תובנות</h4>
             </div>
-            <p className="text-[11px] text-[#F5F5F0]/50" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <p className="text-[11px] text-[#F5F5F0]/50" style={{ fontFamily: WORKSPACE_CHAT_FONT }}>
               התובנות יופיעו כאן במהלך השיחה
             </p>
           </section>

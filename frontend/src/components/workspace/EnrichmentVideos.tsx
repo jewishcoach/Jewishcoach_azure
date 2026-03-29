@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, ChevronDown, ChevronUp } from 'lucide-react';
 import { getVideosForStage } from '../../data/stageVideos';
+import { WORKSPACE_CHAT_FONT } from '../../constants/workspaceFonts';
 
 interface EnrichmentVideosProps {
   currentPhase: string;
@@ -51,7 +52,7 @@ export const EnrichmentVideos = ({ currentPhase }: EnrichmentVideosProps) => {
                     border: '0.5px solid rgba(255,255,255,0.1)',
                   }}
                 >
-                  <p className="text-[11px] px-2 py-1 text-[#F5F5F0]/70" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <p className="text-[11px] px-2 py-1 text-[#F5F5F0]/70" style={{ fontFamily: WORKSPACE_CHAT_FONT }}>
                     {isHe ? v.titleHe : v.titleEn}
                   </p>
                   <div className="relative w-full aspect-video max-h-[140px] sm:max-h-[180px]">

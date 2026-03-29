@@ -3,6 +3,7 @@ import type { Message } from '../../types';
 import ReactMarkdown from 'react-markdown';
 import { motion } from 'framer-motion';
 import { stripUndefined } from '../../utils/messageContent';
+import { WORKSPACE_CHAT_FONT } from '../../constants/workspaceFonts';
 
 const TYPING_MS_PER_WORD = 28;
 
@@ -77,8 +78,8 @@ export const WorkspaceMessageBubble = ({ message, animateTyping = false, dir = '
           className={`prose prose-sm max-w-none ${isUser ? '' : ''}`}
           dir={dir}
           style={{
-            fontFamily: 'Inter, sans-serif',
-            fontWeight: 300,
+            fontFamily: WORKSPACE_CHAT_FONT,
+            fontWeight: 400,
             lineHeight: 1.6,
             color: isUser ? '#2E3A56' : '#0D0D0D',
             textAlign: dir === 'rtl' ? 'justify' : 'left',

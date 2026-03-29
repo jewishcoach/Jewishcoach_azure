@@ -16,6 +16,7 @@ import { Dashboard } from '../Dashboard';
 import { QuotaExceededModal } from '../QuotaExceededModal';
 import { apiClient } from '../../services/api';
 import type { Conversation } from '../../types';
+import { WORKSPACE_CHAT_FONT } from '../../constants/workspaceFonts';
 
 interface BSDWorkspaceProps {
   displayName?: string | null;
@@ -266,7 +267,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
                   disabled={loading}
                   title={t('chat.newConversation')}
                   className="w-full flex items-center justify-center gap-2 min-h-[44px] py-2 px-3 rounded-xl text-sm font-medium text-[#2E3A56] bg-white border border-[#E2E4E8] shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] active:bg-[#EEF1F4] disabled:opacity-45 disabled:cursor-not-allowed disabled:hover:bg-white"
-                  style={{ fontFamily: 'Inter, sans-serif' }}
+                  style={{ fontFamily: WORKSPACE_CHAT_FONT }}
                 >
                   <MessageSquarePlus size={18} strokeWidth={2} className="flex-shrink-0 text-[#2E3A56]" />
                   <span>{t('chat.newConversation')}</span>
@@ -286,7 +287,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
               className="flex flex-col items-center justify-center h-full text-center py-16 md:py-24 px-4 md:px-10"
               dir={i18n.dir()}
             >
-              <p className="text-[#2E3A56]/90 text-[14px] md:text-[16px] max-w-md" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 300, lineHeight: 1.6 }}>
+              <p className="text-[#2E3A56]/90 text-[14px] md:text-[16px] max-w-md" style={{ fontFamily: WORKSPACE_CHAT_FONT, fontWeight: 400, lineHeight: 1.6 }}>
                 {t('chat.emptyHint')}
               </p>
             </motion.div>
@@ -334,8 +335,8 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
                       <span className="w-2.5 h-2.5 rounded-full bg-[#AA771C] animate-bounce shadow-sm" style={{ animationDelay: '300ms' }} />
                     </div>
                     <span
-                      className="text-[14px] font-light text-[#2E3A56]/80"
-                      style={{ fontFamily: 'Inter, sans-serif' }}
+                      className="text-[14px] font-medium text-[#2E3A56]/80"
+                      style={{ fontFamily: WORKSPACE_CHAT_FONT }}
                       dir={i18n.dir()}
                     >
                       {t('chat.thinkingCoach')}
@@ -362,8 +363,8 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
                   disabled={loading}
                   className="flex-1 min-w-0 resize-none rounded-xl px-4 md:px-6 py-3 md:py-5 text-[14px] md:text-[16px] max-h-28 placeholder-[#5A6B8A]/60 placeholder:text-[12px] md:placeholder:text-[16px] focus:border-[#B38728]/50 focus:ring-2 focus:ring-[#B38728]/20 focus:outline-none"
                   style={{
-                    fontFamily: 'Inter, sans-serif',
-                    fontWeight: 300,
+                    fontFamily: WORKSPACE_CHAT_FONT,
+                    fontWeight: 400,
                     lineHeight: 1.6,
                     minHeight: '48px',
                     background: '#FFFFFF',

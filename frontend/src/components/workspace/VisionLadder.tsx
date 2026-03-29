@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { apiClient } from '../../services/api';
 import { buildInsightsByPhase, type InsightItem } from '../../utils/insightsByPhase';
+import { WORKSPACE_CHAT_FONT } from '../../constants/workspaceFonts';
 
 // מיפוי שלב נוכחי (S0-S15) → אינדקס שלב בחוברת
 const STEP_TO_PHASE: Record<string, number> = {
@@ -133,7 +134,7 @@ export const VisionLadder = ({ currentStep, onPhaseClick, compact = false, conve
                     style={{
                       background: 'rgba(2,6,23,0.98)',
                       borderColor: 'rgba(252,246,186,0.3)',
-                      fontFamily: 'Inter, sans-serif',
+                      fontFamily: WORKSPACE_CHAT_FONT,
                     }}
                   >
                     <div className="space-y-2">
@@ -201,7 +202,7 @@ export const VisionLadder = ({ currentStep, onPhaseClick, compact = false, conve
                 <div
                   className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 z-[100] opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none p-3 rounded text-[12px] shadow-xl w-[220px] ${isRTL ? 'text-right' : 'text-left'}`}
                   style={{
-                    fontFamily: 'Inter, sans-serif',
+                    fontFamily: WORKSPACE_CHAT_FONT,
                     lineHeight: 1.6,
                     background: 'rgba(2,6,23,0.98)',
                     border: '0.5px solid rgba(255,255,255,0.12)',

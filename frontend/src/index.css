@@ -264,3 +264,15 @@ body {
 .coaching-calendar-light .react-calendar__month-view__days__day--weekend {
   color: #5A6B8A;
 }
+
+/* Clerk: OAuth “Continue with Google” row — light tile + dark text (fixes invisible provider name on dark theme) */
+.cl-modalContent .cl-socialButtonsBlockButton {
+  background: #ffffff !important;
+  color: #1f1f1f !important;
+  border-color: #dadce0 !important;
+}
+.cl-modalContent .cl-socialButtonsBlockButton .cl-socialButtonsBlockButtonText,
+.cl-modalContent .cl-socialButtonsBlockButton span {
+  color: #1f1f1f !important;
+  opacity: 1 !important;
+}
