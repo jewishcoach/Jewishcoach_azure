@@ -29,7 +29,7 @@ interface BSDWorkspaceProps {
 
 export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashboard, onShowBilling, archiveOpen: archiveOpenProp, onArchiveOpenChange }: BSDWorkspaceProps) => {
   const { t, i18n } = useTranslation();
-  const { getToken } = useAuth();
+  const { getToken, isLoaded, isSignedIn } = useAuth();
   const [inputValue, setInputValue] = useState('');
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [archiveOpenLocal, setArchiveOpenLocal] = useState(false);
@@ -75,6 +75,8 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
   }, []);
 
   useEffect(() => {
+    if (!isLoaded || !isSignedIn) return;
+
     const init = async () => {
       try {
         const token = (await getToken()) || apiClient.getToken();
@@ -88,7 +90,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
       }
     };
     init();
-  }, [getToken]);
+  }, [isLoaded, isSignedIn, getToken]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

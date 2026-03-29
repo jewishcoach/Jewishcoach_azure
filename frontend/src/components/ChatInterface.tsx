@@ -19,7 +19,7 @@ interface ChatInterfaceProps {
 
 export const ChatInterface = ({ displayName }: ChatInterfaceProps) => {
   const { t, i18n } = useTranslation();
-  const { getToken } = useAuth();
+  const { getToken, isLoaded, isSignedIn } = useAuth();
   const [inputValue, setInputValue] = useState('');
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isVoiceMode, setIsVoiceMode] = useState(false);
@@ -42,8 +42,10 @@ export const ChatInterface = ({ displayName }: ChatInterfaceProps) => {
     inputRef.current?.focus();
   }, []);
 
-  // Initialize: Get token and fetch conversations
+  // Initialize: Get token and fetch conversations (after Clerk session is ready)
   useEffect(() => {
+    if (!isLoaded || !isSignedIn) return;
+
     const init = async () => {
       try {
         const token = await getToken();
@@ -57,7 +59,7 @@ export const ChatInterface = ({ displayName }: ChatInterfaceProps) => {
       }
     };
     init();
-  }, [getToken]);
+  }, [isLoaded, isSignedIn, getToken]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

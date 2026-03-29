@@ -33,7 +33,7 @@ const isTunnelDomain = () => {
 function SignedInContent() {
   const { t } = useTranslation();
   const { user } = useUser();
-  const { getToken } = useAuth();
+  const { getToken, isLoaded, isSignedIn } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [showBilling, setShowBilling] = useState(false);
@@ -45,6 +45,13 @@ function SignedInContent() {
   const isChatView = !showBilling && !showDashboard && !showAdmin && !checkingAdmin;
 
   useEffect(() => {
+    if (!isLoaded) return;
+
+    if (!isSignedIn) {
+      setCheckingAdmin(false);
+      return;
+    }
+
     const checkAdminStatus = async () => {
       try {
         const token = await getToken();
@@ -67,12 +74,13 @@ function SignedInContent() {
     };
 
     checkAdminStatus();
-  }, [getToken]);
+  }, [isLoaded, isSignedIn, getToken]);
 
   // Reload display name when returning from dashboard
   useEffect(() => {
     if (!showDashboard && !showBilling && !showAdmin) {
       const reloadDisplayName = async () => {
+        if (!isLoaded || !isSignedIn) return;
         try {
           const token = await getToken();
           if (token) {
@@ -87,7 +95,7 @@ function SignedInContent() {
       };
       reloadDisplayName();
     }
-  }, [showDashboard, showBilling, showAdmin, getToken, user]);
+  }, [showDashboard, showBilling, showAdmin, getToken, user, isLoaded, isSignedIn]);
 
   return (
     <div className="h-screen flex flex-col bg-[#020617] workspace-root overflow-x-hidden">

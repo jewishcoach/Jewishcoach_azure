@@ -41,7 +41,7 @@ interface BillingOverview {
 const API_BASE = getApiBase();
 
 export const BillingPage = () => {
-  const { getToken } = useAuth();
+  const { getToken, isLoaded, isSignedIn } = useAuth();
   const { t, i18n } = useTranslation();
   const [overview, setOverview] = useState<BillingOverview | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,6 +53,7 @@ export const BillingPage = () => {
   const loadBillingData = useCallback(async () => {
     try {
       const token = await getToken();
+      if (!token) return;
       const response = await fetch(`${API_BASE}/billing/overview`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -71,8 +72,13 @@ export const BillingPage = () => {
   }, [getToken]);
 
   useEffect(() => {
+    if (!isLoaded) return;
+    if (!isSignedIn) {
+      setLoading(false);
+      return;
+    }
     loadBillingData();
-  }, [loadBillingData]);
+  }, [loadBillingData, isLoaded, isSignedIn]);
 
   const handleRedeemCoupon = async () => {
     if (!couponCode.trim()) return;
