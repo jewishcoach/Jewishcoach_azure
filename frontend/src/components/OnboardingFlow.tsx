@@ -100,7 +100,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   <Icon className="w-9 h-9 text-slate-200" strokeWidth={1.5} />
                 </div>
               )}
-              <h1 className="text-2xl md:text-[1.75rem] font-semibold text-slate-50 mb-5 leading-snug tracking-tight">
+              <h1 className="text-2xl md:text-[1.75rem] font-semibold text-[#FCF6BA] mb-5 leading-snug tracking-tight drop-shadow-[0_0_24px_rgba(252,246,186,0.12)]">
                 {t(currentScreen.titleKey)}
               </h1>
               <p className="text-slate-300 text-lg md:text-xl leading-relaxed mb-8 max-w-md mx-auto font-normal">
