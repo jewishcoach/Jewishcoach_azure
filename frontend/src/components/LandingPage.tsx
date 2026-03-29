@@ -79,10 +79,6 @@ export const LandingPage = ({ onGetStarted }: Props) => {
             >
               {t('landing.primaryCta')}
             </motion.button>
-
-            <p className="mt-4 text-sm text-slate-400 max-w-md mx-auto leading-relaxed">
-              {t('landing.ctaHint')}
-            </p>
           </div>
 
           <ul className="mt-11 grid gap-3 sm:grid-cols-3 sm:gap-3 text-start">

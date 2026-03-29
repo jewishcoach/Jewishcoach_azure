@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { SignedIn, SignedOut, UserButton, useUser, useClerk, useAuth } from '@clerk/clerk-react';
-import { Shield, BarChart3, Archive } from 'lucide-react';
+import { Shield, BarChart3, Archive, MessageSquarePlus } from 'lucide-react';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { BSDWorkspace } from './components/workspace/BSDWorkspace';
 import { LandingPage } from './components/LandingPage';
@@ -41,6 +41,8 @@ function SignedInContent() {
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [checkingAdmin, setCheckingAdmin] = useState(true);
   const [displayName, setDisplayName] = useState<string | null>(null);
+  /** Incremented from header "new chat" on mobile — BSDWorkspace runs startNewConversation */
+  const [workspaceNewChatTick, setWorkspaceNewChatTick] = useState(0);
 
   const isChatView = !showBilling && !showDashboard && !showAdmin && !checkingAdmin;
 
@@ -126,17 +128,26 @@ function SignedInContent() {
             </span>
           )}
           {isChatView && (
-            <button
-              type="button"
-              onClick={() => setArchiveOpen(true)}
-              title={t('chat.previousConversationsHint')}
-              className="md:hidden flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] text-xs font-medium shadow-sm transition-all duration-150 ease-out hover:-translate-y-0.5 hover:bg-slate-300 hover:border-slate-500 hover:shadow-[0_6px_20px_-4px_rgba(51,65,85,0.45)] hover:ring-2 hover:ring-slate-400/55 active:translate-y-0 min-h-[44px] max-w-[9.5rem]"
-              style={{ fontFamily: 'Inter, sans-serif' }}
-              aria-label={t('chat.previousConversations')}
-            >
-              <Archive className="w-4 h-4 flex-shrink-0 text-[#2E3A56]" strokeWidth={2} />
-              <span className="truncate">{t('chat.previousConversations')}</span>
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => setArchiveOpen(true)}
+                title={t('chat.previousConversationsHint')}
+                className="md:hidden inline-flex items-center justify-center rounded-xl min-h-[40px] min-w-[40px] p-0 bg-white border border-[#E2E4E8] text-[#2E3A56] shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors"
+                aria-label={t('chat.previousConversations')}
+              >
+                <Archive className="w-[18px] h-[18px] text-[#2E3A56]" strokeWidth={2} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setWorkspaceNewChatTick((n) => n + 1)}
+                title={t('chat.newConversation')}
+                className="md:hidden inline-flex items-center justify-center rounded-xl min-h-[40px] min-w-[40px] p-0 bg-white border border-[#E2E4E8] text-[#2E3A56] shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors"
+                aria-label={t('chat.newConversation')}
+              >
+                <MessageSquarePlus className="w-[18px] h-[18px] text-[#2E3A56]" strokeWidth={2} />
+              </button>
+            </>
           )}
           <button
             type="button"
@@ -145,11 +156,12 @@ function SignedInContent() {
               setShowBilling(false);
               setShowAdmin(false);
             }}
-            className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] text-xs md:text-sm font-medium shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors min-h-[44px]"
+            title={showDashboard ? t('chat.button') : t('dashboard.button')}
+            className="inline-flex items-center justify-center gap-1.5 md:gap-2 px-2 md:px-4 py-2 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] text-xs md:text-sm font-medium shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors min-h-[40px] min-w-[40px] md:min-h-[44px] md:min-w-0"
             style={{ fontFamily: 'Inter, sans-serif' }}
           >
-            <BarChart3 className="w-4 h-4 flex-shrink-0 text-[#2E3A56]" strokeWidth={2} />
-            <span>{showDashboard ? t('chat.button') : t('dashboard.button')}</span>
+            <BarChart3 className="w-[18px] h-[18px] md:w-4 md:h-4 flex-shrink-0 text-[#2E3A56]" strokeWidth={2} />
+            <span className="hidden md:inline">{showDashboard ? t('chat.button') : t('dashboard.button')}</span>
           </button>
           {isAdmin && !checkingAdmin && (
             <button
@@ -159,11 +171,12 @@ function SignedInContent() {
                 setShowBilling(false);
                 setShowDashboard(false);
               }}
-              className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] text-xs md:text-sm font-medium shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors min-h-[44px]"
+              title={showAdmin ? t('chat.button') : t('admin.button')}
+              className="inline-flex items-center justify-center gap-1.5 md:gap-2 px-2 md:px-4 py-2 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] text-xs md:text-sm font-medium shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors min-h-[40px] min-w-[40px] md:min-h-[44px] md:min-w-0"
               style={{ fontFamily: 'Inter, sans-serif' }}
             >
-              <Shield className="w-4 h-4 flex-shrink-0 text-[#2E3A56]" strokeWidth={2} />
-              <span>{showAdmin ? t('chat.button') : t('admin.button')}</span>
+              <Shield className="w-[18px] h-[18px] md:w-4 md:h-4 flex-shrink-0 text-[#2E3A56]" strokeWidth={2} />
+              <span className="hidden md:inline">{showAdmin ? t('chat.button') : t('admin.button')}</span>
             </button>
           )}
           <LanguageSwitcher />
@@ -182,6 +195,7 @@ function SignedInContent() {
             }}
             archiveOpen={archiveOpen}
             onArchiveOpenChange={setArchiveOpen}
+            headerNewChatTick={workspaceNewChatTick}
           />
         )}
       </main>
@@ -213,6 +227,7 @@ function DemoModeContent() {
   const [showBilling, setShowBilling] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(!hasSeenOnboarding());
+  const [workspaceNewChatTick, setWorkspaceNewChatTick] = useState(0);
   const isChatView = !showBilling && !showDashboard;
 
   useEffect(() => {
@@ -252,19 +267,28 @@ function DemoModeContent() {
           </span>
         </div>
         <div className="flex-1" />
-        <div className="flex items-center gap-3 flex-shrink-0">
+        <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
           {isChatView && (
-            <button
-              type="button"
-              onClick={() => setArchiveOpen(true)}
-              title={t('chat.previousConversationsHint')}
-              className="md:hidden flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] text-xs font-medium shadow-sm transition-all duration-150 ease-out hover:-translate-y-0.5 hover:bg-slate-300 hover:border-slate-500 hover:shadow-[0_6px_20px_-4px_rgba(51,65,85,0.45)] hover:ring-2 hover:ring-slate-400/55 active:translate-y-0 min-h-[44px] max-w-[9.5rem]"
-              style={{ fontFamily: 'Inter, sans-serif' }}
-              aria-label={t('chat.previousConversations')}
-            >
-              <Archive className="w-4 h-4 flex-shrink-0 text-[#2E3A56]" strokeWidth={2} />
-              <span className="truncate">{t('chat.previousConversations')}</span>
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => setArchiveOpen(true)}
+                title={t('chat.previousConversationsHint')}
+                className="md:hidden inline-flex items-center justify-center rounded-xl min-h-[40px] min-w-[40px] p-0 bg-white border border-[#E2E4E8] text-[#2E3A56] shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors"
+                aria-label={t('chat.previousConversations')}
+              >
+                <Archive className="w-[18px] h-[18px] text-[#2E3A56]" strokeWidth={2} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setWorkspaceNewChatTick((n) => n + 1)}
+                title={t('chat.newConversation')}
+                className="md:hidden inline-flex items-center justify-center rounded-xl min-h-[40px] min-w-[40px] p-0 bg-white border border-[#E2E4E8] text-[#2E3A56] shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors"
+                aria-label={t('chat.newConversation')}
+              >
+                <MessageSquarePlus className="w-[18px] h-[18px] text-[#2E3A56]" strokeWidth={2} />
+              </button>
+            </>
           )}
           <button
             type="button"
@@ -272,11 +296,12 @@ function DemoModeContent() {
               setShowDashboard(!showDashboard);
               setShowBilling(false);
             }}
-            className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] text-xs md:text-sm font-medium shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors min-h-[44px]"
+            title={showDashboard ? t('chat.button') : t('dashboard.button')}
+            className="inline-flex items-center justify-center gap-1.5 md:gap-2 px-2 md:px-4 py-2 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] text-xs md:text-sm font-medium shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors min-h-[40px] min-w-[40px] md:min-h-[44px] md:min-w-0"
             style={{ fontFamily: 'Inter, sans-serif' }}
           >
-            <BarChart3 className="w-4 h-4 flex-shrink-0 text-[#2E3A56]" strokeWidth={2} />
-            {showDashboard ? t('chat.button') : t('dashboard.button')}
+            <BarChart3 className="w-[18px] h-[18px] md:w-4 md:h-4 flex-shrink-0 text-[#2E3A56]" strokeWidth={2} />
+            <span className="hidden md:inline">{showDashboard ? t('chat.button') : t('dashboard.button')}</span>
           </button>
           <LanguageSwitcher />
         </div>
@@ -293,6 +318,7 @@ function DemoModeContent() {
             }}
             archiveOpen={archiveOpen}
             onArchiveOpenChange={setArchiveOpen}
+            headerNewChatTick={workspaceNewChatTick}
           />
         )}
       </main>

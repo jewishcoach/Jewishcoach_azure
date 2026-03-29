@@ -282,7 +282,11 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
   );
 
   return (
-    <div className="flex flex-col md:flex-row h-full overflow-hidden dashboard-container" dir="rtl" style={{ background: COLORS.bg }}>
+    <div
+      className="flex flex-col md:flex-row h-full overflow-hidden dashboard-container"
+      dir={i18n.dir() as 'ltr' | 'rtl'}
+      style={{ background: COLORS.bg }}
+    >
       {/* Mobile: Sticky top bar - one row: settings | profile | header links */}
       <div className="md:hidden sticky top-0 z-10 flex items-center gap-2 px-3 py-2 border-b flex-nowrap min-w-0" style={{ background: COLORS.card, borderColor: COLORS.border, boxShadow: COLORS.shadow }}>
         <button

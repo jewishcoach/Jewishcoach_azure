@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { PHASE_TO_STAGES } from './phaseMapping';
 import { useTranslation } from 'react-i18next';
-import { Send, Mic, Square, MessageSquarePlus } from 'lucide-react';
+import { Send, Mic, Square } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@clerk/clerk-react';
 import { useChat } from '../../hooks/useChat';
@@ -25,9 +25,19 @@ interface BSDWorkspaceProps {
   onShowBilling?: () => void;
   archiveOpen?: boolean;
   onArchiveOpenChange?: (open: boolean) => void;
+  /** Incremented from App header (mobile) — starts a new conversation */
+  headerNewChatTick?: number;
 }
 
-export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashboard, onShowBilling, archiveOpen: archiveOpenProp, onArchiveOpenChange }: BSDWorkspaceProps) => {
+export const BSDWorkspace = ({
+  displayName,
+  showDashboard = false,
+  onCloseDashboard,
+  onShowBilling,
+  archiveOpen: archiveOpenProp,
+  onArchiveOpenChange,
+  headerNewChatTick = 0,
+}: BSDWorkspaceProps) => {
   const { t, i18n } = useTranslation();
   const { getToken, isLoaded, isSignedIn } = useAuth();
   const [inputValue, setInputValue] = useState('');
@@ -120,6 +130,14 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
   const handleNewChat = async () => {
     await startNewConversation();
   };
+
+  const lastHeaderNewChatTick = useRef(headerNewChatTick);
+  useEffect(() => {
+    if (headerNewChatTick <= 0) return;
+    if (headerNewChatTick === lastHeaderNewChatTick.current) return;
+    lastHeaderNewChatTick.current = headerNewChatTick;
+    void startNewConversation();
+  }, [headerNewChatTick, startNewConversation]);
 
   const handleMicClick = useCallback(async () => {
     if (isRecording) {
@@ -261,20 +279,6 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
               <VisionLadder currentStep={currentPhase} onPhaseClick={handlePhaseClick} compact conversationId={conversationId} />
             </div>
             <div className="flex flex-col min-w-0 flex-1 relative overflow-hidden bg-[#F5F5F0]">
-              {/* מובייל: שיחה חדשה (בדסקטופ — ב-HudPanel מתחת לארכיון) */}
-              <div className="md:hidden flex-shrink-0 px-2 pt-2 pb-1 border-b border-[#E2E4E8] bg-[#F5F5F0]">
-                <button
-                  type="button"
-                  onClick={() => void handleNewChat()}
-                  disabled={loading}
-                  title={t('chat.newConversation')}
-                  className="w-full flex items-center justify-center gap-2 min-h-[44px] py-2 px-3 rounded-xl text-sm font-medium text-[#2E3A56] bg-white border border-[#E2E4E8] shadow-sm transition-all duration-150 ease-out hover:-translate-y-0.5 hover:bg-slate-300 hover:border-slate-500 hover:shadow-[0_6px_20px_-4px_rgba(51,65,85,0.45)] hover:ring-2 hover:ring-slate-400/55 active:translate-y-0 active:bg-slate-400/90 disabled:opacity-45 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:bg-white disabled:hover:border-[#E2E4E8] disabled:hover:shadow-sm disabled:hover:ring-0"
-                  style={{ fontFamily: WORKSPACE_CHAT_FONT }}
-                >
-                  <MessageSquarePlus size={18} strokeWidth={2} className="flex-shrink-0 text-[#2E3A56]" />
-                  <span>{t('chat.newConversation')}</span>
-                </button>
-              </div>
               <ShehiyaProgress loading={loading} />
               {/* dir=ltr כאן קובע יישור פיזי: מאמן מימין, משתמש משמאל (גם בעברית). כיוון טקסט בבועות — ב-WorkspaceMessageBubble */}
               <div

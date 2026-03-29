@@ -85,10 +85,11 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: isHe ? -16 : 16 }}
               transition={{ duration: 0.25 }}
-              className="text-center"
+              className="w-full"
             >
-              {currentScreen.image ? (
-                <div className="flex justify-center mb-8">
+              {/* Fixed-height slot so the title starts at the same vertical position on every step (image vs icon). */}
+              <div className="mb-8 flex min-h-[220px] md:min-h-[260px] w-full items-center justify-center">
+                {currentScreen.image ? (
                   <div
                     className="
                       inline-flex rounded-full p-[5px]
@@ -102,33 +103,36 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                       className="w-40 h-40 md:w-48 md:h-48 rounded-full object-cover block ring-[3px] ring-[#020617]/95"
                     />
                   </div>
-                </div>
-              ) : (
-                <div className="flex justify-center mb-8" aria-hidden>
+                ) : (
                   <Icon
+                    aria-hidden
                     className="w-11 h-11 md:w-12 md:h-12 text-[#FCF6BA]/88 drop-shadow-[0_0_32px_rgba(252,246,186,0.38),0_0_14px_rgba(255,255,255,0.07)]"
                     strokeWidth={1.35}
                   />
-                </div>
-              )}
-              <h1 className="text-2xl md:text-[1.75rem] font-semibold text-[#FCF6BA] mb-5 leading-snug tracking-tight drop-shadow-[0_0_24px_rgba(252,246,186,0.12)]">
-                {t(currentScreen.titleKey)}
-              </h1>
-              <p className="text-slate-300 text-lg md:text-xl leading-relaxed mb-8 max-w-md mx-auto font-normal">
-                {t(currentScreen.descKey)}
-              </p>
+                )}
+              </div>
 
-              {currentScreen.linkKey && (
-                <a
-                  href={BSD_COACH_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 text-slate-300 hover:text-white text-sm font-medium mb-8 transition-colors"
-                >
-                  <ExternalLink className="w-4 h-4 shrink-0" />
-                  {t(currentScreen.linkKey)}
-                </a>
-              )}
+              {/* Same text column on all screens: start-aligned so the first line aligns (RTL/LTR). */}
+              <div className="max-w-lg w-full mx-auto">
+                <h1 className="text-start text-2xl md:text-[1.75rem] font-semibold text-[#FCF6BA] mb-5 leading-snug tracking-tight drop-shadow-[0_0_24px_rgba(252,246,186,0.12)]">
+                  {t(currentScreen.titleKey)}
+                </h1>
+                <p className="text-start text-slate-300 text-lg md:text-xl leading-relaxed mb-8 font-normal">
+                  {t(currentScreen.descKey)}
+                </p>
+
+                {currentScreen.linkKey && (
+                  <a
+                    href={BSD_COACH_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-slate-300 hover:text-white text-sm font-medium mb-8 transition-colors text-start"
+                  >
+                    <ExternalLink className="w-4 h-4 shrink-0" />
+                    {t(currentScreen.linkKey)}
+                  </a>
+                )}
+              </div>
 
               <div
                 className={

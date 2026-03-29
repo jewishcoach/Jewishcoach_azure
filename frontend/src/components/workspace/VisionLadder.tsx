@@ -56,7 +56,8 @@ export const VisionLadder = ({ currentStep, onPhaseClick, compact = false, conve
     const prev = prevPhaseIndexRef.current;
     if (prev !== null && prev !== activePhaseIndex) {
       setPulsePhaseIndex(activePhaseIndex);
-      const id = window.setTimeout(() => setPulsePhaseIndex(null), 2600);
+      // Match compact circle blink duration (~2.6s) + desktop step pulse
+      const id = window.setTimeout(() => setPulsePhaseIndex(null), 2800);
       prevPhaseIndexRef.current = activePhaseIndex;
       return () => clearTimeout(id);
     }
@@ -104,7 +105,7 @@ export const VisionLadder = ({ currentStep, onPhaseClick, compact = false, conve
           const scrollHint = t('ladder.scrollHint');
           const showPopover = popoverPhase === i;
           const insights = insightsByPhase[i] ?? [];
-          const isStepPulsing = isActive && pulsePhaseIndex === i;
+          const isCirclePulsing = isActive && pulsePhaseIndex === i;
 
           return (
             <div key={phaseId} className="relative flex flex-col items-center">
@@ -116,22 +117,13 @@ export const VisionLadder = ({ currentStep, onPhaseClick, compact = false, conve
                   else setPopoverPhase(null);
                 }}
                 title={`${title} - ${scrollHint}`}
-                className={`flex flex-col items-center gap-0.5 py-0.5 min-w-0 rounded-lg ${
-                  isActive && !isStepPulsing ? 'transition-all' : ''
-                } ${
-                  isActive
-                    ? isStepPulsing
-                      ? 'px-1 -mx-0.5 vision-ladder-compact--step-pulse'
-                      : 'px-1 -mx-0.5 ring-1 ring-[#B38728]/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
-                    : ''
-                }`}
-                style={isActive ? { background: LADDER_ACTIVE_FILL } : undefined}
+                className="flex flex-col items-center gap-0.5 py-0.5 min-w-0 rounded-lg"
                 aria-label={`${title} - ${scrollHint}`}
               >
                 <span
                   className={`relative w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium flex-shrink-0 ${
-                    isActive ? 'bg-[#FCF6BA]/90 text-[#020617] ring-2 ring-[#B38728]/60' : isPast ? 'bg-white/35 text-white/[0.88]' : 'bg-white/20 text-white/60'
-                  }`}
+                    isActive ? 'bg-[#FCF6BA]/90 text-[#020617]' : isPast ? 'bg-white/35 text-white/[0.88]' : 'bg-white/20 text-white/60'
+                  } ${isCirclePulsing ? 'vision-ladder-compact-circle-blink' : ''}`}
                 >
                   {i + 1}
                   {hasInsight && (
