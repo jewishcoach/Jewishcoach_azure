@@ -122,7 +122,11 @@ export const VisionLadder = ({ currentStep, onPhaseClick, compact = false, conve
               >
                 <span
                   className={`relative w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium flex-shrink-0 ${
-                    isActive ? 'bg-[#FCF6BA]/90 text-[#020617]' : isPast ? 'bg-white/35 text-white/[0.88]' : 'bg-white/20 text-white/60'
+                    isActive
+                      ? 'bg-[#FCF6BA]/90 text-[#020617] ring-2 ring-[#B38728]/65'
+                      : isPast
+                        ? 'bg-white/35 text-white/[0.88] ring-1 ring-white/40'
+                        : 'bg-white/20 text-white/60 ring-1 ring-white/22'
                   } ${isCirclePulsing ? 'vision-ladder-compact-circle-blink' : ''}`}
                 >
                   {i + 1}
