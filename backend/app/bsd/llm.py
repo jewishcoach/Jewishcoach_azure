@@ -118,8 +118,20 @@ def get_azure_chat_llm(*, purpose: str, deployment: str | None = None) -> AzureC
 
 @lru_cache(maxsize=1)
 def get_azure_chat_llm_4o_mini() -> AzureChatOpenAI:
-    """Get Azure LLM for gpt-4o-mini."""
-    deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME_4O_MINI", "gpt-4o-mini")
+    """
+    Azure LLM for BSD V2 coach (structured output).
+
+    Deployment resolution:
+    1. AZURE_OPENAI_DEPLOYMENT_NAME_4O_MINI — use when set (e.g. dedicated mini deployment).
+    2. Else AZURE_OPENAI_DEPLOYMENT_NAME — same deployment as the rest of the app (common when
+       only ``gpt-4o`` is deployed and there is no separate ``gpt-4o-mini`` resource name).
+    3. Else ``gpt-4o-mini`` — literal default deployment name in Azure (may 404 if not created).
+    """
+    deployment = (
+        os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME_4O_MINI")
+        or os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
+        or "gpt-4o-mini"
+    )
     return _build_azure_llm(deployment=deployment, temperature=0.2)
 
 
