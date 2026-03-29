@@ -63,6 +63,12 @@ export const bsdClerkAppearance = {
       'font-medium',
     ].join(' '),
     socialButtonsBlockButtonText: '!text-[#1f1f1f] font-medium',
+    /** "Last used" / בשימוש אחרון — avoid dark text on blue (unreadable on our OAuth row) */
+    lastAuthenticationStrategyBadge: [
+      '!bg-[#FCF6BA] !text-[#2E3A56] !border !border-[#B38728]/40',
+      'text-xs font-semibold shadow-sm',
+      '[&_*]:!text-[#2E3A56]',
+    ].join(' '),
     socialButtonsProviderIcon: 'shrink-0',
     alternativeMethodsBlockButton: 'border-white/15 bg-white/[0.06] text-[#f8fafc]',
     otpCodeFieldInputs: 'gap-2',

@@ -41,6 +41,18 @@ class ConversationResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ConversationListItemResponse(BaseModel):
+    """Lightweight row for GET /conversations (no message bodies)."""
+
+    id: int
+    title: str
+    created_at: datetime
+    current_phase: str = "S0"
+    message_count: int = 0
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class FeedbackCreate(BaseModel):
     message_id: int
     score: int  # 1 or -1

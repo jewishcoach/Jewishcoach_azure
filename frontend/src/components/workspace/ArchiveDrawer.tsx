@@ -1,7 +1,15 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { X, MessageSquare, Search } from 'lucide-react';
 import type { Conversation } from '../../types';
+
+function phaseLabel(t: (k: string) => string, step: string | undefined): string {
+  const s = step || 'S0';
+  const key = `phase.${s}`;
+  const label = t(key);
+  return label === key ? s : label;
+}
 
 interface ArchiveDrawerProps {
   isOpen: boolean;
@@ -26,7 +34,9 @@ export const ArchiveDrawer = ({
   onShare,
   isRTL,
 }: ArchiveDrawerProps) => {
+  const { t, i18n } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
+  const dateLocale = i18n.language?.startsWith('he') ? 'he-IL' : 'en-US';
   const filtered = useMemo(() => {
     if (!searchQuery.trim()) return conversations;
     const q = searchQuery.trim().toLowerCase();
@@ -52,7 +62,7 @@ export const ArchiveDrawer = ({
             className="fixed top-0 bottom-0 left-0 w-[min(85vw,320px)] max-w-[320px] bg-[#0F172A]/95 backdrop-blur-md border-r border-white/10 z-50 shadow-2xl"
           >
             <div className="p-4 border-b border-white/10 flex justify-between items-center">
-              <h3 className="text-sm font-medium text-white/90">ארכיון שיחות</h3>
+              <h3 className="text-sm font-medium text-white/90">{t('chat.archiveTitle')}</h3>
               <button
                 onClick={onClose}
                 className="p-2 rounded-xl text-white/60 hover:text-white hover:bg-white/5"
@@ -67,7 +77,7 @@ export const ArchiveDrawer = ({
               }}
               className="w-full mx-4 mt-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-sm font-medium transition-colors"
             >
-              שיחה חדשה
+              {t('chat.newConversation')}
             </button>
             <div className="px-4 py-2">
               <div className="relative">
@@ -76,9 +86,9 @@ export const ArchiveDrawer = ({
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="חיפוש שיחות..."
+                  placeholder={t('chat.archiveSearchPlaceholder')}
                   className={`w-full py-2 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/40 text-sm focus:outline-none focus:border-[#FCF6BA]/40 ${isRTL ? 'pr-9 pl-3' : 'pl-9 pr-3'}`}
-                  dir="rtl"
+                  dir={isRTL ? 'rtl' : 'ltr'}
                 />
               </div>
             </div>
@@ -86,12 +96,12 @@ export const ArchiveDrawer = ({
               {conversations.length === 0 ? (
                 <div className="text-center py-12 text-white/40">
                   <MessageSquare size={32} className="mx-auto mb-2" />
-                  <p className="text-xs">אין שיחות</p>
+                  <p className="text-xs">{t('chat.archiveEmpty')}</p>
                 </div>
               ) : filtered.length === 0 ? (
                 <div className="text-center py-8 text-white/40">
                   <Search size={24} className="mx-auto mb-2" />
-                  <p className="text-xs">לא נמצאו שיחות</p>
+                  <p className="text-xs">{t('chat.archiveNoResults')}</p>
                 </div>
               ) : (
                 <div className="space-y-1">
@@ -108,11 +118,17 @@ export const ArchiveDrawer = ({
                       `}
                     >
                       <div className="flex justify-between items-start gap-2">
-                        <span className="text-sm truncate flex-1">{conv.title}</span>
+                        <span className="text-sm truncate flex-1 min-w-0">{conv.title}</span>
                         <span className="text-xs text-white/40 shrink-0">
-                          {new Date(conv.created_at).toLocaleDateString('he-IL')}
+                          {new Date(conv.created_at).toLocaleDateString(dateLocale)}
                         </span>
                       </div>
+                      <p className="text-[11px] text-white/45 mt-1 leading-snug truncate">
+                        {t('chat.archiveMeta', {
+                          phase: phaseLabel(t, conv.current_phase),
+                          count: conv.message_count ?? conv.messages?.length ?? 0,
+                        })}
+                      </p>
                     </div>
                   ))}
                 </div>

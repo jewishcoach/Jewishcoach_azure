@@ -13,6 +13,9 @@
  */
 export const BSD_VERSION = (localStorage.getItem('bsd_version') || 'v2') as 'v1' | 'v2';
 
+/** Free (basic) plan monthly message cap — keep in sync with backend PLAN_LIMITS["basic"].messages_per_month */
+export const BASIC_PLAN_MESSAGES_PER_MONTH = 150;
+
 /** API when the SPA is served from the production custom domain (see scripts/setup_jewishcoacher_domain.sh). */
 const PRODUCTION_API_CUSTOM_DOMAIN = 'https://api.jewishcoacher.com/api';
 

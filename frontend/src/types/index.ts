@@ -20,7 +20,10 @@ export interface Conversation {
   id: number;
   title: string;
   created_at: string;
-  messages: Message[];
+  /** Present on full fetch; omitted on list endpoint */
+  messages?: Message[];
+  current_phase?: string;
+  message_count?: number;
 }
 
 export interface SpeechToken {

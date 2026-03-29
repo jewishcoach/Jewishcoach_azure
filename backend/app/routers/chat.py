@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from ..database import get_db
 from ..dependencies import get_current_user
 from ..security.chat_input import ChatMessageRejected, sanitize_chat_message
 from ..middleware.usage_limiter import require_message_quota
 from ..limiter import limiter
-from ..schemas import MessageCreate, ConversationResponse
+from ..schemas import MessageCreate, ConversationResponse, ConversationListItemResponse
 from ..models import Conversation, Message, User, ConversationFlag, BsdSessionState, BsdAuditLog
 from ..bsd.engine import BsdEngine
 from typing import List, Dict
@@ -396,17 +397,34 @@ def create_conversation(
 
     return conversation
 
-@router.get("/conversations", response_model=List[ConversationResponse])
+@router.get("/conversations", response_model=List[ConversationListItemResponse])
 def get_conversations(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get all conversations for the authenticated user"""
-    conversations = db.query(Conversation)\
-        .filter(Conversation.user_id == user.id)\
-        .order_by(Conversation.created_at.desc())\
+    """List conversations with phase and message counts (no full message bodies)."""
+    msg_counts = (
+        db.query(Message.conversation_id, func.count(Message.id).label("cnt"))
+        .group_by(Message.conversation_id)
+        .subquery()
+    )
+    rows = (
+        db.query(Conversation, func.coalesce(msg_counts.c.cnt, 0).label("message_count"))
+        .outerjoin(msg_counts, Conversation.id == msg_counts.c.conversation_id)
+        .filter(Conversation.user_id == user.id)
+        .order_by(Conversation.created_at.desc())
         .all()
-    return conversations
+    )
+    return [
+        ConversationListItemResponse(
+            id=conv.id,
+            title=conv.title or "New Conversation",
+            created_at=conv.created_at,
+            current_phase=(conv.current_phase or "S0"),
+            message_count=int(cnt or 0),
+        )
+        for conv, cnt in rows
+    ]
 
 @router.get("/conversations/{conversation_id}", response_model=ConversationResponse)
 def get_conversation(

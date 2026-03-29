@@ -4,6 +4,13 @@ import { useTranslation } from 'react-i18next';
 import { useEffect, useRef, useState } from 'react';
 import type { Conversation } from '../types';
 
+function phaseLabel(t: (k: string) => string, step: string | undefined): string {
+  const s = step || 'S0';
+  const key = `phase.${s}`;
+  const label = t(key);
+  return label === key ? s : label;
+}
+
 interface SidebarProps {
   conversations: Conversation[];
   activeId: number | null;
@@ -76,6 +83,12 @@ export const Sidebar = ({ conversations, activeId, onSelect, onNewChat, onDelete
                       <div className="font-medium truncate">{conv.title}</div>
                       <div className="text-xs opacity-60 mt-1">
                         {new Date(conv.created_at).toLocaleDateString()}
+                      </div>
+                      <div className="text-[11px] opacity-50 mt-0.5 truncate">
+                        {t('chat.archiveMeta', {
+                          phase: phaseLabel(t, conv.current_phase),
+                          count: conv.message_count ?? conv.messages?.length ?? 0,
+                        })}
                       </div>
                     </div>
                     <button

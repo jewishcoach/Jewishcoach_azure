@@ -24,10 +24,10 @@ with zipfile.ZipFile('deploy.zip', 'w', zipfile.ZIP_DEFLATED) as z:
 
 echo "📤 Deploying to Azure..."
 if command -v az &>/dev/null; then
-  # Ensure Safety Net stays disabled on every deploy
-  echo "⚙️  Setting BSD_V2_SAFETY_NET_DISABLED=1..."
+  # Ensure Safety Net stays disabled on every deploy; admin RBAC email (must match Clerk primary email)
+  echo "⚙️  Setting BSD_V2_SAFETY_NET_DISABLED=1 and ADMIN_EMAIL..."
   az webapp config appsettings set --name jewishcoach-api --resource-group jewish-coach-rg \
-    --settings BSD_V2_SAFETY_NET_DISABLED=1 -o none 2>/dev/null || true
+    --settings BSD_V2_SAFETY_NET_DISABLED=1 ADMIN_EMAIL=ishai.meisels@gmail.com -o none 2>/dev/null || true
 
   # Get credentials for zipdeploy (avoids az webapp deploy 503/504 timeouts)
   echo "🔑 Getting deployment credentials..."

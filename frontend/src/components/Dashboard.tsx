@@ -14,6 +14,7 @@ import { ActivityBarChart } from './dashboard/ActivityBarChart';
 import { PhaseDonutChart } from './dashboard/PhaseDonutChart';
 import { InsightsTab } from './InsightsTab';
 import { apiClient } from '../services/api';
+import { BASIC_PLAN_MESSAGES_PER_MONTH } from '../config';
 import type { I18nT } from '../i18nT';
 
 // BSD palette: navy primary, minimal red - gold for soft accents
@@ -525,7 +526,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
                       { label: t('dashboard.conversations'), value: stats.total_conversations, max: 10 },
                       { label: t('dashboard.messages'), value: stats.total_messages, max: 50 },
                       { label: t('dashboard.daysActive'), value: stats.days_active, max: 30 },
-                      { label: t('dashboard.thisMonth'), value: stats.messages_this_month, max: 50 },
+                      { label: t('dashboard.thisMonth'), value: stats.messages_this_month, max: BASIC_PLAN_MESSAGES_PER_MONTH },
                     ]}
                   />
                 </motion.div>
