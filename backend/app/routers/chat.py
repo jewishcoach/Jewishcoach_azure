@@ -3,6 +3,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from ..database import get_db
 from ..dependencies import get_current_user
+from ..security.chat_input import ChatMessageRejected, sanitize_chat_message
 from ..middleware.usage_limiter import require_message_quota
 from ..limiter import limiter
 from ..schemas import MessageCreate, ConversationResponse
@@ -704,12 +705,20 @@ async def send_message(
     
     if not conv:
         raise HTTPException(status_code=403, detail="Conversation not found or unauthorized")
+
+    try:
+        safe_content = sanitize_chat_message(message.content)
+    except ChatMessageRejected as e:
+        raise HTTPException(
+            status_code=400,
+            detail={"error": e.reason, "message": "Invalid message content"},
+        )
     
     # Save user message
     user_msg = Message(
         conversation_id=conversation_id,
         role="user",
-        content=message.content
+        content=safe_content
     )
     db.add(user_msg)
     db.commit()
@@ -771,12 +780,12 @@ async def send_message(
                 else:
                     return message.language or "he"
             
-            detected_language = detect_language(message.content)
+            detected_language = detect_language(safe_content)
             
             coach_text, bsd_metadata = await bsd_engine.run_turn(
                 db=db,
                 conversation_id=conversation_id,
-                user_message=message.content,
+                user_message=safe_content,
                 language=detected_language,
                 user_name=user_display_name_cache,
                 user_gender=user_gender_cache,

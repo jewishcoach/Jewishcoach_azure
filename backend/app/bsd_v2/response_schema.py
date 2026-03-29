@@ -48,7 +48,7 @@ class CollectedDataSchema(BaseModel):
     S4:  thought
     S5:  action_actual (מצוי — actual action only)
     S6:  action_desired, emotion_desired, thought_desired (רצוי — desired state)
-    S7:  gap_name, gap_score
+    S7:  gap_name, gap_score, gap_booklet_moves (אופציונלי — מעקב אחר סוגי שאלות החוברת שכבר נאספו)
     S8:  pattern
     S9:  paradigm (thought behind the action — פרדיגמה)
     S10: stance + trigger (reality perception — עמדה וטריגר)
@@ -62,7 +62,10 @@ class CollectedDataSchema(BaseModel):
       S5=מצוי, S6=רצוי, S7=פער, S8=דפוס, S9=פרדיגמה, S10=עמדה+טריגר,
       S11=רווחים, S12=כוחות, S13=בחירה, S14=חזון, S15=מחויבות
     """
-    topic: Union[str, None] = Field(default=None, description="נושא האימון (S1)")
+    topic: Union[str, None] = Field(
+        default=None,
+        description="נושא האימון — משפט קצר; עדכן גם ב-S2+ כשהמתאמן מחדד או מתקן את הניסוח (מוצג במסך התובנות)",
+    )
     event_description: Union[str, None] = Field(default=None, description="תיאור האירוע הספציפי (S2)")
     emotions: List[str] = Field(default_factory=list, description="רגשות שהמשתמש הביע (S3)")
     thought: Union[str, None] = Field(default=None, description="המשפט הפנימי / מחשבה (S4)")
@@ -72,6 +75,15 @@ class CollectedDataSchema(BaseModel):
     thought_desired: Union[str, None] = Field(default=None, description="מה היה רוצה לחשוב - רצוי (S6). מלא רק בשלב S6!")
     gap_name: Union[str, None] = Field(default=None, description="שם הפער (S7). מלא רק בשלב S7!")
     gap_score: Union[str, None] = Field(default=None, description="ציון הפער 1-10 כמחרוזת (S7). מלא רק בשלב S7!")
+    gap_booklet_moves: List[str] = Field(
+        default_factory=list,
+        description=(
+            "S7 בלבד: רשימת סוגי שאלות מהחוברת שכבר נאספו בתשובה מלאה — "
+            "ערכים קבועים: belief, opportunity, dwelling, waiver, authenticity. "
+            "הוסף לרשימה (או החזר רשימה מצטברת) כשסוג השאלה כבר נחקר; "
+            "**אסור** לשאול שוב אותו סוג אם הוא כבר ברשימה."
+        ),
+    )
     pattern: Union[str, None] = Field(default=None, description="הדפוס החוזר שזוהה (S8). מלא רק בשלב S8!")
     paradigm: Union[str, None] = Field(default=None, description="הפרדיגמה - 'ככה זה אצלי' / מחשבת המעשה (S9). מלא רק בשלב S9!")
     stance: Union[StanceSchema, None] = Field(default=None, description="רווחים והפסדים מהדפוס (S11 — עמדה). מלא רק בשלב S11!")

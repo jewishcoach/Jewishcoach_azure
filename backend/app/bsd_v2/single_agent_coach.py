@@ -360,6 +360,68 @@ def _extract_topic_from_conversation(state: Dict[str, Any], user_message: Option
     return candidates[0] if candidates else ""
 
 
+def _refresh_topic_for_insights_s1_s2(
+    state: Dict[str, Any],
+    internal_state: Dict[str, Any],
+    user_message: Optional[str],
+) -> None:
+    """
+    Keep insights panel 'נושא האימון' in sync when the trainee refines wording in S1–S2.
+    The LLM often omits `topic` in S2 (event_description only); merge rules then keep a stale S1 phrase.
+    """
+    step = state.get("current_step")
+    if step not in ("S1", "S2") or not (user_message or "").strip():
+        return
+    um = user_message.strip()
+    if len(um) < 8 or len(um) > 280:
+        return
+    narrative_starts = (
+        "הייתי ",
+        "הייתי ב",
+        "לפני ",
+        "אתמול",
+        "אני עליתי",
+        "הרגע ש",
+        "הייתי בסלון",
+        "I was ",
+        "yesterday ",
+    )
+    if any(um.startswith(p) for p in narrative_starts):
+        return
+    refine_he = (
+        "התכוונתי",
+        "קלילות",
+        "שלילות",
+        "אני אישה",
+        "אני איש",
+        "למעשה",
+        "במילים אחרות",
+        "תיקון",
+        "לא רק ",
+        "גם שמחה",
+        "גם קליל",
+    )
+    both_and = " וגם " in um or (um.count("גם") >= 2 and ("שמחה" in um or "קליל" in um))
+    has_marker = (
+        any(m in um for m in refine_he)
+        or any(m in um.lower() for m in ("i meant", "actually", "not "))
+        or both_and
+    )
+    if step == "S2":
+        if len(um) > 130 and not has_marker:
+            return
+        if not has_marker:
+            return
+    elif step == "S1" and not has_marker:
+        return
+    prev = (_safe_collected_dict(state.get("collected_data")).get("topic") or "").strip()
+    llm_t = str((internal_state.get("collected_data") or {}).get("topic") or "").strip()
+    if llm_t and llm_t != prev and llm_t not in ("[נושא]", "[topic]"):
+        return
+    cd = internal_state.setdefault("collected_data", {})
+    cd["topic"] = um[:160]
+
+
 def _parse_json_response(
     response_text: str, state: Dict[str, Any], user_message: Optional[str], language: str
 ) -> Tuple[str, Dict[str, Any]]:
@@ -2039,6 +2101,13 @@ def build_conversation_context(
         k: v for k, v in state['collected_data'].items()
         if v is not None and v != [] and v != {} and k != "entities"
     }
+    # S7: always show gap_booklet_moves (even []) so the model never re-asks the same booklet type
+    if state.get("current_step") == "S7":
+        moves = (state.get("collected_data") or {}).get("gap_booklet_moves")
+        if moves is not None:
+            collected["gap_booklet_moves"] = moves
+        else:
+            collected["gap_booklet_moves"] = []
     if collected:
         context_parts.append("\nנתונים שנאספו:" if language == "he" else "\nCollected Data:")
         context_parts.append(json.dumps(collected, ensure_ascii=False, indent=2))
@@ -2466,6 +2535,8 @@ async def handle_conversation(
         # 7. Update state
         logger.info(f"[BSD V2] Parsed coach_message: {coach_message[:100]}...")
         logger.info(f"[BSD V2] Parsed internal_state: {json.dumps(internal_state, ensure_ascii=False)[:200]}...")
+
+        _refresh_topic_for_insights_s1_s2(state, internal_state, user_message)
 
         # Ensure topic is populated when past S0 (LLM may omit it in later stages)
         cd = state.get("collected_data") or {}

@@ -44,6 +44,7 @@ def create_initial_state(
             # S6: Gap
             "gap_name": None,
             "gap_score": None,
+            "gap_booklet_moves": [],  # S7: belief | opportunity | dwelling | waiver | authenticity
             # S7: Pattern
             "pattern": None,  # דפוס חוזר
             # S8: Stance (gains + losses)
@@ -139,7 +140,15 @@ def add_message(
                     v = str(value).strip() if value else ""
                     if not v or v in ("[נושא]", "[topic]"):
                         continue  # don't overwrite topic with empty/placeholder
-                # entities: append new items to existing lists (never overwrite)
+                # gap_booklet_moves: union-merge tokens (belief, opportunity, …)
+                if key == "gap_booklet_moves" and isinstance(value, list):
+                    existing_moves = state["collected_data"].setdefault("gap_booklet_moves", [])
+                    seen_moves = set(existing_moves)
+                    for item in value:
+                        if item and item not in seen_moves:
+                            existing_moves.append(item)
+                            seen_moves.add(item)
+                    continue
                 if key == "entities" and isinstance(value, dict):
                     existing_entities = state["collected_data"].setdefault("entities", {
                         "people": [], "places": [], "key_examples": []

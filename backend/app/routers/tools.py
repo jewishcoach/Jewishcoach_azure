@@ -8,6 +8,7 @@ from typing import Dict, Any, List
 from datetime import datetime
 import logging
 from ..bsd_v2.single_agent_coach import handle_conversation
+from ..security.chat_input import ChatMessageRejected, sanitize_chat_message
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +86,12 @@ async def submit_tool_response(
 
     # Create a summary message so the messages table stays in sync.
     summary = _generate_tool_summary(request.tool_type, request.data)
+    if summary:
+        try:
+            summary = sanitize_chat_message(summary)
+        except ChatMessageRejected as e:
+            logger.warning("[Tools] Tool summary rejected: %s", e.reason)
+            summary = ""
     if summary:
         system_message = Message(
             conversation_id=conversation_id,

@@ -27,6 +27,8 @@ jobs:
       working-directory: frontend
       run: npm ci
     
+    # Secrets: VITE_API_URL should be https://api.jewishcoacher.com/api once DNS + App Service hostname + SSL exist;
+    # until then https://jewishcoach-api.azurewebsites.net/api is OK. Runtime on jewishcoacher.com also forces api subdomain in getApiBase().
     - name: Build
       working-directory: frontend
       env:

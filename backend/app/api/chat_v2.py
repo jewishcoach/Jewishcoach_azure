@@ -11,9 +11,14 @@ import time
 from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from ..dependencies import get_current_user
+from ..dependencies import get_current_user, get_current_admin_user
+from ..security.chat_input import (
+    MAX_CHAT_MESSAGE_CHARS,
+    ChatMessageRejected,
+    sanitize_chat_message,
+)
 from ..middleware.usage_limiter import require_message_quota
 from ..bsd_v2.single_agent_coach import handle_conversation, warm_prompt_cache
 from ..bsd_v2.state_schema_v2 import create_initial_state
@@ -32,7 +37,7 @@ router = APIRouter(prefix="/api/chat/v2", tags=["BSD V2"])
 # ══════════════════════════════════════════════════════════════════════════════
 
 class ChatRequest(BaseModel):
-    message: str
+    message: str = Field(..., min_length=1, max_length=MAX_CHAT_MESSAGE_CHARS)
     conversation_id: int
     language: str = "he"
 
@@ -182,7 +187,9 @@ async def send_message_v2(
         }
     """
     state: Dict[str, Any] = {}
+    safe_message: str | None = None
     try:
+        safe_message = sanitize_chat_message(body.message)
         api_start = time.time()
 
         print(f"\n{'='*80}")
@@ -212,7 +219,7 @@ async def send_message_v2(
         t3 = time.time()
         user_gender = getattr(current_user, "gender", None) or None
         coach_message, updated_state = await handle_conversation(
-            user_message=body.message,
+            user_message=safe_message,
             state=state,
             language=body.language,
             user_gender=user_gender,
@@ -237,7 +244,7 @@ async def send_message_v2(
         user_msg = Message(
             conversation_id=body.conversation_id,
             role="user",
-            content=body.message,
+            content=safe_message,
             timestamp=utc_now()
         )
         db.add(user_msg)
@@ -291,6 +298,11 @@ async def send_message_v2(
     except HTTPException:
         # Re-raise HTTPException (404, 401, etc.) without wrapping in 500
         raise
+    except ChatMessageRejected as e:
+        raise HTTPException(
+            status_code=400,
+            detail={"error": e.reason, "message": "Invalid message content"},
+        )
     except Exception as e:
         logger.error(f"[BSD V2 API] Error: {e}")
         import traceback
@@ -306,7 +318,17 @@ async def send_message_v2(
         fallback_msg = fallback_he if (body.language or "he") == "he" else fallback_en
         try:
             from app.database import utc_now
-            user_msg = Message(conversation_id=body.conversation_id, role="user", content=body.message, timestamp=utc_now())
+            fb_user_content = (
+                safe_message
+                if safe_message is not None
+                else (body.message or "")[:MAX_CHAT_MESSAGE_CHARS]
+            )
+            user_msg = Message(
+                conversation_id=body.conversation_id,
+                role="user",
+                content=fb_user_content,
+                timestamp=utc_now(),
+            )
             coach_msg = Message(conversation_id=body.conversation_id, role="assistant", content=fallback_msg, timestamp=utc_now(), meta={"phase": state.get("current_step", "S1")})
             db.add(user_msg)
             db.add(coach_msg)
@@ -327,9 +349,9 @@ async def send_message_v2(
 
 @router.get("/debug/errors")
 async def get_recent_errors_debug(
-    current_user: User = Depends(get_current_user)
+    _admin: User = Depends(get_current_admin_user),
 ):
-    """Return recent BSD V2 errors for debugging. Requires auth."""
+    """Return recent BSD V2 errors for debugging. Admin only."""
     try:
         from ..bsd_v2.error_buffer import get_recent_errors
         return {"errors": get_recent_errors(), "count": len(get_recent_errors())}
@@ -344,11 +366,11 @@ async def get_recent_errors_debug(
 @router.get("/debug/last-conversation")
 async def get_last_conversation_debug(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_admin_user),
 ):
     """
     Return the user's most recent V2 conversation in full (messages + state).
-    For debugging coach behavior - share output to analyze.
+    Admin-only export for coach behavior analysis.
     """
     conv = db.query(ConversationModel).filter(
         ConversationModel.user_id == current_user.id,
@@ -384,9 +406,9 @@ async def get_last_conversation_debug(
 async def get_conversation_debug(
     conversation_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_admin_user),
 ):
-    """Export a specific conversation for debugging (same format as last-conversation)."""
+    """Export a specific conversation for debugging (same format as last-conversation). Admin only."""
     conv = _get_conversation_or_404(conversation_id, current_user.id, db)
     if not conv.v2_state:
         return {"message": "Not a V2 conversation (no v2_state)", "conversation_id": conversation_id}

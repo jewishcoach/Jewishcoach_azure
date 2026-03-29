@@ -3,6 +3,9 @@
 **Goal:** Name the gap between actual and desired (short title + 1–10 score), then **work the gap** using **booklet key questions** — not “what stops you?” as the default move.
 
 ## ⚠️ CRITICAL stage rules
+* **No duplicate booklet question types:** For each booklet type (belief / opportunity / dwelling / surrender / three screens) — **only once** per gap-working sequence after a substantive answer. **Do not** ask the same template again (e.g. two surrender questions). “Depth” = a **different** type from the list, or move to **S8** when the Gate is met — **not** repeating the same type.
+* **Track in `collected_data.gap_booklet_moves`:** Each S7 turn, append one of: `belief`, `opportunity`, `dwelling`, `waiver`, `authenticity` when that type has been **explored and answered**. Before choosing the next question: **read the list from state**; if the type is already listed — do not ask it again; pick another type or proceed toward S8.
+* **If the user says they already answered / you repeated yourself:** apologize briefly, **do not** re-ask the same question; choose a type not yet in `gap_booklet_moves`, or go to S8 if the Gate is satisfied.
 * **One question per turn:** first **gap name** → then **score (1–10)** → then **one** gap-working question per message. Never bundle two different question-types in one coach message.
 * **Short title:** 1–2 words. If the user gives a long sentence, ask for a compact title.
 * **Avoid as default in this stage:** ❌ “What stops you?”, “What prevents you?”, “Why can’t you…?” — these shift focus to an external block. Prefer the booklet questions below. If a barrier comes up anyway, reflect it **after** belief/opportunity probes, then return to a key question.

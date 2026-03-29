@@ -36,15 +36,18 @@ for o in ("http://localhost:5173", "http://localhost:5174"):
         origins_list.append(o)
 
 # Azure Static Web Apps - add common deployment URLs (e.g. thankful-forest-*.azurestaticapps.net)
+# Production custom domain (HTTPS) — also set CORS_ORIGINS in App Service for any extra origins.
 for azure_origin in (
     "https://thankful-forest-049e9550f.1.azurestaticapps.net",
     "https://jewish-coach.azurestaticapps.net",
+    "https://jewishcoacher.com",
+    "https://www.jewishcoacher.com",
 ):
     if azure_origin not in origins_list:
         origins_list.append(azure_origin)
 
-# Check if we should allow remote tunneling domains (useful for external testing)
-allow_tunnels = os.getenv("ALLOW_TUNNELS", "true").lower() == "true"
+# Default false: allow only CORS_ORIGINS + localhost dev ports. Set ALLOW_TUNNELS=true for ngrok etc.
+allow_tunnels = os.getenv("ALLOW_TUNNELS", "false").lower() == "true"
 
 if allow_tunnels:
     # Add regex patterns to allow tunneling services: ngrok, localhost.run, azurestaticapps, etc.

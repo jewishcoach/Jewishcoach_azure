@@ -4,13 +4,15 @@ Pydantic schemas.
 This package is the single import target for `from app.schemas import ...`.
 """
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from typing import Optional, List
 from datetime import datetime
 
+from ..security.chat_input import MAX_CHAT_MESSAGE_CHARS
+
 
 class MessageCreate(BaseModel):
-    content: str
+    content: str = Field(..., min_length=1, max_length=MAX_CHAT_MESSAGE_CHARS)
     language: Optional[str] = "he"  # Default to Hebrew
 
 

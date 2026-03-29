@@ -94,7 +94,8 @@ async def get_current_user(
     
     # Demo mode for tunnel testing (TEMPORARY) - only for dev tunnels, NOT production
     # azurestaticapps.net is production frontend - users there must use real Clerk auth
-    allow_demo = os.getenv("ALLOW_DEMO_MODE", "true").lower() == "true"
+    # Default false: production-safe. Set ALLOW_DEMO_MODE=true for local tunnel testing only.
+    allow_demo = os.getenv("ALLOW_DEMO_MODE", "false").lower() == "true"
     is_tunnel_domain = origin and any(domain in origin for domain in ['.lhr.life', '.ngrok-free.app', '.localhost.run'])
     
     print(f"🔍 [AUTH] allow_demo={allow_demo}, is_tunnel_domain={is_tunnel_domain}")
