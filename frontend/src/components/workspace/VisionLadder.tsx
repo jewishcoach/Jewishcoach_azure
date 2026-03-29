@@ -5,7 +5,7 @@
  * במובייל: שלבים עם תובנות מציגים אינדיקציה, לחיצה מציגה popover
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { apiClient } from '../../services/api';
 import { buildInsightsByPhase, type InsightItem } from '../../utils/insightsByPhase';
@@ -46,6 +46,20 @@ export const VisionLadder = ({ currentStep, onPhaseClick, compact = false, conve
   const isRTL = i18n.language === 'he' || i18n.language?.startsWith('he');
   const [insightsByPhase, setInsightsByPhase] = useState<Record<number, InsightItem[]>>({});
   const [popoverPhase, setPopoverPhase] = useState<number | null>(null);
+  /** Phase index that should play a one-shot border pulse (step transition only, not initial mount). */
+  const [pulsePhaseIndex, setPulsePhaseIndex] = useState<number | null>(null);
+  const prevPhaseIndexRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const prev = prevPhaseIndexRef.current;
+    if (prev !== null && prev !== activePhaseIndex) {
+      setPulsePhaseIndex(activePhaseIndex);
+      const id = window.setTimeout(() => setPulsePhaseIndex(null), 2600);
+      prevPhaseIndexRef.current = activePhaseIndex;
+      return () => clearTimeout(id);
+    }
+    prevPhaseIndexRef.current = activePhaseIndex;
+  }, [activePhaseIndex]);
 
   // Fetch insights when compact and conversationId available
   useEffect(() => {
@@ -84,6 +98,7 @@ export const VisionLadder = ({ currentStep, onPhaseClick, compact = false, conve
           const scrollHint = t('ladder.scrollHint');
           const showPopover = popoverPhase === i;
           const insights = insightsByPhase[i] ?? [];
+          const isStepPulsing = isActive && pulsePhaseIndex === i;
 
           return (
             <div key={phaseId} className="relative flex flex-col items-center">
@@ -95,8 +110,14 @@ export const VisionLadder = ({ currentStep, onPhaseClick, compact = false, conve
                   else setPopoverPhase(null);
                 }}
                 title={`${title} - ${scrollHint}`}
-                className={`flex flex-col items-center gap-0.5 py-0.5 min-w-0 transition-all rounded-lg ${
-                  isActive ? 'px-1 -mx-0.5 ring-1 ring-[#B38728]/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]' : ''
+                className={`flex flex-col items-center gap-0.5 py-0.5 min-w-0 rounded-lg ${
+                  isActive && !isStepPulsing ? 'transition-all' : ''
+                } ${
+                  isActive
+                    ? isStepPulsing
+                      ? 'px-1 -mx-0.5 vision-ladder-compact--step-pulse'
+                      : 'px-1 -mx-0.5 ring-1 ring-[#B38728]/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
+                    : ''
                 }`}
                 style={isActive ? { background: LADDER_ACTIVE_FILL } : undefined}
                 aria-label={`${title} - ${scrollHint}`}
@@ -168,6 +189,7 @@ export const VisionLadder = ({ currentStep, onPhaseClick, compact = false, conve
           const isLast = i === PHASE_IDS.length - 1;
           const isClickable = !!onPhaseClick;
           const scrollHint = t('ladder.scrollHint');
+          const isStepPulsing = isActive && pulsePhaseIndex === i;
           return (
             <div key={phaseId} className="flex flex-col items-stretch">
               <div
@@ -176,15 +198,21 @@ export const VisionLadder = ({ currentStep, onPhaseClick, compact = false, conve
                 aria-label={isClickable ? `${title} - ${scrollHint}` : undefined}
                 onClick={isClickable ? () => onPhaseClick(i) : undefined}
                 onKeyDown={isClickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPhaseClick(i); } } : undefined}
-                className={`group relative rounded-xl px-4 py-3 border transition-all duration-300 ${
+                className={`group relative rounded-xl px-4 py-3 border ${
+                  isStepPulsing ? 'transition-none' : 'transition-all duration-300'
+                } ${
                   isClickable ? `cursor-pointer ${isActive ? 'hover:brightness-[1.03]' : 'hover:bg-white/[0.06]'}` : 'cursor-default'
-                }`}
+                } ${isStepPulsing ? 'vision-ladder-desktop--step-pulse' : ''}`}
                 style={{
                   background: isActive ? LADDER_ACTIVE_FILL : 'rgba(255, 255, 255, 0.03)',
-                  borderColor: isActive ? 'rgba(212, 175, 55, 0.5)' : 'rgba(255, 255, 255, 0.08)',
-                  boxShadow: isActive
-                    ? '0 0 18px rgba(212, 175, 55, 0.18), inset 0 1px 0 rgba(255,255,255,0.1)'
-                    : 'none',
+                  ...(isStepPulsing
+                    ? {}
+                    : {
+                        borderColor: isActive ? 'rgba(212, 175, 55, 0.5)' : 'rgba(255, 255, 255, 0.08)',
+                        boxShadow: isActive
+                          ? '0 0 18px rgba(212, 175, 55, 0.18), inset 0 1px 0 rgba(255,255,255,0.1)'
+                          : 'none',
+                      }),
                 }}
               >
                 <div

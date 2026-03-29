@@ -77,7 +77,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         <UserButton afterSignOutUrl="/" />
       </div>
       <div className="flex-1 flex flex-col items-center justify-center p-6 relative z-[1]">
-        <div className="max-w-lg w-full">
+        <div className="max-w-xl w-full">
           <AnimatePresence mode="wait">
             <motion.div
               key={step}
@@ -89,15 +89,26 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             >
               {currentScreen.image ? (
                 <div className="flex justify-center mb-8">
-                  <img
-                    src={currentScreen.image}
-                    alt=""
-                    className="w-40 h-40 md:w-48 md:h-48 rounded-full object-cover border-4 border-white/15 shadow-lg"
-                  />
+                  <div
+                    className="
+                      inline-flex rounded-full p-[5px]
+                      bg-gradient-to-br from-white/45 via-[#FCF6BA]/35 to-[#B38728]/45
+                      shadow-[0_12px_40px_-6px_rgba(0,0,0,0.65),0_0_52px_-10px_rgba(252,246,186,0.24),inset_0_1px_0_rgba(255,255,255,0.2)]
+                    "
+                  >
+                    <img
+                      src={currentScreen.image}
+                      alt=""
+                      className="w-40 h-40 md:w-48 md:h-48 rounded-full object-cover block ring-[3px] ring-[#020617]/95"
+                    />
+                  </div>
                 </div>
               ) : (
-                <div className="inline-flex items-center justify-center w-[4.25rem] h-[4.25rem] rounded-2xl bg-white/[0.06] mb-8 ring-1 ring-white/12 border border-white/[0.06]">
-                  <Icon className="w-9 h-9 text-slate-200" strokeWidth={1.5} />
+                <div className="flex justify-center mb-8" aria-hidden>
+                  <Icon
+                    className="w-11 h-11 md:w-12 md:h-12 text-[#FCF6BA]/88 drop-shadow-[0_0_32px_rgba(252,246,186,0.38),0_0_14px_rgba(255,255,255,0.07)]"
+                    strokeWidth={1.35}
+                  />
                 </div>
               )}
               <h1 className="text-2xl md:text-[1.75rem] font-semibold text-[#FCF6BA] mb-5 leading-snug tracking-tight drop-shadow-[0_0_24px_rgba(252,246,186,0.12)]">
@@ -119,12 +130,18 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 </a>
               )}
 
-              <div className="flex flex-row gap-3 justify-center items-center flex-wrap">
+              <div
+                className={
+                  step > 0
+                    ? 'grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-xl mx-auto items-stretch'
+                    : 'flex w-full max-w-xl mx-auto justify-center'
+                }
+              >
                 {step > 0 && (
                   <button
                     type="button"
                     onClick={() => setStep(step - 1)}
-                    className="px-6 py-3.5 rounded-xl bg-white/10 text-slate-100 hover:bg-white/14 transition-colors text-base font-medium border border-white/10"
+                    className="min-h-[52px] w-full px-8 sm:px-10 py-3.5 rounded-full bg-white/10 text-slate-100 hover:bg-white/14 transition-colors text-base font-medium border border-white/10 inline-flex items-center justify-center"
                   >
                     {t('onboarding.back')}
                   </button>
@@ -132,7 +149,9 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 <button
                   type="button"
                   onClick={isLast ? handleComplete : () => setStep(step + 1)}
-                  className="premium-cta-btn inline-flex items-center gap-2 px-9 py-3.5 rounded-xl text-base"
+                  className={`premium-cta-btn inline-flex items-center justify-center gap-2 min-h-[52px] w-full px-8 sm:px-12 py-3.5 rounded-full text-base ${
+                    step === 0 ? 'max-w-md sm:max-w-lg' : ''
+                  }`}
                 >
                   {t(currentScreen.ctaKey)}
                   <ChevronRight className={`w-5 h-5 shrink-0 ${isHe ? 'rotate-180' : ''}`} />

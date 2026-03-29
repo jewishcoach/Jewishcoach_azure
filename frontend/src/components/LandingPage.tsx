@@ -75,7 +75,7 @@ export const LandingPage = ({ onGetStarted }: Props) => {
               transition={{ delay: 0.12, duration: 0.35 }}
               whileTap={{ scale: 0.995 }}
               onClick={onGetStarted}
-              className="premium-cta-btn w-full sm:w-auto min-h-[52px] px-10 py-3.5 rounded-xl text-base"
+              className="landing-auth-cta w-full sm:w-auto min-h-[52px] px-10 py-3.5 rounded-xl text-base"
             >
               {t('landing.primaryCta')}
             </motion.button>

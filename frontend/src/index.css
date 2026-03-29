@@ -78,6 +78,97 @@
   outline-offset: 2px;
 }
 
+/**
+ * Landing: כניסה / הרשמה — chat gold (#FCF6BA), dark text for contrast on dark hero.
+ */
+.landing-auth-cta {
+  color: #020617;
+  font-weight: 600;
+  background: linear-gradient(180deg, #fcf8d4 0%, #fcfcba 35%, #fcf6ba 100%);
+  border: 1px solid rgba(179, 135, 40, 0.42);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    0 1px 2px rgba(15, 23, 42, 0.08),
+    0 6px 22px -4px rgba(179, 135, 40, 0.28);
+  transition:
+    background 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.15s ease;
+}
+
+.landing-auth-cta:hover {
+  background: linear-gradient(180deg, #fffef0 0%, #fcf6ba 50%, #f5e8a0 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    0 2px 6px rgba(15, 23, 42, 0.1),
+    0 10px 32px -6px rgba(179, 135, 40, 0.35);
+}
+
+.landing-auth-cta:active {
+  transform: translateY(1px);
+  box-shadow:
+    inset 0 2px 4px rgba(15, 23, 42, 0.08),
+    0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.landing-auth-cta:focus-visible {
+  outline: 2px solid rgba(252, 246, 186, 0.85);
+  outline-offset: 2px;
+}
+
+/* Vision ladder — short gold border glow when training phase advances (desktop + mobile strip) */
+@keyframes vision-ladder-desktop-step-pulse {
+  0% {
+    border-color: rgba(252, 246, 186, 0.52);
+    box-shadow:
+      0 0 28px rgba(252, 246, 186, 0.34),
+      0 0 14px rgba(212, 175, 55, 0.26),
+      inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  }
+  38% {
+    border-color: rgba(212, 175, 55, 0.55);
+    box-shadow:
+      0 0 20px rgba(212, 175, 55, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+  100% {
+    border-color: rgba(212, 175, 55, 0.5);
+    box-shadow:
+      0 0 18px rgba(212, 175, 55, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+}
+
+.vision-ladder-desktop--step-pulse {
+  animation: vision-ladder-desktop-step-pulse 2.5s ease-out forwards;
+}
+
+@keyframes vision-ladder-compact-step-pulse {
+  0% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.16),
+      0 0 0 1px rgba(252, 246, 186, 0.45),
+      0 0 14px rgba(252, 246, 186, 0.32),
+      0 0 22px rgba(212, 175, 55, 0.18);
+  }
+  40% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      0 0 0 1px rgba(179, 135, 40, 0.55),
+      0 0 10px rgba(212, 175, 55, 0.12);
+  }
+  100% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      0 0 0 1px rgba(179, 135, 40, 0.55),
+      0 0 0 0 rgba(252, 246, 186, 0);
+  }
+}
+
+.vision-ladder-compact--step-pulse {
+  animation: vision-ladder-compact-step-pulse 2.5s ease-out forwards;
+}
+
 /* Clerk primary submit — same cream “lift” as workspace (overrides component defaults) */
 .cl-modalContent [class*="formButtonPrimary"] {
   background: linear-gradient(180deg, var(--premium-btn-top) 0%, var(--premium-btn-bottom) 100%) !important;
