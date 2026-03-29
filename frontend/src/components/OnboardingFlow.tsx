@@ -26,18 +26,18 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
   const screens = [
     {
-      icon: Sparkles,
-      titleKey: 'onboarding.welcome.title',
-      descKey: 'onboarding.welcome.desc',
-      ctaKey: 'onboarding.next',
-    },
-    {
       icon: User,
       titleKey: 'onboarding.founder.title',
       descKey: 'onboarding.founder.desc',
       ctaKey: 'onboarding.next',
       linkKey: 'onboarding.learnMore',
       image: beniGalImg,
+    },
+    {
+      icon: Sparkles,
+      titleKey: 'onboarding.welcome.title',
+      descKey: 'onboarding.welcome.desc',
+      ctaKey: 'onboarding.next',
     },
     {
       icon: MessageCircle,
