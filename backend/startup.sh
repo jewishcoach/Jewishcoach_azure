@@ -65,6 +65,31 @@ except Exception as e:
     print(f'⚠️  Column migration warning: {e}')
 " 2>&1 || true
 
+# Users: discipline columns (must match app.models.User — fixes prod SQLite missing columns)
+python -c "
+from app.database import engine
+from sqlalchemy import text, inspect as sa_inspect
+try:
+    insp = sa_inspect(engine)
+    with engine.connect() as conn:
+        cols = [c['name'] for c in insp.get_columns('users')]
+        if 'primary_discipline' not in cols:
+            conn.execute(text('ALTER TABLE users ADD COLUMN primary_discipline VARCHAR'))
+            conn.commit()
+            print('✓ Added primary_discipline to users')
+        else:
+            print('✓ primary_discipline already present on users')
+        cols = [c['name'] for c in insp.get_columns('users')]
+        if 'mentor_disciplines' not in cols:
+            conn.execute(text('ALTER TABLE users ADD COLUMN mentor_disciplines TEXT'))
+            conn.commit()
+            print('✓ Added mentor_disciplines to users')
+        else:
+            print('✓ mentor_disciplines already present on users')
+except Exception as e:
+    print(f'⚠️  users discipline column migration: {e}')
+" 2>&1 || true
+
 echo "🚀 Launching Gunicorn..."
 if [ -f "/home/site/wwwroot/gunicorn_conf.py" ]; then
   exec gunicorn -c /home/site/wwwroot/gunicorn_conf.py app.main:app

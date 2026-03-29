@@ -17,7 +17,10 @@ class User(Base):
     # Profile Information
     display_name = Column(String, nullable=True)  # User's preferred name
     gender = Column(String, nullable=True)  # "male", "female", or null
-    
+    # Discipline / mentoring (dashboard onboarding)
+    primary_discipline = Column(String, nullable=True)
+    mentor_disciplines = Column(JSON, nullable=True)  # e.g. list of discipline ids
+
     # Billing & Usage
     stripe_customer_id = Column(String, unique=True, nullable=True)  # Stripe customer ID
     current_plan = Column(String, default="basic", nullable=False)  # basic, premium, pro

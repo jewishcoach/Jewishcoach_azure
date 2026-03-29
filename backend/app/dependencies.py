@@ -1,4 +1,5 @@
 from fastapi import Depends, HTTPException, Header
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 from jose import jwt as jose_jwt
 from .database import get_db, utc_now
@@ -186,7 +187,12 @@ async def get_current_user(
                 db.commit()
         
         return user
-        
+
+    except HTTPException:
+        raise
+    except OperationalError as e:
+        print(f"❌ [AUTH DEBUG] Database error (not a JWT issue): {e}")
+        raise HTTPException(status_code=503, detail=f"Database error: {str(e)}")
     except Exception as e:
         print(f"❌ [AUTH DEBUG] JWT decode failed: {type(e).__name__}: {str(e)}")
         raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")
