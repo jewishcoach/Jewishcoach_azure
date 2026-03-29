@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '@clerk/clerk-react';
 import { apiClient } from '../../services/api';
 import { buildInsightsByPhase, type InsightItem } from '../../utils/insightsByPhase';
 import { WORKSPACE_CHAT_FONT } from '../../constants/workspaceFonts';
@@ -42,6 +43,7 @@ interface VisionLadderProps {
 
 export const VisionLadder = ({ currentStep, onPhaseClick, compact = false, conversationId }: VisionLadderProps) => {
   const { t, i18n } = useTranslation();
+  const { getToken, isLoaded, isSignedIn } = useAuth();
   const activePhaseIndex = STEP_TO_PHASE[currentStep] ?? 0;
   const isRTL = i18n.language === 'he' || i18n.language?.startsWith('he');
   const [insightsByPhase, setInsightsByPhase] = useState<Record<number, InsightItem[]>>({});
@@ -67,9 +69,13 @@ export const VisionLadder = ({ currentStep, onPhaseClick, compact = false, conve
       setInsightsByPhase({});
       return;
     }
+    if (!isLoaded || !isSignedIn) return;
+
     let interval: NodeJS.Timeout | null = null;
     const fetchData = async () => {
       try {
+        const token = await getToken();
+        if (token) apiClient.setToken(token);
         const res = await apiClient.getConversationInsights(conversationId);
         if (res.exists === false || !res.cognitive_data) return;
         const phase = res.current_stage ?? currentStep;
@@ -82,7 +88,7 @@ export const VisionLadder = ({ currentStep, onPhaseClick, compact = false, conve
     fetchData();
     interval = setInterval(fetchData, 3000);
     return () => { if (interval) clearInterval(interval); };
-  }, [compact, conversationId, currentStep, t]);
+  }, [compact, conversationId, currentStep, t, isLoaded, isSignedIn, getToken]);
 
   if (compact) {
     return (

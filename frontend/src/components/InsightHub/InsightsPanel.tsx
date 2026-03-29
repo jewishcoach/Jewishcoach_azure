@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { Brain, Heart, MessageSquare, Zap, Target, Repeat, User, Sparkles, Award } from 'lucide-react';
+import { useAuth } from '@clerk/clerk-react';
 import { apiClient } from '../../services/api';
 
 interface CognitiveData {
@@ -50,14 +51,23 @@ interface InsightsPanelProps {
 
 export const InsightsPanel = ({ conversationId, currentPhase }: InsightsPanelProps) => {
   const { t } = useTranslation();
+  const { getToken, isLoaded, isSignedIn } = useAuth();
   const [insights, setInsights] = useState<CognitiveData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!isLoaded) return;
+    if (!isSignedIn) {
+      setLoading(false);
+      return;
+    }
+
     let interval: NodeJS.Timeout | null = null;
     
     const fetchInsights = async () => {
       try {
+        const token = await getToken();
+        if (token) apiClient.setToken(token);
         const data = await apiClient.getConversationInsights(conversationId);
         
         // Check if conversation exists
@@ -90,7 +100,7 @@ export const InsightsPanel = ({ conversationId, currentPhase }: InsightsPanelPro
         clearInterval(interval);
       }
     };
-  }, [conversationId]);
+  }, [conversationId, isLoaded, isSignedIn, getToken]);
 
   if (loading) {
     return (

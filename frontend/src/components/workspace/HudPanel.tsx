@@ -1,6 +1,7 @@
 import { useEffect, useState, memo } from 'react';
 import { Sparkles, Archive, MessageSquarePlus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '@clerk/clerk-react';
 import { apiClient } from '../../services/api';
 import { EnrichmentVideos } from './EnrichmentVideos';
 import { WORKSPACE_CHAT_FONT } from '../../constants/workspaceFonts';
@@ -63,24 +64,32 @@ const InsightTag = ({ label, value }: { label: string; value: string }) => (
 
 export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = false, onArchiveClick, onNewChat }: HudPanelProps) => {
   const { t, i18n } = useTranslation();
+  const { getToken, isLoaded, isSignedIn } = useAuth();
   const [data, setData] = useState<CognitiveData | null>(null);
   const [insightsPhase, setInsightsPhase] = useState<string>(currentPhase);
   const [wasLoading, setWasLoading] = useState(false);
 
   // Track loading transition to trigger immediate refetch when message send completes
   useEffect(() => {
-    if (wasLoading && !loading && conversationId) {
+    if (wasLoading && !loading && conversationId && isLoaded && isSignedIn) {
       setWasLoading(false);
-      apiClient.getConversationInsights(conversationId).then((res) => {
-        if (res.exists !== false && res.cognitive_data) {
-          setData(res.cognitive_data);
-          if (res.current_stage) setInsightsPhase(res.current_stage);
+      (async () => {
+        const token = await getToken();
+        if (token) apiClient.setToken(token);
+        try {
+          const res = await apiClient.getConversationInsights(conversationId);
+          if (res.exists !== false && res.cognitive_data) {
+            setData(res.cognitive_data);
+            if (res.current_stage) setInsightsPhase(res.current_stage);
+          }
+        } catch {
+          /* ignore */
         }
-      }).catch(() => {});
+      })();
     } else if (loading) {
       setWasLoading(true);
     }
-  }, [loading, wasLoading, conversationId]);
+  }, [loading, wasLoading, conversationId, isLoaded, isSignedIn, getToken]);
 
   useEffect(() => {
     if (!conversationId) {
@@ -88,9 +97,13 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
       setInsightsPhase('S0');
       return;
     }
+    if (!isLoaded || !isSignedIn) return;
+
     let interval: NodeJS.Timeout | null = null;
     const fetchData = async () => {
       try {
+        const token = await getToken();
+        if (token) apiClient.setToken(token);
         const res = await apiClient.getConversationInsights(conversationId);
         if (res.exists === false) return;
         const next = res.cognitive_data || {};
@@ -109,7 +122,7 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
     fetchData();
     interval = setInterval(fetchData, 3000);
     return () => { if (interval) clearInterval(interval); };
-  }, [conversationId]);
+  }, [conversationId, isLoaded, isSignedIn, getToken]);
 
   const emotions = data?.emotions ?? data?.event_actual?.emotions_list ?? [];
   const thought = data?.thought ?? data?.event_actual?.thought_content;

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { Brain } from 'lucide-react';
+import { useAuth } from '@clerk/clerk-react';
 import { apiClient } from '../../services/api';
 import { ReflectionCard } from './ReflectionCard';
 import { GapWidget } from './widgets/GapWidget';
@@ -52,14 +53,23 @@ interface SmartInsightsPanelProps {
 
 export const SmartInsightsPanel = ({ conversationId, currentPhase }: SmartInsightsPanelProps) => {
   const { t, i18n } = useTranslation();
+  const { getToken, isLoaded, isSignedIn } = useAuth();
   const [insights, setInsights] = useState<CognitiveData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!isLoaded) return;
+    if (!isSignedIn) {
+      setLoading(false);
+      return;
+    }
+
     let interval: NodeJS.Timeout | null = null;
     
     const fetchInsights = async () => {
       try {
+        const token = await getToken();
+        if (token) apiClient.setToken(token);
         const data = await apiClient.getConversationInsights(conversationId);
         
         // Check if conversation exists
@@ -92,7 +102,7 @@ export const SmartInsightsPanel = ({ conversationId, currentPhase }: SmartInsigh
         clearInterval(interval);
       }
     };
-  }, [conversationId]);
+  }, [conversationId, isLoaded, isSignedIn, getToken]);
 
   if (loading) {
     return (
