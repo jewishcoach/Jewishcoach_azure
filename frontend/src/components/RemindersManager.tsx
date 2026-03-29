@@ -247,7 +247,9 @@ export const RemindersManager = ({ variant = 'dark' }: RemindersManagerProps) =>
       {/* Reminders List */}
       <div className="space-y-3">
         {reminders.length === 0 ? (
-          <div className={`text-center py-8 ${mutedCls}`}>{t('reminders.noReminders')}</div>
+          <div className={`text-center py-8 ${mutedCls}`}>
+            {showAddForm && !editingId ? t('reminders.noRemindersWhenAdding') : t('reminders.noReminders')}
+          </div>
         ) : (
           reminders.map((reminder) => (
             <motion.div key={reminder.id} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className={`rounded-xl p-4 border ${cardCls}`}>
