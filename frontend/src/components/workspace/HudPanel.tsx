@@ -191,7 +191,7 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
               type="button"
               onClick={onArchiveClick}
               title={t('chat.previousConversationsHint')}
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] text-sm font-medium shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors"
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] text-sm font-medium shadow-sm transition-all duration-150 ease-out hover:-translate-y-0.5 hover:bg-slate-300 hover:border-slate-500 hover:shadow-[0_6px_20px_-4px_rgba(51,65,85,0.45)] hover:ring-2 hover:ring-slate-400/55 active:translate-y-0 active:bg-slate-400/90"
               style={{ fontFamily: WORKSPACE_CHAT_FONT }}
             >
               <Archive size={18} strokeWidth={2} className="flex-shrink-0 text-[#2E3A56]" />
@@ -204,7 +204,7 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
               onClick={onNewChat}
               disabled={loading}
               title={t('chat.newConversation')}
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] text-sm font-medium shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors disabled:opacity-45 disabled:cursor-not-allowed disabled:hover:bg-white"
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] text-sm font-medium shadow-sm transition-all duration-150 ease-out hover:-translate-y-0.5 hover:bg-slate-300 hover:border-slate-500 hover:shadow-[0_6px_20px_-4px_rgba(51,65,85,0.45)] hover:ring-2 hover:ring-slate-400/55 active:translate-y-0 active:bg-slate-400/90 disabled:opacity-45 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:bg-white disabled:hover:border-[#E2E4E8] disabled:hover:shadow-sm disabled:hover:ring-0"
               style={{ fontFamily: WORKSPACE_CHAT_FONT }}
             >
               <MessageSquarePlus size={18} strokeWidth={2} className="flex-shrink-0 text-[#2E3A56]" />
@@ -219,7 +219,7 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
           <section className="p-5 border-b border-white/[0.06] flex-shrink-0">
             <div className="flex items-center gap-2 mb-3">
               <Sparkles size={16} className="text-[#FCF6BA]/80" />
-              <h4 className="text-[12px] font-light uppercase tracking-[0.15em]" style={{ color: 'rgba(245,245,240,0.8)' }}>תובנות</h4>
+              <h4 className="text-[12px] font-light uppercase tracking-[0.15em]" style={{ color: 'rgba(245,245,240,0.8)' }}>{t('chat.insightsTitle')}</h4>
             </div>
             <div className="space-y-2">
               {insightTags.map((tag, i) => (
@@ -231,10 +231,10 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
           <section className="p-5 border-b border-white/[0.06] flex-shrink-0">
             <div className="flex items-center gap-2 mb-2">
               <Sparkles size={16} className="text-[#FCF6BA]/50" />
-              <h4 className="text-[12px] font-light uppercase tracking-[0.15em]" style={{ color: 'rgba(245,245,240,0.5)' }}>תובנות</h4>
+              <h4 className="text-[12px] font-light uppercase tracking-[0.15em]" style={{ color: 'rgba(245,245,240,0.5)' }}>{t('chat.insightsTitle')}</h4>
             </div>
             <p className="text-[11px] text-[#F5F5F0]/50" style={{ fontFamily: WORKSPACE_CHAT_FONT }}>
-              התובנות יופיעו כאן במהלך השיחה
+              {t('chat.insightsPlaceholder')}
             </p>
           </section>
         )}

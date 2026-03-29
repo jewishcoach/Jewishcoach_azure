@@ -51,7 +51,7 @@ interface SmartInsightsPanelProps {
 }
 
 export const SmartInsightsPanel = ({ conversationId, currentPhase }: SmartInsightsPanelProps) => {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [insights, setInsights] = useState<CognitiveData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -98,9 +98,7 @@ export const SmartInsightsPanel = ({ conversationId, currentPhase }: SmartInsigh
     return (
       <div className="p-4 text-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent mx-auto"></div>
-        <p className="text-sm text-primary-dark mt-2">
-          {i18n.language === 'he' ? 'טוען תובנות...' : 'Loading insights...'}
-        </p>
+        <p className="text-sm text-primary-dark mt-2">{t('chat.insightsLoading')}</p>
       </div>
     );
   }
@@ -109,9 +107,7 @@ export const SmartInsightsPanel = ({ conversationId, currentPhase }: SmartInsigh
     return (
       <div className="p-4 text-center opacity-50">
         <Brain size={32} className="text-accent mx-auto mb-2" />
-        <p className="text-sm text-primary-dark">
-          {i18n.language === 'he' ? 'התובנות יופיעו כאן במהלך השיחה' : 'Insights will appear here during the conversation'}
-        </p>
+        <p className="text-sm text-primary-dark">{t('chat.insightsPlaceholder')}</p>
       </div>
     );
   }

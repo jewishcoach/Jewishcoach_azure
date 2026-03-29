@@ -71,7 +71,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       dir={isHe ? 'rtl' : 'ltr'}
       style={{ fontFamily: HEBREW_UI_SANS, background: '#020617' }}
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(212,162,12,0.1),transparent_55%)]" aria-hidden />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(148,163,184,0.07),transparent_55%)]" aria-hidden />
       <div className="flex justify-end items-center gap-3 p-4 absolute top-0 end-0 z-10">
         <LanguageSwitcher />
         <UserButton afterSignOutUrl="/" />
@@ -92,12 +92,12 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   <img
                     src={currentScreen.image}
                     alt=""
-                    className="w-40 h-40 md:w-48 md:h-48 rounded-full object-cover border-4 border-amber-400/25 shadow-lg"
+                    className="w-40 h-40 md:w-48 md:h-48 rounded-full object-cover border-4 border-white/15 shadow-lg"
                   />
                 </div>
               ) : (
-                <div className="inline-flex items-center justify-center w-[4.25rem] h-[4.25rem] rounded-2xl bg-amber-500/12 mb-8 ring-1 ring-amber-400/20">
-                  <Icon className="w-9 h-9 text-amber-200" strokeWidth={1.5} />
+                <div className="inline-flex items-center justify-center w-[4.25rem] h-[4.25rem] rounded-2xl bg-white/[0.06] mb-8 ring-1 ring-white/12 border border-white/[0.06]">
+                  <Icon className="w-9 h-9 text-slate-200" strokeWidth={1.5} />
                 </div>
               )}
               <h1 className="text-2xl md:text-[1.75rem] font-semibold text-slate-50 mb-5 leading-snug tracking-tight">
@@ -112,7 +112,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   href={BSD_COACH_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 text-amber-300 hover:text-amber-200 text-sm font-medium mb-8 transition-colors"
+                  className="inline-flex items-center gap-2 text-slate-300 hover:text-white text-sm font-medium mb-8 transition-colors"
                 >
                   <ExternalLink className="w-4 h-4 shrink-0" />
                   {t(currentScreen.linkKey)}
@@ -132,7 +132,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 <button
                   type="button"
                   onClick={isLast ? handleComplete : () => setStep(step + 1)}
-                  className="inline-flex items-center gap-2 px-9 py-3.5 rounded-xl font-semibold text-base text-stone-950 bg-amber-500 hover:bg-amber-400 shadow-lg shadow-amber-950/25 transition-colors"
+                  className="premium-cta-btn inline-flex items-center gap-2 px-9 py-3.5 rounded-xl text-base"
                 >
                   {t(currentScreen.ctaKey)}
                   <ChevronRight className={`w-5 h-5 shrink-0 ${isHe ? 'rotate-180' : ''}`} />
@@ -148,7 +148,9 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 type="button"
                 onClick={() => setStep(i)}
                 className={`h-2 rounded-full transition-all duration-300 ${
-                  i === step ? 'bg-amber-400 w-8' : 'bg-white/25 hover:bg-white/40 w-2'
+                  i === step
+                    ? 'w-8 bg-gradient-to-r from-[#fafaf8] to-[#e8e5df] shadow-[0_0_12px_rgba(250,250,248,0.35)]'
+                    : 'bg-white/25 hover:bg-white/40 w-2'
                 }`}
                 aria-label={t('onboarding.step', { current: i + 1, total: screens.length })}
               />

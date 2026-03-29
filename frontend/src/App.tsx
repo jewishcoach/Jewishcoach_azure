@@ -122,7 +122,7 @@ function SignedInContent() {
               type="button"
               onClick={() => setArchiveOpen(true)}
               title={t('chat.previousConversationsHint')}
-              className="md:hidden flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] text-xs font-medium shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors min-h-[44px] max-w-[9.5rem]"
+              className="md:hidden flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] text-xs font-medium shadow-sm transition-all duration-150 ease-out hover:-translate-y-0.5 hover:bg-slate-300 hover:border-slate-500 hover:shadow-[0_6px_20px_-4px_rgba(51,65,85,0.45)] hover:ring-2 hover:ring-slate-400/55 active:translate-y-0 min-h-[44px] max-w-[9.5rem]"
               style={{ fontFamily: 'Inter, sans-serif' }}
               aria-label={t('chat.previousConversations')}
             >
@@ -250,7 +250,7 @@ function DemoModeContent() {
               type="button"
               onClick={() => setArchiveOpen(true)}
               title={t('chat.previousConversationsHint')}
-              className="md:hidden flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] text-xs font-medium shadow-sm hover:bg-[#F4F6F9] transition-colors min-h-[44px] max-w-[9.5rem]"
+              className="md:hidden flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] text-xs font-medium shadow-sm transition-all duration-150 ease-out hover:-translate-y-0.5 hover:bg-slate-300 hover:border-slate-500 hover:shadow-[0_6px_20px_-4px_rgba(51,65,85,0.45)] hover:ring-2 hover:ring-slate-400/55 active:translate-y-0 min-h-[44px] max-w-[9.5rem]"
               style={{ fontFamily: 'Inter, sans-serif' }}
               aria-label={t('chat.previousConversations')}
             >

@@ -266,7 +266,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
                   onClick={() => void handleNewChat()}
                   disabled={loading}
                   title={t('chat.newConversation')}
-                  className="w-full flex items-center justify-center gap-2 min-h-[44px] py-2 px-3 rounded-xl text-sm font-medium text-[#2E3A56] bg-white border border-[#E2E4E8] shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] active:bg-[#EEF1F4] disabled:opacity-45 disabled:cursor-not-allowed disabled:hover:bg-white"
+                  className="w-full flex items-center justify-center gap-2 min-h-[44px] py-2 px-3 rounded-xl text-sm font-medium text-[#2E3A56] bg-white border border-[#E2E4E8] shadow-sm transition-all duration-150 ease-out hover:-translate-y-0.5 hover:bg-slate-300 hover:border-slate-500 hover:shadow-[0_6px_20px_-4px_rgba(51,65,85,0.45)] hover:ring-2 hover:ring-slate-400/55 active:translate-y-0 active:bg-slate-400/90 disabled:opacity-45 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:bg-white disabled:hover:border-[#E2E4E8] disabled:hover:shadow-sm disabled:hover:ring-0"
                   style={{ fontFamily: WORKSPACE_CHAT_FONT }}
                 >
                   <MessageSquarePlus size={18} strokeWidth={2} className="flex-shrink-0 text-[#2E3A56]" />
@@ -389,11 +389,7 @@ export const BSDWorkspace = ({ displayName, showDashboard = false, onCloseDashbo
                 <button
                   type="submit"
                   disabled={!inputValue.trim() || loading}
-                  className="p-3 md:p-4 rounded-xl text-[#020617] font-light disabled:opacity-50 transition-all min-h-[44px] min-w-[44px] flex items-center justify-center flex-shrink-0"
-                  style={{
-                    background: 'linear-gradient(45deg, #BF953F, #FCF6BA, #B38728, #FBF5B7, #AA771C)',
-                    filter: 'drop-shadow(0 0 5px rgba(212, 175, 55, 0.5))',
-                  }}
+                  className="premium-cta-btn p-3 md:p-4 rounded-xl text-[#2E3A56] font-semibold disabled:opacity-50 min-h-[44px] min-w-[44px] flex items-center justify-center flex-shrink-0"
                 >
                   <Send size={18} strokeWidth={1.5} />
                 </button>

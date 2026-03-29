@@ -9,8 +9,8 @@ import { HEBREW_UI_SANS } from './constants/workspaceFonts';
 export const bsdClerkAppearance = {
   theme: dark,
   variables: {
-    colorPrimary: '#d4a20c',
-    colorPrimaryForeground: '#0c0a06',
+    colorPrimary: '#e2e4e8',
+    colorPrimaryForeground: '#2e3a56',
     colorBackground: '#0f172a',
     colorForeground: '#f8fafc',
     colorMutedForeground: 'rgba(248, 250, 252, 0.72)',
@@ -38,23 +38,19 @@ export const bsdClerkAppearance = {
     modalBackdrop: 'backdrop-blur-sm',
     modalContent: 'border border-white/[0.06]',
     main: 'gap-4',
-    /* Primary CTA — solid amber, less “90s gold chrome” */
-    formButtonPrimary: [
-      '!bg-amber-500 hover:!bg-amber-400 !text-stone-950 font-semibold',
-      'shadow-md shadow-amber-950/25 border-0',
-      'transition-colors duration-150',
-    ].join(' '),
+    /* Primary CTA — cream surface + depth (.clerk-form-primary enforces over Clerk defaults) */
+    formButtonPrimary: 'premium-cta-btn !rounded-xl !min-h-[44px] !px-4 !text-[#2E3A56] !font-semibold',
     formFieldInput: [
       'border-white/12 bg-[#020617]/90 text-base',
-      'focus:ring-2 focus:ring-amber-400/35 focus:border-amber-400/40',
+      'focus:ring-2 focus:ring-slate-400/30 focus:border-slate-400/35',
     ].join(' '),
     formFieldLabel: 'text-[#f8fafc]/92 text-sm font-medium',
     footer: 'text-[#f8fafc]/55 text-sm',
     footerAction: 'text-[#f8fafc]/80',
-    footerActionLink: 'text-amber-300 hover:text-amber-200 font-medium',
+    footerActionLink: 'text-slate-300 hover:text-white font-medium',
     identityPreviewText: 'text-[#f8fafc]/92',
-    identityPreviewEditButton: 'text-amber-300',
-    formFieldInputShowPasswordButton: 'text-amber-300/95',
+    identityPreviewEditButton: 'text-slate-300 hover:text-white',
+    formFieldInputShowPasswordButton: 'text-slate-300 hover:text-white',
     dividerLine: 'bg-white/[0.12]',
     dividerText: 'text-[#f8fafc]/50 text-sm',
     /**
@@ -71,6 +67,20 @@ export const bsdClerkAppearance = {
     alternativeMethodsBlockButton: 'border-white/15 bg-white/[0.06] text-[#f8fafc]',
     otpCodeFieldInputs: 'gap-2',
     formFieldRow: 'gap-3',
+  },
+  /** UserButton dropdown — light text/icons on dark card (default dark theme washes out actions) */
+  userButton: {
+    elements: {
+      userButtonPopoverCard: 'border border-white/10 bg-[#0f172a] shadow-2xl',
+      userButtonPopoverMain: 'text-[#f8fafc]',
+      userButtonPopoverActionButton:
+        '!text-[#f1f5f9] hover:!bg-white/[0.12] [&_span]:!text-[#f1f5f9]',
+      userButtonPopoverActionButton__manageAccount: '!text-[#f1f5f9]',
+      userButtonPopoverActionButton__signOut: '!text-[#f1f5f9]',
+      userButtonPopoverActionButtonIcon: '!text-[#f1f5f9] opacity-100',
+      userButtonPopoverActionButtonIconBox: 'text-[#f1f5f9]',
+      userButtonPopoverFooter: 'text-slate-400',
+    },
   },
   captcha: { theme: 'dark' },
 } satisfies Appearance;

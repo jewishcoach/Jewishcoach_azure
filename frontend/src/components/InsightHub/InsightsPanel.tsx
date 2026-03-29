@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { Brain, Heart, MessageSquare, Zap, Target, Repeat, User, Sparkles, Award } from 'lucide-react';
 import { apiClient } from '../../services/api';
@@ -48,6 +49,7 @@ interface InsightsPanelProps {
 }
 
 export const InsightsPanel = ({ conversationId, currentPhase }: InsightsPanelProps) => {
+  const { t } = useTranslation();
   const [insights, setInsights] = useState<CognitiveData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -94,7 +96,7 @@ export const InsightsPanel = ({ conversationId, currentPhase }: InsightsPanelPro
     return (
       <div className="p-4 text-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent mx-auto"></div>
-        <p className="text-sm text-primary-dark mt-2">טוען תובנות...</p>
+        <p className="text-sm text-primary-dark mt-2">{t('chat.insightsLoading')}</p>
       </div>
     );
   }
@@ -103,7 +105,7 @@ export const InsightsPanel = ({ conversationId, currentPhase }: InsightsPanelPro
     return (
       <div className="p-4 text-center opacity-50">
         <Brain size={32} className="text-accent mx-auto mb-2" />
-        <p className="text-sm text-primary-dark">התובנות יופיעו כאן במהלך השיחה</p>
+        <p className="text-sm text-primary-dark">{t('chat.insightsPlaceholder')}</p>
       </div>
     );
   }

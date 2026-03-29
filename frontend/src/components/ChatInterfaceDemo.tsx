@@ -9,11 +9,12 @@ import { Sidebar } from './Sidebar';
 import { VoiceControlBar } from './VoiceControlBar';
 import { InsightHub } from './InsightHub/InsightHub';
 import { apiClient } from '../services/api';
+import { getApiBase } from '../config';
 import type { Conversation } from '../types';
 import type { VoiceGender } from '../constants/voices';
 
 // Demo mode uses the real API (tunnel domains still need auth via demo token)
-const DEMO_API_URL = import.meta.env.VITE_API_URL || 'https://jewishcoach-api.azurewebsites.net/api';
+const DEMO_API_URL = import.meta.env.VITE_API_URL || getApiBase();
 const DEMO_FRONTEND_URL = window.location.origin;
 
 interface ChatInterfaceDemoProps {

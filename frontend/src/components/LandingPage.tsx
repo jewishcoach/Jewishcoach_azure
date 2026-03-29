@@ -27,7 +27,7 @@ export const LandingPage = ({ onGetStarted }: Props) => {
     >
       <div className="pointer-events-none absolute inset-0 bg-[#020617]" aria-hidden />
       <div
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_85%_55%_at_50%_-10%,rgba(212,162,12,0.12),transparent_58%)]"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_85%_55%_at_50%_-10%,rgba(148,163,184,0.08),transparent_58%)]"
         aria-hidden
       />
       <div
@@ -56,7 +56,7 @@ export const LandingPage = ({ onGetStarted }: Props) => {
               className="h-[4.5rem] sm:h-28 object-contain mx-auto mb-7"
             />
 
-            <p className="text-sm sm:text-[0.95rem] text-amber-200/90 font-medium tracking-wide mb-3">
+            <p className="text-sm sm:text-[0.95rem] text-slate-300 font-medium tracking-wide mb-3">
               {t('landing.quote')}
             </p>
 
@@ -73,17 +73,9 @@ export const LandingPage = ({ onGetStarted }: Props) => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.12, duration: 0.35 }}
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.99 }}
+              whileTap={{ scale: 0.995 }}
               onClick={onGetStarted}
-              className="
-                w-full sm:w-auto min-h-[52px] px-10 py-3.5 rounded-xl font-semibold text-base
-                bg-amber-500 text-stone-950
-                shadow-lg shadow-amber-950/30
-                hover:bg-amber-400
-                focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b1220]
-                transition-colors duration-200
-              "
+              className="premium-cta-btn w-full sm:w-auto min-h-[52px] px-10 py-3.5 rounded-xl text-base"
             >
               {t('landing.primaryCta')}
             </motion.button>
@@ -108,7 +100,7 @@ export const LandingPage = ({ onGetStarted }: Props) => {
                     hover:border-white/12 hover:bg-[#020617]/65 transition-colors
                   "
                 >
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-amber-500/12 text-amber-200 sm:mx-auto">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.06] text-slate-200 sm:mx-auto">
                     <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden />
                   </span>
                   <div className="min-w-0">
