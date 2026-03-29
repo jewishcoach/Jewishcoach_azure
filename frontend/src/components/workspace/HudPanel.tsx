@@ -63,7 +63,7 @@ const InsightTag = ({ label, value }: { label: string; value: string }) => (
 );
 
 export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = false, onArchiveClick, onNewChat }: HudPanelProps) => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { getToken, isLoaded, isSignedIn } = useAuth();
   const [data, setData] = useState<CognitiveData | null>(null);
   const [insightsPhase, setInsightsPhase] = useState<string>(currentPhase);
@@ -138,60 +138,60 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
   const phaseForDisplay = currentPhase && currentPhase !== 'S0' ? currentPhase : insightsPhase;
   const currentIdx = stepIndex(phaseForDisplay);
 
-  // Order: נושא → מצוי (3 מסכים: רגש, מחשבה, מעשה) → רצוי → פער → דפוס
+  const actionLbl = t('insights.label.action');
+  const emotionLbl = t('insights.label.emotion');
+  const thoughtLbl = t('insights.label.thought');
+
   const insightTags: { label: string; value: string }[] = [];
 
   if (data?.topic && currentIdx >= 1) {
-    insightTags.push({ label: 'נושא האימון', value: data.topic });
+    insightTags.push({ label: t('insights.label.topic'), value: data.topic });
   }
-  // מצוי - 3 מסכים נפרדים (כל אחד בריבוע משלו)
   if (currentIdx >= 2 && emotions.length > 0) {
-    insightTags.push({ label: 'רגש', value: emotions.join(', ') });
+    insightTags.push({ label: emotionLbl, value: emotions.join(', ') });
   }
   if (currentIdx >= 3 && thought) {
-    insightTags.push({ label: 'מחשבה', value: thought });
+    insightTags.push({ label: thoughtLbl, value: thought });
   }
   if (currentIdx >= 4 && actionActual) {
-    insightTags.push({ label: 'מעשה מצוי', value: actionActual });
+    insightTags.push({ label: t('insights.label.actionActual'), value: actionActual });
   }
-  // רצוי - לפני הפער (לפי מתודולוגיית BSD). מציג מעשה/רגש/מחשבה רצויים.
   if (currentIdx >= 5) {
     const ad = data?.action_desired ?? data?.event_actual?.action_desired;
     const ed = data?.emotion_desired ?? data?.event_actual?.emotion_desired;
     const td = data?.thought_desired ?? data?.event_actual?.thought_desired;
     const parts: string[] = [];
-    if (ad) parts.push(`מעשה: ${ad}`);
-    if (ed) parts.push(`רגש: ${ed}`);
-    if (td) parts.push(`מחשבה: ${td}`);
-    if (parts.length) insightTags.push({ label: 'רצוי', value: parts.join('\n') });
+    if (ad) parts.push(`${actionLbl}: ${ad}`);
+    if (ed) parts.push(`${emotionLbl}: ${ed}`);
+    if (td) parts.push(`${thoughtLbl}: ${td}`);
+    if (parts.length) insightTags.push({ label: t('insights.label.desired'), value: parts.join('\n') });
   }
   if (gapName && currentIdx >= 6) {
-    insightTags.push({ label: 'פער', value: `${gapName}${gapScore != null ? ` (${gapScore}/10)` : ''}` });
+    insightTags.push({ label: t('insights.label.gap'), value: `${gapName}${gapScore != null ? ` (${gapScore}/10)` : ''}` });
   }
   if (pattern && currentIdx >= 7) {
-    insightTags.push({ label: 'דפוס', value: pattern });
+    insightTags.push({ label: t('insights.label.pattern'), value: pattern });
   }
   if (paradigm && currentIdx >= 9) {
-    insightTags.push({ label: 'פרדיגמה', value: paradigm });
+    insightTags.push({ label: t('insights.label.paradigm'), value: paradigm });
   }
   if (stanceData && currentIdx >= 11) {
     const gains = stanceData.gains ?? [];
     const losses = stanceData.losses ?? [];
     const parts: string[] = [];
-    if (gains.length) parts.push(`רווחים: ${gains.join(', ')}`);
-    if (losses.length) parts.push(`הפסדים: ${losses.join(', ')}`);
-    if (parts.length) insightTags.push({ label: 'עמדה ישנה', value: parts.join('\n') });
+    if (gains.length) parts.push(`${t('insights.label.gains')}: ${gains.join(', ')}`);
+    if (losses.length) parts.push(`${t('insights.label.losses')}: ${losses.join(', ')}`);
+    if (parts.length) insightTags.push({ label: t('insights.label.oldStance'), value: parts.join('\n') });
   }
-  // כמ"ז - כוחות מקור וטבע (S12) - supports both forces (source/nature) and kmz_forces (source_forces/nature_forces)
   const kmz = data?.kmz_forces ?? data?.forces;
   if (currentIdx >= 12 && kmz) {
     const k = kmz as Record<string, string[] | undefined>;
     const source = k.source_forces ?? k.source ?? [];
     const nature = k.nature_forces ?? k.nature ?? [];
     const parts: string[] = [];
-    if (source.length) parts.push(`מקור: ${source.join(', ')}`);
-    if (nature.length) parts.push(`טבע: ${nature.join(', ')}`);
-    if (parts.length) insightTags.push({ label: 'כמ"ז - כוחות', value: parts.join('\n') });
+    if (source.length) parts.push(`${t('insights.label.source')}: ${source.join(', ')}`);
+    if (nature.length) parts.push(`${t('insights.label.nature')}: ${nature.join(', ')}`);
+    if (parts.length) insightTags.push({ label: t('insights.label.kmzForces'), value: parts.join('\n') });
   }
 
   return (
