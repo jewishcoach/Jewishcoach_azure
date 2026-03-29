@@ -10,7 +10,7 @@ from ..limiter import limiter
 from ..schemas import MessageCreate, ConversationResponse, ConversationListItemResponse
 from ..models import Conversation, Message, User, ConversationFlag, BsdSessionState, BsdAuditLog
 from ..bsd.engine import BsdEngine
-from typing import List, Dict
+from typing import List, Dict, Optional
 from datetime import datetime
 from openai import AzureOpenAI
 import json
@@ -328,6 +328,55 @@ Reply ONLY with the title, nothing else. No quotes."""
         print(f"Error generating title: {e}")
         # Fallback to simple truncation
         return (content[:40] + "...") if len(content) > 40 else content
+
+
+def is_generic_conversation_title(title: Optional[str]) -> bool:
+    """True if title is still the default / placeholder (including 'New Conversation - Mar 29')."""
+    if title is None:
+        return True
+    t = str(title).strip()
+    if not t:
+        return True
+    if t == "New Conversation":
+        return True
+    return t.lower().startswith("new conversation")
+
+
+def try_autotitle_conversation(
+    db: Session,
+    conversation_id: int,
+    language: str = "he",
+) -> None:
+    """
+    After a user message is saved: on the 4th user message, replace generic titles
+    with an LLM-generated short title. Safe to call on every message (no-op if not applicable).
+    """
+    conv = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+    if not conv or not is_generic_conversation_title(conv.title):
+        return
+
+    user_message_count = (
+        db.query(Message)
+        .filter(Message.conversation_id == conversation_id, Message.role == "user")
+        .count()
+    )
+    if user_message_count != 4:
+        return
+
+    user_messages = (
+        db.query(Message)
+        .filter(Message.conversation_id == conversation_id, Message.role == "user")
+        .order_by(Message.timestamp)
+        .all()
+    )
+    context = " | ".join([msg.content[:100] for msg in user_messages if msg.content])
+    if not context:
+        return
+
+    conv.title = generate_smart_title(context, language or "he")
+    db.commit()
+    print(f"✨ Auto-generated title: {conv.title}")
+
 
 # Background task for quality checking
 async def run_quality_check(
@@ -741,28 +790,8 @@ async def send_message(
     db.add(user_msg)
     db.commit()
     
-    # Check if this is the FOURTH user message and generate title
-    # (We wait for more context to generate a more accurate title)
-    user_message_count = db.query(Message)\
-        .filter(Message.conversation_id == conversation_id, Message.role == "user")\
-        .count()
-    
-    if user_message_count == 4 and conv.title == "New Conversation":  # Fourth user message (enough context)
-        # Get all user messages for better context
-        user_messages = db.query(Message)\
-            .filter(Message.conversation_id == conversation_id, Message.role == "user")\
-            .order_by(Message.timestamp)\
-            .all()
-        
-        # Combine user messages for title generation (with context)
-        context = " | ".join([msg.content[:100] for msg in user_messages if msg.content])
-        
-        if context:
-            # Generate smart title using OpenAI with more context
-            conv.title = generate_smart_title(context, message.language or "he")
-            db.commit()
-            print(f"✨ Auto-generated title: {conv.title}")
-    
+    try_autotitle_conversation(db, conversation_id, message.language or "he")
+
     # Cache values BEFORE async operations (avoid DetachedInstanceError)
     current_phase_cache = conv.current_phase
     user_msg_timestamp = str(user_msg.timestamp)

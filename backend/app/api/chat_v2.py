@@ -25,6 +25,7 @@ from ..bsd_v2.state_schema_v2 import create_initial_state
 from ..database import get_db
 from ..limiter import limiter
 from ..models import User, Conversation as ConversationModel, Message
+from ..routers.chat import try_autotitle_conversation
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -262,6 +263,9 @@ async def send_message_v2(
         db.commit()
         t8 = time.time()
         logger.info(f"[PERF API] Save messages to DB: {(t8-t7)*1000:.0f}ms")
+
+        # Same as V1: smart title after 4th user message (was missing on V2-only traffic)
+        try_autotitle_conversation(db, body.conversation_id, body.language or "he")
         
         # Detect stage entry: if the coach just moved into a new stage, activate its tool
         new_step = updated_state.get("current_step", "S0")
