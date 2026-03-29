@@ -56,6 +56,8 @@ interface DashboardData {
   profile: Profile;
   stats: DashboardStats;
   recent_conversations: any[];
+  /** All conversations for calendar markers (recent_conversations may be truncated). */
+  calendar_conversations?: any[];
 }
 
 interface DashboardProps {
@@ -169,7 +171,11 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
     );
   }
 
-  const { profile, stats, recent_conversations } = data;
+  const { profile, stats, recent_conversations, calendar_conversations } = data;
+  const conversationsForCalendar =
+    calendar_conversations && calendar_conversations.length > 0
+      ? calendar_conversations
+      : recent_conversations;
   if (!profile || !stats) {
     return (
       <div className="flex-1 flex items-center justify-center p-8" style={{ background: COLORS.bg, color: COLORS.text }}>
@@ -344,7 +350,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
                 <select
                   value={editForm.gender}
                   onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}
-                  className="w-full px-3 py-2.5 text-sm rounded-lg border focus:ring-2 focus:ring-blue-200 focus:outline-none"
+                  className="w-full px-3 py-2 text-[13px] leading-snug rounded-lg border focus:ring-2 focus:ring-blue-200 focus:outline-none"
                   style={{ borderColor: COLORS.border, color: COLORS.text }}
                 >
                   <option value="">{t('dashboard.notSpecified')}</option>
@@ -586,7 +592,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
                         <select
                           value={editForm.gender}
                           onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}
-                          className="w-full px-3 py-2 text-sm rounded-lg border focus:ring-2 focus:ring-blue-200 focus:outline-none"
+                          className="w-full px-3 py-2 text-[13px] leading-snug rounded-lg border focus:ring-2 focus:ring-blue-200 focus:outline-none"
                           style={{ borderColor: COLORS.border, color: COLORS.text }}
                         >
                           <option value="">{t('dashboard.notSpecified')}</option>
@@ -683,7 +689,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
           {activeTab === 'history' && (
             <div className="grid lg:grid-cols-2 gap-6">
               <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-                <CoachingCalendar conversations={recent_conversations} variant="light" stats={stats} />
+                <CoachingCalendar conversations={conversationsForCalendar} variant="light" stats={stats} />
               </motion.div>
               <motion.div
                 className="rounded-xl p-5"

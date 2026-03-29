@@ -79,15 +79,21 @@ def get_dashboard(
         latest_conv = max(conversations, key=lambda c: c.created_at)
         current_phase = latest_conv.current_phase
     
-    # Days active (since account creation)
+    # Days with at least one conversation (distinct calendar days of conversation start).
+    # Matches the coaching calendar, which marks days by conversation created_at.
     now_utc = datetime.now(timezone.utc)
-    created_at = user.created_at
-    if created_at is None:
-        days_active = 0
-    else:
-        created_at = created_at.replace(tzinfo=timezone.utc) if created_at.tzinfo is None else created_at
-        days_active = (now_utc - created_at).days
-    
+    unique_conv_days = set()
+    for conv in conversations:
+        if conv.created_at is None:
+            continue
+        ca = conv.created_at
+        if ca.tzinfo is None:
+            ca = ca.replace(tzinfo=timezone.utc)
+        else:
+            ca = ca.astimezone(timezone.utc)
+        unique_conv_days.add(ca.date())
+    days_active = len(unique_conv_days)
+
     # Messages this month
     month_ago = now_utc - timedelta(days=30)
     messages_this_month = db.query(Message).join(Conversation).filter(
@@ -116,17 +122,21 @@ def get_dashboard(
         reverse=True
     )[:5]
     
-    recent_conv_list = [
-        {
+    def _conv_summary(conv: Conversation) -> dict:
+        return {
             "id": conv.id,
             "title": conv.title,
             "created_at": conv.created_at.isoformat(),
             "current_phase": conv.current_phase,
-            "message_count": len(conv.messages)
+            "message_count": len(conv.messages),
         }
-        for conv in recent_conversations
+
+    recent_conv_list = [_conv_summary(conv) for conv in recent_conversations]
+    calendar_conv_list = [
+        _conv_summary(c)
+        for c in sorted(conversations, key=lambda x: x.created_at, reverse=True)
     ]
-    
+
     stats = DashboardStats(
         total_conversations=total_conversations,
         total_messages=total_messages,
@@ -140,7 +150,8 @@ def get_dashboard(
     return DashboardResponse(
         profile=ProfileResponse.from_orm(user),
         stats=stats,
-        recent_conversations=recent_conv_list
+        recent_conversations=recent_conv_list,
+        calendar_conversations=calendar_conv_list,
     )
 
 

@@ -1,7 +1,7 @@
 """
 Profile and Dashboard schemas
 """
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 from datetime import datetime
 
@@ -60,7 +60,10 @@ class DashboardResponse(BaseModel):
     profile: ProfileResponse
     stats: DashboardStats
     recent_conversations: list
-    
+    calendar_conversations: list = Field(
+        description="All conversations for calendar (day dots); recent_conversations is a short list for UI lists.",
+    )
+
     model_config = ConfigDict(from_attributes=True)
 
 
