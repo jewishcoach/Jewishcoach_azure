@@ -13,6 +13,7 @@ import { GoalsManager } from './GoalsManager';
 import { ActivityBarChart } from './dashboard/ActivityBarChart';
 import { PhaseDonutChart } from './dashboard/PhaseDonutChart';
 import { InsightsTab } from './InsightsTab';
+import { PrivacyPolicyPage } from './PrivacyPolicyPage';
 import { apiClient } from '../services/api';
 import { BASIC_PLAN_MESSAGES_PER_MONTH } from '../config';
 import type { I18nT } from '../i18nT';
@@ -88,6 +89,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
   const [editForm, setEditForm] = useState({ display_name: '', gender: '' });
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<DashboardTab>('summary');
+  const [showPrivacy, setShowPrivacy] = useState(false);
 
   useEffect(() => {
     loadDashboard();
@@ -138,6 +140,10 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
       setSaving(false);
     }
   };
+
+  if (showPrivacy) {
+    return <PrivacyPolicyPage onBack={() => setShowPrivacy(false)} />;
+  }
 
   if (loading) {
     return (
@@ -200,17 +206,16 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
           <span className="text-[9px] md:text-sm truncate">{t('billing.button.short')}</span>
         </button>
       )}
-      <a
-        href={`${BSD_WEBSITE_URL}/privacy`}
-        target="_blank"
-        rel="noopener noreferrer"
+      <button
+        type="button"
+        onClick={() => setShowPrivacy(true)}
         className="flex items-center gap-1 px-1.5 py-1 md:px-2 md:py-1.5 rounded-lg transition-colors hover:bg-gray-100 whitespace-nowrap min-w-0"
         style={{ color: COLORS.textMuted }}
         aria-label={t('sidebar.policy')}
       >
         <FileText className="w-4 h-4 flex-shrink-0" />
         <span className="text-[9px] md:text-sm truncate">{t('sidebar.policy.short')}</span>
-      </a>
+      </button>
       <a
         href={BSD_BOOKS_URL}
         target="_blank"
@@ -249,16 +254,15 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
           {t('billing.button')}
         </button>
       )}
-      <a
-        href={`${BSD_WEBSITE_URL}/privacy`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full transition-colors hover:bg-gray-50"
+      <button
+        type="button"
+        onClick={() => setShowPrivacy(true)}
+        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full transition-colors hover:bg-gray-50 text-start"
         style={{ color: COLORS.textMuted }}
       >
         <FileText className="w-4 h-4 flex-shrink-0" />
         {t('sidebar.policy')}
-      </a>
+      </button>
       <a
         href={BSD_BOOKS_URL}
         target="_blank"
