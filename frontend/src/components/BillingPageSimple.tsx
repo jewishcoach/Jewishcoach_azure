@@ -115,7 +115,11 @@ export const BillingPageSimple = () => {
               </li>
               <li className="flex items-start gap-2 text-[#F5F5F0]/90">
                 <Check className="w-5 h-5 text-[#FCF6BA] flex-shrink-0 mt-0.5" />
-                <span>{BASIC_PLAN_SPEECH_MINUTES_PER_MONTH} דקות דיבור/חודש</span>
+                <span>
+                  {BASIC_PLAN_SPEECH_MINUTES_PER_MONTH === -1
+                    ? 'דיבור ותמלול קולי ללא הגבלה'
+                    : `${BASIC_PLAN_SPEECH_MINUTES_PER_MONTH} דקות דיבור/חודש`}
+                </span>
               </li>
               <li className="flex items-start gap-2 text-[#F5F5F0]/90">
                 <Check className="w-5 h-5 text-[#FCF6BA] flex-shrink-0 mt-0.5" />
@@ -143,7 +147,7 @@ export const BillingPageSimple = () => {
               </li>
               <li className="flex items-start gap-2 text-[#F5F5F0]/90">
                 <Check className="w-5 h-5 text-[#FCF6BA] flex-shrink-0 mt-0.5" />
-                <span>30 דקות דיבור</span>
+                <span>דיבור ותמלול קולי ללא הגבלה</span>
               </li>
               <li className="flex items-start gap-2 text-[#F5F5F0]/90">
                 <Check className="w-5 h-5 text-[#FCF6BA] flex-shrink-0 mt-0.5" />

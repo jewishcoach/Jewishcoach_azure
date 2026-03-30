@@ -30,7 +30,8 @@ PLAN_LIMITS = {
         "price": 0,
         "currency": "ILS",
         "messages_per_month": 150,
-        "speech_minutes_per_month": 10,
+        # תמלול קולי: ללא הגבלה זמנית לכל התוכניות (עד להודעה חדשה)
+        "speech_minutes_per_month": -1,
         "features": {
             "coaching_phases": ["Situation", "Gap"],
             "journal_access": True,
@@ -44,7 +45,7 @@ PLAN_LIMITS = {
         "price": 89,
         "currency": "ILS",
         "messages_per_month": 100,
-        "speech_minutes_per_month": 30,
+        "speech_minutes_per_month": -1,
         "features": {
             "coaching_phases": "all",  # All 9 phases
             "journal_access": True,
