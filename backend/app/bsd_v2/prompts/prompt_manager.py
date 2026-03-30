@@ -26,7 +26,7 @@ SUPPORTED_LANGUAGES = {"he", "en"}
 STAGE_GATES_HE: Dict[str, str] = {
     "S0": "**Gate (S0→S1):** רשות מפורשת להתחיל (כן/בסדר/בוא נתחיל).",
     "S1": "**Gate (S1→S2):** נושא ברור אחרי 2–3 תורות (מספיק להבין על מה להתאמן).",
-    "S2": "**Gate (S2→S3):** אירוע ספציפי עם מתי/איפה/עם מי/מה קרה.",
+    "S2": "**Gate (S2→S3):** אירוע ספציפי עם מתי/איפה/עם מי/מה קרה — **קשר אינטראקטיבי** (לא רק נוכחות משותפת).",
     "S3": "**Gate (S3→S4):** 3–4 רגשות עם עומק חווייתי.",
     "S4": "**Gate (S4→S5):** משפט מחשבה ברור באותו רגע.",
     "S5": "**Gate (S5→S6):** מעשה בפועל ברור.",
@@ -44,7 +44,7 @@ STAGE_GATES_HE: Dict[str, str] = {
 STAGE_GATES_EN: Dict[str, str] = {
     "S0": "**Gate (S0→S1):** Explicit permission to start (yes/okay/let's go).",
     "S1": "**Gate (S1→S2):** Clear topic after 2–3 turns.",
-    "S2": "**Gate (S2→S3):** Specific event with when/where/who/what.",
+    "S2": "**Gate (S2→S3):** Specific event with when/where/who/what — **interactive contact** (not just co-presence).",
     "S3": "**Gate (S3→S4):** 3–4 emotions with experiential depth.",
     "S4": "**Gate (S4→S5):** Clear thought sentence in that moment.",
     "S5": "**Gate (S5→S6):** Clear actual action.",
