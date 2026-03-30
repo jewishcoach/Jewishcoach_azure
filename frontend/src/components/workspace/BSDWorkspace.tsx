@@ -46,7 +46,12 @@ export const BSDWorkspace = ({
   const archiveOpen = archiveOpenProp ?? archiveOpenLocal;
   const setArchiveOpen = onArchiveOpenChange ?? setArchiveOpenLocal;
   const { messages, loading, currentPhase, conversationId, activeTool, quotaExceeded, dismissQuotaModal, sendMessage, loadConversation, startNewConversation, applyToolResponse } = useChat(displayName);
-  const { isRecording, startRecording, stopRecording } = useVoiceRecord(i18n.language, getToken);
+  const { isRecording, livePreview, startRecording, stopRecording } = useVoiceRecord(i18n.language, getToken);
+  const [recordingInputBase, setRecordingInputBase] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isRecording) setRecordingInputBase(null);
+  }, [isRecording]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatToolRef = useRef<HTMLDivElement>(null);
   const messagesScrollRef = useRef<HTMLDivElement>(null);
@@ -147,9 +152,11 @@ export const BSDWorkspace = ({
         inputRef.current?.focus();
       }
     } else {
-      await startRecording();
+      const base = inputValue;
+      const ok = await startRecording();
+      if (ok) setRecordingInputBase(base);
     }
-  }, [isRecording, startRecording, stopRecording]);
+  }, [isRecording, inputValue, startRecording, stopRecording]);
 
   const handleToolSubmit = async (submission: { tool_type: string; data: any }): Promise<void> => {
     if (!conversationId) return;
@@ -202,6 +209,11 @@ export const BSDWorkspace = ({
       e.currentTarget.form?.requestSubmit();
     }
   };
+
+  const displayValue =
+    recordingInputBase !== null && isRecording
+      ? `${recordingInputBase}${livePreview ? ' ' + livePreview : ''}`
+      : inputValue;
 
   const isRTL = i18n.dir() === 'rtl';
   const onArchiveClick = useCallback(() => setArchiveOpen(true), []);
@@ -362,11 +374,13 @@ export const BSDWorkspace = ({
               <form onSubmit={handleSubmit} className="flex items-end gap-3 md:gap-5">
                 <textarea
                   ref={inputRef}
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
+                  value={displayValue}
+                  onChange={(e) => {
+                    if (!isRecording) setInputValue(e.target.value);
+                  }}
                   onKeyDown={handleKeyDown}
                   placeholder={t('chat.placeholder')}
-                  disabled={loading}
+                  disabled={loading || isRecording}
                   className="flex-1 min-w-0 resize-none rounded-xl px-4 md:px-6 py-3 md:py-5 text-[14px] md:text-[16px] max-h-28 placeholder-[#5A6B8A]/60 placeholder:text-[12px] md:placeholder:text-[16px] focus:border-[#B38728]/50 focus:ring-2 focus:ring-[#B38728]/20 focus:outline-none"
                   style={{
                     fontFamily: WORKSPACE_CHAT_FONT,
@@ -394,7 +408,7 @@ export const BSDWorkspace = ({
                 </button>
                 <button
                   type="submit"
-                  disabled={!inputValue.trim() || loading}
+                  disabled={!displayValue.trim() || loading || isRecording}
                   className="premium-cta-btn p-3 md:p-4 rounded-xl text-[#2E3A56] font-semibold disabled:opacity-50 min-h-[44px] min-w-[44px] flex items-center justify-center flex-shrink-0"
                 >
                   <Send size={18} strokeWidth={1.5} />

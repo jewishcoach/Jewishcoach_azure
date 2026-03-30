@@ -16,8 +16,16 @@ export const useVoiceRecord = (
 ) => {
   const [isRecording, setIsRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [livePreview, setLivePreview] = useState('');
   const recognizerRef = useRef<sdk.SpeechRecognizer | null>(null);
   const transcriptRef = useRef<string[]>([]);
+  const partialRef = useRef('');
+
+  const flushLivePreview = useCallback(() => {
+    const joined = transcriptRef.current.join(' ');
+    const p = partialRef.current.trim();
+    setLivePreview(p ? (joined ? `${joined} ${p}` : p) : joined);
+  }, []);
 
   const getSpeechToken = useCallback(async () => {
     return apiClient.getSpeechToken();
@@ -27,6 +35,8 @@ export const useVoiceRecord = (
     try {
       setError(null);
       transcriptRef.current = [];
+      partialRef.current = '';
+      setLivePreview('');
 
       if (getClerkToken) {
         const clerkJwt = await getClerkToken();
@@ -47,9 +57,16 @@ export const useVoiceRecord = (
       const audioConfig = sdk.AudioConfig.fromDefaultMicrophoneInput();
       const recognizer = new sdk.SpeechRecognizer(speechConfig, audioConfig);
 
+      recognizer.recognizing = (_s, e) => {
+        partialRef.current = e.result.text ?? '';
+        flushLivePreview();
+      };
+
       recognizer.recognized = (_s, e) => {
         if (e.result.reason === sdk.ResultReason.RecognizedSpeech && e.result.text?.trim()) {
           transcriptRef.current.push(e.result.text.trim());
+          partialRef.current = '';
+          flushLivePreview();
         }
       };
 
@@ -72,12 +89,22 @@ export const useVoiceRecord = (
       setIsRecording(false);
       return false;
     }
-  }, [language, getSpeechToken, getClerkToken]);
+  }, [language, getSpeechToken, getClerkToken, flushLivePreview]);
 
   const stopRecording = useCallback(async (): Promise<string> => {
+    const mergeTranscript = () => {
+      const joined = transcriptRef.current.join(' ');
+      const p = partialRef.current.trim();
+      if (p) {
+        return joined ? `${joined} ${p}` : p;
+      }
+      return joined;
+    };
+
     if (!recognizerRef.current) {
       setIsRecording(false);
-      return transcriptRef.current.join(' ');
+      setLivePreview('');
+      return mergeTranscript();
     }
 
     return new Promise((resolve) => {
@@ -86,17 +113,23 @@ export const useVoiceRecord = (
           recognizerRef.current?.close();
           recognizerRef.current = null;
           setIsRecording(false);
-          resolve(transcriptRef.current.join(' '));
+          const text = mergeTranscript();
+          partialRef.current = '';
+          setLivePreview('');
+          resolve(text);
         },
         () => {
           recognizerRef.current?.close();
           recognizerRef.current = null;
           setIsRecording(false);
-          resolve(transcriptRef.current.join(' '));
+          const text = mergeTranscript();
+          partialRef.current = '';
+          setLivePreview('');
+          resolve(text);
         }
       );
     });
   }, []);
 
-  return { isRecording, error, startRecording, stopRecording };
+  return { isRecording, error, livePreview, startRecording, stopRecording };
 };
