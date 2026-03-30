@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { useTranslation } from 'react-i18next';
 import { Gift, Sparkles, Check, Crown, Zap } from 'lucide-react';
-import { BASIC_PLAN_MESSAGES_PER_MONTH } from '../config';
+import { BASIC_PLAN_MESSAGES_PER_MONTH, BASIC_PLAN_SPEECH_MINUTES_PER_MONTH } from '../config';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -115,7 +115,7 @@ export const BillingPageSimple = () => {
               </li>
               <li className="flex items-start gap-2 text-[#F5F5F0]/90">
                 <Check className="w-5 h-5 text-[#FCF6BA] flex-shrink-0 mt-0.5" />
-                <span>ללא זמן דיבור</span>
+                <span>{BASIC_PLAN_SPEECH_MINUTES_PER_MONTH} דקות דיבור/חודש</span>
               </li>
               <li className="flex items-start gap-2 text-[#F5F5F0]/90">
                 <Check className="w-5 h-5 text-[#FCF6BA] flex-shrink-0 mt-0.5" />

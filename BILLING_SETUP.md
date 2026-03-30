@@ -67,9 +67,9 @@ Authorization: Bearer {token}
   "current_plan": "basic",
   "usage": {
     "messages_used": 5,
-    "messages_limit": 10,
+    "messages_limit": 150,
     "speech_minutes_used": 0,
-    "speech_minutes_limit": 0
+    "speech_minutes_limit": 10
   },
   "available_plans": [...],
   "has_active_coupon": false

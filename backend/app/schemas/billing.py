@@ -30,7 +30,7 @@ PLAN_LIMITS = {
         "price": 0,
         "currency": "ILS",
         "messages_per_month": 150,
-        "speech_minutes_per_month": 0,
+        "speech_minutes_per_month": 10,
         "features": {
             "coaching_phases": ["Situation", "Gap"],
             "journal_access": True,
