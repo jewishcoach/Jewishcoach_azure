@@ -7,7 +7,13 @@ const RECOGNITION_LANGUAGE_MAP: Record<string, string> = {
   en: 'en-US',
 };
 
-export const useVoiceRecord = (language: string) => {
+/**
+ * @param getClerkToken - Pass `getToken` from `useAuth()` so /speech/token gets a fresh JWT (avoids 401 when apiClient token is stale or unset).
+ */
+export const useVoiceRecord = (
+  language: string,
+  getClerkToken?: () => Promise<string | null>,
+) => {
   const [isRecording, setIsRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const recognizerRef = useRef<sdk.SpeechRecognizer | null>(null);
@@ -21,6 +27,13 @@ export const useVoiceRecord = (language: string) => {
     try {
       setError(null);
       transcriptRef.current = [];
+
+      if (getClerkToken) {
+        const clerkJwt = await getClerkToken();
+        if (clerkJwt) {
+          apiClient.setToken(clerkJwt);
+        }
+      }
 
       if (!navigator.mediaDevices?.getUserMedia) {
         throw new Error('הדפדפן שלך לא תומך בהקלטת קול');
@@ -59,7 +72,7 @@ export const useVoiceRecord = (language: string) => {
       setIsRecording(false);
       return false;
     }
-  }, [language, getSpeechToken]);
+  }, [language, getSpeechToken, getClerkToken]);
 
   const stopRecording = useCallback(async (): Promise<string> => {
     if (!recognizerRef.current) {
