@@ -51,7 +51,7 @@ export const Sidebar = ({ conversations, activeId, onSelect, onNewChat, onDelete
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={onNewChat}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-accent to-accent-dark text-white rounded-xl shadow-glow hover:shadow-xl transition-all"
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl shadow-sm transition-all border border-[#FCF6BA]/45 bg-gradient-to-br from-[#BF953F] via-[#FCF6BA] to-[#B38728] text-[#0f172a] hover:brightness-105 hover:shadow-lg"
         >
           <Plus size={20} />
           <span className="font-semibold">{t('sidebar.newChat')}</span>

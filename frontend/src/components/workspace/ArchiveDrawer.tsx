@@ -75,7 +75,7 @@ export const ArchiveDrawer = ({
                 onNewChat();
                 onClose();
               }}
-              className="w-full mx-4 mt-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-sm font-medium transition-colors"
+              className="w-full mx-4 mt-4 py-2.5 rounded-xl text-sm font-semibold transition-all border border-[#FCF6BA]/45 bg-gradient-to-br from-[#BF953F] via-[#FCF6BA] to-[#B38728] text-[#0f172a] shadow-sm hover:brightness-105"
             >
               {t('chat.newConversation')}
             </button>

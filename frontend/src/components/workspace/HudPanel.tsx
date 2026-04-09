@@ -217,10 +217,10 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
               onClick={onNewChat}
               disabled={loading}
               title={t('chat.newConversation')}
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] text-sm font-medium shadow-sm transition-all duration-150 ease-out hover:-translate-y-0.5 hover:bg-slate-300 hover:border-slate-500 hover:shadow-[0_6px_20px_-4px_rgba(51,65,85,0.45)] hover:ring-2 hover:ring-slate-400/55 active:translate-y-0 active:bg-slate-400/90 disabled:opacity-45 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:bg-white disabled:hover:border-[#E2E4E8] disabled:hover:shadow-sm disabled:hover:ring-0"
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-sm font-semibold shadow-sm transition-all duration-150 ease-out border border-[#FCF6BA]/45 bg-gradient-to-br from-[#BF953F] via-[#FCF6BA] to-[#B38728] text-[#0f172a] hover:brightness-105 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_-4px_rgba(179,135,40,0.35)] active:translate-y-0 disabled:opacity-45 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:brightness-100"
               style={{ fontFamily: WORKSPACE_CHAT_FONT }}
             >
-              <MessageSquarePlus size={18} strokeWidth={2} className="flex-shrink-0 text-[#2E3A56]" />
+              <MessageSquarePlus size={18} strokeWidth={2} className="flex-shrink-0 text-[#0f172a]" />
               <span>{t('chat.newConversation')}</span>
             </button>
           )}

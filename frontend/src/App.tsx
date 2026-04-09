@@ -142,10 +142,10 @@ function SignedInContent() {
                 type="button"
                 onClick={() => setWorkspaceNewChatTick((n) => n + 1)}
                 title={t('chat.newConversation')}
-                className="md:hidden inline-flex items-center justify-center rounded-xl min-h-[40px] min-w-[40px] p-0 bg-white border border-[#E2E4E8] text-[#2E3A56] shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors"
+                className="md:hidden inline-flex items-center justify-center rounded-xl min-h-[40px] min-w-[40px] p-0 shadow-sm transition-all border border-[#FCF6BA]/50 bg-gradient-to-br from-[#BF953F] via-[#FCF6BA] to-[#B38728] text-[#0f172a] hover:brightness-105 hover:border-[#FCF6BA]/80"
                 aria-label={t('chat.newConversation')}
               >
-                <MessageSquarePlus className="w-[18px] h-[18px] text-[#2E3A56]" strokeWidth={2} />
+                <MessageSquarePlus className="w-[18px] h-[18px] text-[#0f172a]" strokeWidth={2} />
               </button>
             </>
           )}
@@ -283,10 +283,10 @@ function DemoModeContent() {
                 type="button"
                 onClick={() => setWorkspaceNewChatTick((n) => n + 1)}
                 title={t('chat.newConversation')}
-                className="md:hidden inline-flex items-center justify-center rounded-xl min-h-[40px] min-w-[40px] p-0 bg-white border border-[#E2E4E8] text-[#2E3A56] shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors"
+                className="md:hidden inline-flex items-center justify-center rounded-xl min-h-[40px] min-w-[40px] p-0 shadow-sm transition-all border border-[#FCF6BA]/50 bg-gradient-to-br from-[#BF953F] via-[#FCF6BA] to-[#B38728] text-[#0f172a] hover:brightness-105 hover:border-[#FCF6BA]/80"
                 aria-label={t('chat.newConversation')}
               >
-                <MessageSquarePlus className="w-[18px] h-[18px] text-[#2E3A56]" strokeWidth={2} />
+                <MessageSquarePlus className="w-[18px] h-[18px] text-[#0f172a]" strokeWidth={2} />
               </button>
             </>
           )}
