@@ -27,7 +27,12 @@ export interface CognitiveData {
   pattern?: string;
   pattern_id?: { name?: string; paradigm?: string };
   paradigm?: string;
-  stance?: { gains?: string[]; losses?: string[] };
+  stance?: {
+    reality_belief?: string;
+    activation_trigger?: string;
+    gains?: string[];
+    losses?: string[];
+  };
   forces?: { source?: string[]; nature?: string[] };
   kmz_forces?: { source_forces?: string[]; nature_forces?: string[] };
 }
@@ -109,7 +114,19 @@ export function buildInsightsByPhase(
     (result[5] ??= []).push({ label: t('insights.label.paradigm'), value: paradigm });
   }
 
-  // p6 - Stance
+  // p6 - Stance (S10: תפיסת מציאות + טריגר)
+  if (stanceData && currentIdx >= 10) {
+    const rb = stanceData.reality_belief?.trim();
+    const trig = stanceData.activation_trigger?.trim();
+    const stanceParts: string[] = [];
+    if (rb) stanceParts.push(`${t('insights.label.stanceReality')}: ${rb}`);
+    if (trig) stanceParts.push(`${t('insights.label.stanceTrigger')}: ${trig}`);
+    if (stanceParts.length) {
+      (result[6] ??= []).push({ label: t('insights.label.stance'), value: stanceParts.join('\n') });
+    }
+  }
+
+  // p6 - טבלת רווח והפסד (S11)
   if (stanceData && currentIdx >= 11) {
     const gains = stanceData.gains ?? [];
     const losses = stanceData.losses ?? [];
@@ -117,7 +134,7 @@ export function buildInsightsByPhase(
     if (gains.length) parts.push(`${t('insights.label.gains')}: ${gains.join(', ')}`);
     if (losses.length) parts.push(`${t('insights.label.losses')}: ${losses.join(', ')}`);
     if (parts.length) {
-      (result[6] ??= []).push({ label: t('insights.label.oldStance'), value: parts.join('\n') });
+      (result[6] ??= []).push({ label: t('insights.label.profitLossTable'), value: parts.join('\n') });
     }
   }
 

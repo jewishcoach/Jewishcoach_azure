@@ -12,8 +12,16 @@ from pydantic import BaseModel, Field
 
 
 class StanceSchema(BaseModel):
-    gains: List[str] = Field(default_factory=list, description="מה המתאמן מרוויח מהדפוס")
-    losses: List[str] = Field(default_factory=list, description="מה המתאמן מפסיד מהדפוס")
+    reality_belief: Union[str, None] = Field(
+        default=None,
+        description="תפיסת המציאות / העמדה בניסוח המתאמן (S10) — למשל 'אני מאמין ש…', 'המציאות היא…'",
+    )
+    activation_trigger: Union[str, None] = Field(
+        default=None,
+        description="הטריגר / כפתור ההפעלה שמדליק את העמדה (S10)",
+    )
+    gains: List[str] = Field(default_factory=list, description="מה המתאמן מרוויח מהדפוס (S11)")
+    losses: List[str] = Field(default_factory=list, description="מה המתאמן מפסיד מהדפוס (S11)")
 
 
 class ForcesSchema(BaseModel):
@@ -86,7 +94,10 @@ class CollectedDataSchema(BaseModel):
     )
     pattern: Union[str, None] = Field(default=None, description="הדפוס החוזר שזוהה (S8). מלא רק בשלב S8!")
     paradigm: Union[str, None] = Field(default=None, description="הפרדיגמה - 'ככה זה אצלי' / מחשבת המעשה (S9). מלא רק בשלב S9!")
-    stance: Union[StanceSchema, None] = Field(default=None, description="רווחים והפסדים מהדפוס (S11 — עמדה). מלא רק בשלב S11!")
+    stance: Union[StanceSchema, None] = Field(
+        default=None,
+        description="S10: reality_belief + activation_trigger. S11: gains + losses (טבלת רווח והפסד). עדכן רק שדות רלוונטיים לשלב.",
+    )
     forces: Union[ForcesSchema, None] = Field(default=None, description="כוחות מקור וטבע: ערכים ויכולות (S12 — כוחות). מלא רק בשלב S12!")
     renewal: Union[str, None] = Field(default=None, description="עמדה חדשה / בחירה מודעת שהמשתמש ניסח (S13 — בחירה). מלא רק בשלב S13!")
     vision: Union[str, None] = Field(default=None, description="חזון / תמונת עתיד (S14 — חזון). מלא רק בשלב S14!")

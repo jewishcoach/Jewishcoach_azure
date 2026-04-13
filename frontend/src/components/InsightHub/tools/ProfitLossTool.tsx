@@ -83,13 +83,13 @@ export const ProfitLossTool = ({ onSubmit, language }: ProfitLossToolProps) => {
 
   return (
     <form
-      className="bg-white rounded-xl p-6 shadow-lg border border-gray-200"
+      className="bg-gradient-to-b from-slate-50 to-white rounded-2xl p-5 sm:p-6 shadow-md border border-slate-200/90"
       onSubmit={(e) => {
         e.preventDefault();
         void handleSubmit();
       }}
     >
-      <div className="grid grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 mb-6">
         {/* Gains Column */}
         <Column
           title={language === 'he' ? 'מה אני מרוויח?' : 'What do I gain?'}
@@ -113,18 +113,24 @@ export const ProfitLossTool = ({ onSubmit, language }: ProfitLossToolProps) => {
         />
       </div>
 
-      {/* Submit: type="submit" so Enter in inputs works reliably */}
+      {/* Solid primary CTA: guaranteed contrast (gradient accent was invisible when --color-accent was missing from @theme) */}
       <motion.button
         type="submit"
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
         disabled={isSubmitting}
-        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-accent to-accent-dark text-white rounded-xl font-semibold hover:shadow-glow transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-semibold text-base
+          bg-primary text-white shadow-sm border border-primary-dark/30
+          hover:bg-primary-light hover:text-white
+          focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500
+          disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary transition-colors [&_svg]:shrink-0"
       >
-        <Send size={18} />
-        {isSubmitting
-          ? (language === 'he' ? 'שולח...' : 'Submitting...')
-          : (language === 'he' ? 'שלח למאמן' : 'Send to Coach')}
+        <Send size={18} className="opacity-95" aria-hidden />
+        <span className="text-white">
+          {isSubmitting
+            ? (language === 'he' ? 'שולח…' : 'Submitting…')
+            : (language === 'he' ? 'שלח למאמן' : 'Send to coach')}
+        </span>
       </motion.button>
     </form>
   );
@@ -141,42 +147,57 @@ interface ColumnProps {
 }
 
 const Column = ({ title, items, onUpdate, onRemove, onAdd, color, isRTL }: ColumnProps) => {
-  const borderColor = color === 'green' ? 'border-green-300' : 'border-red-300';
-  const bgColor = color === 'green' ? 'bg-green-50' : 'bg-red-50';
+  const accentRing = color === 'green' ? 'focus-within:ring-emerald-500/25' : 'focus-within:ring-rose-400/25';
+  const topStripe = color === 'green' ? 'from-emerald-500/90 to-emerald-600/80' : 'from-rose-500/85 to-rose-600/75';
+  const addHover = color === 'green' ? 'hover:bg-emerald-50 hover:text-emerald-800' : 'hover:bg-rose-50 hover:text-rose-900';
 
   return (
-    <div className={`border-2 ${borderColor} ${bgColor} rounded-lg p-4`}>
-      <h4 className="font-semibold text-primary mb-3" dir={isRTL ? 'rtl' : 'ltr'}>{title}</h4>
-      <div className="space-y-2 mb-3">
+    <div
+      className="relative rounded-xl border border-slate-200/90 bg-white p-4 shadow-sm"
+      dir={isRTL ? 'rtl' : 'ltr'}
+    >
+      <div className={`absolute inset-x-0 top-0 h-1 rounded-t-xl bg-gradient-to-r ${topStripe}`} aria-hidden />
+      <h4 className="font-semibold text-slate-800 text-sm tracking-tight mb-3.5 pt-0.5">
+        {title}
+      </h4>
+      <div className="space-y-2.5 mb-3.5">
         {items.map((item, index) => (
-          <div key={index} className="flex items-center gap-2">
+          <div
+            key={index}
+            className={`
+              flex min-h-[2.75rem] items-stretch overflow-hidden rounded-lg border border-slate-200 bg-white
+              shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-shadow
+              focus-within:border-slate-300 focus-within:shadow-md focus-within:ring-2 ${accentRing}
+            `}
+          >
             <input
               type="text"
               value={item}
               onChange={(e) => onUpdate(index, e.target.value)}
-              placeholder={isRTL ? 'הוסף פריט...' : 'Add item...'}
-              className="flex-1 px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-accent/30 text-sm"
-              dir={isRTL ? 'rtl' : 'ltr'}
+              placeholder={isRTL ? 'הקלד כאן…' : 'Type here…'}
+              className="min-w-0 flex-1 border-0 bg-transparent px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-0"
             />
-            {items.length > 1 && (
+            {items.length > 1 ? (
               <button
                 type="button"
                 onClick={() => onRemove(index)}
-                className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                title={isRTL ? 'הסר שורה' : 'Remove row'}
+                aria-label={isRTL ? 'הסר שורה' : 'Remove row'}
+                className="flex shrink-0 items-center justify-center border-s border-slate-100 px-3 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
               >
-                <X size={16} />
+                <X size={17} strokeWidth={2} />
               </button>
-            )}
+            ) : null}
           </div>
         ))}
       </div>
       <button
         type="button"
         onClick={onAdd}
-        className="flex items-center gap-1 text-sm text-accent hover:text-accent-dark font-medium"
+        className={`inline-flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-slate-200 bg-slate-50/80 py-2.5 text-sm font-medium text-slate-600 transition-colors ${addHover}`}
       >
-        <Plus size={16} />
-        {isRTL ? 'הוסף פריט' : 'Add item'}
+        <Plus size={17} strokeWidth={2} className="text-slate-500" />
+        {isRTL ? 'הוסף שורה' : 'Add row'}
       </button>
     </div>
   );

@@ -5,6 +5,11 @@
   --color-primary: #0f172a;
   --color-primary-light: #1e293b;
   --color-primary-dark: #020617;
+
+  /* Accent (gold) — required for from-accent / bg-accent in Tailwind v4 utilities */
+  --color-accent: #f59e0b;
+  --color-accent-light: #fbbf24;
+  --color-accent-dark: #d97706;
   
   /* Metallic Gold - Real metal, not flat yellow */
   --gold-metallic: linear-gradient(45deg, #BF953F, #FCF6BA, #B38728, #FBF5B7, #AA771C);

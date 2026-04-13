@@ -28,7 +28,12 @@ interface CognitiveData {
   pattern?: string;
   pattern_id?: { name?: string; paradigm?: string };
   paradigm?: string;
-  stance?: { gains?: string[]; losses?: string[] };
+  stance?: {
+    reality_belief?: string;
+    activation_trigger?: string;
+    gains?: string[];
+    losses?: string[];
+  };
   forces?: { source?: string[]; nature?: string[] };
   kmz_forces?: { source_forces?: string[]; nature_forces?: string[] };
 }
@@ -175,13 +180,25 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
   if (paradigm && currentIdx >= 9) {
     insightTags.push({ label: t('insights.label.paradigm'), value: paradigm });
   }
+  if (stanceData && currentIdx >= 10) {
+    const rb = stanceData.reality_belief?.trim();
+    const trig = stanceData.activation_trigger?.trim();
+    const stanceParts: string[] = [];
+    if (rb) stanceParts.push(`${t('insights.label.stanceReality')}: ${rb}`);
+    if (trig) stanceParts.push(`${t('insights.label.stanceTrigger')}: ${trig}`);
+    if (stanceParts.length) {
+      insightTags.push({ label: t('insights.label.stance'), value: stanceParts.join('\n') });
+    }
+  }
   if (stanceData && currentIdx >= 11) {
     const gains = stanceData.gains ?? [];
     const losses = stanceData.losses ?? [];
     const parts: string[] = [];
     if (gains.length) parts.push(`${t('insights.label.gains')}: ${gains.join(', ')}`);
     if (losses.length) parts.push(`${t('insights.label.losses')}: ${losses.join(', ')}`);
-    if (parts.length) insightTags.push({ label: t('insights.label.oldStance'), value: parts.join('\n') });
+    if (parts.length) {
+      insightTags.push({ label: t('insights.label.profitLossTable'), value: parts.join('\n') });
+    }
   }
   const kmz = data?.kmz_forces ?? data?.forces;
   if (currentIdx >= 12 && kmz) {

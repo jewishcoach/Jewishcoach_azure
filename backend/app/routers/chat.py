@@ -120,7 +120,7 @@ def _stage_idx(stage: str) -> int:
 #   S1: topic · S2: event_description · S3: emotions · S4: thought
 #   S5: action_actual (מצוי) · S6: action/emotion/thought_desired (רצוי)
 #   S7: gap_name, gap_score (פער) · S8: pattern (דפוס)
-#   S9: paradigm (פרדיגמה) · S11: stance (רווחים/הפסדים)
+#   S9: paradigm (פרדיגמה) · S10: stance (תפיסת מציאות + טריגר) · S11: טבלת רווח/הפסד
 #   S12: forces (כמ"ז — ערכים ויכולות) · S13: renewal/choice
 #   S14: vision · S15: commitment
 _FIELD_VISIBLE_FROM_STAGE: Dict[str, int] = {
@@ -136,7 +136,7 @@ _FIELD_VISIBLE_FROM_STAGE: Dict[str, int] = {
     "gap_score":       7,
     "pattern":         8,   # S8 (דפוס) → visible as soon as collected
     "paradigm":        9,   # S9 (פרדיגמה) → visible as soon as collected
-    "stance":         11,   # S11 (רווחים והפסדים) → visible as soon as collected
+    "stance":         11,   # S11 (טבלת רווח/הפסד) — gains/losses; S10 strings use stage index ≥10 in mapper
     "forces":         12,   # S12 (כוחות כמ"ז) → visible as soon as collected
     "renewal":        13,   # S13 (בחירה) → visible as soon as collected
     "vision":         14,   # S14 (חזון) → visible as soon as collected
@@ -239,12 +239,22 @@ def _v2_collected_data_to_cognitive_data(
         if paradigm_val:
             out["paradigm"] = paradigm_val
 
-    # --- Stance (S11 — gains/losses) — עמדה ישנה: רווחים והפסדים ---
+    # --- Stance: S10 (תפיסת מציאות + טריגר), S11 (רווחים/הפסדים) ---
+    out_stance: dict = {}
+    if _stage_idx(current_stage) >= 10:
+        rb = stance.get("reality_belief") or stance.get("belief") or stance.get("formulation")
+        if isinstance(rb, str) and rb.strip():
+            out_stance["reality_belief"] = rb.strip()
+        trig = stance.get("activation_trigger") or stance.get("trigger")
+        if isinstance(trig, str) and trig.strip():
+            out_stance["activation_trigger"] = trig.strip()
     if _field_validated("stance", current_stage) and (stance.get("gains") or stance.get("losses")):
-        out["stance"] = {
-            "gains": stance.get("gains") or [],
-            "losses": stance.get("losses") or []
-        }
+        g = stance.get("gains") or []
+        l = stance.get("losses") or []
+        out_stance["gains"] = g if isinstance(g, list) else [g]
+        out_stance["losses"] = l if isinstance(l, list) else [l]
+    if out_stance:
+        out["stance"] = out_stance
 
     # --- being_desire (renewal/vision) ---
     if _field_validated("stance", current_stage):

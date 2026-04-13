@@ -7,6 +7,7 @@ import { apiClient } from '../../services/api';
 import { ReflectionCard } from './ReflectionCard';
 import { GapWidget } from './widgets/GapWidget';
 import { PatternWidget } from './widgets/PatternWidget';
+import { ListWidget } from './widgets/ListWidget';
 
 interface CognitiveData {
   topic?: string;
@@ -37,6 +38,13 @@ interface CognitiveData {
     difficulty?: string;
     result?: string;
   };
+  stance?: {
+    reality_belief?: string;
+    activation_trigger?: string;
+    gains?: string[];
+    losses?: string[];
+  };
+  paradigm?: string;
 }
 
 interface InsightItem {
@@ -136,7 +144,7 @@ export const SmartInsightsPanel = ({ conversationId, currentPhase }: SmartInsigh
     'S8': { he: 'דפוס', en: 'Pattern' },
     'S9': { he: 'פרדיגמה', en: 'Paradigm' },
     'S10': { he: 'עמדה+טריגר', en: 'Stance & Trigger' },
-    'S11': { he: 'רווחים והפסדים', en: 'Gains & Losses' },
+    'S11': { he: 'טבלת רווח והפסד', en: 'Profit & loss table' },
     'S12': { he: 'כמ"ז - כוחות', en: 'KaMaZ - Forces' },
     'S13': { he: 'בחירה', en: 'Choice' },
     'S14': { he: 'חזון', en: 'Vision' },
@@ -228,13 +236,44 @@ export const SmartInsightsPanel = ({ conversationId, currentPhase }: SmartInsigh
     });
   }
 
-  // S9: Being
-  if (insights.being_desire?.identity) {
+  // S9: Paradigm (פרדיגמה) — prefer explicit paradigm from cognitive_data
+  if (insights.paradigm?.trim()) {
     insightItems.push({
       stage: 'S9',
       title: stageTitles['S9'][lang],
       status: currentPhase === 'S9' ? 'draft' : 'final',
-      data: { identity: insights.being_desire.identity }
+      data: { identity: insights.paradigm.trim() },
+    });
+  } else if (insights.being_desire?.identity) {
+    insightItems.push({
+      stage: 'S9',
+      title: stageTitles['S9'][lang],
+      status: currentPhase === 'S9' ? 'draft' : 'final',
+      data: { identity: insights.being_desire.identity },
+    });
+  }
+
+  // S10: עמדה (תפיסת מציאות + טריגר)
+  const rb = insights.stance?.reality_belief?.trim();
+  const trig = insights.stance?.activation_trigger?.trim();
+  if (rb || trig) {
+    insightItems.push({
+      stage: 'S10',
+      title: stageTitles['S10'][lang],
+      status: currentPhase === 'S10' ? 'draft' : 'final',
+      data: { reality_belief: rb || '', activation_trigger: trig || '' },
+    });
+  }
+
+  // S11: טבלת רווח והפסד
+  const sg = insights.stance?.gains ?? [];
+  const sl = insights.stance?.losses ?? [];
+  if (sg.length > 0 || sl.length > 0) {
+    insightItems.push({
+      stage: 'S11',
+      title: stageTitles['S11'][lang],
+      status: currentPhase === 'S11' ? 'draft' : 'final',
+      data: { gains: sg, losses: sl },
     });
   }
 
@@ -350,6 +389,36 @@ function renderWidgetContent(stage: string, data: any, language: 'he' | 'en') {
       );
 
     case 'S10':
+      return (
+        <div className="space-y-2 text-sm text-primary">
+          {data.reality_belief ? (
+            <div>
+              <span className="font-semibold text-primary-dark">
+                {language === 'he' ? 'תפיסת מציאות:' : 'Reality belief:'}
+              </span>{' '}
+              <span className="italic">"{data.reality_belief}"</span>
+            </div>
+          ) : null}
+          {data.activation_trigger ? (
+            <div>
+              <span className="font-semibold text-primary-dark">
+                {language === 'he' ? 'טריגר:' : 'Trigger:'}
+              </span>{' '}
+              <span>{data.activation_trigger}</span>
+            </div>
+          ) : null}
+        </div>
+      );
+
+    case 'S11':
+      return (
+        <ListWidget
+          data={{ gains: data.gains || [], losses: data.losses || [] }}
+          stage="Stance"
+          language={language}
+        />
+      );
+
     case 'S12':
       return (
         <div className="space-y-3">

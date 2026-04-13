@@ -67,6 +67,7 @@ export const TraitPickerTool = ({ onSubmit, language }: TraitPickerToolProps) =>
     traits,
     setTraits,
     placeholder,
+    variant,
   }: {
     title: string;
     subtitle: string;
@@ -76,65 +77,94 @@ export const TraitPickerTool = ({ onSubmit, language }: TraitPickerToolProps) =>
     traits: string[];
     setTraits: (v: string[]) => void;
     placeholder: string;
-  }) => (
-    <div className="bg-gray-50 rounded-xl p-4 space-y-3">
-      <div className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
-        <span className="text-2xl">{emoji}</span>
-        <div className={isRTL ? 'text-right' : 'text-left'}>
-          <div className="font-semibold text-primary text-sm">{title}</div>
-          <div className="text-xs text-gray-500">{subtitle}</div>
-        </div>
-      </div>
+    variant: 'source' | 'nature';
+  }) => {
+    const stripe =
+      variant === 'source'
+        ? 'from-emerald-500/90 to-teal-600/80'
+        : 'from-violet-500/85 to-indigo-600/75';
+    const tagWrap =
+      variant === 'source'
+        ? 'border-emerald-200/70 bg-emerald-50/95 text-slate-800'
+        : 'border-violet-200/70 bg-violet-50/95 text-slate-800';
+    const addBtnHover =
+      variant === 'source'
+        ? 'hover:bg-emerald-50 hover:text-emerald-800 disabled:hover:bg-transparent'
+        : 'hover:bg-violet-50 hover:text-violet-900 disabled:hover:bg-transparent';
+    const focusRing =
+      variant === 'source' ? 'focus-within:ring-emerald-500/20' : 'focus-within:ring-violet-500/20';
 
-      {/* Tag list */}
-      {traits.length > 0 && (
-        <div className={`flex flex-wrap gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
-          {traits.map(trait => (
-            <motion.span
-              key={trait}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="flex items-center gap-1 bg-accent/20 text-primary text-xs px-3 py-1 rounded-full"
-            >
-              {trait}
-              <button
-                type="button"
-                onClick={() => removeTrait(trait, traits, setTraits)}
-                className="text-gray-400 hover:text-red-500 transition-colors ml-1"
+    return (
+      <div className="relative rounded-xl border border-slate-200/90 bg-white p-4 shadow-sm space-y-3">
+        <div className={`absolute inset-x-0 top-0 h-1 rounded-t-xl bg-gradient-to-r ${stripe}`} aria-hidden />
+        <div className={`flex items-start gap-2.5 ${isRTL ? 'flex-row-reverse' : ''}`}>
+          <span className="text-2xl leading-none shrink-0" aria-hidden>
+            {emoji}
+          </span>
+          <div className={`min-w-0 flex-1 ${isRTL ? 'text-right' : 'text-left'}`}>
+            <div className="font-semibold text-slate-800 text-sm tracking-tight">{title}</div>
+            <div className="text-xs text-slate-500 mt-0.5 leading-snug">{subtitle}</div>
+          </div>
+        </div>
+
+        {traits.length > 0 && (
+          <div className={`flex flex-wrap gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+            {traits.map(trait => (
+              <motion.span
+                key={trait}
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className={`inline-flex max-w-full items-center gap-1 rounded-full border pl-3 pr-1 py-1 text-xs font-medium shadow-[0_1px_2px_rgba(15,23,42,0.04)] ${tagWrap}`}
               >
-                <X size={12} />
-              </button>
-            </motion.span>
-          ))}
-        </div>
-      )}
+                <span className="min-w-0 truncate py-0.5">{trait}</span>
+                <button
+                  type="button"
+                  onClick={() => removeTrait(trait, traits, setTraits)}
+                  title={isRTL ? 'הסר' : 'Remove'}
+                  aria-label={isRTL ? `הסר את ${trait}` : `Remove ${trait}`}
+                  className="flex size-7 shrink-0 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-red-100 hover:text-red-600"
+                >
+                  <X size={14} strokeWidth={2} />
+                </button>
+              </motion.span>
+            ))}
+          </div>
+        )}
 
-      {/* Input */}
-      <div className={`flex gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
-        <input
-          type="text"
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => handleKeyDown(e, input, setInput, traits, setTraits)}
-          placeholder={placeholder}
-          dir={isRTL ? 'rtl' : 'ltr'}
-          className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/40 bg-white"
-        />
-        <button
-          type="button"
-          onClick={() => addTrait(input, setInput, traits, setTraits)}
-          disabled={!input.trim()}
-          className="p-2 rounded-lg bg-accent/20 text-primary hover:bg-accent/40 disabled:opacity-40 transition-colors"
+        <div
+          className={`
+            flex min-h-[2.75rem] items-stretch overflow-hidden rounded-lg border border-slate-200 bg-white
+            shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-shadow
+            focus-within:border-slate-300 focus-within:shadow-md focus-within:ring-2 ${focusRing}
+          `}
         >
-          <Plus size={16} />
-        </button>
+          <input
+            type="text"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => handleKeyDown(e, input, setInput, traits, setTraits)}
+            placeholder={placeholder}
+            dir={isRTL ? 'rtl' : 'ltr'}
+            className="min-w-0 flex-1 border-0 bg-transparent px-3 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-0"
+          />
+          <button
+            type="button"
+            onClick={() => addTrait(input, setInput, traits, setTraits)}
+            disabled={!input.trim()}
+            title={isRTL ? 'הוסף לרשימה' : 'Add to list'}
+            aria-label={isRTL ? 'הוסף לרשימה' : 'Add to list'}
+            className={`flex shrink-0 items-center justify-center border-s border-slate-100 px-3.5 text-slate-500 transition-colors disabled:cursor-not-allowed disabled:opacity-35 ${addBtnHover}`}
+          >
+            <Plus size={18} strokeWidth={2} />
+          </button>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <form
-      className={`bg-white rounded-xl p-5 shadow-lg border border-gray-200 space-y-4 ${isRTL ? 'text-right' : 'text-left'}`}
+      className={`space-y-4 rounded-2xl border border-slate-200/90 bg-gradient-to-b from-slate-50 to-white p-5 shadow-md ${isRTL ? 'text-right' : 'text-left'}`}
       dir={isRTL ? 'rtl' : 'ltr'}
       onSubmit={(e) => {
         e.preventDefault();
@@ -143,6 +173,7 @@ export const TraitPickerTool = ({ onSubmit, language }: TraitPickerToolProps) =>
       }}
     >
       <Section
+        variant="source"
         title={isRTL ? 'מקור – ערכים ואמונות' : 'Source – Values & Beliefs'}
         subtitle={isRTL ? 'מה מניע אותך? מה חשוב לך?' : 'What drives you? What matters to you?'}
         emoji="🌱"
@@ -150,10 +181,11 @@ export const TraitPickerTool = ({ onSubmit, language }: TraitPickerToolProps) =>
         setInput={setSourceInput}
         traits={sourceTraits}
         setTraits={setSourceTraits}
-        placeholder={isRTL ? 'למשל: אמת, צדק, משפחה...' : 'e.g. honesty, justice, family...'}
+        placeholder={isRTL ? 'למשל: אמת, צדק, משפחה…' : 'e.g. honesty, justice, family…'}
       />
 
       <Section
+        variant="nature"
         title={isRTL ? 'טבע – יכולות וכישרונות' : 'Nature – Abilities & Talents'}
         subtitle={isRTL ? 'מה טבעי לך? במה אתה מצטיין?' : 'What comes naturally? What are you good at?'}
         emoji="💎"
@@ -161,16 +193,24 @@ export const TraitPickerTool = ({ onSubmit, language }: TraitPickerToolProps) =>
         setInput={setNatureInput}
         traits={natureTraits}
         setTraits={setNatureTraits}
-        placeholder={isRTL ? 'למשל: יצירתיות, הקשבה, ניתוח...' : 'e.g. creativity, listening, analysis...'}
+        placeholder={isRTL ? 'למשל: יצירתיות, הקשבה, ניתוח…' : 'e.g. creativity, listening, analysis…'}
       />
 
       <button
         type="submit"
         disabled={isSubmitting || (sourceTraits.length === 0 && natureTraits.length === 0)}
-        className="w-full flex items-center justify-center gap-2 bg-primary text-white py-3 rounded-xl font-medium text-sm hover:bg-primary/90 disabled:opacity-50 transition-colors"
+        className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-base
+          bg-primary text-white shadow-sm border border-primary-dark/30
+          hover:bg-primary-light hover:text-white
+          focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500
+          disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary transition-colors [&_svg]:shrink-0"
       >
-        <Send size={16} />
-        {isRTL ? 'שלח' : 'Send'}
+        <Send size={18} className="opacity-95" aria-hidden />
+        <span className="text-white">
+          {isSubmitting
+            ? (isRTL ? 'שולח…' : 'Submitting…')
+            : (isRTL ? 'שלח למאמן' : 'Send to coach')}
+        </span>
       </button>
     </form>
   );

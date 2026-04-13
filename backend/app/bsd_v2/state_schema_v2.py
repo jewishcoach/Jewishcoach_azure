@@ -49,8 +49,10 @@ def create_initial_state(
             "pattern": None,  # דפוס חוזר
             # S8: Stance (gains + losses)
             "stance": {
-                "gains": [],  # מה מרוויח
-                "losses": []  # מה מפסיד
+                "reality_belief": None,  # S10 תפיסת מציאות / ניסוח עמדה
+                "activation_trigger": None,  # S10 טריגר
+                "gains": [],  # S11 מה מרוויח
+                "losses": [],  # S11 מה מפסיד
             },
             # S9: Forces
             "forces": {
