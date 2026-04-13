@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useUser } from '@clerk/clerk-react';
 import type { Message, Conversation, ToolCall } from '../types';
 import type { I18nT } from '../i18nT';
-import { apiClient } from '../services/api';
+import { apiClient, normalizeConversationId } from '../services/api';
 import { BSD_VERSION, getBsdEndpoint } from '../config';
 import { stripUndefined } from '../utils/messageContent';
 
@@ -184,6 +184,14 @@ export const useChat = (displayName?: string | null) => {
       currentConvId = conv.id;
     }
 
+    const convNumeric = normalizeConversationId(currentConvId);
+    if (convNumeric === null) {
+      setLoading(false);
+      console.error('[useChat] Invalid conversation id after create:', currentConvId);
+      return;
+    }
+    currentConvId = convNumeric;
+
     // First user message: overlap warmup with coach request (token is set; conv exists)
     const userTurnCount = messages.filter((m) => m.role === 'user').length;
     if (BSD_VERSION === 'v2' && userTurnCount === 0) {
@@ -213,7 +221,7 @@ export const useChat = (displayName?: string | null) => {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ message: content, conversation_id: currentConvId, language }),
+          body: JSON.stringify({ message: content, conversation_id: convNumeric, language }),
         });
 
         if (!response.ok) {
@@ -225,12 +233,14 @@ export const useChat = (displayName?: string | null) => {
             console.warn('[BSD V2] Conversation not found — creating new conversation and retrying...');
             try {
               const newConv = await createConversation();
-              const retryUrl = getBsdEndpoint(newConv.id, 'v2');
+              const retryCid = normalizeConversationId(newConv.id);
+              if (retryCid === null) throw new Error('Invalid new conversation id');
+              const retryUrl = getBsdEndpoint(retryCid, 'v2');
               const retryResponse = await fetch(retryUrl, {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ message: content, conversation_id: newConv.id, language }),
+                body: JSON.stringify({ message: content, conversation_id: retryCid, language }),
               });
               if (retryResponse.ok) {
                 const retryData = await retryResponse.json();

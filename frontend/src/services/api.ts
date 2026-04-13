@@ -2,6 +2,24 @@ import axios from 'axios';
 import type { AxiosInstance } from 'axios';
 import { getApiBase } from '../config';
 
+/**
+ * Starlette/FastAPI return 400 for path params that are not valid integers
+ * (e.g. /chat/conversations/undefined/insights/safe). Normalize before any request.
+ */
+export function normalizeConversationId(id: unknown): number | null {
+  if (id === null || id === undefined) return null;
+  if (typeof id === 'number') {
+    if (!Number.isFinite(id) || !Number.isInteger(id) || id < 1) return null;
+    return id;
+  }
+  const s = String(id).trim();
+  if (!s || s === 'undefined' || s === 'null' || s === 'NaN') return null;
+  const n = parseInt(s, 10);
+  if (!Number.isFinite(n) || String(n) !== s) return null;
+  if (n < 1) return null;
+  return n;
+}
+
 class ApiClient {
   private client: AxiosInstance;
   private token: string | null = null;
@@ -63,24 +81,38 @@ class ApiClient {
   }
 
   async getConversation(id: number) {
-    const response = await this.client.get(`/chat/conversations/${id}`);
+    const cid = normalizeConversationId(id);
+    if (cid === null) throw new Error('Invalid conversation id');
+    const response = await this.client.get(`/chat/conversations/${cid}`);
     return response.data;
   }
 
   async deleteConversation(id: number) {
-    const response = await this.client.delete(`/chat/conversations/${id}`);
+    const cid = normalizeConversationId(id);
+    if (cid === null) throw new Error('Invalid conversation id');
+    const response = await this.client.delete(`/chat/conversations/${cid}`);
     return response.data;
   }
 
   // Insights (cognitive data)
   async getConversationInsights(conversationId: number) {
+    const cid = normalizeConversationId(conversationId);
+    if (cid === null) {
+      return {
+        current_stage: 'S0',
+        saturation_score: 0.0,
+        cognitive_data: {},
+        metrics: {},
+        exists: false,
+      };
+    }
     try {
       // Use /insights/safe endpoint - never throws 404, returns empty data instead
-      const response = await this.client.get(`/chat/conversations/${conversationId}/insights/safe`);
+      const response = await this.client.get(`/chat/conversations/${cid}/insights/safe`);
       
       // Check if conversation exists
       if (!response.data.exists) {
-        console.warn(`[API] Conversation ${conversationId} not found, returning empty insights`);
+        console.warn(`[API] Conversation ${cid} not found, returning empty insights`);
         return {
           current_stage: 'S0',
           saturation_score: 0.0,
@@ -107,7 +139,9 @@ class ApiClient {
 
   // Messages (streaming handled separately in useChat)
   getMessageStreamUrl(conversationId: number) {
-    return `${this.client.defaults.baseURL}/chat/conversations/${conversationId}/messages`;
+    const cid = normalizeConversationId(conversationId);
+    if (cid === null) throw new Error('Invalid conversation id');
+    return `${this.client.defaults.baseURL}/chat/conversations/${cid}/messages`;
   }
 
   // User Info
@@ -139,18 +173,24 @@ class ApiClient {
 
   // Journal
   async getJournal(conversationId: number) {
-    const response = await this.client.get(`/journal/${conversationId}`);
+    const cid = normalizeConversationId(conversationId);
+    if (cid === null) throw new Error('Invalid conversation id');
+    const response = await this.client.get(`/journal/${cid}`);
     return response.data;
   }
 
   async saveJournal(conversationId: number, content: string) {
-    const response = await this.client.post(`/journal/${conversationId}`, { content });
+    const cid = normalizeConversationId(conversationId);
+    if (cid === null) throw new Error('Invalid conversation id');
+    const response = await this.client.post(`/journal/${cid}`, { content });
     return response.data;
   }
 
   // Tools
   async submitToolResponse(conversationId: number, toolType: string, data: any) {
-    const response = await this.client.post(`/tools/${conversationId}/submit`, {
+    const cid = normalizeConversationId(conversationId);
+    if (cid === null) throw new Error('Invalid conversation id');
+    const response = await this.client.post(`/tools/${cid}/submit`, {
       tool_type: toolType,
       data
     });
@@ -158,7 +198,9 @@ class ApiClient {
   }
 
   async getToolHistory(conversationId: number) {
-    const response = await this.client.get(`/tools/${conversationId}/history`);
+    const cid = normalizeConversationId(conversationId);
+    if (cid === null) throw new Error('Invalid conversation id');
+    const response = await this.client.get(`/tools/${cid}/history`);
     return response.data;
   }
 
