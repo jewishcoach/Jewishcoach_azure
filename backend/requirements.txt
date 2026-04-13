@@ -26,7 +26,8 @@ azure-search-documents==11.4.0
 azure-cognitiveservices-speech==1.36.0
 
 # OpenAI & LangChain (versions from working requirements-old.txt)
-openai==2.15.0
+# 2.15.0 wheels can ship inconsistent _types (ImportError: omit); 2.16+ defines omit/not_given singletons
+openai>=2.16.0,<3.0.0
 langchain-core==1.2.7
 langchain-openai==1.1.7
 langchain-google-genai>=2.0.0
