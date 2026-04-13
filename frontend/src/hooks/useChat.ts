@@ -61,8 +61,8 @@ export const useChat = (displayName?: string | null) => {
       setHasInitialized(true);
       setLoading(false); // Clear loading state on initial load
 
-      // Pre-warm prompt cache for faster first coach response
-      apiClient.warmupCache();
+      // Pre-warm when token exists (often after workspace mounts with Clerk)
+      void apiClient.warmupCache(i18n.language);
 
       // Add welcome message with animation delay
       setTimeout(() => {
@@ -144,8 +144,7 @@ export const useChat = (displayName?: string | null) => {
     setHasInitialized(true); // Mark as initialized to prevent duplicate welcome
     setLoading(false); // Ensure loading is off
 
-    // Pre-warm prompt cache for faster first coach response
-    apiClient.warmupCache();
+    void apiClient.warmupCache(i18n.language);
   };
 
   const applyToolResponse = (result: any) => {
@@ -183,6 +182,12 @@ export const useChat = (displayName?: string | null) => {
     if (!currentConvId) {
       const conv = await createConversation();
       currentConvId = conv.id;
+    }
+
+    // First user message: overlap warmup with coach request (token is set; conv exists)
+    const userTurnCount = messages.filter((m) => m.role === 'user').length;
+    if (BSD_VERSION === 'v2' && userTurnCount === 0) {
+      void apiClient.warmupCache(language);
     }
 
     setLoading(true);

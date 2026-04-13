@@ -42,9 +42,19 @@ class ApiClient {
     return response.data;
   }
 
-  /** Pre-warm prompt cache for faster first response. Call when starting new chat. */
-  async warmupCache() {
-    // Disabled - warmup endpoint was causing 404 in production
+  /**
+   * Pre-warm Azure / connection for faster first coach response.
+   * Base URL already includes `/api` (see getApiBase); path must be `/chat/v2/warmup` (not `/api/...` twice).
+   * No-op without auth token (avoids 401 when hook runs before Clerk sets token).
+   */
+  async warmupCache(language: string = 'he') {
+    if (!this.getToken()) return;
+    const lang = language.toLowerCase().startsWith('en') ? 'en' : 'he';
+    try {
+      await this.client.get('/chat/v2/warmup', { params: { language: lang } });
+    } catch (e) {
+      console.debug('[API] warmupCache failed (non-fatal)', e);
+    }
   }
 
   async getConversations() {

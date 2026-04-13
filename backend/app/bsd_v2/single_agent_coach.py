@@ -17,7 +17,7 @@ import re
 from typing import Dict, Any, Tuple, Optional, List
 from langchain_core.messages import SystemMessage, HumanMessage
 
-from ..bsd.llm import get_azure_chat_llm
+from ..bsd.llm import get_azure_chat_llm, get_azure_chat_llm_4o_mini
 from .state_schema_v2 import add_message, get_conversation_history
 from .prompt_compact import SYSTEM_PROMPT_COMPACT_HE, SYSTEM_PROMPT_COMPACT_EN
 from .prompts.prompt_manager import assemble_system_prompt
@@ -229,8 +229,8 @@ async def warm_prompt_cache(language: str = "he", steps: tuple = ("S0", "S1")) -
     Runs minimal LLM requests so the next real request hits cache.
     """
     try:
-        from ..bsd.llm import get_azure_chat_llm
-        llm = get_azure_chat_llm(purpose="talker")
+        # Same deployment as handle_conversation (4o mini) so TLS pool / routing match real coach calls.
+        llm = get_azure_chat_llm_4o_mini()
         cache_key_prefix = os.getenv("AZURE_OPENAI_PROMPT_CACHE_KEY_PREFIX", "bsd_v2_markdown_prompt")
         from .state_schema_v2 import create_initial_state
         from .prompts.prompt_manager import assemble_system_prompt
@@ -2357,7 +2357,6 @@ async def handle_conversation(
         coach_message = ""
         internal_state: Dict[str, Any] = {}
 
-        from ..bsd.llm import get_azure_chat_llm_4o_mini
         llm = get_azure_chat_llm_4o_mini()
         # Use function_calling — most reliable for structured output with Azure OpenAI.
         # json_schema fails with optional nested fields; json_mode requires "JSON" in prompt.

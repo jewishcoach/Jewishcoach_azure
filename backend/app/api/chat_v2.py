@@ -144,6 +144,7 @@ def save_v2_state(conversation_id: int, state: Dict[str, Any], db: Session) -> N
 
 @router.get("/warmup")
 async def warmup_cache(
+    language: str = "he",
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -152,8 +153,12 @@ async def warmup_cache(
     Returns immediately; warm-up runs in background.
     """
     import asyncio
-    asyncio.create_task(warm_prompt_cache(language="he", steps=("S0", "S1")))
-    return {"status": "warmup_started"}
+
+    lang = (language or "he").lower().strip()
+    if not lang.startswith("en"):
+        lang = "he"
+    asyncio.create_task(warm_prompt_cache(language=lang, steps=("S0", "S1")))
+    return {"status": "warmup_started", "language": lang}
 
 
 @router.post("/message", response_model=ChatResponse)
