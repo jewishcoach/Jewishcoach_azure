@@ -171,45 +171,56 @@ export const useChat = (displayName?: string | null) => {
     else setActiveTool(null);
   };
 
+  /** Token string, or Clerk-style getter so UI can show “thinking” before auth/network. */
   const sendMessage = async (
-    content: string, 
-    language: string, 
-    token: string,
-    onResponseComplete?: (responseText: string) => void  // NEW: Optional callback for voice mode
+    content: string,
+    language: string,
+    tokenOrGetter: string | (() => Promise<string | null | undefined>),
+    onResponseComplete?: (responseText: string) => void,
   ) => {
-    // Ensure we have a conversation ID
-    let currentConvId = conversationId;
-    if (!currentConvId) {
-      const conv = await createConversation();
-      currentConvId = conv.id;
-    }
+    const isFirstUserTurn = messages.filter((m) => m.role === 'user').length === 0;
 
-    const convNumeric = normalizeConversationId(currentConvId);
-    if (convNumeric === null) {
-      setLoading(false);
-      console.error('[useChat] Invalid conversation id after create:', currentConvId);
-      return;
-    }
-    currentConvId = convNumeric;
-
-    // First user message: overlap warmup with coach request (token is set; conv exists)
-    const userTurnCount = messages.filter((m) => m.role === 'user').length;
-    if (BSD_VERSION === 'v2' && userTurnCount === 0) {
-      void apiClient.warmupCache(language);
-    }
-
-    setLoading(true);
-    
-    // Add user message immediately
     const userMessage: Message = {
       id: Date.now(),
       role: 'user',
       content,
       timestamp: new Date().toISOString(),
     };
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
+    setLoading(true);
+
+    let token: string;
+    if (typeof tokenOrGetter === 'function') {
+      const raw = await tokenOrGetter();
+      if (!raw) {
+        setMessages((prev) => prev.filter((m) => m.id !== userMessage.id));
+        setLoading(false);
+        return;
+      }
+      token = raw;
+    } else {
+      token = tokenOrGetter;
+    }
 
     try {
+      let currentConvId = conversationId;
+      if (!currentConvId) {
+        const conv = await createConversation();
+        currentConvId = conv.id;
+      }
+
+      const convNumeric = normalizeConversationId(currentConvId);
+      if (convNumeric === null) {
+        setMessages((prev) => prev.filter((m) => m.id !== userMessage.id));
+        console.error('[useChat] Invalid conversation id after create:', currentConvId);
+        return;
+      }
+      currentConvId = convNumeric;
+
+      if (BSD_VERSION === 'v2' && isFirstUserTurn) {
+        void apiClient.warmupCache(language);
+      }
+
       // ═══════════════════════════════════════════════════════════════════
       // V2: Single-agent conversational coach (non-streaming)
       // ═══════════════════════════════════════════════════════════════════

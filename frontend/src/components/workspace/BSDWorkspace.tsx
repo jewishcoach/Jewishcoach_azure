@@ -114,9 +114,7 @@ export const BSDWorkspace = ({
     setInputValue('');
     isSendingRef.current = true;
     try {
-      const token = (await getToken()) || apiClient.getToken();
-      if (!token) return;
-      await sendMessage(messageToSend, i18n.language, token);
+      await sendMessage(messageToSend, i18n.language, async () => (await getToken()) || apiClient.getToken() || null);
       const convs = await apiClient.getConversations();
       setConversations(convs);
       inputRef.current?.focus();

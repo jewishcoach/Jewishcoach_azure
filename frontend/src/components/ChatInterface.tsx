@@ -75,30 +75,17 @@ export const ChatInterface = ({ displayName }: ChatInterfaceProps) => {
     isSendingRef.current = true; // Mark as sending
     
     try {
-      const token = await getToken();
-      if (!token) {
-        console.error('No auth token available');
-        isSendingRef.current = false;
-        // Re-focus input for user to try again
-        inputRef.current?.focus();
-        return;
-      }
-      
       console.log('📤 Sending message:', messageToSend.substring(0, 50));
-      await sendMessage(messageToSend, i18n.language, token);
-      
-      // Refresh conversations to show updated title
+      // getToken runs inside sendMessage so “coach thinking” shows immediately with the user bubble
+      await sendMessage(messageToSend, i18n.language, getToken);
+
       const convs = await apiClient.getConversations();
       setConversations(convs);
-      
-      // Re-focus input after sending message
       inputRef.current?.focus();
     } catch (error) {
       console.error('Error sending message:', error);
-      // Re-focus input even on error
       inputRef.current?.focus();
     } finally {
-      // Reset sending flag after a small delay
       setTimeout(() => {
         isSendingRef.current = false;
       }, 300);
@@ -211,15 +198,10 @@ export const ChatInterface = ({ displayName }: ChatInterfaceProps) => {
         return;
       }
       
-      const token = await getToken();
-      if (!token) return;
-      
       isSendingRef.current = true;
-      
+
       try {
-        // Send user message through normal flow
-        // Pass a callback that will trigger TTS when the AI response is complete
-        await sendMessage(content, i18n.language, token, (responseText) => {
+        await sendMessage(content, i18n.language, getToken, (responseText) => {
           // This callback is called when the AI response streaming is complete
           console.log('🔊 AI response complete, triggering TTS:', responseText.substring(0, 50));
           if (speakFunctionRef.current) {
