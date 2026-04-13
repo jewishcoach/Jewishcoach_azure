@@ -8,6 +8,7 @@ from typing import Dict, Any, List
 from datetime import datetime
 import logging
 from ..bsd_v2.single_agent_coach import handle_conversation
+from ..bsd_v2.stage_tool_triggers import resolve_post_turn_tool_call, mark_trait_picker_sent
 from ..security.chat_input import ChatMessageRejected, sanitize_chat_message
 
 logger = logging.getLogger(__name__)
@@ -32,27 +33,6 @@ class ToolResponseModel(BaseModel):
     tool_call: Dict[str, Any] | None = None
 
     model_config = ConfigDict(from_attributes=True)
-
-
-# Mirrors chat_v2 stage-entry tool triggers so submit can chain naturally.
-_STAGE_TOOL_TRIGGERS: dict[str, dict] = {
-    "S11": {
-        "type": "tool",
-        "tool_type": "profit_loss",
-        "title_he": "טבלת רווח והפסד",
-        "title_en": "Gain / Loss Table",
-        "instruction_he": "מה אתה מרוויח מהדפוס הזה? ומה אתה מפסיד? מלא את הטבלה.",
-        "instruction_en": "What do you gain from this pattern? And what do you lose? Fill in the table.",
-    },
-    "S12": {
-        "type": "tool",
-        "tool_type": "trait_picker",
-        "title_he": "כוחות מקור וטבע (כמ\"ז)",
-        "title_en": "Source & Nature Forces (KMZ)",
-        "instruction_he": "מהם הערכים והאמונות שמניעים אותך (מקור)? ומהן היכולות והכישרונות הטבעיים שלך (טבע)?",
-        "instruction_en": "What are the values and beliefs that drive you (source)? And what are your natural abilities and talents (nature)?",
-    },
-}
 
 
 @router.post("/{conversation_id}/submit", response_model=ToolResponseModel)
@@ -162,8 +142,10 @@ async def submit_tool_response(
                         timestamp=utc_now(),
                     ))
 
-                if current_step and current_step != prev_step and current_step in _STAGE_TOOL_TRIGGERS:
-                    tool_call = _STAGE_TOOL_TRIGGERS[current_step]
+                tool_call = resolve_post_turn_tool_call(prev_step, updated_state)
+                if tool_call and tool_call.get("tool_type") == "trait_picker":
+                    mark_trait_picker_sent(updated_state)
+                    conversation.v2_state = updated_state
             else:
                 conversation.v2_state = v2_state
 

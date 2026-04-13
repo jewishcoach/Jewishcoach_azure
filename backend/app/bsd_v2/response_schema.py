@@ -61,7 +61,7 @@ class CollectedDataSchema(BaseModel):
     S9:  paradigm (thought behind the action — פרדיגמה)
     S10: stance + trigger (reality perception — עמדה וטריגר)
     S11: stance (gains/losses from the pattern — רווחים והפסדים)
-    S12: forces (values and abilities — כוחות מקור וטבע)
+    S12: forces (values and abilities — כוחות מקור וטבע); offer_trait_picker כשמפעילים את מסך הכוחות
     S13: renewal (new choice / new stance — בחירה חדשה / עמדה חדשה)
     S14: vision (future picture — חזון)
     S15: commitment (concrete first step — מחויבות / צעד קונקרטי)
@@ -99,6 +99,14 @@ class CollectedDataSchema(BaseModel):
         description="S10: reality_belief + activation_trigger. S11: gains + losses (טבלת רווח והפסד). עדכן רק שדות רלוונטיים לשלב.",
     )
     forces: Union[ForcesSchema, None] = Field(default=None, description="כוחות מקור וטבע: ערכים ויכולות (S12 — כוחות). מלא רק בשלב S12!")
+    offer_trait_picker: bool = Field(
+        default=False,
+        description=(
+            "S12 בלבד: האם להפעיל את מסך בחירת הכוחות (trait_picker) בתגובה הזו. "
+            "true רק אחרי הסבר קצר על הכמ״ז ככלי וריכוז מילולי של מקור/טבע לפי סדר החוברת — "
+            "ממש לפני הזמנה למסך; בכל תור אחר false."
+        ),
+    )
     renewal: Union[str, None] = Field(default=None, description="עמדה חדשה / בחירה מודעת שהמשתמש ניסח (S13 — בחירה). מלא רק בשלב S13!")
     vision: Union[str, None] = Field(default=None, description="חזון / תמונת עתיד (S14 — חזון). מלא רק בשלב S14!")
     commitment: Union[str, None] = Field(default=None, description="מחויבות קונקרטית / צעד ראשון (S15 — מחויבות). מלא רק בשלב S15!")

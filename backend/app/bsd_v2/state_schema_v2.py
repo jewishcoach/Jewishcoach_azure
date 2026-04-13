@@ -81,6 +81,8 @@ def create_initial_state(
         "stage_saturation": {},   # Peak saturation recorded per stage: {"S1": 0.9, "S2": 0.85, ...}
         "gate_status": {},  # Track which gates passed (e.g., {"S3_emotions": 4})
         "reflection_notes": [],  # Internal coach observations
+        # Set by API after trait_picker tool_call is returned once (booklet-aligned timing).
+        "trait_picker_tool_sent": False,
     }
 
 

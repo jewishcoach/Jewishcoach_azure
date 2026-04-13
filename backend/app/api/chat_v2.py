@@ -21,6 +21,7 @@ from ..security.chat_input import (
 )
 from ..middleware.usage_limiter import require_message_quota
 from ..bsd_v2.single_agent_coach import handle_conversation, warm_prompt_cache
+from ..bsd_v2.stage_tool_triggers import resolve_post_turn_tool_call, mark_trait_picker_sent
 from ..bsd_v2.state_schema_v2 import create_initial_state
 from ..database import get_db
 from ..limiter import limiter
@@ -49,28 +50,6 @@ class ChatResponse(BaseModel):
     current_step: str
     saturation_score: float
     tool_call: dict | None = None  # Interactive tool to activate in InsightHub
-
-
-# Defines which tool to activate when the coach first enters each stage.
-# Only stages with interactive input cards are listed here.
-_STAGE_TOOL_TRIGGERS: dict[str, dict] = {
-    "S11": {
-        "type": "tool",
-        "tool_type": "profit_loss",
-        "title_he": "טבלת רווח והפסד",
-        "title_en": "Gain / Loss Table",
-        "instruction_he": "מה אתה מרוויח מהדפוס הזה? ומה אתה מפסיד? מלא את הטבלה.",
-        "instruction_en": "What do you gain from this pattern? And what do you lose? Fill in the table.",
-    },
-    "S12": {
-        "type": "tool",
-        "tool_type": "trait_picker",
-        "title_he": "כוחות מקור וטבע (כמ\"ז)",
-        "title_en": "Source & Nature Forces (KMZ)",
-        "instruction_he": "מהם הערכים והאמונות שמניעים אותך (מקור)? ומהן היכולות והכישרונות הטבעיים שלך (טבע)?",
-        "instruction_en": "What are the values and beliefs that drive you (source)? And what are your natural abilities and talents (nature)?",
-    },
-}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -272,12 +251,16 @@ async def send_message_v2(
         # Same as V1: smart title after 4th user message (was missing on V2-only traffic)
         try_autotitle_conversation(db, body.conversation_id, body.language or "he")
         
-        # Detect stage entry: if the coach just moved into a new stage, activate its tool
-        new_step = updated_state.get("current_step", "S0")
-        tool_call = None
-        if new_step != prev_step and new_step in _STAGE_TOOL_TRIGGERS:
-            tool_call = _STAGE_TOOL_TRIGGERS[new_step]
-            logger.info(f"[BSD V2 API] Activating tool for stage {new_step}: {tool_call['tool_type']}")
+        # Interactive tools: S11 on entry; S12 deferred (booklet order — see stage_tool_triggers).
+        tool_call = resolve_post_turn_tool_call(prev_step, updated_state)
+        if tool_call and tool_call.get("tool_type") == "trait_picker":
+            mark_trait_picker_sent(updated_state)
+            save_v2_state(body.conversation_id, updated_state, db)
+        if tool_call:
+            logger.info(
+                f"[BSD V2 API] tool_call: {tool_call['tool_type']} "
+                f"(step {prev_step}→{updated_state.get('current_step')})"
+            )
 
         response = ChatResponse(
             coach_message=coach_message,
