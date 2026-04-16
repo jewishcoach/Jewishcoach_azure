@@ -3,9 +3,9 @@ import { useAuth } from '@clerk/clerk-react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  User, Settings, Save, X, ArrowRight, Target, History,
+  User, Settings, Save, X, Target, History,
   Loader2, CreditCard, FileText, ExternalLink, BookOpen,
-  ScanEye, Scale,
+  ScanEye, Scale, MessageSquare,
 } from 'lucide-react';
 import { CoachingCalendar } from './CoachingCalendar';
 import { RemindersManager } from './RemindersManager';
@@ -93,6 +93,10 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<DashboardTab>('summary');
   const [legalPanel, setLegalPanel] = useState<LegalPanel>(null);
+  const [billingUsage, setBillingUsage] = useState<{
+    messages_used: number;
+    messages_limit: number;
+  } | null>(null);
 
   useEffect(() => {
     loadDashboard();
@@ -106,10 +110,22 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
       if (!token && !apiClient.getToken()) {
         setError(t('error.reconnect'));
         setData(null);
+        setBillingUsage(null);
         return;
       }
       if (token) apiClient.setToken(token);
-      const dashboardData = await apiClient.getDashboard();
+      const [dashboardData, billingOverview] = await Promise.all([
+        apiClient.getDashboard(),
+        apiClient.getBillingOverview().catch(() => null),
+      ]);
+      if (billingOverview?.usage) {
+        setBillingUsage({
+          messages_used: billingOverview.usage.messages_used,
+          messages_limit: billingOverview.usage.messages_limit,
+        });
+      } else {
+        setBillingUsage(null);
+      }
       if (dashboardData?.profile && dashboardData?.stats) {
         setData(dashboardData);
         setEditForm({
@@ -123,6 +139,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
     } catch (err: any) {
       console.error('Error loading dashboard:', err);
       setData(null);
+      setBillingUsage(null);
       const status = err?.response?.status;
       const msg = err?.response?.data?.detail || err?.message;
       setError(status === 401 ? t('error.reconnect') : msg || t('error.loadData'));
@@ -189,6 +206,13 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
     calendar_conversations && calendar_conversations.length > 0
       ? calendar_conversations
       : recent_conversations;
+  const billingMonthBarMax =
+    billingUsage &&
+    typeof billingUsage.messages_limit === 'number' &&
+    billingUsage.messages_limit > 0 &&
+    billingUsage.messages_limit !== -1
+      ? billingUsage.messages_limit
+      : BASIC_PLAN_MESSAGES_PER_MONTH;
   if (!profile || !stats) {
     return (
       <div className="flex-1 flex items-center justify-center p-8" style={{ background: COLORS.bg, color: COLORS.text }}>
@@ -209,7 +233,11 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
           aria-label={t('billing.button')}
         >
           <CreditCard className="w-4 h-4 flex-shrink-0" />
-          <span className="text-[9px] md:text-sm truncate">{t('billing.button.short')}</span>
+          <span className="text-[9px] md:text-sm truncate" dir="auto">
+            {billingUsage && billingUsage.messages_limit !== -1
+              ? `${billingUsage.messages_used}/${billingUsage.messages_limit}`
+              : t('billing.button.short')}
+          </span>
         </button>
       )}
       <button
@@ -256,7 +284,14 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
           style={{ color: COLORS.textMuted }}
         >
           <CreditCard className="w-4 h-4 flex-shrink-0" />
-          {t('billing.button')}
+          <span className="flex flex-col items-start leading-tight">
+            <span>{t('billing.button')}</span>
+            {billingUsage && billingUsage.messages_limit !== -1 ? (
+              <span className="text-xs font-normal opacity-80 mt-0.5" dir="ltr">
+                {billingUsage.messages_used}/{billingUsage.messages_limit}
+              </span>
+            ) : null}
+          </span>
         </button>
       )}
       <button
@@ -414,7 +449,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
             className="flex items-center gap-2 px-3 py-2 mb-4 rounded-xl text-sm transition-colors hover:bg-gray-50"
             style={{ color: COLORS.textMuted }}
           >
-            <ArrowRight className="w-4 h-4" />
+            <MessageSquare className="w-4 h-4 flex-shrink-0" />
             {t('chat.button')}
           </button>
         )}
@@ -544,7 +579,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
                       { label: t('dashboard.conversations'), value: stats.total_conversations, max: 10 },
                       { label: t('dashboard.messages'), value: stats.total_messages, max: 50 },
                       { label: t('dashboard.daysActive'), value: stats.days_active, max: 30 },
-                      { label: t('dashboard.thisMonth'), value: stats.messages_this_month, max: BASIC_PLAN_MESSAGES_PER_MONTH },
+                      { label: t('dashboard.thisMonth'), value: stats.messages_this_month, max: billingMonthBarMax },
                     ]}
                   />
                 </motion.div>
@@ -556,12 +591,12 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
                   transition={{ delay: 0.05 }}
                 >
                   <h3 className="text-base font-semibold mb-4" style={{ color: COLORS.text }}>{t('dashboard.phaseDistribution')}</h3>
-                  {recent_conversations.length > 0 ? (
+                  {conversationsForCalendar.length > 0 ? (
                     <PhaseDonutChart
                       conversationsLabel={t('dashboard.conversations')}
                       data={(() => {
                         const byPhase: Record<string, number> = {};
-                        recent_conversations.forEach((c) => {
+                        conversationsForCalendar.forEach((c) => {
                           const p = c.current_phase || 'S0';
                           byPhase[p] = (byPhase[p] || 0) + 1;
                         });

@@ -156,6 +156,11 @@ class ApiClient {
     return response.data;
   }
 
+  async getBillingOverview() {
+    const response = await this.client.get('/billing/overview');
+    return response.data;
+  }
+
   async updateProfile(data: { display_name?: string; gender?: string }) {
     await this.client.patch('/profile/me', data);
   }

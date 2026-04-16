@@ -4,12 +4,13 @@ User profile and dashboard endpoints
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from collections import Counter
 import json
 
 from ..database import get_db
 from ..models import User, Conversation, Message
+from ..routers.billing import get_or_create_current_usage
 from ..dependencies import get_current_user
 from ..schemas.profile import (
     ProfileUpdate,
@@ -94,12 +95,9 @@ def get_dashboard(
         unique_conv_days.add(ca.date())
     days_active = len(unique_conv_days)
 
-    # Messages this month
-    month_ago = now_utc - timedelta(days=30)
-    messages_this_month = db.query(Message).join(Conversation).filter(
-        Conversation.user_id == user.id,
-        Message.timestamp >= month_ago
-    ).count()
+    # User messages in current billing period (matches subscription / usage_records)
+    usage = get_or_create_current_usage(db, user)
+    messages_this_month = usage.messages_used
     
     # Longest conversation
     longest_conversation_messages = 0
