@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useUser } from '@clerk/clerk-react';
 import type { Message, Conversation, ToolCall } from '../types';
+import { isChatBlockedByActiveTool } from '../utils/activeFormTools';
 import type { I18nT } from '../i18nT';
 import { apiClient, normalizeConversationId } from '../services/api';
 import { BSD_VERSION, getBsdEndpoint } from '../config';
@@ -51,6 +52,7 @@ export const useChat = (displayName?: string | null) => {
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [currentPhase, setCurrentPhase] = useState<string>('S0');
   const [activeTool, setActiveTool] = useState<ToolCall | null>(null); // NEW: Track active tool from backend
+  const activeToolRef = useRef<ToolCall | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
   const [quotaExceeded, setQuotaExceeded] = useState(false);
   const streamingMessageIdRef = useRef<number | null>(null); // Track current streaming message
@@ -80,6 +82,16 @@ export const useChat = (displayName?: string | null) => {
       }, 500); // Small delay for animation
     }
   }, [hasInitialized, messages.length, conversationId, t, i18n.language, user, displayName, clerkUser?.firstName]);
+
+  useEffect(() => {
+    activeToolRef.current = activeTool;
+  }, [activeTool]);
+
+  /** Keep ref in sync immediately so sendMessage cannot race before the next render. */
+  const commitActiveTool = (tool: ToolCall | null) => {
+    activeToolRef.current = tool;
+    setActiveTool(tool);
+  };
 
   const createConversation = async () => {
     const response = await apiClient.createConversation();
@@ -114,7 +126,7 @@ export const useChat = (displayName?: string | null) => {
       setMessages(cleanMessages);
       setCurrentPhase(conv.current_phase || 'S0');
       setConversationId(conversationId);
-      setActiveTool(null); // NEW: Clear active tool when loading different conversation
+      commitActiveTool(null); // NEW: Clear active tool when loading different conversation
       setHasInitialized(true);
       setLoading(false); // Ensure loading is off
     } catch (error) {
@@ -140,7 +152,7 @@ export const useChat = (displayName?: string | null) => {
     setMessages([welcomeMessage]);
     setConversationId(null);
     setCurrentPhase('S0');
-    setActiveTool(null); // NEW: Clear active tool for new conversation
+    commitActiveTool(null); // NEW: Clear active tool for new conversation
     setHasInitialized(true); // Mark as initialized to prevent duplicate welcome
     setLoading(false); // Ensure loading is off
 
@@ -149,7 +161,7 @@ export const useChat = (displayName?: string | null) => {
 
   const applyToolResponse = (result: any) => {
     if (!result) {
-      setActiveTool(null);
+      commitActiveTool(null);
       return;
     }
 
@@ -167,8 +179,8 @@ export const useChat = (displayName?: string | null) => {
     }
 
     if (result.current_step) setCurrentPhase(result.current_step);
-    if (result.tool_call) setActiveTool(result.tool_call);
-    else setActiveTool(null);
+    if (result.tool_call) commitActiveTool(result.tool_call);
+    else commitActiveTool(null);
   };
 
   /** Token string, or Clerk-style getter so UI can show “thinking” before auth/network. */
@@ -178,6 +190,10 @@ export const useChat = (displayName?: string | null) => {
     tokenOrGetter: string | (() => Promise<string | null | undefined>),
     onResponseComplete?: (responseText: string) => void,
   ) => {
+    if (isChatBlockedByActiveTool(activeToolRef.current)) {
+      return;
+    }
+
     const isFirstUserTurn = messages.filter((m) => m.role === 'user').length === 0;
 
     const userMessage: Message = {
@@ -265,7 +281,7 @@ export const useChat = (displayName?: string | null) => {
                   meta: { phase: step },
                 }]);
                 if (retryData.current_step) setCurrentPhase(retryData.current_step);
-                if (retryData.tool_call) setActiveTool(retryData.tool_call);
+                if (retryData.tool_call) commitActiveTool(retryData.tool_call);
                 if (onResponseComplete && retryData.coach_message?.trim()) onResponseComplete(retryData.coach_message.trim());
                 setLoading(false);
                 return;
@@ -297,7 +313,7 @@ export const useChat = (displayName?: string | null) => {
         if (data.current_step) setCurrentPhase(data.current_step);
         if (data.tool_call) {
           console.log('🛠️ [BSD V2] Activating tool:', data.tool_call);
-          setActiveTool(data.tool_call);
+          commitActiveTool(data.tool_call);
         }
         if (onResponseComplete && data.coach_message?.trim()) onResponseComplete(data.coach_message.trim());
         setLoading(false);
@@ -441,7 +457,7 @@ export const useChat = (displayName?: string | null) => {
                   // NEW: Update active tool if provided (for Real-Time Reflection)
                   if (data.tool_call) {
                     console.log('🪞 Received tool_call:', data.tool_call);
-                    setActiveTool(data.tool_call);
+                    commitActiveTool(data.tool_call);
                   }
                   
                   // Call callback with complete response (for voice mode TTS)

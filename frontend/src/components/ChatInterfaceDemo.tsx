@@ -12,6 +12,7 @@ import { apiClient } from '../services/api';
 import { getApiBase } from '../config';
 import type { Conversation } from '../types';
 import type { VoiceGender } from '../constants/voices';
+import { isChatBlockedByActiveTool } from '../utils/activeFormTools';
 
 // Demo mode uses the real API (tunnel domains still need auth via demo token)
 const DEMO_API_URL = import.meta.env.VITE_API_URL || getApiBase();
@@ -32,6 +33,7 @@ export const ChatInterfaceDemo = ({ displayName }: ChatInterfaceDemoProps) => {
   const [isVoiceMode, setIsVoiceMode] = useState(false);
   const [voiceGender, setVoiceGender] = useState<VoiceGender>('female');
   const { messages, loading, currentPhase, conversationId, activeTool, sendMessage, loadConversation, startNewConversation } = useChat(displayName);
+  const chatLockedByForm = isChatBlockedByActiveTool(activeTool);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const speakFunctionRef = useRef<((text: string) => Promise<void>) | null>(null);
@@ -72,7 +74,7 @@ export const ChatInterfaceDemo = ({ displayName }: ChatInterfaceDemoProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!inputValue.trim() || loading || isSendingRef.current) {
+    if (chatLockedByForm || !inputValue.trim() || loading || isSendingRef.current) {
       console.log('⚠️ [DEMO] Ignoring submit - empty or already sending');
       return;
     }
@@ -219,15 +221,17 @@ export const ChatInterfaceDemo = ({ displayName }: ChatInterfaceDemoProps) => {
               <textarea
                 ref={inputRef}
                 value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
+                onChange={(e) => {
+                  if (!chatLockedByForm) setInputValue(e.target.value);
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    handleSubmit(e);
+                    if (!chatLockedByForm) e.currentTarget.form?.requestSubmit();
                   }
                 }}
-                placeholder={t('chatPlaceholder')}
-                disabled={loading || isVoiceMode}
+                placeholder={chatLockedByForm ? t('chat.formBlocksTyping') : t('chatPlaceholder')}
+                disabled={loading || isVoiceMode || chatLockedByForm}
                 className="w-full px-4 py-3 bg-white/10 text-white placeholder-white/40 rounded-xl border border-white/10 focus:border-accent focus:outline-none resize-none min-h-[48px] max-h-32"
                 rows={1}
                 style={{
@@ -238,7 +242,7 @@ export const ChatInterfaceDemo = ({ displayName }: ChatInterfaceDemoProps) => {
             
             <button
               type="submit"
-              disabled={!inputValue.trim() || loading || isVoiceMode}
+              disabled={chatLockedByForm || !inputValue.trim() || loading || isVoiceMode}
               className="px-6 py-3 rounded-xl bg-accent hover:bg-accent-dark disabled:bg-white/5 disabled:text-white/30 text-white transition-colors flex items-center gap-2"
             >
               <Send className="w-5 h-5" />

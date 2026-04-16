@@ -12,6 +12,7 @@ import { InsightHub } from './InsightHub/InsightHub';
 import { apiClient } from '../services/api';
 import type { Conversation } from '../types';
 import type { VoiceGender } from '../constants/voices';
+import { isChatBlockedByActiveTool } from '../utils/activeFormTools';
 
 interface ChatInterfaceProps {
   displayName?: string | null;
@@ -26,6 +27,7 @@ export const ChatInterface = ({ displayName }: ChatInterfaceProps) => {
   const [voiceGender, setVoiceGender] = useState<VoiceGender>('female');
   // Get activeTool from useChat instead of local state
   const { messages, loading, currentPhase, conversationId, activeTool, sendMessage, loadConversation, startNewConversation } = useChat(displayName);
+  const chatLockedByForm = isChatBlockedByActiveTool(activeTool);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const speakFunctionRef = useRef<((text: string) => Promise<void>) | null>(null);
@@ -41,6 +43,12 @@ export const ChatInterface = ({ displayName }: ChatInterfaceProps) => {
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    if (!chatLockedByForm || !isVoiceMode) return;
+    if (stopVoiceSessionRef.current) stopVoiceSessionRef.current();
+    setIsVoiceMode(false);
+  }, [chatLockedByForm, isVoiceMode]);
 
   // Initialize: Get token and fetch conversations (after Clerk session is ready)
   useEffect(() => {
@@ -65,7 +73,7 @@ export const ChatInterface = ({ displayName }: ChatInterfaceProps) => {
     e.preventDefault();
     
     // Prevent duplicate submissions
-    if (!inputValue.trim() || loading || isSendingRef.current) {
+    if (chatLockedByForm || !inputValue.trim() || loading || isSendingRef.current) {
       console.log('⚠️ Ignoring duplicate submit attempt');
       return;
     }
@@ -178,12 +186,9 @@ export const ChatInterface = ({ displayName }: ChatInterfaceProps) => {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      // Create a synthetic form event and trigger submit programmatically
-      // This ensures handleSubmit is only called once via the form's onSubmit
+      if (chatLockedByForm) return;
       const form = e.currentTarget.form;
-      if (form) {
-        form.requestSubmit();
-      }
+      if (form) form.requestSubmit();
     }
   };
 
@@ -192,6 +197,9 @@ export const ChatInterface = ({ displayName }: ChatInterfaceProps) => {
     console.log('🎤 Voice message sync:', role, content.substring(0, 50));
     
     if (role === 'user') {
+      if (isChatBlockedByActiveTool(activeTool)) {
+        return;
+      }
       // Prevent duplicate sends (extra safety layer on top of useContinuousChat deduplication)
       if (isSendingRef.current) {
         console.log('⚠️ Voice: Already sending, ignoring duplicate');
@@ -216,7 +224,7 @@ export const ChatInterface = ({ displayName }: ChatInterfaceProps) => {
         }, 300);
       }
     }
-  }, [getToken, i18n.language, sendMessage]);
+  }, [getToken, i18n.language, sendMessage, activeTool]);
 
   const handleToolSubmit = async (submission: { tool_type: string; data: Record<string, unknown> }) => {
     if (!conversationId) return;
@@ -356,10 +364,12 @@ export const ChatInterface = ({ displayName }: ChatInterfaceProps) => {
                   <textarea
                     ref={inputRef}
                     value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
+                    onChange={(e) => {
+                      if (!chatLockedByForm) setInputValue(e.target.value);
+                    }}
                     onKeyDown={handleKeyDown}
-                    placeholder={t('chat.placeholder')}
-                    disabled={loading}
+                    placeholder={chatLockedByForm ? t('chat.formBlocksTyping') : t('chat.placeholder')}
+                    disabled={loading || chatLockedByForm}
                     className="
                       flex-1 resize-none rounded-xl border-0 bg-transparent
                       px-4 py-3 text-gray-900 placeholder-gray-500
@@ -373,9 +383,10 @@ export const ChatInterface = ({ displayName }: ChatInterfaceProps) => {
                   {/* Voice Mode Button */}
                   <motion.button
                     type="button"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                    whileHover={chatLockedByForm ? undefined : { scale: 1.05 }}
+                    whileTap={chatLockedByForm ? undefined : { scale: 0.95 }}
                     onClick={() => {
+                      if (chatLockedByForm) return;
                       if (isVoiceMode) {
                         // Stop voice session FIRST before changing mode
                         console.log('🎤 Mic button clicked - stopping voice mode');
@@ -391,14 +402,22 @@ export const ChatInterface = ({ displayName }: ChatInterfaceProps) => {
                         setIsVoiceMode(true);
                       }
                     }}
+                    disabled={chatLockedByForm}
                     className={`
                       flex-shrink-0 p-3 rounded-xl transition-all
+                      ${chatLockedByForm ? 'opacity-40 cursor-not-allowed' : ''}
                       ${isVoiceMode
                         ? 'bg-red-500 text-white shadow-glow animate-pulse'
                         : 'bg-gradient-to-br from-purple-500 to-purple-700 text-white hover:shadow-glow'
                       }
                     `}
-                    title={i18n.language === 'he' ? 'מצב קולי' : 'Voice Mode'}
+                    title={
+                      chatLockedByForm
+                        ? t('chat.formBlocksTyping')
+                        : i18n.language === 'he'
+                          ? 'מצב קולי'
+                          : 'Voice Mode'
+                    }
                   >
                     <Mic size={20} />
                   </motion.button>
@@ -406,7 +425,7 @@ export const ChatInterface = ({ displayName }: ChatInterfaceProps) => {
                   {/* Send Button */}
                   <motion.button
                     type="submit"
-                    disabled={!inputValue.trim() || loading}
+                    disabled={chatLockedByForm || !inputValue.trim() || loading}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     className="
