@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   User, Settings, Save, X, Target, History,
   Loader2, CreditCard, FileText, ExternalLink, BookOpen,
-  ScanEye, Scale, MessageSquare,
+  ScanEye, Scale, MessageCircle,
 } from 'lucide-react';
 import { CoachingCalendar } from './CoachingCalendar';
 import { RemindersManager } from './RemindersManager';
@@ -449,7 +449,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
             className="flex items-center gap-2 px-3 py-2 mb-4 rounded-xl text-sm transition-colors hover:bg-gray-50"
             style={{ color: COLORS.textMuted }}
           >
-            <MessageSquare className="w-4 h-4 flex-shrink-0" />
+            <MessageCircle className="w-4 h-4 flex-shrink-0" />
             {t('chat.button')}
           </button>
         )}

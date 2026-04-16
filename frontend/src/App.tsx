@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { SignedIn, SignedOut, UserButton, useUser, useClerk, useAuth } from '@clerk/clerk-react';
-import { Shield, BarChart3, Archive, MessageSquarePlus } from 'lucide-react';
+import { Shield, LayoutDashboard, MessageCircle, Archive, MessageSquarePlus } from 'lucide-react';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { BSDWorkspace } from './components/workspace/BSDWorkspace';
 import { LandingPage } from './components/LandingPage';
@@ -160,7 +160,11 @@ function SignedInContent() {
             className="inline-flex items-center justify-center gap-1.5 md:gap-2 px-2 md:px-4 py-2 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] text-xs md:text-sm font-medium shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors min-h-[40px] min-w-[40px] md:min-h-[44px] md:min-w-0"
             style={{ fontFamily: 'Inter, sans-serif' }}
           >
-            <BarChart3 className="w-[18px] h-[18px] md:w-4 md:h-4 flex-shrink-0 text-[#2E3A56]" strokeWidth={2} />
+            {showDashboard ? (
+              <MessageCircle className="w-[18px] h-[18px] md:w-4 md:h-4 flex-shrink-0 text-[#2E3A56]" strokeWidth={2} />
+            ) : (
+              <LayoutDashboard className="w-[18px] h-[18px] md:w-4 md:h-4 flex-shrink-0 text-[#2E3A56]" strokeWidth={2} />
+            )}
             <span className="hidden md:inline">{showDashboard ? t('chat.button') : t('dashboard.button')}</span>
           </button>
           {isAdmin && !checkingAdmin && (
@@ -300,7 +304,11 @@ function DemoModeContent() {
             className="inline-flex items-center justify-center gap-1.5 md:gap-2 px-2 md:px-4 py-2 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] text-xs md:text-sm font-medium shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors min-h-[40px] min-w-[40px] md:min-h-[44px] md:min-w-0"
             style={{ fontFamily: 'Inter, sans-serif' }}
           >
-            <BarChart3 className="w-[18px] h-[18px] md:w-4 md:h-4 flex-shrink-0 text-[#2E3A56]" strokeWidth={2} />
+            {showDashboard ? (
+              <MessageCircle className="w-[18px] h-[18px] md:w-4 md:h-4 flex-shrink-0 text-[#2E3A56]" strokeWidth={2} />
+            ) : (
+              <LayoutDashboard className="w-[18px] h-[18px] md:w-4 md:h-4 flex-shrink-0 text-[#2E3A56]" strokeWidth={2} />
+            )}
             <span className="hidden md:inline">{showDashboard ? t('chat.button') : t('dashboard.button')}</span>
           </button>
           <LanguageSwitcher />
