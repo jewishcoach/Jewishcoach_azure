@@ -234,9 +234,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
         >
           <CreditCard className="w-4 h-4 flex-shrink-0" />
           <span className="text-[9px] md:text-sm truncate" dir="auto">
-            {billingUsage && billingUsage.messages_limit !== -1
-              ? `${billingUsage.messages_used}/${billingUsage.messages_limit}`
-              : t('billing.button.short')}
+            {t('billing.button.short')}
           </span>
         </button>
       )}
