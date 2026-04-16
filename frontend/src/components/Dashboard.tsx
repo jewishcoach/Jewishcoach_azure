@@ -700,12 +700,9 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
                       </div>
                     )}
                     {stats.favorite_coaching_phase && (
-                      <div className="space-y-1">
-                        <div className="flex justify-between gap-3">
-                          <span style={{ color: COLORS.textMuted }} title={t('dashboard.favoriteStageHint')}>{t('dashboard.favoriteStage')}</span>
-                          <span className="font-medium text-end" style={{ color: COLORS.text }}>{translatePhase(stats.favorite_coaching_phase, t)}</span>
-                        </div>
-                        <p className="text-[11px] leading-snug" style={{ color: COLORS.textMuted }}>{t('dashboard.favoriteStageHint')}</p>
+                      <div className="flex justify-between gap-3">
+                        <span style={{ color: COLORS.textMuted }}>{t('dashboard.favoriteStage')}</span>
+                        <span className="font-medium text-end" style={{ color: COLORS.text }}>{translatePhase(stats.favorite_coaching_phase, t)}</span>
                       </div>
                     )}
                     <div className="flex justify-between">
