@@ -696,15 +696,21 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
                   <h3 className="text-base font-semibold mb-4" style={{ color: COLORS.text }}>{t('dashboard.journey')}</h3>
                   <div className="space-y-2.5 text-sm">
                     {stats.current_phase && (
-                      <div className="flex justify-between">
-                        <span style={{ color: COLORS.textMuted }}>{t('dashboard.currentStage')}</span>
-                        <span className="font-medium" style={{ color: COLORS.accent }}>{translatePhase(stats.current_phase, t)}</span>
+                      <div className="space-y-1">
+                        <div className="flex justify-between gap-3">
+                          <span style={{ color: COLORS.textMuted }} title={t('dashboard.currentStageHint')}>{t('dashboard.currentStage')}</span>
+                          <span className="font-medium text-end" style={{ color: COLORS.accent }}>{translatePhase(stats.current_phase, t)}</span>
+                        </div>
+                        <p className="text-[11px] leading-snug" style={{ color: COLORS.textMuted }}>{t('dashboard.currentStageHint')}</p>
                       </div>
                     )}
                     {stats.favorite_coaching_phase && (
-                      <div className="flex justify-between">
-                        <span style={{ color: COLORS.textMuted }}>{t('dashboard.favoriteStage')}</span>
-                        <span className="font-medium" style={{ color: COLORS.text }}>{translatePhase(stats.favorite_coaching_phase, t)}</span>
+                      <div className="space-y-1">
+                        <div className="flex justify-between gap-3">
+                          <span style={{ color: COLORS.textMuted }} title={t('dashboard.favoriteStageHint')}>{t('dashboard.favoriteStage')}</span>
+                          <span className="font-medium text-end" style={{ color: COLORS.text }}>{translatePhase(stats.favorite_coaching_phase, t)}</span>
+                        </div>
+                        <p className="text-[11px] leading-snug" style={{ color: COLORS.textMuted }}>{t('dashboard.favoriteStageHint')}</p>
                       </div>
                     )}
                     <div className="flex justify-between">

@@ -14,8 +14,17 @@ interface PhaseDonutChartProps {
 }
 
 const PHASE_COLORS = [
-  '#B38728', '#D4AF37', '#FCF6BA', '#AA771C', '#C9A227',
-  '#2E3A56', '#5A6B8A', '#8B9BB3',
+  // Warm gold / amber only (matches dashboard accent); cycles for many phases
+  '#4A3A12',
+  '#5C4818',
+  '#705A1C',
+  '#856B20',
+  '#9A7C24',
+  '#AA8A28',
+  '#B38728',
+  '#BF953F',
+  '#C9A227',
+  '#D4AF37',
 ];
 const COLORS = { text: '#2E3A56', textMuted: '#5A6B8A' };
 
