@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   User, Settings, Save, X, ArrowRight, Target, History,
   Loader2, CreditCard, FileText, ExternalLink, BookOpen,
-  ScanEye
+  ScanEye, Scale,
 } from 'lucide-react';
 import { CoachingCalendar } from './CoachingCalendar';
 import { RemindersManager } from './RemindersManager';
@@ -14,6 +14,7 @@ import { ActivityBarChart } from './dashboard/ActivityBarChart';
 import { PhaseDonutChart } from './dashboard/PhaseDonutChart';
 import { InsightsTab } from './InsightsTab';
 import { PrivacyPolicyPage } from './PrivacyPolicyPage';
+import { TermsOfUsePage } from './TermsOfUsePage';
 import { apiClient } from '../services/api';
 import { BASIC_PLAN_MESSAGES_PER_MONTH } from '../config';
 import type { I18nT } from '../i18nT';
@@ -69,6 +70,8 @@ interface DashboardProps {
 
 type DashboardTab = 'summary' | 'goals' | 'history' | 'insights';
 
+type LegalPanel = null | 'privacy' | 'terms';
+
 const NAV_ITEMS: { id: DashboardTab; labelKey: string; icon: React.ReactNode }[] = [
   { id: 'summary', labelKey: 'dashboard.tab.summary', icon: <User className="w-5 h-5" /> },
   { id: 'goals', labelKey: 'dashboard.tab.goalsReminders', icon: <Target className="w-5 h-5" /> },
@@ -89,7 +92,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
   const [editForm, setEditForm] = useState({ display_name: '', gender: '' });
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<DashboardTab>('summary');
-  const [showPrivacy, setShowPrivacy] = useState(false);
+  const [legalPanel, setLegalPanel] = useState<LegalPanel>(null);
 
   useEffect(() => {
     loadDashboard();
@@ -141,8 +144,11 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
     }
   };
 
-  if (showPrivacy) {
-    return <PrivacyPolicyPage onBack={() => setShowPrivacy(false)} />;
+  if (legalPanel === 'privacy') {
+    return <PrivacyPolicyPage onBack={() => setLegalPanel(null)} />;
+  }
+  if (legalPanel === 'terms') {
+    return <TermsOfUsePage onBack={() => setLegalPanel(null)} />;
   }
 
   if (loading) {
@@ -208,7 +214,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
       )}
       <button
         type="button"
-        onClick={() => setShowPrivacy(true)}
+        onClick={() => setLegalPanel('privacy')}
         className="flex items-center gap-1 px-1.5 py-1 md:px-2 md:py-1.5 rounded-lg transition-colors hover:bg-gray-100 whitespace-nowrap min-w-0"
         style={{ color: COLORS.textMuted }}
         aria-label={t('sidebar.policy')}
@@ -227,17 +233,16 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
         <BookOpen className="w-4 h-4 flex-shrink-0" />
         <span className="text-[9px] md:text-sm truncate">{t('sidebar.book.short')}</span>
       </a>
-      <a
-        href={BSD_WEBSITE_URL}
-        target="_blank"
-        rel="noopener noreferrer"
+      <button
+        type="button"
+        onClick={() => setLegalPanel('terms')}
         className="flex items-center gap-1 px-1.5 py-1 md:px-2 md:py-1.5 rounded-lg transition-colors hover:bg-gray-100 whitespace-nowrap min-w-0"
         style={{ color: COLORS.textMuted }}
-        aria-label={t('sidebar.website')}
+        aria-label={t('sidebar.terms')}
       >
-        <ExternalLink className="w-4 h-4 flex-shrink-0" />
-        <span className="text-[9px] md:text-sm truncate">{t('sidebar.website.short')}</span>
-      </a>
+        <Scale className="w-4 h-4 flex-shrink-0" />
+        <span className="text-[9px] md:text-sm truncate">{t('sidebar.terms.short')}</span>
+      </button>
     </div>
   );
 
@@ -256,7 +261,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
       )}
       <button
         type="button"
-        onClick={() => setShowPrivacy(true)}
+        onClick={() => setLegalPanel('privacy')}
         className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full transition-colors hover:bg-gray-50 text-start"
         style={{ color: COLORS.textMuted }}
       >
@@ -273,6 +278,15 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
         <BookOpen className="w-4 h-4 flex-shrink-0" />
         {t('sidebar.book')}
       </a>
+      <button
+        type="button"
+        onClick={() => setLegalPanel('terms')}
+        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full transition-colors hover:bg-gray-50 text-start"
+        style={{ color: COLORS.textMuted }}
+      >
+        <Scale className="w-4 h-4 flex-shrink-0" />
+        {t('sidebar.terms')}
+      </button>
       <a
         href={BSD_WEBSITE_URL}
         target="_blank"
