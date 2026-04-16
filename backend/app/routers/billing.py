@@ -3,12 +3,13 @@ Billing and subscription management endpoints
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from datetime import datetime, timedelta, timezone
 from typing import List
 import os
 
 from ..database import get_db
-from ..models import User, Subscription, UsageRecord, Coupon, CouponRedemption
+from ..models import User, Subscription, UsageRecord, Coupon, CouponRedemption, Message, Conversation
 from ..dependencies import get_current_user
 from ..schemas.billing import (
     CouponRedeemRequest,
@@ -28,6 +29,39 @@ router = APIRouter(prefix="/api/billing", tags=["billing"])
 # HELPER FUNCTIONS
 # ============================================================================
 
+def count_user_messages_in_billing_period(
+    db: Session,
+    user_id: int,
+    period_start: datetime,
+    period_end: datetime,
+) -> int:
+    """Count persisted user messages in [period_start, period_end) across all conversations."""
+    n = (
+        db.query(func.count(Message.id))
+        .join(Conversation, Message.conversation_id == Conversation.id)
+        .filter(
+            Conversation.user_id == user_id,
+            Message.role == "user",
+            Message.timestamp >= period_start,
+            Message.timestamp < period_end,
+        )
+        .scalar()
+    )
+    return int(n or 0)
+
+
+def sync_usage_messages_used(db: Session, usage: UsageRecord) -> int:
+    """Align UsageRecord.messages_used with the Message table (source of truth)."""
+    n = count_user_messages_in_billing_period(
+        db, usage.user_id, usage.period_start, usage.period_end
+    )
+    if usage.messages_used != n:
+        usage.messages_used = n
+        db.commit()
+        db.refresh(usage)
+    return n
+
+
 def get_or_create_current_usage(db: Session, user: User) -> UsageRecord:
     """Get or create usage record for current billing period"""
     now = datetime.now(timezone.utc)
@@ -36,10 +70,11 @@ def get_or_create_current_usage(db: Session, user: User) -> UsageRecord:
     current_usage = db.query(UsageRecord).filter(
         UsageRecord.user_id == user.id,
         UsageRecord.period_start <= now,
-        UsageRecord.period_end >= now
+        UsageRecord.period_end > now,
     ).first()
     
     if current_usage:
+        sync_usage_messages_used(db, current_usage)
         return current_usage
     
     # Create new usage record for this month
@@ -60,6 +95,7 @@ def get_or_create_current_usage(db: Session, user: User) -> UsageRecord:
     db.add(new_usage)
     db.commit()
     db.refresh(new_usage)
+    sync_usage_messages_used(db, new_usage)
     return new_usage
 
 
@@ -86,12 +122,11 @@ def check_usage_limit(db: Session, user: User, usage_type: str = "message") -> b
 
 
 def increment_usage(db: Session, user: User, usage_type: str = "message", amount: int = 1):
-    """Increment usage counter"""
-    usage = get_or_create_current_usage(db, user)
-    
+    """Increment usage counter (speech only; message counts come from the Message table)."""
     if usage_type == "message":
-        usage.messages_used += amount
-    elif usage_type == "speech":
+        return
+    usage = get_or_create_current_usage(db, user)
+    if usage_type == "speech":
         usage.speech_minutes_used += amount
     
     db.commit()

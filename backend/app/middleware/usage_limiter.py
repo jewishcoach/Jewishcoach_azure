@@ -23,9 +23,7 @@ async def check_message_limit(request: Request, user: User, db: Session) -> None
                 "upgrade_url": "/billing"
             }
         )
-    
-    # Increment usage
-    increment_usage(db, user, "message", 1)
+    # Message usage is derived from persisted Message rows in billing.get_or_create_current_usage.
 
 
 async def check_speech_limit(request: Request, user: User, db: Session, minutes: int = 1):
