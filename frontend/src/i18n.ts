@@ -405,7 +405,7 @@ const resources = {
       "dashboard.journey": "מסע האימון",
       "dashboard.currentStage": "שלב בשיחה שנפתחה לאחרונה",
       "dashboard.favoriteStage": "השלב השכיח ביותר בשיחות שלך",
-      "dashboard.longestConversation": "שיחה הארוכה ביותר",
+      "dashboard.longestConversation": "השיחה הארוכה ביותר",
       "dashboard.messagesCount": "הודעות",
       "dashboard.achievements": "ההישגים שלך",
       "dashboard.achievement5Conversations": "5+ שיחות הושלמו",
