@@ -54,8 +54,15 @@ def _extract_email(payload: dict) -> str | None:
     # Common direct keys
     for key in ("email", "email_address", "primary_email_address", "primary_email", "emailAddress"):
         value = payload.get(key)
-        if isinstance(value, str) and value:
+        if isinstance(value, str) and "@" in value:
             return value
+
+    # Nested primary object (some Clerk / custom templates)
+    primary = payload.get("primary_email_address")
+    if isinstance(primary, dict):
+        addr = primary.get("email_address")
+        if isinstance(addr, str) and "@" in addr:
+            return addr
 
     # Clerk often uses email_addresses with primary_email_address_id
     email_addresses = payload.get("email_addresses")
@@ -75,6 +82,13 @@ def _extract_email(payload: dict) -> str | None:
                 return addr
         if isinstance(first, str) and first:
             return first
+
+    # Custom claims URLs (Clerk JWT templates sometimes use namespaced keys)
+    for key, value in payload.items():
+        if not isinstance(key, str) or "email" not in key.lower():
+            continue
+        if isinstance(value, str) and "@" in value:
+            return value
 
     return None
 
@@ -174,7 +188,9 @@ async def get_current_user(
             should_be_admin = (email == admin_email) if admin_email else False
             updated = False
 
-            if email and user.email.endswith("@clerk.temp"):
+            # Keep DB email aligned with Clerk whenever the token carries an address
+            # (fixes @clerk.temp placeholders and stale rows — needed for billing overrides).
+            if email and "@" in email and user.email != email:
                 user.email = email
                 updated = True
 

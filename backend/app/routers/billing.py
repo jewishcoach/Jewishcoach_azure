@@ -69,7 +69,9 @@ def check_usage_limit(db: Session, user: User, usage_type: str = "message") -> b
     usage = get_or_create_current_usage(db, user)
     
     if usage_type == "message":
-        limit = effective_messages_per_month(email=user.email, plan_key=user.current_plan)
+        limit = effective_messages_per_month(
+            email=user.email, plan_key=user.current_plan, clerk_id=user.clerk_id
+        )
         if limit == -1:  # Unlimited
             return True
         return usage.messages_used < limit
@@ -142,7 +144,9 @@ def get_billing_overview(
         period_start=usage_record.period_start,
         period_end=usage_record.period_end,
         messages_used=usage_record.messages_used,
-        messages_limit=effective_messages_per_month(email=user.email, plan_key=user.current_plan),
+        messages_limit=effective_messages_per_month(
+            email=user.email, plan_key=user.current_plan, clerk_id=user.clerk_id
+        ),
         speech_minutes_used=usage_record.speech_minutes_used,
         speech_minutes_limit=plan_limits["speech_minutes_per_month"],
         plan=user.current_plan
@@ -265,7 +269,9 @@ def get_current_usage(
         period_start=usage_record.period_start,
         period_end=usage_record.period_end,
         messages_used=usage_record.messages_used,
-        messages_limit=effective_messages_per_month(email=user.email, plan_key=user.current_plan),
+        messages_limit=effective_messages_per_month(
+            email=user.email, plan_key=user.current_plan, clerk_id=user.clerk_id
+        ),
         speech_minutes_used=usage_record.speech_minutes_used,
         speech_minutes_limit=plan_limits["speech_minutes_per_month"],
         plan=user.current_plan

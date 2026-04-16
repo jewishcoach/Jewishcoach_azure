@@ -77,7 +77,7 @@ const NAV_ITEMS: { id: DashboardTab; labelKey: string; icon: React.ReactNode }[]
 ];
 
 const BSD_WEBSITE_URL = 'https://bsdcoach.com';
-const BSD_BOOKS_URL = 'https://bsdcoach.com/%d7%94%d6%b7%d7%a1%d6%b0%d6%bc%d7%a4%d6%b8%d7%a8%d6%b4%d7%99%d7%9d/';
+const BSD_BOOKS_URL = 'https://bsdcoach.com/post/the-books';
 
 export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
   const { getToken } = useAuth();

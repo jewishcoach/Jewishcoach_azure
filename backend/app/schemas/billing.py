@@ -72,22 +72,44 @@ PLAN_LIMITS = {
 }
 
 
-# Per-account monthly message caps (email normalized to lowercase).
-# Applied for quota checks and usage UI (overrides plan default).
+# Per-account monthly message caps. Keys use quota_email_key() so Gmail variants match.
 MESSAGE_LIMIT_OVERRIDES_BY_EMAIL: dict[str, int] = {
-    "mor.may11@gmail.com": 10_000,
+    "mormay11@gmail.com": 10_000,  # mor.may11@gmail.com — Gmail ignores dots in local part
+}
+
+# When Clerk has not synced a real email yet, user.email may be "{clerk_id}@clerk.temp" — overrides by clerk_id still apply.
+MESSAGE_LIMIT_OVERRIDES_BY_CLERK_ID: dict[str, int] = {
+    "user_3BeVDVjqPMZCyHr3H4dWPyiileW": 10_000,
 }
 
 
-def effective_messages_per_month(*, email: Optional[str], plan_key: str) -> int:
-    """Resolved message cap for the billing period (plan unlimited wins, then email override)."""
+def quota_email_key(email: Optional[str]) -> str:
+    """
+    Stable key for quota overrides: lowercase, strip; Gmail/Googlemail: dots removed from local part.
+    """
+    raw = (email or "").strip().lower()
+    if "@" not in raw:
+        return raw
+    local, _, domain = raw.partition("@")
+    if domain in ("gmail.com", "googlemail.com"):
+        local = local.replace(".", "")
+    return f"{local}@{domain}"
+
+
+def effective_messages_per_month(
+    *, email: Optional[str], plan_key: str, clerk_id: Optional[str] = None
+) -> int:
+    """Resolved message cap for the billing period (plan unlimited wins, then clerk_id, then email override)."""
     plan_limits = PLAN_LIMITS.get(plan_key, PLAN_LIMITS["basic"])
     plan_cap = plan_limits["messages_per_month"]
     if plan_cap == -1:
         return -1
-    normalized = (email or "").strip().lower()
-    if normalized in MESSAGE_LIMIT_OVERRIDES_BY_EMAIL:
-        return MESSAGE_LIMIT_OVERRIDES_BY_EMAIL[normalized]
+    cid = (clerk_id or "").strip()
+    if cid in MESSAGE_LIMIT_OVERRIDES_BY_CLERK_ID:
+        return MESSAGE_LIMIT_OVERRIDES_BY_CLERK_ID[cid]
+    key = quota_email_key(email)
+    if key in MESSAGE_LIMIT_OVERRIDES_BY_EMAIL:
+        return MESSAGE_LIMIT_OVERRIDES_BY_EMAIL[key]
     return plan_cap
 
 
