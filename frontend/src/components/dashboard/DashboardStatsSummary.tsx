@@ -56,9 +56,10 @@ export function DashboardStatsSummary({
         <h4 className="text-xs font-semibold mb-3 uppercase tracking-wide" style={{ color: COLORS.textMuted }}>
           {t('dashboard.statsActivity')}
         </h4>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           <StatTile value={conversations} label={t('dashboard.conversations')} />
           <StatTile value={daysActive} label={t('dashboard.daysActive')} />
+          <StatTile value={totalMessages} label={t('dashboard.messages')} />
         </div>
       </section>
 
@@ -71,24 +72,6 @@ export function DashboardStatsSummary({
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 }}
-            className="rounded-xl p-4 border"
-            style={{ borderColor: COLORS.border, background: COLORS.cardSub }}
-          >
-            <p className="text-xs font-medium mb-1" style={{ color: COLORS.textMuted }}>
-              {t('dashboard.messagesTotal')}
-            </p>
-            <p className="text-2xl font-semibold tabular-nums" style={{ color: COLORS.text }}>
-              {totalMessages}
-            </p>
-            <p className="text-[11px] mt-1.5 leading-snug" style={{ color: COLORS.textMuted }}>
-              {t('dashboard.messagesTotalHint')}
-            </p>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
             className="rounded-xl p-4 border"
             style={{ borderColor: COLORS.border, background: COLORS.cardSub }}
           >
