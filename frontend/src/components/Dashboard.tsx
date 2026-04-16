@@ -10,7 +10,7 @@ import {
 import { CoachingCalendar } from './CoachingCalendar';
 import { RemindersManager } from './RemindersManager';
 import { GoalsManager } from './GoalsManager';
-import { ActivityBarChart } from './dashboard/ActivityBarChart';
+import { DashboardStatsSummary } from './dashboard/DashboardStatsSummary';
 import { PhaseDonutChart } from './dashboard/PhaseDonutChart';
 import { InsightsTab } from './InsightsTab';
 import { PrivacyPolicyPage } from './PrivacyPolicyPage';
@@ -574,13 +574,13 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
                   animate={{ opacity: 1, y: 0 }}
                 >
                   <h3 className="text-base font-semibold mb-4" style={{ color: COLORS.text }}>{t('dashboard.stats')}</h3>
-                  <ActivityBarChart
-                    data={[
-                      { label: t('dashboard.conversations'), value: stats.total_conversations, max: 10 },
-                      { label: t('dashboard.messages'), value: stats.total_messages, max: 50 },
-                      { label: t('dashboard.daysActive'), value: stats.days_active, max: 30 },
-                      { label: t('dashboard.thisMonth'), value: stats.messages_this_month, max: billingMonthBarMax },
-                    ]}
+                  <DashboardStatsSummary
+                    conversations={stats.total_conversations}
+                    daysActive={stats.days_active}
+                    totalMessages={stats.total_messages}
+                    messagesThisBilling={stats.messages_this_month}
+                    billingCap={billingMonthBarMax}
+                    messagesLimit={billingUsage?.messages_limit ?? null}
                   />
                 </motion.div>
                 <motion.div
