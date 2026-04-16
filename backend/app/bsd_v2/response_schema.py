@@ -25,8 +25,14 @@ class StanceSchema(BaseModel):
 
 
 class ForcesSchema(BaseModel):
-    source: List[str] = Field(default_factory=list, description="ערכים - מקור הכוח")
-    nature: List[str] = Field(default_factory=list, description="יכולות - טבע הכוח")
+    source: List[str] = Field(
+        default_factory=list,
+        description="כוחות מקור (נפש אלוקית): אור, ערכים, שליחות, כיוון עליון. אחרי ריכוז כרטיס הכמ״ז — בדרך כלל 6 פריטים; הראשון = התכונה המובילה בצד המקור",
+    )
+    nature: List[str] = Field(
+        default_factory=list,
+        description="כוחות טבע (נפש טבעית/בהמית): צרכים, הגנות, כבדות, דחפים שמושכים למטה — כלי עבודה לניהול בשכל, לא 'אויב'. אחרי ריכוז — בדרך כלל 6 פריטים; הראשון = התכונה המובילה בצד הטבע",
+    )
 
 
 class EntitySchema(BaseModel):
@@ -61,7 +67,7 @@ class CollectedDataSchema(BaseModel):
     S9:  paradigm (thought behind the action — פרדיגמה)
     S10: stance + trigger (reality perception — עמדה וטריגר)
     S11: stance (gains/losses from the pattern — רווחים והפסדים)
-    S12: forces (values and abilities — כוחות מקור וטבע); offer_trait_picker כשמפעילים את מסך הכוחות
+    S12: forces (כוחות מקור וטבע לפי כרטיס כמ״ז — 6+6 ומובילה ראשונה בכל רשימה); offer_trait_picker כשמפעילים את מסך הכוחות
     S13: renewal (new choice / new stance — בחירה חדשה / עמדה חדשה)
     S14: vision (future picture — חזון)
     S15: commitment (concrete first step — מחויבות / צעד קונקרטי)
@@ -98,7 +104,10 @@ class CollectedDataSchema(BaseModel):
         default=None,
         description="S10: reality_belief + activation_trigger. S11: gains + losses (טבלת רווח והפסד). עדכן רק שדות רלוונטיים לשלב.",
     )
-    forces: Union[ForcesSchema, None] = Field(default=None, description="כוחות מקור וטבע: ערכים ויכולות (S12 — כוחות). מלא רק בשלב S12!")
+    forces: Union[ForcesSchema, None] = Field(
+        default=None,
+        description="S12 בלבד: כוחות מקור (`source`) וטבע (`nature`) לפי החוברת; יעד 6+6, ראשון בכל רשימה = מובילה. מלא רק בשלב S12!",
+    )
     offer_trait_picker: bool = Field(
         default=False,
         description=(

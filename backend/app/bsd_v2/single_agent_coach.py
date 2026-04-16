@@ -319,7 +319,7 @@ def _infer_step_from_coach_message(coach_message: str, language: str) -> Optiona
             ("S9", ["ככה זה אצלי", "טייס אוטומטי", "חוק פנימי", "פרכדיגמה"]),
             ("S10", ["אני מאמין ש", "העמדה שלי", "המציאות היא", "העולם הוא", "טריגר", "כפתור הפעלה"]),
             ("S11", ["מה אתה מרוויח", "מה אתה מפסיד", "מה ההפסד"]),
-            ("S12", ["איזה ערך", "איזו יכולת", "מה חשוב לך"]),
+            ("S12", ["מקור", "טבע", "כוחות", "כמ״ז", "מה מדליק אור"]),
             ("S13", ["איזו עמדה", "מה אתה בוחר", "איזו בחירה"]),
         ]
     else:
@@ -334,7 +334,7 @@ def _infer_step_from_coach_message(coach_message: str, language: str) -> Optiona
             ("S9", ["that's how it is for me", "autopilot", "internal rule", "paradigm"]),
             ("S10", ["I believe that", "my stance", "reality is", "the world is", "trigger", "activation button"]),
             ("S11", ["what do you gain", "what do you lose"]),
-            ("S12", ["what value", "what ability", "what's important"]),
+            ("S12", ["source", "nature", "forces", "KaMaZ", "what lifts you"]),
             ("S13", ["what stance", "what do you choose"]),
         ]
     for step, phrases in indicators:
@@ -553,7 +553,7 @@ def detect_stage_question_mismatch(
             "S9": ["ככה זה אצלי", "טייס אוטומטי", "חוק פנימי", "פרכדיגמה"],
             "S10": ["אני מאמין ש", "העמדה שלי", "המציאות היא", "העולם הוא", "טריגר", "כפתור הפעלה"],
             "S11": ["מה אתה מרוויח", "מה אתה מפסיד", "מה ההפסד", "מה הרווח"],
-            "S12": ["איזה ערך", "איזו יכולת", "מה חשוב לך"],
+            "S12": ["מקור", "טבע", "כוחות", "כמ״ז", "מה מדליק אור"],
             "S13": ["איזו עמדה", "מה אתה בוחר", "איזו בחירה"]
         }
     else:
@@ -568,7 +568,7 @@ def detect_stage_question_mismatch(
             "S9": ["that's how it is for me", "autopilot", "internal rule", "paradigm"],
             "S10": ["I believe that", "my stance", "reality is", "the world is", "trigger", "activation button"],
             "S11": ["what do you gain", "what do you lose"],
-            "S12": ["what value", "what ability", "what's important"],
+            "S12": ["source", "nature", "forces", "KaMaZ", "what lifts you"],
             "S13": ["what stance", "what do you choose"]
         }
 
@@ -709,7 +709,7 @@ def get_next_step_question(current_step: str, language: str = "he") -> str:
             "S9": "מהו ה'ככה זה אצלי' שממנו מופיע הדפוס הזה?",
             "S10": "מאיזו תפיסת מציאות או אמונה הפרכדיגמה הזו נובעת? מה מדליק אותה?",
             "S11": "מה אתה מרוויח מהדפוס הזה?",
-            "S12": "מה חשוב לך בחיים? איזה ערך?",
+            "S12": "מה כאן בשבילך מקור — אור או ערך שמדליק אותך?",
             "S13": "איזו עמדה חדשה אתה בוחר?",
             "S14": "איפה הבחירה הזו מובילה אותך?",
             "S15": "מה תעשה בפעם הבאה?"
@@ -728,7 +728,7 @@ def get_next_step_question(current_step: str, language: str = "he") -> str:
             "S9": "What is the 'that's how it is for me' from which this pattern emerges?",
             "S10": "From what reality perception or belief does this paradigm stem? What activates it?",
             "S11": "What do you gain from this pattern?",
-            "S12": "What's important to you in life? What value?",
+            "S12": "What here is source for you — light or a value that lifts you?",
             "S13": "What new stance do you choose?",
             "S14": "Where does this choice lead you?",
             "S15": "What will you do next time?"

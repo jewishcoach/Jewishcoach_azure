@@ -10,7 +10,7 @@
 - **S9:** Paradigm (thought behind the action).
 - **S10:** Stance (reality perception) + trigger.
 - **S11:** Gains and losses.
-- **S12:** Forces (values and abilities).
+- **S12:** Forces / KaMaZ — **Source** (divine soul) and **Nature** (natural/animal soul); 6+6 card with a leading trait each side; percent mix in **S13**.
 - **S13:** Redesigning the desired (stance→paradigm→pattern + KaMaZ).
 - **S14:** Vision.
 - **S15:** Commitment.

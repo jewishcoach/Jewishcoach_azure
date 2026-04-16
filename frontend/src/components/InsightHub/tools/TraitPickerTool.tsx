@@ -174,26 +174,34 @@ export const TraitPickerTool = ({ onSubmit, language }: TraitPickerToolProps) =>
     >
       <Section
         variant="source"
-        title={isRTL ? 'מקור – ערכים ואמונות' : 'Source – Values & Beliefs'}
-        subtitle={isRTL ? 'מה מניע אותך? מה חשוב לך?' : 'What drives you? What matters to you?'}
+        title={isRTL ? 'מקור (נפש אלוקית)' : 'Source (divine soul)'}
+        subtitle={
+          isRTL
+            ? 'כוחות אור, ערכים, שליחות — הפריט הראשון הוא התכונה המובילה'
+            : 'Light, values, mission — first item is your leading trait'
+        }
         emoji="🌱"
         input={sourceInput}
         setInput={setSourceInput}
         traits={sourceTraits}
         setTraits={setSourceTraits}
-        placeholder={isRTL ? 'למשל: אמת, צדק, משפחה…' : 'e.g. honesty, justice, family…'}
+        placeholder={isRTL ? 'למשל: אמת, שליחות, רחמים…' : 'e.g. truth, purpose, compassion…'}
       />
 
       <Section
         variant="nature"
-        title={isRTL ? 'טבע – יכולות וכישרונות' : 'Nature – Abilities & Talents'}
-        subtitle={isRTL ? 'מה טבעי לך? במה אתה מצטיין?' : 'What comes naturally? What are you good at?'}
+        title={isRTL ? 'טבע (נפש טבעית/בהמית)' : 'Nature (natural/animal soul)'}
+        subtitle={
+          isRTL
+            ? 'צרכים, הגנות, כבדות — כלי עבודה; הראשון = המובילה'
+            : 'Needs, defenses, heaviness — working material; first = leading trait'
+        }
         emoji="💎"
         input={natureInput}
         setInput={setNatureInput}
         traits={natureTraits}
         setTraits={setNatureTraits}
-        placeholder={isRTL ? 'למשל: יצירתיות, הקשבה, ניתוח…' : 'e.g. creativity, listening, analysis…'}
+        placeholder={isRTL ? 'למשל: פחד מביקורת, שליטה, עייפות…' : 'e.g. fear of judgment, control, fatigue…'}
       />
 
       <button

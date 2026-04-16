@@ -17,6 +17,7 @@ import { QuotaExceededModal } from '../QuotaExceededModal';
 import { apiClient } from '../../services/api';
 import type { Conversation } from '../../types';
 import { WORKSPACE_CHAT_FONT } from '../../constants/workspaceFonts';
+import { isChatBlockedByActiveTool } from '../../utils/activeFormTools';
 
 interface BSDWorkspaceProps {
   displayName?: string | null;
@@ -48,6 +49,7 @@ export const BSDWorkspace = ({
   const { messages, loading, currentPhase, conversationId, activeTool, quotaExceeded, dismissQuotaModal, sendMessage, loadConversation, startNewConversation, applyToolResponse } = useChat(displayName);
   const { isRecording, livePreview, startRecording, stopRecording } = useVoiceRecord(i18n.language, getToken);
   const [recordingInputBase, setRecordingInputBase] = useState<string | null>(null);
+  const chatLockedByForm = isChatBlockedByActiveTool(activeTool);
 
   useEffect(() => {
     if (!isRecording) setRecordingInputBase(null);
@@ -86,6 +88,13 @@ export const BSDWorkspace = ({
   }, [activeTool]);
 
   useEffect(() => {
+    if (!chatLockedByForm || !isRecording) return;
+    void (async () => {
+      await stopRecording();
+    })();
+  }, [chatLockedByForm, isRecording, stopRecording]);
+
+  useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
@@ -109,7 +118,7 @@ export const BSDWorkspace = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputValue.trim() || loading || isSendingRef.current) return;
+    if (chatLockedByForm || !inputValue.trim() || loading || isSendingRef.current) return;
     const messageToSend = inputValue.trim();
     setInputValue('');
     isSendingRef.current = true;
@@ -143,6 +152,7 @@ export const BSDWorkspace = ({
   }, [headerNewChatTick, startNewConversation]);
 
   const handleMicClick = useCallback(async () => {
+    if (chatLockedByForm) return;
     if (isRecording) {
       const transcript = await stopRecording();
       if (transcript.trim()) {
@@ -154,7 +164,7 @@ export const BSDWorkspace = ({
       const ok = await startRecording();
       if (ok) setRecordingInputBase(base);
     }
-  }, [isRecording, inputValue, startRecording, stopRecording]);
+  }, [chatLockedByForm, isRecording, inputValue, startRecording, stopRecording]);
 
   const handleToolSubmit = async (submission: { tool_type: string; data: any }): Promise<void> => {
     if (!conversationId) return;
@@ -204,7 +214,7 @@ export const BSDWorkspace = ({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      e.currentTarget.form?.requestSubmit();
+      if (!chatLockedByForm) e.currentTarget.form?.requestSubmit();
     }
   };
 
@@ -374,11 +384,11 @@ export const BSDWorkspace = ({
                   ref={inputRef}
                   value={displayValue}
                   onChange={(e) => {
-                    if (!isRecording) setInputValue(e.target.value);
+                    if (!isRecording && !chatLockedByForm) setInputValue(e.target.value);
                   }}
                   onKeyDown={handleKeyDown}
-                  placeholder={t('chat.placeholder')}
-                  disabled={loading || isRecording}
+                  placeholder={chatLockedByForm ? t('chat.formBlocksTyping') : t('chat.placeholder')}
+                  disabled={loading || isRecording || chatLockedByForm}
                   className="flex-1 min-w-0 resize-none rounded-xl px-4 md:px-6 py-3 md:py-5 text-[14px] md:text-[16px] max-h-28 placeholder-[#5A6B8A]/60 placeholder:text-[12px] md:placeholder:text-[16px] focus:border-[#B38728]/50 focus:ring-2 focus:ring-[#B38728]/20 focus:outline-none"
                   style={{
                     fontFamily: WORKSPACE_CHAT_FONT,
@@ -394,8 +404,14 @@ export const BSDWorkspace = ({
                 <button
                   type="button"
                   onClick={handleMicClick}
-                  disabled={loading}
-                  title={isRecording ? t('chat.stopRecording') : t('chat.recordVoice')}
+                  disabled={loading || chatLockedByForm}
+                  title={
+                    chatLockedByForm
+                      ? t('chat.formBlocksTyping')
+                      : isRecording
+                        ? t('chat.stopRecording')
+                        : t('chat.recordVoice')
+                  }
                   className={`p-3 md:p-4 rounded-xl border transition-colors shadow-sm min-h-[44px] min-w-[44px] flex items-center justify-center ${
                     isRecording
                       ? 'bg-[#2E3A56]/15 border-[#2E3A56]/40 text-[#2E3A56] hover:bg-[#2E3A56]/25'
@@ -406,7 +422,7 @@ export const BSDWorkspace = ({
                 </button>
                 <button
                   type="submit"
-                  disabled={!displayValue.trim() || loading || isRecording}
+                  disabled={chatLockedByForm || !displayValue.trim() || loading || isRecording}
                   className="premium-cta-btn p-3 md:p-4 rounded-xl text-[#2E3A56] font-semibold disabled:opacity-50 min-h-[44px] min-w-[44px] flex items-center justify-center flex-shrink-0"
                 >
                   <Send size={18} strokeWidth={1.5} />
