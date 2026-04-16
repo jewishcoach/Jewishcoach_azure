@@ -29,7 +29,7 @@ PLAN_LIMITS = {
         "name_en": "Basic",
         "price": 0,
         "currency": "ILS",
-        "messages_per_month": 150,
+        "messages_per_month": 1000,
         # תמלול קולי: ללא הגבלה זמנית לכל התוכניות (עד להודעה חדשה)
         "speech_minutes_per_month": -1,
         "features": {
@@ -70,6 +70,25 @@ PLAN_LIMITS = {
         }
     }
 }
+
+
+# Per-account monthly message caps (email normalized to lowercase).
+# Applied for quota checks and usage UI (overrides plan default).
+MESSAGE_LIMIT_OVERRIDES_BY_EMAIL: dict[str, int] = {
+    "mor.may11@gmail.com": 10_000,
+}
+
+
+def effective_messages_per_month(*, email: Optional[str], plan_key: str) -> int:
+    """Resolved message cap for the billing period (plan unlimited wins, then email override)."""
+    plan_limits = PLAN_LIMITS.get(plan_key, PLAN_LIMITS["basic"])
+    plan_cap = plan_limits["messages_per_month"]
+    if plan_cap == -1:
+        return -1
+    normalized = (email or "").strip().lower()
+    if normalized in MESSAGE_LIMIT_OVERRIDES_BY_EMAIL:
+        return MESSAGE_LIMIT_OVERRIDES_BY_EMAIL[normalized]
+    return plan_cap
 
 
 # ============================================================================
