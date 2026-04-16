@@ -174,7 +174,7 @@ export const BillingPage = () => {
           <div className="bg-white/[0.03] rounded-lg p-5 border border-white/[0.06]">
             <div className="flex items-center justify-between mb-3">
               <span className="text-[#94a3b8] text-sm font-medium">{t('billing.messagesUsed')}</span>
-              <span className="text-[#F5F5F0] text-sm">
+              <span className="text-[#F5F5F0] text-sm tabular-nums" dir="ltr" translate="no">
                 {usage.messages_used} / {usage.messages_limit === -1 ? '∞' : usage.messages_limit}
               </span>
             </div>
