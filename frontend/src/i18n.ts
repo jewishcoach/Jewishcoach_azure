@@ -405,7 +405,7 @@ const resources = {
       "dashboard.messagesUnlimited": "ללא הגבלה",
       "dashboard.journey": "מסע האימון",
       "dashboard.currentStage": "שלב בשיחה שנפתחה לאחרונה",
-      "dashboard.favoriteStage": "???? ????? ????? ?????? ???",
+      "dashboard.favoriteStage": "השלב השכיח ביותר בשיחות שלך",
       "dashboard.favoriteStageHint": "השלב שהופיע הכי הרבה פעמים בין כל השיחות.",
       "dashboard.longestConversation": "שיחה הארוכה ביותר",
       "dashboard.messagesCount": "הודעות",
