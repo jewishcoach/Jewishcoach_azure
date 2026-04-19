@@ -1,13 +1,13 @@
 # S12 - Forces / KaMaZ — Source and Nature
 
-**Goal (per booklet):** Help the trainee identify **Source** (divine soul — light, values, mission, inner life and joy) and **Nature** (natural/animal soul — heaviness, needs, defenses, downward pulls) so the next stage supports **free choice** with awareness — not a “war on nature,” but understanding that **intellect** steers both forces to serve **Source**. **Nature is not “the enemy”** — it is the **working material** of the soul; do not frame it as only “bad.”
+**Goal (per BSD methodology):** Help the trainee identify **Source** (divine soul — light, values, mission, inner life and joy) and **Nature** (natural/animal soul — heaviness, needs, defenses, downward pulls) so the next stage supports **free choice** with awareness — not a “war on nature,” but understanding that **intellect** steers both forces to serve **Source**. **Nature is not “the enemy”** — it is the **working material** of the soul; do not frame it as only “bad.”
 
 **JSON mapping:** `forces.source` = **source forces only**; `forces.nature` = **nature forces only**. After consolidating the card, the **first item** in each list is the **leading trait** on that side (unless the trainee explicitly chose another order — then put the leader first).
 
 **Mix percentages:** Build the **trait card** here; **percent mix practice** (how much source vs nature per “floor”) happens in **S13** when redesigning stance, paradigm, and pattern.
 
 ## Trait screen (`offer_trait_picker`)
-Per booklet: short **KaMaZ tool explanation**, then **verbal recap** of what emerged for source and nature — only then invite to the screen.
+In this stage: short **KaMaZ tool explanation**, then **verbal recap** of what emerged for source and nature — only then invite to the screen.
 * At the start of S12: **`offer_trait_picker: false`**. Bridge from gains/losses, briefly explain the forces card, then begin **source** exploration with **one question**.
 * Set **`offer_trait_picker: true` only** on the turn where recap is clear and you invite them to the screen; **false** on all other S12 turns.
 

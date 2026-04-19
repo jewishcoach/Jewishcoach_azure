@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-סימולציות לשלב S1 — נושא אימון לפי החוברת (5 תנאים), מניעת „מריחה“ / רגש־בלבד / אשכול מפוזר.
+סימולציות לשלב S1 — נושא אימון לפי מתודת BSD (5 תנאים), מניעת „מריחה“ / רגש־בלבד / אשכול מפוזר.
 
 כללים (מתוך prompts/stages/s1_topic.md):
   נושא תקף: נובע משינוי, סובב קושי, מטרה בלשון חיובית, תוצאה מדידה, דרכי פעולה.
@@ -46,7 +46,7 @@ def run_offline_s1_prompt_checks() -> list[bool]:
     print("\n=== Offline: תוכן פרומפט S1 ===\n")
     results: list[bool] = []
     p = assemble_system_prompt("S1", "he")
-    results.append(_ok("מזכיר את 5 התנאים / חוברת", "חמשת התנאים" in p or "5" in p))
+    results.append(_ok("מזכיר את 5 התנאים / השיטה", "חמשת התנאים" in p or "5" in p))
     results.append(_ok("מפריד רגש בלבד מאשכול מפוזר", "לא נושא" in p and ("רגש" in p or "כבד" in p)))
     results.append(_ok("מיקוד כשיש כמה כיוונים (משפט אחד / מאתגר)", "משפט אחד" in p or "מאתגר" in p))
     results.append(_ok("איסור שאלות מצב כיום/רצוי ב-S1", "מצב כיום" in p or "מצב רצוי" in p))

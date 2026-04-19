@@ -1,9 +1,9 @@
 """
 When to attach interactive InsightHub tools to a V2 chat response.
 
-S11 (profit_loss): still on first entry into the stage (matches booklet: table right after stance).
+S11 (profit_loss): still on first entry into the stage (matches methodology: table right after stance).
 
-S12 (trait_picker): deferred per booklet order — after explanation / verbal consolidation;
+S12 (trait_picker): deferred per methodology order — after explanation / verbal consolidation;
 the model sets collected_data.offer_trait_picker, with a saturation fallback if it forgets.
 """
 

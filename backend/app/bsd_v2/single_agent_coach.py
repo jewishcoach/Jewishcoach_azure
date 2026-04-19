@@ -2101,7 +2101,7 @@ def build_conversation_context(
         k: v for k, v in state['collected_data'].items()
         if v is not None and v != [] and v != {} and k != "entities"
     }
-    # S7: always show gap_booklet_moves (even []) so the model never re-asks the same booklet type
+    # S7: always show gap_booklet_moves (even []) so the model never re-asks the same gap-work question type
     if state.get("current_step") == "S7":
         moves = (state.get("collected_data") or {}).get("gap_booklet_moves")
         if moves is not None:

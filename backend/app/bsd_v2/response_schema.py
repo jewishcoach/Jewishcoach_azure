@@ -62,7 +62,7 @@ class CollectedDataSchema(BaseModel):
     S4:  thought
     S5:  action_actual (מצוי — actual action only)
     S6:  action_desired, emotion_desired, thought_desired (רצוי — desired state)
-    S7:  gap_name, gap_score, gap_booklet_moves (אופציונלי — מעקב אחר סוגי שאלות החוברת שכבר נאספו)
+    S7:  gap_name, gap_score, gap_booklet_moves (אופציונלי — מעקב אחר סוגי שאלות תפעול הפער שכבר נאספו)
     S8:  pattern
     S9:  paradigm (thought behind the action — פרדיגמה)
     S10: stance + trigger (reality perception — עמדה וטריגר)
@@ -92,7 +92,7 @@ class CollectedDataSchema(BaseModel):
     gap_booklet_moves: List[str] = Field(
         default_factory=list,
         description=(
-            "S7 בלבד: רשימת סוגי שאלות מהחוברת שכבר נאספו בתשובה מלאה — "
+            "S7 בלבד: רשימת סוגי שאלות תפעול הפער שכבר נאספו בתשובה מלאה — "
             "ערכים קבועים: belief, opportunity, dwelling, waiver, authenticity. "
             "הוסף לרשימה (או החזר רשימה מצטברת) כשסוג השאלה כבר נחקר; "
             "**אסור** לשאול שוב אותו סוג אם הוא כבר ברשימה."
@@ -106,13 +106,13 @@ class CollectedDataSchema(BaseModel):
     )
     forces: Union[ForcesSchema, None] = Field(
         default=None,
-        description="S12 בלבד: כוחות מקור (`source`) וטבע (`nature`) לפי החוברת; יעד 6+6, ראשון בכל רשימה = מובילה. מלא רק בשלב S12!",
+        description="S12 בלבד: כוחות מקור (`source`) וטבע (`nature`) לפי השיטה; יעד 6+6, ראשון בכל רשימה = מובילה. מלא רק בשלב S12!",
     )
     offer_trait_picker: bool = Field(
         default=False,
         description=(
             "S12 בלבד: האם להפעיל את מסך בחירת הכוחות (trait_picker) בתגובה הזו. "
-            "true רק אחרי הסבר קצר על הכמ״ז ככלי וריכוז מילולי של מקור/טבע לפי סדר החוברת — "
+            "true רק אחרי הסבר קצר על הכמ״ז ככלי וריכוז מילולי של מקור/טבע לפי סדר השיטה — "
             "ממש לפני הזמנה למסך; בכל תור אחר false."
         ),
     )

@@ -6,7 +6,7 @@ Identify **only** the general topic to coach on.
 
 ---
 
-## What is a Coaching Topic? (Definition – per methodology booklet)
+## What is a Coaching Topic? (Definition – per BSD methodology)
 
 A suitable coaching topic must meet all five conditions:
 1. **Stems from change** – The client wants to make a change in their life
