@@ -558,6 +558,18 @@ def get_conversation_insights_safe(
             cognitive_data = _v2_collected_data_to_cognitive_data(
                 collected_data, messages, current_stage=current_stage
             )
+            sh = state.get("active_shehiya")
+            if isinstance(sh, dict) and (sh.get("title") or sh.get("body")):
+                cognitive_data = {
+                    **cognitive_data,
+                    "shehiya_mission": {
+                        "title": sh.get("title"),
+                        "body": sh.get("body"),
+                        "step": sh.get("step"),
+                        "station_id": sh.get("station_id"),
+                        "assigned_at": sh.get("assigned_at"),
+                    },
+                }
             logger.info(
                 f"[Insights] conv={conversation_id} step={current_stage} "
                 f"collected_keys={list(collected_data.keys()) if collected_data else []} "

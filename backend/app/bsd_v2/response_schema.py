@@ -137,6 +137,17 @@ class InternalStateSchema(BaseModel):
     reflection: str = Field(
         description="חשיבה פנימית קצרה של המאמן לפני שהוא עונה"
     )
+    shehiya_mission_title: Optional[str] = Field(
+        default=None,
+        description=(
+            "כותרת קצרה למשימת השהיה — **רק** כשבתור זה סוגרים קומה ומקדמים שלב (נקודת תחנה) לפי הוראות המערכת; "
+            "אחרת null."
+        ),
+    )
+    shehiya_mission_body: Optional[str] = Field(
+        default=None,
+        description="גוף משימת ההשהיה (2–4 משפטים); null אם אין תחנה בתור זה.",
+    )
     collected_data: CollectedDataSchema = Field(
         default_factory=CollectedDataSchema,
         description="נתונים שנאספו בשלב הנוכחי. עדכן רק שדות רלוונטיים לשלב הנוכחי.",

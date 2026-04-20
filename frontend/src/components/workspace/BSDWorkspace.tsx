@@ -11,6 +11,7 @@ import { ArchiveDrawer } from './ArchiveDrawer';
 import { HudPanel } from './HudPanel';
 import { ShehiyaProgress } from './ShehiyaProgress';
 import { WorkspaceMessageBubble } from './WorkspaceMessageBubble';
+import { StationCheckpointBar } from './StationCheckpointBar';
 import { ActiveToolRenderer } from '../InsightHub/ActiveToolRenderer';
 import { Dashboard } from '../Dashboard';
 import { QuotaExceededModal } from '../QuotaExceededModal';
@@ -46,7 +47,21 @@ export const BSDWorkspace = ({
   const [archiveOpenLocal, setArchiveOpenLocal] = useState(false);
   const archiveOpen = archiveOpenProp ?? archiveOpenLocal;
   const setArchiveOpen = onArchiveOpenChange ?? setArchiveOpenLocal;
-  const { messages, loading, currentPhase, conversationId, activeTool, quotaExceeded, dismissQuotaModal, sendMessage, loadConversation, startNewConversation, applyToolResponse } = useChat(displayName);
+  const {
+    messages,
+    loading,
+    currentPhase,
+    conversationId,
+    activeTool,
+    quotaExceeded,
+    dismissQuotaModal,
+    stationCheckpoint,
+    dismissStationCheckpoint,
+    sendMessage,
+    loadConversation,
+    startNewConversation,
+    applyToolResponse,
+  } = useChat(displayName);
   const { isRecording, livePreview, startRecording, stopRecording } = useVoiceRecord(i18n.language, getToken);
   const [recordingInputBase, setRecordingInputBase] = useState<string | null>(null);
   const chatLockedByForm = isChatBlockedByActiveTool(activeTool);
@@ -379,6 +394,15 @@ export const BSDWorkspace = ({
 
           {/* Input - below messages; full width on mobile */}
           <div className="p-4 md:p-9 border-t border-[#E2E4E8] bg-[#F5F5F0] flex-shrink-0">
+              {conversationId != null && stationCheckpoint ? (
+                <StationCheckpointBar
+                  checkpoint={stationCheckpoint}
+                  conversationId={conversationId}
+                  getToken={() => getToken()}
+                  onDismiss={dismissStationCheckpoint}
+                  onIntentSent={() => {}}
+                />
+              ) : null}
               <form onSubmit={handleSubmit} className="flex items-end gap-3 md:gap-5">
                 <textarea
                   ref={inputRef}

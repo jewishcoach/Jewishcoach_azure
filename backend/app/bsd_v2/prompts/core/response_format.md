@@ -11,10 +11,14 @@
     "collected_data": {
       "topic": null
     },
-    "reflection": "משפט פנימי קצר"
+    "reflection": "משפט פנימי קצר",
+    "shehiya_mission_title": null,
+    "shehiya_mission_body": null
   }
 }
 ```
+
+(כאשר המערכת מבקשת נקודת תחנה — מלאו את `shehiya_mission_title` ו־`shehiya_mission_body`; אחרת השאירו null.)
 
 **חובה:**
 - התשובה כולה אובייקט JSON אחד. אין טקסט לפני או אחרי.

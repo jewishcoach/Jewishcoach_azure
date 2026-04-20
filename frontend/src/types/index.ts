@@ -5,6 +5,16 @@ export interface User {
   isAdmin: boolean;
 }
 
+/** V2 station checkpoint payload (API + optional message meta) */
+export interface StationCheckpointPayload {
+  station_id: string;
+  step: string;
+  floor_title: string;
+  homework_title: string;
+  homework_body: string;
+  language: string;
+}
+
 export interface Message {
   id: number;
   role: 'user' | 'assistant';
@@ -13,6 +23,7 @@ export interface Message {
   meta?: {
     sources?: any;
     phase?: string;  // Stage (S0-S15) when message was sent - for smart scroll
+    station_checkpoint?: StationCheckpointPayload;
   };
 }
 

@@ -11,10 +11,14 @@
     "collected_data": {
       "topic": null
     },
-    "reflection": "short internal note"
+    "reflection": "short internal note",
+    "shehiya_mission_title": null,
+    "shehiya_mission_body": null
   }
 }
 ```
+
+(When the system requests a station checkpoint, fill `shehiya_mission_title` and `shehiya_mission_body`; otherwise keep them null.)
 
 **Required:**
 - The entire response is one JSON object. No text before or after.

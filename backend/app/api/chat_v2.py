@@ -8,7 +8,7 @@ import asyncio
 import json
 import logging
 import time
-from typing import Dict, Any
+from typing import Dict, Any, Literal
 from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -23,6 +23,7 @@ from ..middleware.usage_limiter import require_message_quota
 from ..bsd_v2.single_agent_coach import handle_conversation, warm_prompt_cache
 from ..bsd_v2.stage_tool_triggers import resolve_post_turn_tool_call, mark_trait_picker_sent
 from ..bsd_v2.state_schema_v2 import create_initial_state
+from ..bsd_v2.station_checkpoint import ensure_training_started_at, apply_station_intent
 from ..database import get_db
 from ..limiter import limiter
 from ..models import User, Conversation as ConversationModel, Message
@@ -50,6 +51,12 @@ class ChatResponse(BaseModel):
     current_step: str
     saturation_score: float
     tool_call: dict | None = None  # Interactive tool to activate in InsightHub
+    station_checkpoint: dict | None = None  # Sticky mission card + Insights (V2 stations)
+
+
+class StationIntentRequest(BaseModel):
+    conversation_id: int
+    intent: Literal["pause_here", "continue_coaching"]
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -140,6 +147,23 @@ async def warmup_cache(
     return {"status": "warmup_started", "language": lang}
 
 
+@router.post("/station-intent")
+def station_intent_v2(
+    body: StationIntentRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Persist user choice after a station checkpoint (pause vs continue).
+    Shapes the next coach turn via session_flow flags (no LLM call).
+    """
+    _get_conversation_or_404(body.conversation_id, current_user.id, db)
+    state = load_v2_state(body.conversation_id, db)
+    apply_station_intent(state, body.intent)
+    save_v2_state(body.conversation_id, state, db)
+    return {"ok": True}
+
+
 @router.post("/message", response_model=ChatResponse)
 @limiter.limit("30/minute")
 async def send_message_v2(
@@ -192,6 +216,7 @@ async def send_message_v2(
         # Load state
         t1 = time.time()
         state = load_v2_state(body.conversation_id, db)
+        ensure_training_started_at(state)
         t2 = time.time()
         logger.info(f"[PERF API] Load state from DB: {(t2-t1)*1000:.0f}ms")
         logger.info(f"[BSD V2 API] Loaded state: step={state['current_step']}, messages={len(state.get('messages', []))}")
@@ -212,7 +237,9 @@ async def send_message_v2(
         )
         t4 = time.time()
         logger.info(f"[PERF API] handle_conversation: {(t4-t3)*1000:.0f}ms")
-        
+
+        station_checkpoint = updated_state.pop("last_station_checkpoint_api", None)
+
         # Save state
         t5 = time.time()
         logger.info(f"[BSD V2 API] Saving state: step={updated_state['current_step']}, messages={len(updated_state.get('messages', []))}")
@@ -235,12 +262,15 @@ async def send_message_v2(
         db.add(user_msg)
         
         # Save coach message (meta.phase for smart scroll in frontend)
+        coach_meta: Dict[str, Any] = {"phase": updated_state["current_step"]}
+        if station_checkpoint:
+            coach_meta["station_checkpoint"] = station_checkpoint
         coach_msg = Message(
             conversation_id=body.conversation_id,
             role="assistant",
             content=coach_message,
             timestamp=utc_now(),
-            meta={"phase": updated_state["current_step"]}
+            meta=coach_meta,
         )
         db.add(coach_msg)
         
@@ -268,6 +298,7 @@ async def send_message_v2(
             current_step=updated_state["current_step"],
             saturation_score=updated_state["saturation_score"],
             tool_call=tool_call,
+            station_checkpoint=station_checkpoint,
         )
         
         api_end = time.time()
@@ -332,6 +363,7 @@ async def send_message_v2(
             conversation_id=body.conversation_id,
             current_step=state.get("current_step", "S1"),
             saturation_score=state.get("saturation_score", 0.3),
+            station_checkpoint=None,
         )
 
 

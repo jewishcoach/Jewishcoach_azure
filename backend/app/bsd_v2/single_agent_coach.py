@@ -22,6 +22,12 @@ from .state_schema_v2 import add_message, get_conversation_history
 from .prompt_compact import SYSTEM_PROMPT_COMPACT_HE, SYSTEM_PROMPT_COMPACT_EN
 from .prompts.prompt_manager import assemble_system_prompt
 from .response_schema import CoachResponseSchema
+from .station_checkpoint import (
+    build_session_flow_prompt_addon,
+    build_station_wrap_instruction,
+    consume_session_flow_flags,
+    maybe_commit_station_checkpoint,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -203,11 +209,14 @@ def _get_system_prompt(
                 prompt += "\n\n**מגדר:** המתאמן/ת היא אישה - פנה ב'את'." if user_gender == "female" else "\n\n**מגדר:** המתאמן/ת הוא גבר - פנה ב'אתה'."
             else:
                 prompt += f"\n\n**Gender:** Coachee is {user_gender}."
+        prompt += build_session_flow_prompt_addon(state, language)
+        prompt += build_station_wrap_instruction(state, language)
         logger.info("[PROMPT] Using compact mode")
         return prompt
 
     logger.info("[PROMPT] Using markdown stage mode")
-    return assemble_system_prompt(current_step=current_step, language=language, user_gender=user_gender)
+    assembled = assemble_system_prompt(current_step=current_step, language=language, user_gender=user_gender)
+    return assembled + build_session_flow_prompt_addon(state, language) + build_station_wrap_instruction(state, language)
 
 
 def _sanitize_coach_message(coach_message: str) -> str:
@@ -2642,12 +2651,21 @@ async def handle_conversation(
                 state["collected_data"] = cd
                 internal_state["collected_data"] = {**internal_state.get("collected_data", {}), "topic": inferred}
 
+        new_step_final = internal_state.get("current_step", old_step)
+        station_api_payload = maybe_commit_station_checkpoint(
+            state, old_step, new_step_final, internal_state, language
+        )
+
         # Add user message
         state = add_message(state, "user", user_message)
-        
+
         # Add coach message with internal state
         state = add_message(state, "coach", coach_message, internal_state)
-        
+
+        consume_session_flow_flags(state)
+        if station_api_payload:
+            state["last_station_checkpoint_api"] = station_api_payload
+
         end_time = time.time()
         total_ms = (end_time - start_time) * 1000
         

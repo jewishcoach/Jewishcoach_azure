@@ -75,6 +75,17 @@ class ApiClient {
     }
   }
 
+  /** After a V2 station checkpoint: pause for the day vs continue (shapes next coach turn). */
+  async sendStationIntent(conversationId: number, intent: 'pause_here' | 'continue_coaching') {
+    const cid = normalizeConversationId(conversationId);
+    if (cid === null) throw new Error('Invalid conversation id');
+    const response = await this.client.post('/chat/v2/station-intent', {
+      conversation_id: cid,
+      intent,
+    });
+    return response.data;
+  }
+
   async getConversations() {
     const response = await this.client.get('/chat/conversations');
     return response.data;

@@ -83,6 +83,8 @@ def create_initial_state(
         "reflection_notes": [],  # Internal coach observations
         # Set by API after trait_picker tool_call is returned once (methodology-aligned timing).
         "trait_picker_tool_sent": False,
+        # Station checkpoints + pause/continue UX (see station_checkpoint.py)
+        "session_flow": {},
     }
 
 

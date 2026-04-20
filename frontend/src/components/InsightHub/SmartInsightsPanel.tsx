@@ -11,6 +11,10 @@ import { ListWidget } from './widgets/ListWidget';
 
 interface CognitiveData {
   topic?: string;
+  /** V2 may mirror these at root as well as under event_actual */
+  emotions?: string[];
+  thought?: string;
+  action_actual?: string;
   event_actual?: {
     emotions_list?: string[];
     thought_content?: string;
@@ -37,6 +41,13 @@ interface CognitiveData {
   commitment?: {
     difficulty?: string;
     result?: string;
+  };
+  shehiya_mission?: {
+    title?: string;
+    body?: string;
+    step?: string;
+    station_id?: string;
+    assigned_at?: string;
   };
   stance?: {
     reality_belief?: string;
@@ -136,9 +147,8 @@ export const SmartInsightsPanel = ({ conversationId, currentPhase }: SmartInsigh
   // Stage titles mapping (bilingual)
   const stageTitles = {
     'S1': { he: 'נושא האימון', en: 'Coaching Topic' },
-    'S3': { he: 'מסך הרגש', en: 'Emotion Screen' },
-    'S4': { he: 'מסך המחשבה', en: 'Thought Screen' },
-    'S5': { he: 'מסך המעשה (מצוי)', en: 'Action Screen (actual)' },
+    /** Single card: emotion + thought + action (aligned with S6 "Desired" layout) */
+    'MEZUY': { he: 'המצוי', en: 'Actual' },
     'S6': { he: 'הרצוי', en: 'Desired' },
     'S7': { he: 'ניתוח הפער', en: 'Gap Analysis' },
     'S8': { he: 'דפוס', en: 'Pattern' },
@@ -163,33 +173,25 @@ export const SmartInsightsPanel = ({ conversationId, currentPhase }: SmartInsigh
     });
   }
 
-  // S3: Emotions
-  if (insights.event_actual?.emotions_list && insights.event_actual.emotions_list.length > 0) {
+  // S3–S5: המצוי — כרטיס אחד (עיצוב מקביל ל־S6 הרצוי)
+  const ea = insights.event_actual;
+  const emotionsList =
+    ea?.emotions_list?.length ? ea.emotions_list : (insights.emotions?.length ? insights.emotions : []);
+  const thoughtActual = (ea?.thought_content ?? insights.thought ?? '').trim();
+  const actionActual = (ea?.action_content ?? insights.action_actual ?? '').trim();
+  const hasMezuy =
+    emotionsList.length > 0 || Boolean(thoughtActual) || Boolean(actionActual);
+  if (hasMezuy) {
+    const inMezuyStages = currentPhase === 'S3' || currentPhase === 'S4' || currentPhase === 'S5';
     insightItems.push({
-      stage: 'S3',
-      title: stageTitles['S3'][lang],
-      status: currentPhase === 'S3' ? 'draft' : 'final',
-      data: { emotions_list: insights.event_actual.emotions_list }
-    });
-  }
-
-  // S4: Thought
-  if (insights.event_actual?.thought_content) {
-    insightItems.push({
-      stage: 'S4',
-      title: stageTitles['S4'][lang],
-      status: currentPhase === 'S4' ? 'draft' : 'final',
-      data: { thought: insights.event_actual.thought_content }
-    });
-  }
-
-  // S5: Action
-  if (insights.event_actual?.action_content) {
-    insightItems.push({
-      stage: 'S5',
-      title: stageTitles['S5'][lang],
-      status: currentPhase === 'S5' ? 'draft' : 'final',
-      data: { action: insights.event_actual.action_content }
+      stage: 'MEZUY',
+      title: stageTitles['MEZUY'][lang],
+      status: inMezuyStages ? 'draft' : 'final',
+      data: {
+        emotions_list: emotionsList,
+        thought: thoughtActual,
+        action: actionActual,
+      },
     });
   }
 
@@ -303,9 +305,21 @@ export const SmartInsightsPanel = ({ conversationId, currentPhase }: SmartInsigh
     });
   }
 
+  const shehiyaItems: InsightItem[] = [];
+  if (insights.shehiya_mission?.title || insights.shehiya_mission?.body) {
+    shehiyaItems.push({
+      stage: 'SHEHIYA',
+      title: lang === 'he' ? 'משימת השהיה' : 'Between-session mission',
+      status: 'draft',
+      data: { ...insights.shehiya_mission },
+    });
+  }
+
+  const orderedItems = [...shehiyaItems, ...insightItems];
+
   return (
     <div className="p-4 space-y-4 overflow-y-auto custom-scrollbar">
-      {insightItems.map((item, index) => (
+      {orderedItems.map((item, index) => (
         <ReflectionCard
           key={`${item.stage}-${index}`}
           status={item.status}
@@ -322,6 +336,18 @@ export const SmartInsightsPanel = ({ conversationId, currentPhase }: SmartInsigh
 // Helper function to render the appropriate widget for each stage
 function renderWidgetContent(stage: string, data: any, language: 'he' | 'en') {
   switch (stage) {
+    case 'SHEHIYA':
+      return (
+        <div className="space-y-2 text-sm text-primary">
+          {data.title ? (
+            <div className="font-semibold text-primary-dark leading-snug">{data.title}</div>
+          ) : null}
+          {data.body ? (
+            <p className="leading-relaxed whitespace-pre-wrap">{data.body}</p>
+          ) : null}
+        </div>
+      );
+
     case 'S1':
       return (
         <div className="text-sm text-primary font-medium">
@@ -329,34 +355,45 @@ function renderWidgetContent(stage: string, data: any, language: 'he' | 'en') {
         </div>
       );
 
-    case 'S3':
+    case 'MEZUY':
       return (
-        <div className="flex flex-wrap gap-1.5">
-          {data.emotions_list.map((emotion: string, idx: number) => (
-            <motion.span
-              key={idx}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: idx * 0.1 }}
-              className="px-2.5 py-1 bg-orange-100 text-orange-700 text-sm rounded-full border border-orange-300 font-medium"
-            >
-              {emotion}
-            </motion.span>
-          ))}
-        </div>
-      );
-
-    case 'S4':
-      return (
-        <div className="text-sm text-primary italic">
-          "{data.thought}"
-        </div>
-      );
-
-    case 'S5':
-      return (
-        <div className="text-sm text-primary">
-          {data.action}
+        <div className="space-y-2 text-sm">
+          {data.emotions_list?.length > 0 && (
+            <div>
+              <span className="font-semibold">
+                {language === 'he' ? 'רגש (מצוי):' : 'Emotion (actual):'}
+              </span>{' '}
+              <span className="inline-flex flex-wrap gap-1.5 align-middle">
+                {data.emotions_list.map((emotion: string, idx: number) => (
+                  <motion.span
+                    key={idx}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: idx * 0.06 }}
+                    className="px-2.5 py-1 bg-orange-100 text-orange-700 text-xs rounded-full border border-orange-300 font-medium"
+                  >
+                    {emotion}
+                  </motion.span>
+                ))}
+              </span>
+            </div>
+          )}
+          {data.thought ? (
+            <div>
+              <span className="font-semibold">
+                {language === 'he' ? 'מחשבה (מצוי):' : 'Thought (actual):'}
+              </span>{' '}
+              <span className="text-primary italic">"{data.thought}"</span>
+            </div>
+          ) : null}
+          {data.action ? (
+            <div>
+              <span className="font-semibold">
+                {language === 'he' ? 'מעשה (מצוי):' : 'Action (actual):'}
+              </span>{' '}
+              <span className="text-primary">{data.action}</span>
+            </div>
+          ) : null}
         </div>
       );
 
@@ -453,7 +490,7 @@ function renderWidgetContent(stage: string, data: any, language: 'he' | 'en') {
         </div>
       );
 
-    case 'S13':
+    case 'S15':
       return (
         <div className="space-y-2 text-sm">
           <div>

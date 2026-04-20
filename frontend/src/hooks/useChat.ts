@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useUser } from '@clerk/clerk-react';
-import type { Message, Conversation, ToolCall } from '../types';
+import type { Message, Conversation, ToolCall, StationCheckpointPayload } from '../types';
 import { isChatBlockedByActiveTool } from '../utils/activeFormTools';
 import type { I18nT } from '../i18nT';
 import { apiClient, normalizeConversationId } from '../services/api';
@@ -55,6 +55,7 @@ export const useChat = (displayName?: string | null) => {
   const activeToolRef = useRef<ToolCall | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
   const [quotaExceeded, setQuotaExceeded] = useState(false);
+  const [stationCheckpoint, setStationCheckpoint] = useState<StationCheckpointPayload | null>(null);
   const streamingMessageIdRef = useRef<number | null>(null); // Track current streaming message
 
   // Auto-send welcome message on mount (only on first load)
@@ -126,6 +127,7 @@ export const useChat = (displayName?: string | null) => {
       setMessages(cleanMessages);
       setCurrentPhase(conv.current_phase || 'S0');
       setConversationId(conversationId);
+      setStationCheckpoint(null);
       commitActiveTool(null); // NEW: Clear active tool when loading different conversation
       setHasInitialized(true);
       setLoading(false); // Ensure loading is off
@@ -152,6 +154,7 @@ export const useChat = (displayName?: string | null) => {
     setMessages([welcomeMessage]);
     setConversationId(null);
     setCurrentPhase('S0');
+    setStationCheckpoint(null);
     commitActiveTool(null); // NEW: Clear active tool for new conversation
     setHasInitialized(true); // Mark as initialized to prevent duplicate welcome
     setLoading(false); // Ensure loading is off
@@ -282,6 +285,7 @@ export const useChat = (displayName?: string | null) => {
                 }]);
                 if (retryData.current_step) setCurrentPhase(retryData.current_step);
                 if (retryData.tool_call) commitActiveTool(retryData.tool_call);
+                setStationCheckpoint(retryData.station_checkpoint ?? null);
                 if (onResponseComplete && retryData.coach_message?.trim()) onResponseComplete(retryData.coach_message.trim());
                 setLoading(false);
                 return;
@@ -303,18 +307,20 @@ export const useChat = (displayName?: string | null) => {
         const assistantMessageId = Date.now() + 1;
         const coachContent = stripUndefined(String(data.coach_message ?? ''));
         const step = data.current_step ?? currentPhase;
+        const sc = data.station_checkpoint as StationCheckpointPayload | null | undefined;
         setMessages(prev => [...prev, {
           id: assistantMessageId,
           role: 'assistant',
           content: coachContent,
           timestamp: new Date().toISOString(),
-          meta: { phase: step },
+          meta: { phase: step, ...(sc ? { station_checkpoint: sc } : {}) },
         }]);
         if (data.current_step) setCurrentPhase(data.current_step);
         if (data.tool_call) {
           console.log('🛠️ [BSD V2] Activating tool:', data.tool_call);
           commitActiveTool(data.tool_call);
         }
+        setStationCheckpoint(sc ?? null);
         if (onResponseComplete && data.coach_message?.trim()) onResponseComplete(data.coach_message.trim());
         setLoading(false);
         return;
@@ -528,6 +534,8 @@ export const useChat = (displayName?: string | null) => {
     activeTool,
     quotaExceeded,
     dismissQuotaModal: () => setQuotaExceeded(false),
+    stationCheckpoint,
+    dismissStationCheckpoint: () => setStationCheckpoint(null),
     sendMessage,
     loadConversation,
     startNewConversation,
