@@ -223,6 +223,60 @@ def test_conversation_flow_simulation():
     
     return step_1_result and step_2_result and step_3_result
 
+
+def test_s12_to_s13_blocked_without_forces():
+    """S12→S13 requires 6+6 in forces (or explicit shorter-card consent)."""
+    print(f"\n{Colors.BOLD}Test: S12→S13 blocked without complete forces{Colors.END}")
+    state = {
+        "current_step": "S12",
+        "collected_data": {"forces": {"source": ["a"], "nature": ["b"]}},
+        "messages": [{"sender": "user", "content": "ok"}],
+    }
+    ok, _ = validate_stage_transition(
+        "S12", "S13", state, "he", coach_message="נמשיך", user_message="כן",
+        proposed_collected_data={"forces": {"source": ["a"], "nature": ["b"]}},
+    )
+    passed = not ok
+    print_test("Block S12→S13 when forces incomplete", passed, f"is_valid={ok}")
+    return passed
+
+
+def test_s12_to_s13_allowed_with_six_six():
+    print(f"\n{Colors.BOLD}Test: S12→S13 allowed with 6+6 forces{Colors.END}")
+    src = [f"s{i}" for i in range(6)]
+    nat = [f"n{i}" for i in range(6)]
+    state = {"current_step": "S12", "collected_data": {}, "messages": []}
+    ok, corr = validate_stage_transition(
+        "S12",
+        "S13",
+        state,
+        "he",
+        coach_message="יש כרטיס",
+        proposed_collected_data={"forces": {"source": src, "nature": nat}},
+    )
+    passed = ok and corr is None
+    print_test("Allow S12→S13 with 6+6 in proposed forces", passed)
+    return passed
+
+
+def test_s12_to_s13_allowed_with_short_consent():
+    print(f"\n{Colors.BOLD}Test: S12→S13 with explicit shorter-card wording{Colors.END}")
+    state = {"current_step": "S12", "collected_data": {"forces": {"source": [], "nature": []}}, "messages": []}
+    ok, corr = validate_stage_transition(
+        "S12",
+        "S13",
+        state,
+        "he",
+        coach_message="מסכימים לגרסה מקוצרת לפי מה שאמרת",
+        user_message="כן",
+        proposed_collected_data={},
+        proposed_reflection="כמ״ז_מקוצר: הסכמה",
+    )
+    passed = ok and corr is None
+    print_test("Allow S12→S13 when consent heuristic matches", passed)
+    return passed
+
+
 def main():
     print(f"\n{Colors.BOLD}{'='*80}")
     print("🧪 Testing Safety Net Fix: Prevent Overriding Good LLM Transitions")
@@ -234,6 +288,9 @@ def main():
         test_s3_to_s4_with_thought_question(),
         test_s3_to_s4_without_thought_question(),
         test_conversation_flow_simulation(),
+        test_s12_to_s13_blocked_without_forces(),
+        test_s12_to_s13_allowed_with_six_six(),
+        test_s12_to_s13_allowed_with_short_consent(),
     ]
     
     passed = sum(tests)

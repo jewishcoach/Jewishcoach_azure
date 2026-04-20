@@ -1692,6 +1692,76 @@ def _safe_stage_index(step: Any, stage_order: List[str]) -> int:
     return stage_order.index(s) if s in stage_order else -1
 
 
+def _nonempty_trait_list(val: Any) -> List[str]:
+    if not isinstance(val, list):
+        return []
+    return [str(x).strip() for x in val if isinstance(x, str) and str(x).strip()]
+
+
+def _merged_forces_after_turn(
+    state: Dict[str, Any],
+    proposed_collected_data: Optional[Dict[str, Any]],
+) -> Tuple[List[str], List[str]]:
+    """Simulate add_message merge for forces.source / forces.nature (same rules as state_schema_v2)."""
+    base_cd = state.get("collected_data") or {}
+    existing = dict(base_cd.get("forces") or {})
+    src = _nonempty_trait_list(existing.get("source"))
+    nat = _nonempty_trait_list(existing.get("nature"))
+    if not proposed_collected_data:
+        return src, nat
+    value = proposed_collected_data.get("forces")
+    if not isinstance(value, dict):
+        return src, nat
+    for sub_k, sub_v in value.items():
+        if sub_v is not None and sub_v != [] and isinstance(sub_v, list):
+            if sub_k == "source":
+                src = _nonempty_trait_list(sub_v)
+            elif sub_k == "nature":
+                nat = _nonempty_trait_list(sub_v)
+    return src, nat
+
+
+def _kamaz_short_card_consent(
+    user_message: Optional[str],
+    coach_message: str,
+    proposed_reflection: Optional[str],
+    language: str,
+) -> bool:
+    """Explicit trainee consent to a shorter-than-6+6 KaMaZ card (Heuristic — reflection should document)."""
+    blob = " ".join(
+        [
+            (user_message or "").lower(),
+            (coach_message or "").lower(),
+            (proposed_reflection or "").lower(),
+        ]
+    )
+    if language == "he":
+        keys = (
+            "גרסה מקוצרת",
+            "כרטיס מקוצר",
+            "פחות משש",
+            "פחות מ-6",
+            "לא שש",
+            "מסכימה לקצר",
+            "מסכים לקצר",
+            "הסכמה לקיצור",
+            "קיצור הכמ",
+            "כמ״ז_מקוצר",
+            "kamaz_short",
+            "shorter card",
+        )
+    else:
+        keys = (
+            "shorter card",
+            "fewer than six",
+            "fewer than 6",
+            "agree to shorten",
+            "short version",
+            "kamaz_short",
+        )
+    return any(k in blob for k in keys)
+
+
 def validate_stage_transition(
     old_step: str,
     new_step: str,
@@ -1699,6 +1769,8 @@ def validate_stage_transition(
     language: str,
     coach_message: str = "",
     user_message: Optional[str] = None,
+    proposed_collected_data: Optional[Dict[str, Any]] = None,
+    proposed_reflection: Optional[str] = None,
 ) -> Tuple[bool, Optional[str]]:
     """
     Safety net: validate if stage transition is premature.
@@ -1709,6 +1781,8 @@ def validate_stage_transition(
         state: Current conversation state
         language: "he" or "en"
         coach_message: The LLM's proposed message (to check if already in new stage)
+        proposed_collected_data: This turn's `collected_data` from the model (for S12→S13 forces gate).
+        proposed_reflection: This turn's `reflection` string (shorter-card consent may appear here).
     
     Returns:
         (is_valid, correction_message)
@@ -1719,6 +1793,21 @@ def validate_stage_transition(
     stage_order = ["S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13", "S14", "S15"]
     old_idx = _safe_stage_index(old_step, stage_order)
     new_idx = _safe_stage_index(new_step, stage_order)
+
+    # KaMaZ / forces gate: do not enter stance redesign (S13) without a complete card or explicit consent
+    if old_step == "S12" and new_step == "S13":
+        src, nat = _merged_forces_after_turn(state, proposed_collected_data)
+        if len(src) >= 6 and len(nat) >= 6:
+            pass  # satisfied — fall through to other rules (e.g. move-on)
+        elif _kamaz_short_card_consent(user_message, coach_message, proposed_reflection, language):
+            logger.info(
+                f"[Safety Net] S12→S13: allowing shorter KaMaZ (src={len(src)}, nat={len(nat)}) — consent heuristic"
+            )
+        else:
+            logger.warning(
+                f"[Safety Net] Blocked S12→S13: incomplete forces (src={len(src)}, nat={len(nat)})"
+            )
+            return False, coach_message
 
     # GENERIC SOLUTION: Check if user wants to move on
     recent_user_messages = [
@@ -2477,7 +2566,14 @@ async def handle_conversation(
         # 7. Safety Net: Validate stage transition
         t13 = time.time()
         is_valid, correction = validate_stage_transition(
-            old_step, new_step, state, language, coach_message, user_message=user_message
+            old_step,
+            new_step,
+            state,
+            language,
+            coach_message,
+            user_message=user_message,
+            proposed_collected_data=internal_state.get("collected_data"),
+            proposed_reflection=str(internal_state.get("reflection") or ""),
         )
         t14 = time.time()
         logger.info(f"[PERF] Stage transition validation: {(t14-t13)*1000:.0f}ms")

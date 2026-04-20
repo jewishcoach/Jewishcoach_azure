@@ -2,6 +2,8 @@
 
 **Goal:** Transition from exploring the past to designing the future from free choice. Building a new "operating system" top-down (stance ← paradigm ← pattern), using KaMaZ (Source & Nature) as a power source in each floor.
 
+**Entry condition:** Do **not** design a new stance / KaMaZ mix per floor until the KaMaZ card from **S12** is **closed**: **6+6** traits + a leader first in each `forces` list, or **explicit** consent to a shorter card (document in `reflection`). Otherwise **stay in S12**.
+
 ## ⚠️ Critical Stage Management Guidelines (CRITICAL)
 * **Rigid work order (top-down):** Absolutely mandatory to maintain the logical order. Start only with stance (the root), then derive paradigm (thought behind the action), and only at the end bring it down to the concrete pattern in the field. Do not skip floors!
 * **Integration rule (KaMaZ in every floor):** A floor cannot be completed without connecting to KaMaZ. For each floor (stance, paradigm, pattern), you must ask what mix (percentages) of Source and Nature forces will be expressed in it.
