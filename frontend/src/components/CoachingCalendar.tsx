@@ -89,6 +89,34 @@ export const CoachingCalendar = ({ conversations, variant = 'dark', stats }: Coa
 
   return (
     <div className="space-y-4">
+      {/* Stats Summary — above calendar */}
+      <motion.div
+        className={`${theme.accentBg} rounded-2xl p-6 border ${variant === 'light' ? 'border-[#2E3A56]/30' : 'border-[#FCF6BA]/20'}`}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <div className="grid grid-cols-3 gap-4 text-center">
+          <div>
+            <div className={`text-3xl font-bold ${theme.accent}`}>
+              {stats ? stats.days_active : Object.keys(conversationsByDate).length}
+            </div>
+            <div className={`text-sm mt-1 ${theme.muted}`}>{t('calendar.activeDays')}</div>
+          </div>
+          <div>
+            <div className={`text-3xl font-bold ${theme.title}`}>
+              {stats ? stats.total_conversations : conversations.length}
+            </div>
+            <div className={`text-sm mt-1 ${theme.muted}`}>{t('calendar.totalSessions')}</div>
+          </div>
+          <div>
+            <div className={`text-3xl font-bold ${theme.accent}`}>
+              {stats ? stats.total_messages : conversations.reduce((sum, c) => sum + c.message_count, 0)}
+            </div>
+            <div className={`text-sm mt-1 ${theme.muted}`}>{t('calendar.totalMessages')}</div>
+          </div>
+        </div>
+      </motion.div>
+
       {/* Calendar */}
       <motion.div
         className={theme.card}
@@ -172,34 +200,6 @@ export const CoachingCalendar = ({ conversations, variant = 'dark', stats }: Coa
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Stats Summary */}
-      <motion.div
-        className={`${theme.accentBg} rounded-2xl p-6 border ${variant === 'light' ? 'border-[#2E3A56]/30' : 'border-[#FCF6BA]/20'}`}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <div className="grid grid-cols-3 gap-4 text-center">
-          <div>
-            <div className={`text-3xl font-bold ${theme.accent}`}>
-              {stats ? stats.days_active : Object.keys(conversationsByDate).length}
-            </div>
-            <div className={`text-sm mt-1 ${theme.muted}`}>{t('calendar.activeDays')}</div>
-          </div>
-          <div>
-            <div className={`text-3xl font-bold ${theme.title}`}>
-              {stats ? stats.total_conversations : conversations.length}
-            </div>
-            <div className={`text-sm mt-1 ${theme.muted}`}>{t('calendar.totalSessions')}</div>
-          </div>
-          <div>
-            <div className={`text-3xl font-bold ${theme.accent}`}>
-              {stats ? stats.total_messages : conversations.reduce((sum, c) => sum + c.message_count, 0)}
-            </div>
-            <div className={`text-sm mt-1 ${theme.muted}`}>{t('calendar.totalMessages')}</div>
-          </div>
-        </div>
-      </motion.div>
     </div>
   );
 };

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { useTranslation } from 'react-i18next';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   User, Settings, Save, X, Target, History,
   Loader2, CreditCard, FileText, ExternalLink, BookOpen,
@@ -10,13 +10,11 @@ import {
 import { CoachingCalendar } from './CoachingCalendar';
 import { RemindersManager } from './RemindersManager';
 import { GoalsManager } from './GoalsManager';
-import { DashboardStatsSummary } from './dashboard/DashboardStatsSummary';
 import { PhaseDonutChart } from './dashboard/PhaseDonutChart';
 import { InsightsTab } from './InsightsTab';
 import { PrivacyPolicyPage } from './PrivacyPolicyPage';
 import { TermsOfUsePage } from './TermsOfUsePage';
 import { apiClient } from '../services/api';
-import { BASIC_PLAN_MESSAGES_PER_MONTH } from '../config';
 import type { I18nT } from '../i18nT';
 
 // BSD palette: navy primary, minimal red - gold for soft accents
@@ -68,12 +66,12 @@ interface DashboardProps {
   onShowBilling?: () => void;
 }
 
-type DashboardTab = 'summary' | 'goals' | 'history' | 'insights';
+type DashboardTab = 'settings' | 'goals' | 'history' | 'insights';
 
 type LegalPanel = null | 'privacy' | 'terms';
 
 const NAV_ITEMS: { id: DashboardTab; labelKey: string; icon: React.ReactNode }[] = [
-  { id: 'summary', labelKey: 'dashboard.tab.summary', icon: <User className="w-5 h-5" /> },
+  { id: 'settings', labelKey: 'dashboard.tab.settings', icon: <Settings className="w-5 h-5" /> },
   { id: 'goals', labelKey: 'dashboard.tab.goalsReminders', icon: <Target className="w-5 h-5" /> },
   { id: 'history', labelKey: 'dashboard.tab.history', icon: <History className="w-5 h-5" /> },
   { id: 'insights', labelKey: 'dashboard.tab.insights', icon: <ScanEye className="w-5 h-5" /> },
@@ -88,10 +86,9 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({ display_name: '', gender: '' });
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<DashboardTab>('summary');
+  const [activeTab, setActiveTab] = useState<DashboardTab>('settings');
   const [legalPanel, setLegalPanel] = useState<LegalPanel>(null);
   const [billingUsage, setBillingUsage] = useState<{
     messages_used: number;
@@ -153,7 +150,6 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
     try {
       await apiClient.updateProfile(editForm);
       await loadDashboard();
-      setEditing(false);
     } catch (error) {
       console.error('Error saving profile:', error);
     } finally {
@@ -206,13 +202,6 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
     calendar_conversations && calendar_conversations.length > 0
       ? calendar_conversations
       : recent_conversations;
-  const billingMonthBarMax =
-    billingUsage &&
-    typeof billingUsage.messages_limit === 'number' &&
-    billingUsage.messages_limit > 0 &&
-    billingUsage.messages_limit !== -1
-      ? billingUsage.messages_limit
-      : BASIC_PLAN_MESSAGES_PER_MONTH;
   if (!profile || !stats) {
     return (
       <div className="flex-1 flex items-center justify-center p-8" style={{ background: COLORS.bg, color: COLORS.text }}>
@@ -220,7 +209,14 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
       </div>
     );
   }
-  const isNewUser = stats.total_conversations === 0;
+
+  const revertProfileForm = () => {
+    setEditForm({
+      display_name: profile.display_name || '',
+      gender: profile.gender || '',
+    });
+  };
+
   /** Mobile: horizontal compact links in header */
   const HeaderLinks = () => (
     <div className="flex items-center gap-1 md:gap-2 flex-nowrap flex-shrink-0">
@@ -342,11 +338,11 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
       <div className="md:hidden sticky top-0 z-10 flex items-center gap-2 px-3 py-2 border-b flex-nowrap min-w-0" style={{ background: COLORS.card, borderColor: COLORS.border, boxShadow: COLORS.shadow }}>
         <button
           type="button"
-          onClick={() => setEditing(!editing)}
+          onClick={() => setActiveTab('settings')}
           className="p-1.5 rounded-lg transition-colors hover:bg-gray-100 flex-shrink-0"
           style={{ color: COLORS.textMuted }}
-          title={t('dashboard.title')}
-          aria-label={t('dashboard.title')}
+          title={t('dashboard.tab.settings')}
+          aria-label={t('dashboard.tab.settings')}
         >
           <Settings className="w-5 h-5" />
         </button>
@@ -367,83 +363,6 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
         </div>
         <HeaderLinks />
       </div>
-
-      {/* Mobile: Edit profile modal when Settings clicked */}
-      <AnimatePresence>
-      {editing && (
-        <div className="md:hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setEditing(false)} aria-hidden="true" />
-          <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            className="relative w-full max-h-[85vh] overflow-y-auto rounded-t-2xl p-6 pb-8"
-            style={{ background: COLORS.card, boxShadow: '0 -4px 24px rgba(0,0,0,0.15)' }}
-          >
-            <div className="mb-5">
-              <div className="flex items-center justify-between mb-1.5">
-                <h3 className="text-base font-semibold" style={{ color: COLORS.text }}>{t('dashboard.title')}</h3>
-                <button
-                  type="button"
-                  onClick={() => setEditing(false)}
-                  className="p-2 rounded-lg transition-colors hover:bg-gray-100"
-                  style={{ color: COLORS.textMuted }}
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              <p className="text-xs leading-snug" style={{ color: COLORS.textMuted }}>{t('dashboard.subtitle')}</p>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: COLORS.textMuted }}>{t('dashboard.displayName')}</label>
-                <input
-                  type="text"
-                  value={editForm.display_name}
-                  onChange={(e) => setEditForm({ ...editForm, display_name: e.target.value })}
-                  className="w-full px-3 py-2.5 text-sm rounded-lg border focus:ring-2 focus:ring-blue-200 focus:outline-none"
-                  style={{ borderColor: COLORS.border, color: COLORS.text }}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: COLORS.textMuted }}>{t('dashboard.gender')}</label>
-                <select
-                  value={editForm.gender}
-                  onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}
-                  className="w-full px-3 py-2 text-[13px] leading-snug rounded-lg border focus:ring-2 focus:ring-blue-200 focus:outline-none"
-                  style={{ borderColor: COLORS.border, color: COLORS.text }}
-                >
-                  <option value="">{t('dashboard.notSpecified')}</option>
-                  <option value="male">{t('dashboard.male')}</option>
-                  <option value="female">{t('dashboard.female')}</option>
-                </select>
-              </div>
-              <p className="text-xs" style={{ color: COLORS.textMuted }}>{t('dashboard.genderHelp')}</p>
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={handleSaveProfile}
-                  disabled={saving}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium rounded-xl text-white disabled:opacity-50"
-                  style={{ background: COLORS.accent }}
-                >
-                  <Save className="w-4 h-4" />
-                  {saving ? t('dashboard.saving') : t('dashboard.save')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEditing(false)}
-                  className="px-5 py-3 text-sm rounded-xl"
-                  style={{ background: COLORS.border, color: COLORS.text }}
-                >
-                  {t('dashboard.cancel')}
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      )}
-      </AnimatePresence>
 
       {/* Desktop: Left Sidebar */}
       <aside className="hidden md:flex w-56 flex-shrink-0 flex-col py-6 px-3" style={{ background: COLORS.card, boxShadow: COLORS.shadow }}>
@@ -557,110 +476,76 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
             </div>
           </motion.div>
 
-          {/* Tab: Summary — usage vs plan + profile (desktop) */}
-          {activeTab === 'summary' && (
-            <div className="space-y-6">
-              {isNewUser && (
-                <motion.div
-                  className="rounded-xl py-4 px-5 text-center"
-                  style={{ background: COLORS.accentLight }}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  <p className="text-sm" style={{ color: COLORS.text }}>{t('dashboard.newUserWelcome')}</p>
-                </motion.div>
-              )}
-
+          {/* Tab: Settings — personal profile only (open card) */}
+          {activeTab === 'settings' && (
+            <div className="max-w-xl w-full mx-auto">
               <motion.div
-                className="rounded-xl p-5 max-w-xl md:max-w-none mx-auto"
+                className="rounded-xl p-5 md:p-6"
                 style={{ background: COLORS.card, boxShadow: COLORS.shadow }}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
               >
-                <h3 className="text-base font-semibold mb-4" style={{ color: COLORS.text }}>{t('dashboard.statsMessages')}</h3>
-                <DashboardStatsSummary
-                  variant="messagesOnly"
-                  conversations={stats.total_conversations}
-                  daysActive={stats.days_active}
-                  totalMessages={stats.total_messages}
-                  messagesThisBilling={stats.messages_this_month}
-                  billingCap={billingMonthBarMax}
-                  messagesLimit={billingUsage?.messages_limit ?? null}
-                />
-              </motion.div>
-
-              <div className="max-w-xl md:max-w-none mx-auto">
-                <motion.div
-                  className="hidden md:block rounded-xl p-5"
-                  style={{ background: COLORS.card, boxShadow: COLORS.shadow }}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-base font-semibold" style={{ color: COLORS.text }}>{t('dashboard.title')}</h3>
+                <div className="flex items-start justify-between gap-3 mb-1">
+                  <h3 className="text-base font-semibold" style={{ color: COLORS.text }}>{t('dashboard.title')}</h3>
+                  <button
+                    type="button"
+                    onClick={revertProfileForm}
+                    className="p-2 rounded-lg transition-colors hover:bg-gray-100 shrink-0 -mt-1"
+                    style={{ color: COLORS.textMuted }}
+                    title={t('dashboard.cancel')}
+                    aria-label={t('dashboard.cancel')}
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <p className="text-xs leading-snug mb-5" style={{ color: COLORS.textMuted }}>{t('dashboard.subtitle')}</p>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-medium mb-1.5" style={{ color: COLORS.textMuted }}>{t('dashboard.displayName')}</label>
+                    <input
+                      type="text"
+                      value={editForm.display_name}
+                      onChange={(e) => setEditForm({ ...editForm, display_name: e.target.value })}
+                      className="w-full px-3 py-2.5 text-sm rounded-lg border focus:ring-2 focus:ring-blue-200 focus:outline-none"
+                      style={{ borderColor: COLORS.border, color: COLORS.text }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1.5" style={{ color: COLORS.textMuted }}>{t('dashboard.gender')}</label>
+                    <select
+                      value={editForm.gender}
+                      onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}
+                      className="w-full px-3 py-2 text-[13px] leading-snug rounded-lg border focus:ring-2 focus:ring-blue-200 focus:outline-none"
+                      style={{ borderColor: COLORS.border, color: COLORS.text }}
+                    >
+                      <option value="">{t('dashboard.notSpecified')}</option>
+                      <option value="male">{t('dashboard.male')}</option>
+                      <option value="female">{t('dashboard.female')}</option>
+                    </select>
+                  </div>
+                  <div className="flex flex-wrap gap-2 justify-end pt-1">
                     <button
                       type="button"
-                      onClick={() => setEditing(!editing)}
-                      className="p-1.5 rounded-lg transition-colors hover:bg-gray-100"
-                      style={{ color: COLORS.textMuted }}
+                      onClick={handleSaveProfile}
+                      disabled={saving}
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg text-white disabled:opacity-50"
+                      style={{ background: COLORS.accent }}
                     >
-                      {editing ? <X className="w-4 h-4" /> : <Settings className="w-4 h-4" />}
+                      <Save className="w-4 h-4" />
+                      {saving ? t('dashboard.saving') : t('dashboard.save')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={revertProfileForm}
+                      className="px-4 py-2.5 text-sm rounded-lg"
+                      style={{ background: COLORS.border, color: COLORS.text }}
+                    >
+                      {t('dashboard.cancel')}
                     </button>
                   </div>
-                  {editing ? (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-                      <div>
-                        <label className="block text-xs font-medium mb-1.5" style={{ color: COLORS.textMuted }}>{t('dashboard.displayName')}</label>
-                        <input
-                          type="text"
-                          value={editForm.display_name}
-                          onChange={(e) => setEditForm({ ...editForm, display_name: e.target.value })}
-                          className="w-full px-3 py-2 text-sm rounded-lg border focus:ring-2 focus:ring-blue-200 focus:outline-none"
-                          style={{ borderColor: COLORS.border, color: COLORS.text }}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium mb-1.5" style={{ color: COLORS.textMuted }}>{t('dashboard.gender')}</label>
-                        <select
-                          value={editForm.gender}
-                          onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}
-                          className="w-full px-3 py-2 text-[13px] leading-snug rounded-lg border focus:ring-2 focus:ring-blue-200 focus:outline-none"
-                          style={{ borderColor: COLORS.border, color: COLORS.text }}
-                        >
-                          <option value="">{t('dashboard.notSpecified')}</option>
-                          <option value="male">{t('dashboard.male')}</option>
-                          <option value="female">{t('dashboard.female')}</option>
-                        </select>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={handleSaveProfile}
-                          disabled={saving}
-                          className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg text-white disabled:opacity-50"
-                          style={{ background: COLORS.accent }}
-                        >
-                          <Save className="w-4 h-4" />
-                          {saving ? t('dashboard.saving') : t('dashboard.save')}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditing(false)}
-                          className="px-4 py-2 text-sm rounded-lg"
-                          style={{ background: COLORS.border, color: COLORS.text }}
-                        >
-                          {t('dashboard.cancel')}
-                        </button>
-                      </div>
-                      <p className="text-xs" style={{ color: COLORS.textMuted }}>{t('dashboard.genderHelp')}</p>
-                    </motion.div>
-                  ) : (
-                    <p className="text-sm" style={{ color: COLORS.textMuted }}>
-                      {profile.display_name || profile.email}
-                    </p>
-                  )}
-                </motion.div>
-              </div>
+                  <p className="text-xs pt-1" style={{ color: COLORS.textMuted }}>{t('dashboard.genderHelp')}</p>
+                </div>
+              </motion.div>
             </div>
           )}
 
