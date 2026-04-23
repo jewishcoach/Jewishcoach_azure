@@ -221,7 +221,6 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
     );
   }
   const isNewUser = stats.total_conversations === 0;
-
   /** Mobile: horizontal compact links in header */
   const HeaderLinks = () => (
     <div className="flex items-center gap-1 md:gap-2 flex-nowrap flex-shrink-0">
@@ -342,6 +341,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
       {/* Mobile: Sticky top bar - one row: settings | profile | header links */}
       <div className="md:hidden sticky top-0 z-10 flex items-center gap-2 px-3 py-2 border-b flex-nowrap min-w-0" style={{ background: COLORS.card, borderColor: COLORS.border, boxShadow: COLORS.shadow }}>
         <button
+          type="button"
           onClick={() => setEditing(!editing)}
           className="p-1.5 rounded-lg transition-colors hover:bg-gray-100 flex-shrink-0"
           style={{ color: COLORS.textMuted }}
@@ -380,15 +380,19 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
             className="relative w-full max-h-[85vh] overflow-y-auto rounded-t-2xl p-6 pb-8"
             style={{ background: COLORS.card, boxShadow: '0 -4px 24px rgba(0,0,0,0.15)' }}
           >
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-base font-semibold" style={{ color: COLORS.text }}>{t('dashboard.title')}</h3>
-              <button
-                onClick={() => setEditing(false)}
-                className="p-2 rounded-lg transition-colors hover:bg-gray-100"
-                style={{ color: COLORS.textMuted }}
-              >
-                <X className="w-5 h-5" />
-              </button>
+            <div className="mb-5">
+              <div className="flex items-center justify-between mb-1.5">
+                <h3 className="text-base font-semibold" style={{ color: COLORS.text }}>{t('dashboard.title')}</h3>
+                <button
+                  type="button"
+                  onClick={() => setEditing(false)}
+                  className="p-2 rounded-lg transition-colors hover:bg-gray-100"
+                  style={{ color: COLORS.textMuted }}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-xs leading-snug" style={{ color: COLORS.textMuted }}>{t('dashboard.subtitle')}</p>
             </div>
             <div className="space-y-4">
               <div>
@@ -417,6 +421,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
               <p className="text-xs" style={{ color: COLORS.textMuted }}>{t('dashboard.genderHelp')}</p>
               <div className="flex gap-3 pt-2">
                 <button
+                  type="button"
                   onClick={handleSaveProfile}
                   disabled={saving}
                   className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium rounded-xl text-white disabled:opacity-50"
@@ -426,6 +431,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
                   {saving ? t('dashboard.saving') : t('dashboard.save')}
                 </button>
                 <button
+                  type="button"
                   onClick={() => setEditing(false)}
                   className="px-5 py-3 text-sm rounded-xl"
                   style={{ background: COLORS.border, color: COLORS.text }}
@@ -454,6 +460,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
         <nav className="flex flex-col gap-1 flex-1">
           {NAV_ITEMS.map((item) => (
             <button
+              type="button"
               key={item.id}
               onClick={() => setActiveTab(item.id)}
               className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-start w-full"
@@ -484,6 +491,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
       >
         {NAV_ITEMS.map((item) => (
           <button
+            type="button"
             key={item.id}
             onClick={() => setActiveTab(item.id)}
             className="flex flex-col items-center justify-center gap-1 px-4 py-2 rounded-xl min-w-[64px] transition-all"
@@ -549,7 +557,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
             </div>
           </motion.div>
 
-          {/* Tab: Summary */}
+          {/* Tab: Summary — usage vs plan + profile (desktop) */}
           {activeTab === 'summary' && (
             <div className="space-y-6">
               {isNewUser && (
@@ -563,58 +571,25 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
                 </motion.div>
               )}
 
-              {/* Charts row */}
-              <div className="grid md:grid-cols-2 gap-5">
-                <motion.div
-                  className="rounded-xl p-5"
-                  style={{ background: COLORS.card, boxShadow: COLORS.shadow }}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  <h3 className="text-base font-semibold mb-4" style={{ color: COLORS.text }}>{t('dashboard.stats')}</h3>
-                  <DashboardStatsSummary
-                    conversations={stats.total_conversations}
-                    daysActive={stats.days_active}
-                    totalMessages={stats.total_messages}
-                    messagesThisBilling={stats.messages_this_month}
-                    billingCap={billingMonthBarMax}
-                    messagesLimit={billingUsage?.messages_limit ?? null}
-                  />
-                </motion.div>
-                <motion.div
-                  className="rounded-xl p-5"
-                  style={{ background: COLORS.card, boxShadow: COLORS.shadow }}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.05 }}
-                >
-                  <h3 className="text-base font-semibold mb-4" style={{ color: COLORS.text }}>{t('dashboard.phaseDistribution')}</h3>
-                  {conversationsForCalendar.length > 0 ? (
-                    <PhaseDonutChart
-                      conversationsLabel={t('dashboard.conversations')}
-                      data={(() => {
-                        const byPhase: Record<string, number> = {};
-                        conversationsForCalendar.forEach((c) => {
-                          const p = c.current_phase || 'S0';
-                          byPhase[p] = (byPhase[p] || 0) + 1;
-                        });
-                        return Object.entries(byPhase)
-                          .map(([phase, count]) => ({ phase, label: translatePhase(phase, t), count }))
-                          .sort((a, b) => b.count - a.count)
-                          .slice(0, 6);
-                      })()}
-                    />
-                  ) : (
-                    <div className="flex items-center justify-center py-12 text-sm" style={{ color: COLORS.textMuted }}>
-                      {t('dashboard.noConversations')}
-                    </div>
-                  )}
-                </motion.div>
-              </div>
+              <motion.div
+                className="rounded-xl p-5 max-w-xl md:max-w-none mx-auto"
+                style={{ background: COLORS.card, boxShadow: COLORS.shadow }}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <h3 className="text-base font-semibold mb-4" style={{ color: COLORS.text }}>{t('dashboard.statsMessages')}</h3>
+                <DashboardStatsSummary
+                  variant="messagesOnly"
+                  conversations={stats.total_conversations}
+                  daysActive={stats.days_active}
+                  totalMessages={stats.total_messages}
+                  messagesThisBilling={stats.messages_this_month}
+                  billingCap={billingMonthBarMax}
+                  messagesLimit={billingUsage?.messages_limit ?? null}
+                />
+              </motion.div>
 
-              {/* Two-column content cards */}
-              <div className="grid md:grid-cols-2 gap-5">
-                {/* Profile / Edit card - desktop only; on mobile use header Settings */}
+              <div className="max-w-xl md:max-w-none mx-auto">
                 <motion.div
                   className="hidden md:block rounded-xl p-5"
                   style={{ background: COLORS.card, boxShadow: COLORS.shadow }}
@@ -624,6 +599,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-base font-semibold" style={{ color: COLORS.text }}>{t('dashboard.title')}</h3>
                     <button
+                      type="button"
                       onClick={() => setEditing(!editing)}
                       className="p-1.5 rounded-lg transition-colors hover:bg-gray-100"
                       style={{ color: COLORS.textMuted }}
@@ -658,6 +634,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
                       </div>
                       <div className="flex gap-2">
                         <button
+                          type="button"
                           onClick={handleSaveProfile}
                           disabled={saving}
                           className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg text-white disabled:opacity-50"
@@ -667,6 +644,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
                           {saving ? t('dashboard.saving') : t('dashboard.save')}
                         </button>
                         <button
+                          type="button"
                           onClick={() => setEditing(false)}
                           className="px-4 py-2 text-sm rounded-lg"
                           style={{ background: COLORS.border, color: COLORS.text }}
@@ -681,35 +659,6 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
                       {profile.display_name || profile.email}
                     </p>
                   )}
-                </motion.div>
-
-                {/* Journey card */}
-                <motion.div
-                  className="rounded-xl p-5"
-                  style={{ background: COLORS.card, boxShadow: COLORS.shadow }}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.05 }}
-                >
-                  <h3 className="text-base font-semibold mb-4" style={{ color: COLORS.text }}>{t('dashboard.journey')}</h3>
-                  <div className="space-y-2.5 text-sm">
-                    {stats.current_phase && (
-                      <div className="flex justify-between gap-3">
-                        <span style={{ color: COLORS.textMuted }}>{t('dashboard.currentStage')}</span>
-                        <span className="font-medium text-end" style={{ color: COLORS.accent }}>{translatePhase(stats.current_phase, t)}</span>
-                      </div>
-                    )}
-                    {stats.favorite_coaching_phase && (
-                      <div className="flex justify-between gap-3">
-                        <span style={{ color: COLORS.textMuted }}>{t('dashboard.favoriteStage')}</span>
-                        <span className="font-medium text-end" style={{ color: COLORS.text }}>{translatePhase(stats.favorite_coaching_phase, t)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between">
-                      <span style={{ color: COLORS.textMuted }}>{t('dashboard.longestConversation')}</span>
-                      <span className="font-medium" style={{ color: COLORS.text }}>{stats.longest_conversation_messages} {t('dashboard.messagesCount')}</span>
-                    </div>
-                  </div>
                 </motion.div>
               </div>
             </div>
@@ -747,36 +696,56 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
               <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
                 <CoachingCalendar conversations={conversationsForCalendar} variant="light" stats={stats} />
               </motion.div>
-              <motion.div
-                className="rounded-xl p-5"
-                style={{ background: COLORS.card, boxShadow: COLORS.shadow }}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                <h3 className="text-base font-semibold mb-4" style={{ color: COLORS.text }}>{t('dashboard.recentConversations')}</h3>
-                {recent_conversations.length === 0 ? (
-                  <p className="text-center py-8 text-sm" style={{ color: COLORS.textMuted }}>{t('dashboard.noConversations')}</p>
-                ) : (
-                  <div className="space-y-2">
-                    {recent_conversations.slice(0, 10).map((conv) => (
-                      <div
-                        key={conv.id}
-                        className="flex justify-between items-center py-2.5 px-3 rounded-lg hover:bg-gray-50 transition-colors"
-                      >
-                        <div>
-                          <div className="text-sm font-medium" style={{ color: COLORS.text }}>{conv.title}</div>
+              <div className="space-y-6">
+                <motion.div
+                  className="rounded-xl p-5"
+                  style={{ background: COLORS.card, boxShadow: COLORS.shadow }}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <h3 className="text-base font-semibold mb-4" style={{ color: COLORS.text }}>{t('dashboard.phaseDistribution')}</h3>
+                  {conversationsForCalendar.length > 0 ? (
+                    <PhaseDonutChart
+                      conversationsLabel={t('dashboard.conversations')}
+                      data={phaseDistributionFromConversations(conversationsForCalendar, t)}
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center py-12 text-sm" style={{ color: COLORS.textMuted }}>
+                      {t('dashboard.noConversations')}
+                    </div>
+                  )}
+                </motion.div>
+                <motion.div
+                  className="rounded-xl p-5"
+                  style={{ background: COLORS.card, boxShadow: COLORS.shadow }}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <h3 className="text-base font-semibold mb-4" style={{ color: COLORS.text }}>{t('dashboard.recentConversations')}</h3>
+                  {recent_conversations.length === 0 ? (
+                    <p className="text-center py-8 text-sm" style={{ color: COLORS.textMuted }}>{t('dashboard.noConversations')}</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {recent_conversations.slice(0, 10).map((conv) => (
+                        <div
+                          key={conv.id}
+                          className="flex justify-between items-center py-2.5 px-3 rounded-lg hover:bg-gray-50 transition-colors"
+                        >
+                          <div>
+                            <div className="text-sm font-medium" style={{ color: COLORS.text }}>{conv.title}</div>
+                            <div className="text-xs" style={{ color: COLORS.textMuted }}>
+                              {t('dashboard.convMessages', { count: conv.message_count })} • {translatePhase(conv.current_phase, t)}
+                            </div>
+                          </div>
                           <div className="text-xs" style={{ color: COLORS.textMuted }}>
-                            {t('dashboard.convMessages', { count: conv.message_count })} • {translatePhase(conv.current_phase, t)}
+                            {new Date(conv.created_at).toLocaleDateString(i18n.language === 'he' ? 'he-IL' : 'en-US')}
                           </div>
                         </div>
-                        <div className="text-xs" style={{ color: COLORS.textMuted }}>
-                          {new Date(conv.created_at).toLocaleDateString(i18n.language === 'he' ? 'he-IL' : 'en-US')}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </motion.div>
+                      ))}
+                    </div>
+                  )}
+                </motion.div>
+              </div>
             </div>
           )}
         </div>
@@ -784,6 +753,21 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
     </div>
   );
 };
+
+function phaseDistributionFromConversations(
+  conversations: { current_phase?: string | null }[],
+  t: I18nT
+): { phase: string; label: string; count: number }[] {
+  const byPhase: Record<string, number> = {};
+  conversations.forEach((c) => {
+    const p = c.current_phase || 'S0';
+    byPhase[p] = (byPhase[p] || 0) + 1;
+  });
+  return Object.entries(byPhase)
+    .map(([phase, count]) => ({ phase, label: translatePhase(phase, t), count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 6);
+}
 
 function translatePhase(phase: string, t: I18nT): string {
   const key = `phase.${phase}`;

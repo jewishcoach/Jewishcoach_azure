@@ -29,6 +29,8 @@ function StatTile({ value, label }: { value: number; label: string }) {
 }
 
 export interface DashboardStatsSummaryProps {
+  /** Only the billing-period messages bar; hides activity tiles. */
+  variant?: 'full' | 'messagesOnly';
   conversations: number;
   daysActive: number;
   totalMessages: number;
@@ -38,6 +40,7 @@ export interface DashboardStatsSummaryProps {
 }
 
 export function DashboardStatsSummary({
+  variant = 'full',
   conversations,
   daysActive,
   totalMessages,
@@ -49,24 +52,29 @@ export function DashboardStatsSummary({
   const unlimited = messagesLimit === -1;
   const showBar = !unlimited && billingCap > 0;
   const barPct = showBar ? Math.min(100, (messagesThisBilling / billingCap) * 100) : 0;
+  const showActivity = variant === 'full';
 
   return (
     <div className="space-y-6">
-      <section>
-        <h4 className="text-xs font-semibold mb-3 uppercase tracking-wide" style={{ color: COLORS.textMuted }}>
-          {t('dashboard.statsActivity')}
-        </h4>
-        <div className="grid grid-cols-3 gap-2 sm:gap-3">
-          <StatTile value={conversations} label={t('dashboard.conversations')} />
-          <StatTile value={daysActive} label={t('dashboard.daysActive')} />
-          <StatTile value={totalMessages} label={t('dashboard.messages')} />
-        </div>
-      </section>
+      {showActivity && (
+        <section>
+          <h4 className="text-xs font-semibold mb-3 uppercase tracking-wide" style={{ color: COLORS.textMuted }}>
+            {t('dashboard.statsActivity')}
+          </h4>
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            <StatTile value={conversations} label={t('dashboard.conversations')} />
+            <StatTile value={daysActive} label={t('dashboard.daysActive')} />
+            <StatTile value={totalMessages} label={t('dashboard.messages')} />
+          </div>
+        </section>
+      )}
 
       <section>
-        <h4 className="text-xs font-semibold mb-3 uppercase tracking-wide" style={{ color: COLORS.textMuted }}>
-          {t('dashboard.statsMessages')}
-        </h4>
+        {showActivity && (
+          <h4 className="text-xs font-semibold mb-3 uppercase tracking-wide" style={{ color: COLORS.textMuted }}>
+            {t('dashboard.statsMessages')}
+          </h4>
+        )}
         <div className="space-y-3">
           <motion.div
             initial={{ opacity: 0, y: 6 }}
