@@ -241,6 +241,69 @@ export const BSDWorkspace = ({
   const isRTL = i18n.dir() === 'rtl';
   const onArchiveClick = useCallback(() => setArchiveOpen(true), []);
 
+  const inputArea = (
+    <>
+      {conversationId != null && stationCheckpoint ? (
+        <StationCheckpointBar
+          checkpoint={stationCheckpoint}
+          conversationId={conversationId}
+          getToken={() => getToken()}
+          onDismiss={dismissStationCheckpoint}
+          onIntentSent={() => {}}
+        />
+      ) : null}
+      <form onSubmit={handleSubmit} className="flex items-end gap-3 md:gap-5">
+        <textarea
+          ref={inputRef}
+          value={displayValue}
+          onChange={(e) => {
+            if (!isRecording && !chatLockedByForm) setInputValue(e.target.value);
+          }}
+          onKeyDown={handleKeyDown}
+          placeholder={chatLockedByForm ? t('chat.formBlocksTyping') : t('chat.placeholder')}
+          disabled={loading || isRecording || chatLockedByForm}
+          className="flex-1 min-w-0 resize-none rounded-xl px-4 md:px-6 py-3 md:py-5 text-[14px] md:text-[16px] max-h-28 placeholder-[#5A6B8A]/60 placeholder:text-[12px] md:placeholder:text-[16px] focus:border-[#B38728]/50 focus:ring-2 focus:ring-[#B38728]/20 focus:outline-none"
+          style={{
+            fontFamily: WORKSPACE_CHAT_FONT,
+            fontWeight: 400,
+            lineHeight: 1.6,
+            minHeight: '48px',
+            background: '#FFFFFF',
+            border: '1px solid #E2E4E8',
+            color: '#2E3A56',
+          }}
+          rows={1}
+        />
+        <button
+          type="button"
+          onClick={handleMicClick}
+          disabled={loading || chatLockedByForm}
+          title={
+            chatLockedByForm
+              ? t('chat.formBlocksTyping')
+              : isRecording
+                ? t('chat.stopRecording')
+                : t('chat.recordVoice')
+          }
+          className={`p-3 md:p-4 rounded-xl border transition-colors shadow-sm min-h-[44px] min-w-[44px] flex items-center justify-center ${
+            isRecording
+              ? 'bg-[#2E3A56]/15 border-[#2E3A56]/40 text-[#2E3A56] hover:bg-[#2E3A56]/25'
+              : 'bg-white border-[#E2E4E8] hover:bg-[#F0F1F3] text-[#2E3A56]/80'
+          }`}
+        >
+          {isRecording ? <Square size={18} strokeWidth={2} fill="currentColor" /> : <Mic size={18} strokeWidth={1.5} />}
+        </button>
+        <button
+          type="submit"
+          disabled={chatLockedByForm || !displayValue.trim() || loading || isRecording}
+          className="premium-cta-btn p-3 md:p-4 rounded-xl text-[#2E3A56] font-semibold disabled:opacity-50 min-h-[44px] min-w-[44px] flex items-center justify-center flex-shrink-0"
+        >
+          <Send size={18} strokeWidth={1.5} />
+        </button>
+      </form>
+    </>
+  );
+
   // Dashboard: full-screen only. No HudPanel, no Vision Ladder.
   if (showDashboard) {
     return (
@@ -305,20 +368,22 @@ export const BSDWorkspace = ({
           isRTL={isRTL}
         />
 
-        {/* Chat area: mobile [strip|messages] + input below; desktop messages + input */}
+        {/* Chat area: mobile [ strip | messages+input column ]; desktop messages row then full-width input */}
         <div className="order-1 md:order-2 flex flex-1 min-w-0 min-h-0 flex-col">
-          {/* Messages row: mobile has strip alongside; desktop messages only */}
-          <div className="flex flex-1 min-w-0 min-h-0 flex-row">
-            {/* Mobile: stages strip - height only up to messages, not input */}
-            <div className="md:hidden flex-shrink-0 self-stretch min-h-0">
-              <VisionLadder currentStep={currentPhase} onPhaseClick={handlePhaseClick} compact conversationId={conversationId} />
+          {/* One row: full-height strip (mobile) + chat column. Desktop: strip hidden, chat is full width. */}
+          <div className="flex flex-1 min-w-0 min-h-0 flex-row items-stretch min-h-0">
+            {/* Mobile: stages strip — same height as messages+input (full workspace column) */}
+            <div className="md:hidden flex h-full min-h-0 w-[78px] flex-shrink-0 self-stretch flex flex-col">
+              <div className="flex-1 min-h-0 h-full max-h-full">
+                <VisionLadder currentStep={currentPhase} onPhaseClick={handlePhaseClick} compact conversationId={conversationId} />
+              </div>
             </div>
-            <div className="flex flex-col min-w-0 flex-1 relative overflow-hidden bg-[#F5F5F0]">
+            <div className="flex min-w-0 min-h-0 flex-1 flex-col relative overflow-hidden bg-[#F5F5F0]">
               <ShehiyaProgress loading={loading} />
               {/* dir=ltr כאן קובע יישור פיזי: מאמן מימין, משתמש משמאל (גם בעברית). כיוון טקסט בבועות — ב-WorkspaceMessageBubble */}
               <div
                 ref={messagesScrollRef}
-                className="flex-1 overflow-y-auto px-3 py-4 md:px-10 md:py-10 custom-scrollbar bg-[#F5F5F0]"
+                className="min-h-0 flex-1 overflow-y-auto px-3 py-4 md:px-10 md:py-10 custom-scrollbar bg-[#F5F5F0]"
                 dir="ltr"
               >
           {messages.length === 0 ? (
@@ -389,69 +454,16 @@ export const BSDWorkspace = ({
             </div>
           )}
               </div>
+              {/* Mobile: input only under chat, not under the blue strip */}
+              <div className="md:hidden flex-shrink-0 border-t border-[#E2E4E8] bg-[#F5F5F0] p-4">
+                {inputArea}
+              </div>
             </div>
           </div>
 
-          {/* Input - below messages; full width on mobile */}
-          <div className="p-4 md:p-9 border-t border-[#E2E4E8] bg-[#F5F5F0] flex-shrink-0">
-              {conversationId != null && stationCheckpoint ? (
-                <StationCheckpointBar
-                  checkpoint={stationCheckpoint}
-                  conversationId={conversationId}
-                  getToken={() => getToken()}
-                  onDismiss={dismissStationCheckpoint}
-                  onIntentSent={() => {}}
-                />
-              ) : null}
-              <form onSubmit={handleSubmit} className="flex items-end gap-3 md:gap-5">
-                <textarea
-                  ref={inputRef}
-                  value={displayValue}
-                  onChange={(e) => {
-                    if (!isRecording && !chatLockedByForm) setInputValue(e.target.value);
-                  }}
-                  onKeyDown={handleKeyDown}
-                  placeholder={chatLockedByForm ? t('chat.formBlocksTyping') : t('chat.placeholder')}
-                  disabled={loading || isRecording || chatLockedByForm}
-                  className="flex-1 min-w-0 resize-none rounded-xl px-4 md:px-6 py-3 md:py-5 text-[14px] md:text-[16px] max-h-28 placeholder-[#5A6B8A]/60 placeholder:text-[12px] md:placeholder:text-[16px] focus:border-[#B38728]/50 focus:ring-2 focus:ring-[#B38728]/20 focus:outline-none"
-                  style={{
-                    fontFamily: WORKSPACE_CHAT_FONT,
-                    fontWeight: 400,
-                    lineHeight: 1.6,
-                    minHeight: '48px',
-                    background: '#FFFFFF',
-                    border: '1px solid #E2E4E8',
-                    color: '#2E3A56',
-                  }}
-                  rows={1}
-                />
-                <button
-                  type="button"
-                  onClick={handleMicClick}
-                  disabled={loading || chatLockedByForm}
-                  title={
-                    chatLockedByForm
-                      ? t('chat.formBlocksTyping')
-                      : isRecording
-                        ? t('chat.stopRecording')
-                        : t('chat.recordVoice')
-                  }
-                  className={`p-3 md:p-4 rounded-xl border transition-colors shadow-sm min-h-[44px] min-w-[44px] flex items-center justify-center ${
-                    isRecording
-                      ? 'bg-[#2E3A56]/15 border-[#2E3A56]/40 text-[#2E3A56] hover:bg-[#2E3A56]/25'
-                      : 'bg-white border-[#E2E4E8] hover:bg-[#F0F1F3] text-[#2E3A56]/80'
-                  }`}
-                >
-                  {isRecording ? <Square size={18} strokeWidth={2} fill="currentColor" /> : <Mic size={18} strokeWidth={1.5} />}
-                </button>
-                <button
-                  type="submit"
-                  disabled={chatLockedByForm || !displayValue.trim() || loading || isRecording}
-                  className="premium-cta-btn p-3 md:p-4 rounded-xl text-[#2E3A56] font-semibold disabled:opacity-50 min-h-[44px] min-w-[44px] flex items-center justify-center flex-shrink-0"
-                >
-                  <Send size={18} strokeWidth={1.5} />
-                </button>
-            </form>
+          {/* Desktop: input full width of chat column */}
+          <div className="hidden md:block border-t border-[#E2E4E8] bg-[#F5F5F0] p-4 md:p-9 flex-shrink-0">
+            {inputArea}
           </div>
         </div>
 

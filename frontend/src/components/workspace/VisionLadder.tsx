@@ -94,7 +94,7 @@ export const VisionLadder = ({ currentStep, onPhaseClick, compact = false, conve
   if (compact) {
     return (
       <div
-        className="w-[78px] flex-shrink-0 flex flex-col justify-between py-2 h-full bg-[#1e293b] border-l border-white/[0.08] relative"
+        className="box-border w-[78px] flex-shrink-0 flex h-full min-h-0 flex-col justify-between py-2 bg-[#1e293b] border-l border-white/[0.08] relative"
         dir={isRTL ? 'rtl' : 'ltr'}
       >
         {PHASE_IDS.map((phaseId, i) => {
