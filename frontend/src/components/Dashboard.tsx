@@ -3,7 +3,7 @@ import { useAuth } from '@clerk/clerk-react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import {
-  User, Settings, Save, X, Target, History,
+  User, Settings, Save, Target, History,
   Loader2, CreditCard, FileText, ExternalLink, BookOpen,
   ScanEye, Scale, MessageCircle,
 } from 'lucide-react';
@@ -485,19 +485,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
               >
-                <div className="flex items-start justify-between gap-3 mb-1">
-                  <h3 className="text-base font-semibold" style={{ color: COLORS.text }}>{t('dashboard.title')}</h3>
-                  <button
-                    type="button"
-                    onClick={revertProfileForm}
-                    className="p-2 rounded-lg transition-colors hover:bg-gray-100 shrink-0 -mt-1"
-                    style={{ color: COLORS.textMuted }}
-                    title={t('dashboard.cancel')}
-                    aria-label={t('dashboard.cancel')}
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
+                <h3 className="text-base font-semibold mb-1" style={{ color: COLORS.text }}>{t('dashboard.title')}</h3>
                 <p className="text-xs leading-snug mb-5" style={{ color: COLORS.textMuted }}>{t('dashboard.subtitle')}</p>
                 <div className="space-y-4">
                   <div>
