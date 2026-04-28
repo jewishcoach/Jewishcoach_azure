@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Download, Smartphone } from 'lucide-react';
-
-/** Chromium `beforeinstallprompt` (not in TS DOM lib). */
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
-}
+import { Download, Smartphone, MonitorDown } from 'lucide-react';
+import {
+  clearCapturedInstallPrompt,
+  getCapturedInstallPrompt,
+  PWA_INSTALL_READY_EVENT,
+  PWA_INSTALLED_EVENT,
+} from '../pwaInstallCapture';
 
 function isStandalone(): boolean {
   return (
@@ -39,7 +39,8 @@ interface PwaInstallCardProps {
 export function PwaInstallCard({ colors }: PwaInstallCardProps) {
   const { t } = useTranslation();
   const [installed, setInstalled] = useState(() => isStandalone());
-  const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
+  /** True when Chromium exposed a deferred install prompt we captured early */
+  const [hasDeferred, setHasDeferred] = useState(() => !!getCapturedInstallPrompt());
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -47,33 +48,33 @@ export function PwaInstallCard({ colors }: PwaInstallCardProps) {
   }, []);
 
   useEffect(() => {
-    const onBeforeInstall = (e: Event) => {
-      e.preventDefault();
-      setDeferred(e as BeforeInstallPromptEvent);
-    };
-    const onInstalled = () => {
+    const sync = () => setHasDeferred(!!getCapturedInstallPrompt());
+    const onInstalledEvt = () => {
       setInstalled(true);
-      setDeferred(null);
+      setHasDeferred(false);
     };
-    window.addEventListener('beforeinstallprompt', onBeforeInstall);
-    window.addEventListener('appinstalled', onInstalled);
+    window.addEventListener(PWA_INSTALL_READY_EVENT, sync);
+    window.addEventListener(PWA_INSTALLED_EVENT, onInstalledEvt);
+    sync();
     return () => {
-      window.removeEventListener('beforeinstallprompt', onBeforeInstall);
-      window.removeEventListener('appinstalled', onInstalled);
+      window.removeEventListener(PWA_INSTALL_READY_EVENT, sync);
+      window.removeEventListener(PWA_INSTALLED_EVENT, onInstalledEvt);
     };
   }, []);
 
   const promptInstall = useCallback(async () => {
-    if (!deferred) return;
+    const d = getCapturedInstallPrompt();
+    if (!d) return;
     setBusy(true);
     try {
-      await deferred.prompt();
-      await deferred.userChoice;
-      setDeferred(null);
+      await d.prompt();
+      await d.userChoice;
+      clearCapturedInstallPrompt();
+      setHasDeferred(false);
     } finally {
       setBusy(false);
     }
-  }, [deferred]);
+  }, []);
 
   if (installed) {
     return (
@@ -119,7 +120,7 @@ export function PwaInstallCard({ colors }: PwaInstallCardProps) {
         </div>
       ) : (
         <div className="space-y-3">
-          {deferred ? (
+          {hasDeferred ? (
             <button
               type="button"
               disabled={busy}
@@ -131,9 +132,29 @@ export function PwaInstallCard({ colors }: PwaInstallCardProps) {
               {busy ? t('pwa.installing') : t('pwa.installButton')}
             </button>
           ) : (
-            <p className="text-[13px] leading-relaxed" style={{ color: colors.textMuted }}>
-              {t('pwa.chromeManualHint')}
-            </p>
+            <div className="space-y-3">
+              <div
+                className="flex items-start gap-3 rounded-xl p-3.5 text-[13px] leading-relaxed"
+                style={{
+                  background: `${colors.accent}08`,
+                  borderWidth: 1,
+                  borderStyle: 'solid',
+                  borderColor: colors.border,
+                  color: colors.text,
+                }}
+              >
+                <MonitorDown className="w-5 h-5 shrink-0 mt-0.5" style={{ color: colors.accent }} aria-hidden />
+                <div>
+                  <p className="font-semibold text-[13px] mb-1" style={{ color: colors.text }}>
+                    {t('pwa.omniboxTitle')}
+                  </p>
+                  <p style={{ color: colors.textMuted }}>{t('pwa.omniboxBody')}</p>
+                </div>
+              </div>
+              <p className="text-[12px] leading-relaxed" style={{ color: colors.textMuted }}>
+                {t('pwa.chromeManualHint')}
+              </p>
+            </div>
           )}
         </div>
       )}
