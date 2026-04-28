@@ -27,7 +27,7 @@ class ProfileResponse(BaseModel):
     gender: Optional[str]
     is_admin: bool
     current_plan: str
-    created_at: datetime
+    created_at: Optional[datetime] = None
     
     model_config = ConfigDict(from_attributes=True)
 

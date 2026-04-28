@@ -21,6 +21,18 @@ from ..schemas.profile import (
 
 router = APIRouter(prefix="/api/profile", tags=["profile"])
 
+# Sortable placeholder so NULL created_at rows never break max()/sorted() (TypeError in Python 3).
+_CONV_CREATED_SENTINEL = datetime(1970, 1, 1, tzinfo=timezone.utc)
+
+
+def _conv_sort_key(conv: Conversation) -> datetime:
+    ca = conv.created_at
+    if ca is None:
+        return _CONV_CREATED_SENTINEL
+    if ca.tzinfo is None:
+        return ca.replace(tzinfo=timezone.utc)
+    return ca.astimezone(timezone.utc)
+
 
 @router.get("/me", response_model=ProfileResponse)
 def get_my_profile(
@@ -77,7 +89,7 @@ def get_dashboard(
     # Current phase (from most recent conversation)
     current_phase = None
     if conversations:
-        latest_conv = max(conversations, key=lambda c: c.created_at)
+        latest_conv = max(conversations, key=_conv_sort_key)
         current_phase = latest_conv.current_phase
     
     # Days with at least one conversation (distinct calendar days of conversation start).
@@ -116,7 +128,7 @@ def get_dashboard(
     # Recent conversations (last 5)
     recent_conversations = sorted(
         conversations,
-        key=lambda c: c.created_at,
+        key=_conv_sort_key,
         reverse=True
     )[:5]
     
@@ -124,7 +136,7 @@ def get_dashboard(
         return {
             "id": conv.id,
             "title": conv.title,
-            "created_at": conv.created_at.isoformat(),
+            "created_at": conv.created_at.isoformat() if conv.created_at is not None else "",
             "current_phase": conv.current_phase,
             "message_count": len(conv.messages),
         }
@@ -132,7 +144,7 @@ def get_dashboard(
     recent_conv_list = [_conv_summary(conv) for conv in recent_conversations]
     calendar_conv_list = [
         _conv_summary(c)
-        for c in sorted(conversations, key=lambda x: x.created_at, reverse=True)
+        for c in sorted(conversations, key=_conv_sort_key, reverse=True)
     ]
 
     stats = DashboardStats(

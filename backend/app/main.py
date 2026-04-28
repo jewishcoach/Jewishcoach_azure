@@ -42,6 +42,8 @@ for azure_origin in (
     "https://jewish-coach.azurestaticapps.net",
     "https://jewishcoacher.com",
     "https://www.jewishcoacher.com",
+    "https://bsdcoach.com",
+    "https://www.bsdcoach.com",
 ):
     if azure_origin not in origins_list:
         origins_list.append(azure_origin)

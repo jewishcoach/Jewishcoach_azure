@@ -25,8 +25,14 @@ const PRODUCTION_API_CUSTOM_DOMAIN = 'https://api.jewishcoacher.com/api';
 /** Legacy Azure default hostname (SWA + App Service *.azurewebsites.net). */
 const PRODUCTION_API_AZURE_DEFAULT = 'https://jewishcoach-api.azurewebsites.net/api';
 
-function isJewishcoacherHost(hostname: string): boolean {
-  return hostname === 'jewishcoacher.com' || hostname === 'www.jewishcoacher.com';
+/** Production sites that should talk to api.jewishcoacher.com when VITE_API_URL is unset at build time. */
+function isProductionFrontendHost(hostname: string): boolean {
+  return (
+    hostname === 'jewishcoacher.com' ||
+    hostname === 'www.jewishcoacher.com' ||
+    hostname === 'bsdcoach.com' ||
+    hostname === 'www.bsdcoach.com'
+  );
 }
 
 /** Normalize API base URL - backend expects /api prefix. Exported for api.ts */
@@ -35,7 +41,7 @@ export function getApiBase(): string {
 
   if (typeof window !== 'undefined') {
     const h = window.location.hostname;
-    if (isJewishcoacherHost(h)) {
+    if (isProductionFrontendHost(h)) {
       base = PRODUCTION_API_CUSTOM_DOMAIN;
     }
   }
