@@ -10,7 +10,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['apple-touch-icon.png', 'pwa-192.png', 'pwa-512.png'],
       manifest: {
-        name: 'Jewish Coaching — BSD',
+        /** Full name for install / splash; tab title is shorter (see index.html) to avoid duplicate text in the window chrome. */
+        name: 'Jewish Coaching · BSD',
         short_name: 'BSD Coach',
         description: 'Jewish Coaching with the BSD method',
         theme_color: '#2E3A56',
