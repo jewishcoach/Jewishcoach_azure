@@ -107,16 +107,25 @@ def get_dashboard(
         unique_conv_days.add(ca.date())
     days_active = len(unique_conv_days)
 
+    # Message counts per conversation (single query). Must run BEFORE get_or_create_current_usage,
+    # which commits — after commit, lazy-loading conv.messages can fail against some DB pools.
+    message_count_by_conv: dict[int, int] = {}
+    if conversations:
+        conv_ids = [c.id for c in conversations]
+        rows = (
+            db.query(Message.conversation_id, func.count(Message.id))
+            .filter(Message.conversation_id.in_(conv_ids))
+            .group_by(Message.conversation_id)
+            .all()
+        )
+        message_count_by_conv = {int(cid): int(n) for cid, n in rows}
+    longest_conversation_messages = (
+        max(message_count_by_conv.values(), default=0) if message_count_by_conv else 0
+    )
+
     # User messages in current billing period (matches subscription / usage_records)
     usage = get_or_create_current_usage(db, user)
     messages_this_month = usage.messages_used
-    
-    # Longest conversation
-    longest_conversation_messages = 0
-    for conv in conversations:
-        msg_count = len(conv.messages)
-        if msg_count > longest_conversation_messages:
-            longest_conversation_messages = msg_count
     
     # Favorite coaching phase (most common phase across conversations)
     phases = [conv.current_phase for conv in conversations if conv.current_phase]
@@ -138,7 +147,7 @@ def get_dashboard(
             "title": conv.title,
             "created_at": conv.created_at.isoformat() if conv.created_at is not None else "",
             "current_phase": conv.current_phase,
-            "message_count": len(conv.messages),
+            "message_count": message_count_by_conv.get(conv.id, 0),
         }
 
     recent_conv_list = [_conv_summary(conv) for conv in recent_conversations]

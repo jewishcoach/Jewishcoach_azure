@@ -1,7 +1,7 @@
 """
 Profile and Dashboard schemas
 """
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import Optional
 from datetime import datetime
 
@@ -30,6 +30,14 @@ class ProfileResponse(BaseModel):
     created_at: Optional[datetime] = None
     
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("current_plan", mode="before")
+    @classmethod
+    def _normalize_plan(cls, v):
+        # Rare legacy rows may have NULL plan — avoid response validation 500.
+        if v is None or (isinstance(v, str) and not v.strip()):
+            return "basic"
+        return v
 
 
 class DashboardStats(BaseModel):
