@@ -15,6 +15,12 @@ ROOT = Path(__file__).resolve().parents[1]
 LOGO = ROOT / "public" / "bsd-logo.png"
 OUT = ROOT / "public"
 
+# Radius as fraction of canvas edge. Too small → tiny after OEM launcher masks / adaptive icons.
+# ~36% radius (~72% diameter): readable cross-device while staying inside typical maskable safe zone.
+RADIUS_FRAC = 0.36
+# Bird scales inside circle (thin white rim).
+BIRD_FILL_FRAC = 0.82
+
 
 def bird_sprite_from_logo() -> Image.Image:
     logo = Image.open(LOGO).convert("RGBA")
@@ -50,14 +56,13 @@ def make_icon(size: int, bird_img: Image.Image) -> Image.Image:
     # Full square: branded navy (icons show bird inside white circle on blue)
     canvas = Image.new("RGBA", (size, size), APP_NAVY)
     cx = cy = size // 2
-    # Circle radius as fraction of canvas edge length (target ~5% per request)
-    r = max(1, round(size * 0.05))
+    r = max(1, round(size * RADIUS_FRAC))
     disk = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     ImageDraw.Draw(disk).ellipse((cx - r, cy - r, cx + r, cy + r), fill=(255, 255, 255, 255))
     canvas.alpha_composite(disk)
 
     bw, bh = bird_img.size
-    max_side = int(2 * r * 0.78)
+    max_side = int(2 * r * BIRD_FILL_FRAC)
     scale = min(max_side / bw, max_side / bh)
     nw, nh = max(1, int(bw * scale)), max(1, int(bh * scale))
     scaled = bird_img.resize((nw, nh), Image.Resampling.LANCZOS)
