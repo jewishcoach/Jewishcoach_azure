@@ -20,10 +20,11 @@ export default defineConfig({
         orientation: 'portrait-primary',
         scope: '/',
         start_url: '/',
+        /* Same PNG files for every purpose so installs/bookmarks/tab pick one consistent asset.
+           OEM launchers still apply their own masks — cannot look identical on every phone. */
         icons: [
-          { src: '/pwa-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-          { src: '/pwa-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-          { src: '/pwa-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: '/pwa-192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+          { src: '/pwa-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
         ],
       },
       workbox: {

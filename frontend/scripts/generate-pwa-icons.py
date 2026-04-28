@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-"""Rebuild PWA / apple-touch icons: navy blue square + white circle + red bird from public/bsd-logo.png."""
+"""Rebuild PWA / apple-touch icons: navy blue square + white circle + red bird from public/bsd-logo.png.
+
+Graphic stays inside typical maskable safe zones (~80% circle). OEM launcher masks still vary —
+preview cannot match every device pixel-perfectly; one generator + unified manifest/browser icons
+minimizes drift."""
+
 
 # Matches frontend theme_color / BSD navy
 APP_NAVY = (46, 58, 86, 255)  # #2E3A56
