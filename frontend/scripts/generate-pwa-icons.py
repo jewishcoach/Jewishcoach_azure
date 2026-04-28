@@ -50,7 +50,8 @@ def make_icon(size: int, bird_img: Image.Image) -> Image.Image:
     # Full square: branded navy (icons show bird inside white circle on blue)
     canvas = Image.new("RGBA", (size, size), APP_NAVY)
     cx = cy = size // 2
-    r = max(1, int(size * 0.40))
+    # Circle radius as fraction of canvas width (was 0.40; halved per design request)
+    r = max(1, int(size * 0.20))
     disk = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     ImageDraw.Draw(disk).ellipse((cx - r, cy - r, cx + r, cy + r), fill=(255, 255, 255, 255))
     canvas.alpha_composite(disk)
