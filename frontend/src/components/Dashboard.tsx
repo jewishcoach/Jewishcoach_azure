@@ -14,6 +14,7 @@ import { PhaseDonutChart } from './dashboard/PhaseDonutChart';
 import { InsightsTab } from './InsightsTab';
 import { PrivacyPolicyPage } from './PrivacyPolicyPage';
 import { TermsOfUsePage } from './TermsOfUsePage';
+import { PwaInstallCard } from './PwaInstallCard';
 import { apiClient } from '../services/api';
 import type { I18nT } from '../i18nT';
 
@@ -478,7 +479,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
 
           {/* Tab: Settings — personal profile only (open card) */}
           {activeTab === 'settings' && (
-            <div className="max-w-xl w-full mx-auto">
+            <div className="max-w-xl w-full mx-auto space-y-5">
               <motion.div
                 className="rounded-xl p-5 md:p-6"
                 style={{ background: COLORS.card, boxShadow: COLORS.shadow }}
@@ -534,6 +535,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
                   <p className="text-xs pt-1" style={{ color: COLORS.textMuted }}>{t('dashboard.genderHelp')}</p>
                 </div>
               </motion.div>
+              <PwaInstallCard colors={COLORS} />
             </div>
           )}
 
