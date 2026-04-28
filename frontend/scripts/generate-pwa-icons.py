@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
-"""Rebuild PWA / apple-touch icons: white circle + red bird from public/bsd-logo.png."""
 from __future__ import annotations
+
+"""Rebuild PWA / apple-touch icons: navy blue square + white circle + red bird from public/bsd-logo.png."""
+
+# Matches frontend theme_color / BSD navy
+APP_NAVY = (46, 58, 86, 255)  # #2E3A56
 
 from pathlib import Path
 
@@ -43,7 +47,8 @@ def bird_sprite_from_logo() -> Image.Image:
 
 
 def make_icon(size: int, bird_img: Image.Image) -> Image.Image:
-    canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    # Full square: branded navy (icons show bird inside white circle on blue)
+    canvas = Image.new("RGBA", (size, size), APP_NAVY)
     cx = cy = size // 2
     r = max(1, int(size * 0.40))
     disk = Image.new("RGBA", (size, size), (0, 0, 0, 0))
@@ -67,9 +72,7 @@ def main() -> None:
         print("wrote", OUT / name)
 
     apple = make_icon(180, bird)
-    bg = Image.new("RGBA", apple.size, (255, 255, 255, 255))
-    bg.alpha_composite(apple)
-    bg.convert("RGB").save(OUT / "apple-touch-icon.png", format="PNG", optimize=True)
+    apple.convert("RGB").save(OUT / "apple-touch-icon.png", format="PNG", optimize=True)
     print("wrote", OUT / "apple-touch-icon.png")
 
 
