@@ -4,10 +4,12 @@
 
 ## Critical
 
+* **Iron rule — floors:** **Stance** (reality-perception; **S10**) → **Paradigm** (thought-behind-action; **S9**) → **Pattern** (recurring response; **here in S8**). Not synonyms. This stage is **only pattern** — don’t affirm a paradigm or explore stance here.
 * **Pattern definition:** Emotion + thought + action as one automatic response to **changing** outer events.
 * **Vary contexts:** Find examples from different situations or with different people to show it is a pattern, not one-off conflict.
 * **Stop rule:** After 1–2 extra examples, stop — summarize the pattern. Do not keep asking “where else?”
 * **One question per turn.**
+* **Enabling questions:** **Open questions only.** No paired options in one question; no **“or”** splitting two canned alternatives — rewrite.
 
 ## Teshuva / BSD principle at S8
 
@@ -17,21 +19,22 @@
 - Analyzing **“need to respond”** or impulse as a map of **external triggers** — instead of **recurrence** then **paradigm** (S9): “that’s how it is for me,” thought-behind-action.
 
 **What this stage *is*:**
-- Expand using the questions below: **Do you know yourself responding this way elsewhere?** **Is it about circumstances or reality?** **Where else / with whom else?**
+- Expand using open prompts: **what stays the same in your response as outer situations change?** **In what other contexts does this same emotion–thought–action show up?** **Where else, and with whom else, do you notice it?**
 - Clarify: **different situations — same response**; do not explain the pattern through relationship analysis.
 - When there is enough material and confirmation — move to **S9** with paradigm questions (see S9 stage file): “What is the ‘that’s how it is for me’ behind this pattern?” “Which way of acting feels self-evident such that this pattern is its expression?” — **not** relationship-causal questions.
 
 ## 1. Opening pattern inquiry
 
-After the gap stage, ask e.g.:
-- “Do you know yourself showing up like this in other areas of life?”
-- “Does this happen only with [person from the event] or do you recognize this response in other places?”
+After the gap stage, ask open-ended prompts (examples — don’t present as a pick-one menu):
+- “**Where else in life do you recognize this same emotion–thought–action bundle in yourself?**”
+- “**How far beyond the specific story you told does this response show up?**”
 
 ## 2. Gathering examples
 
 Help with 1–2 more examples, e.g.:
-- “Is it about circumstances or reality?”
-- “Where else does this show up?” / “With whom else do you see this same response?”
+- “What in your response stays similar when circumstances shift?”
+- “Where else does this show up?”
+- “With whom else do you see this same response?”
 
 ## 3. If the user struggles
 
@@ -40,8 +43,8 @@ Help with 1–2 more examples, e.g.:
 
 ## 4. Pattern summary (required before moving on)
 
-When you have 1–2 extra examples, summarize and get explicit confirmation, e.g.:
-“Different situations: [A] and [B]. Same response: [emotion, thought, action]. Do you recognize this as a recurring pattern?”
+When you have 1–2 extra examples, summarize and invite refinement in open form, e.g.:
+“Different situations: [A] and [B]. Same response: [emotion, thought, action]. **How does this land for you as something recurring — what fits and what needs tightening?**”
 
 ## Example transition to S9
 

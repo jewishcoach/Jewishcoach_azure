@@ -5,6 +5,7 @@ import { Send, Mic, Square } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@clerk/clerk-react';
 import { useChat } from '../../hooks/useChat';
+import { useChatScrollIntoLatest } from '../../hooks/useChatScrollIntoLatest';
 import { useVoiceRecord } from '../../hooks/useVoiceRecord';
 import { VisionLadder } from './VisionLadder';
 import { ArchiveDrawer } from './ArchiveDrawer';
@@ -69,9 +70,9 @@ export const BSDWorkspace = ({
   useEffect(() => {
     if (!isRecording) setRecordingInputBase(null);
   }, [isRecording]);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatToolRef = useRef<HTMLDivElement>(null);
   const messagesScrollRef = useRef<HTMLDivElement>(null);
+  const { messagesEndRef, lastMessageRef } = useChatScrollIntoLatest(messages, loading);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isSendingRef = useRef(false);
 
@@ -89,10 +90,6 @@ export const BSDWorkspace = ({
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
   }, []);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
 
   useEffect(() => {
     if (!activeTool) return;
@@ -405,7 +402,12 @@ export const BSDWorkspace = ({
                     ? message.meta.phase
                     : messages.slice(0, idx).reverse().find(m => m.role === 'assistant' && m.meta?.phase)?.meta?.phase ?? 'S0';
                   return (
-                    <div key={message.id} data-phase={phase} data-message-id={message.id}>
+                    <div
+                      key={message.id}
+                      data-phase={phase}
+                      data-message-id={message.id}
+                      ref={idx === messages.length - 1 ? lastMessageRef : undefined}
+                    >
                       {/* No word-by-word typing: partial Hebrew breaks RTL/BiDi until the full string is shown */}
                       <WorkspaceMessageBubble
                         message={message}

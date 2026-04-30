@@ -1,10 +1,12 @@
 import { useEffect, useState, memo } from 'react';
+import type { ReactNode } from 'react';
 import { Sparkles, Archive, MessageSquarePlus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@clerk/clerk-react';
 import { apiClient } from '../../services/api';
 import { EnrichmentVideos } from './EnrichmentVideos';
 import { WORKSPACE_CHAT_FONT } from '../../constants/workspaceFonts';
+import { buildActualInsightSections, buildDesiredInsightSections } from '../../utils/formatMezuyDesiredInsights';
 
 interface CognitiveData {
   topic?: string;
@@ -47,7 +49,39 @@ interface HudPanelProps {
   onNewChat?: () => void;
 }
 
-/** Compact tag for insight - appears at top of right panel. Long text uses parent panel scroll only. */
+/** כרטיס תובנות עם כותרת ראשית ושלושת תתי־הנושאים (מעשה / רגשות / אמירה) */
+const InsightSubsectionsCard = ({
+  title,
+  sections,
+}: {
+  title: string;
+  sections: { heading: string; body: string }[];
+}) => (
+  <div
+    className="px-3 py-2.5 rounded-xl border min-h-[2.5rem]"
+    style={{
+      background: 'rgba(255, 255, 255, 0.04)',
+      borderColor: 'rgba(252, 246, 186, 0.2)',
+      fontFamily: WORKSPACE_CHAT_FONT,
+    }}
+  >
+    <span className="text-[11px] uppercase tracking-wider text-[#FCF6BA]/80">{title}</span>
+    <div className="mt-2 space-y-3">
+      {sections.map((s, i) => (
+        <div key={i}>
+          <div className="text-[11px] font-semibold text-[#FCF6BA]/95 tracking-wide">{s.heading}</div>
+          <p
+            className="text-[13px] font-light text-[#F5F5F0]/95 mt-0.5 break-words whitespace-pre-wrap"
+            style={{ lineHeight: 1.45 }}
+          >
+            {s.body}
+          </p>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
 const InsightTag = ({ label, value }: { label: string; value: string }) => (
   <div
     className="px-3 py-2 rounded-xl border min-h-[2.5rem]"
@@ -143,42 +177,43 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
   const phaseForDisplay = currentPhase && currentPhase !== 'S0' ? currentPhase : insightsPhase;
   const currentIdx = stepIndex(phaseForDisplay);
 
-  const actionLbl = t('insights.label.action');
-  const emotionLbl = t('insights.label.emotion');
-  const thoughtLbl = t('insights.label.thought');
+  type HudPiece =
+    | { kind: 'tag'; label: string; value: string }
+    | { kind: 'mezuy'; sections: { heading: string; body: string }[] }
+    | { kind: 'desired'; sections: { heading: string; body: string }[] };
 
-  const insightTags: { label: string; value: string }[] = [];
+  const insightPieces: HudPiece[] = [];
 
   if (data?.topic && currentIdx >= 1) {
-    insightTags.push({ label: t('insights.label.topic'), value: data.topic });
+    insightPieces.push({ kind: 'tag', label: t('insights.label.topic'), value: data.topic });
   }
-  if (currentIdx >= 2 && emotions.length > 0) {
-    insightTags.push({ label: emotionLbl, value: emotions.join(', ') });
+
+  const mezuySections = buildActualInsightSections(t, currentIdx, emotions, thought, actionActual);
+  if (mezuySections.length > 0) {
+    insightPieces.push({ kind: 'mezuy', sections: mezuySections });
   }
-  if (currentIdx >= 3 && thought) {
-    insightTags.push({ label: thoughtLbl, value: thought });
-  }
-  if (currentIdx >= 4 && actionActual) {
-    insightTags.push({ label: t('insights.label.actionActual'), value: actionActual });
-  }
+
   if (currentIdx >= 5) {
     const ad = data?.action_desired ?? data?.event_actual?.action_desired;
     const ed = data?.emotion_desired ?? data?.event_actual?.emotion_desired;
     const td = data?.thought_desired ?? data?.event_actual?.thought_desired;
-    const parts: string[] = [];
-    if (ad) parts.push(`${actionLbl}: ${ad}`);
-    if (ed) parts.push(`${emotionLbl}: ${ed}`);
-    if (td) parts.push(`${thoughtLbl}: ${td}`);
-    if (parts.length) insightTags.push({ label: t('insights.label.desired'), value: parts.join('\n') });
+    const desiredSections = buildDesiredInsightSections(t, ad, ed, td);
+    if (desiredSections.length > 0) {
+      insightPieces.push({ kind: 'desired', sections: desiredSections });
+    }
   }
   if (gapName && currentIdx >= 6) {
-    insightTags.push({ label: t('insights.label.gap'), value: `${gapName}${gapScore != null ? ` (${gapScore}/10)` : ''}` });
+    insightPieces.push({
+      kind: 'tag',
+      label: t('insights.label.gap'),
+      value: `${gapName}${gapScore != null ? ` (${gapScore}/10)` : ''}`,
+    });
   }
   if (pattern && currentIdx >= 7) {
-    insightTags.push({ label: t('insights.label.pattern'), value: pattern });
+    insightPieces.push({ kind: 'tag', label: t('insights.label.pattern'), value: pattern });
   }
   if (paradigm && currentIdx >= 9) {
-    insightTags.push({ label: t('insights.label.paradigm'), value: paradigm });
+    insightPieces.push({ kind: 'tag', label: t('insights.label.paradigm'), value: paradigm });
   }
   if (stanceData && currentIdx >= 10) {
     const rb = stanceData.reality_belief?.trim();
@@ -187,7 +222,7 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
     if (rb) stanceParts.push(`${t('insights.label.stanceReality')}: ${rb}`);
     if (trig) stanceParts.push(`${t('insights.label.stanceTrigger')}: ${trig}`);
     if (stanceParts.length) {
-      insightTags.push({ label: t('insights.label.stance'), value: stanceParts.join('\n') });
+      insightPieces.push({ kind: 'tag', label: t('insights.label.stance'), value: stanceParts.join('\n') });
     }
   }
   if (stanceData && currentIdx >= 11) {
@@ -197,7 +232,11 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
     if (gains.length) parts.push(`${t('insights.label.gains')}: ${gains.join(', ')}`);
     if (losses.length) parts.push(`${t('insights.label.losses')}: ${losses.join(', ')}`);
     if (parts.length) {
-      insightTags.push({ label: t('insights.label.profitLossTable'), value: parts.join('\n') });
+      insightPieces.push({
+        kind: 'tag',
+        label: t('insights.label.profitLossTable'),
+        value: parts.join('\n'),
+      });
     }
   }
   const kmz = data?.kmz_forces ?? data?.forces;
@@ -208,8 +247,20 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
     const parts: string[] = [];
     if (source.length) parts.push(`${t('insights.label.source')}: ${source.join(', ')}`);
     if (nature.length) parts.push(`${t('insights.label.nature')}: ${nature.join(', ')}`);
-    if (parts.length) insightTags.push({ label: t('insights.label.kmzForces'), value: parts.join('\n') });
+    if (parts.length) {
+      insightPieces.push({ kind: 'tag', label: t('insights.label.kmzForces'), value: parts.join('\n') });
+    }
   }
+
+  const renderInsightPiece = (piece: HudPiece, i: number): ReactNode => {
+    if (piece.kind === 'tag') {
+      return <InsightTag key={i} label={piece.label} value={piece.value} />;
+    }
+    if (piece.kind === 'mezuy') {
+      return <InsightSubsectionsCard key={i} title={t('insights.card.actual')} sections={piece.sections} />;
+    }
+    return <InsightSubsectionsCard key={i} title={t('insights.card.desiredBlock')} sections={piece.sections} />;
+  };
 
   return (
     <div className="w-full md:w-72 flex flex-col h-full bg-[#1e293b] min-h-0">
@@ -245,16 +296,14 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
       )}
       <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col min-h-0">
         {/* תובנות - תגיות למעלה */}
-        {insightTags.length > 0 ? (
+        {insightPieces.length > 0 ? (
           <section className="p-5 border-b border-white/[0.06] flex-shrink-0">
             <div className="flex items-center gap-2 mb-3">
               <Sparkles size={16} className="text-[#FCF6BA]/80" />
               <h4 className="text-[12px] font-light uppercase tracking-[0.15em]" style={{ color: 'rgba(245,245,240,0.8)' }}>{t('chat.insightsTitle')}</h4>
             </div>
             <div className="space-y-2">
-              {insightTags.map((tag, i) => (
-                <InsightTag key={i} label={tag.label} value={tag.value} />
-              ))}
+              {insightPieces.map((piece, i) => renderInsightPiece(piece, i))}
             </div>
           </section>
         ) : conversationId && (

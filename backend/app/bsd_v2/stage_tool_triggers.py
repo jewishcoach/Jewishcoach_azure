@@ -3,8 +3,9 @@ When to attach interactive InsightHub tools to a V2 chat response.
 
 S11 (profit_loss): still on first entry into the stage (matches methodology: table right after stance).
 
-S12 (trait_picker): deferred per methodology order — after explanation / verbal consolidation;
-the model sets collected_data.offer_trait_picker, with a saturation fallback if it forgets.
+S12 (trait_picker): only when the model sets collected_data.offer_trait_picker explicitly
+(after explanation + verbal recap in coach_message — see stage prompts). No saturation fallback:
+surfacing the form without the flag caused tables to appear without proper framing.
 """
 
 from __future__ import annotations
@@ -25,23 +26,24 @@ STAGE_TOOL_TRIGGERS: Dict[str, Dict[str, Any]] = {
         "tool_type": "trait_picker",
         "title_he": 'כוחות מקור וטבע (כמ"ז)',
         "title_en": "Source & Nature Forces (KMZ)",
-        "instruction_he": "מהם הערכים והאמונות שמניעים אותך (מקור)? ומהן היכולות והכישרונות הטבעיים שלך (טבע)?",
-        "instruction_en": "What are the values and beliefs that drive you (source)? And what are your natural abilities and talents (nature)?",
+        "instruction_he": (
+            "כרטיס הכמ״ז מחלק תכונות לשני צדדים לפי השיטה: "
+            "**מקור** — אור, ערכים ושליחות (נפש אלוקית); **טבע** — צרכים, הגנות ודחפים שמושכים למטה (ניהול בשכל, לא «אויב»). "
+            "הוסף עד 6 פריטים בכל צד; הראשון בכל עמודה הוא התכונה המובילה. שלח כשסיימת — המאמן ימשיך אחרי זה."
+        ),
+        "instruction_en": (
+            "The KaMaZ card splits traits into two sides: **Source** — light, values, mission (divine soul); "
+            "**Nature** — needs, defenses, downward pulls (working material to steer with intellect, not an 'enemy'). "
+            "Add up to 6 items per side; the first in each column is the leading trait. Submit when done — the coach continues after that."
+        ),
     },
 }
-
-# If the model never sets offer_trait_picker, still surface the form once engagement in S12 is high enough.
-_TRAIT_PICKER_SATURATION_FALLBACK = 0.82
-
 
 def _trait_picker_eligible(state: Dict[str, Any]) -> bool:
     if state.get("trait_picker_tool_sent"):
         return False
     cd = state.get("collected_data") or {}
-    if cd.get("offer_trait_picker"):
-        return True
-    sat = float(state.get("saturation_score") or 0)
-    return sat >= _TRAIT_PICKER_SATURATION_FALLBACK
+    return bool(cd.get("offer_trait_picker"))
 
 
 def resolve_post_turn_tool_call(prev_step: str, state: Dict[str, Any]) -> Optional[Dict[str, Any]]:

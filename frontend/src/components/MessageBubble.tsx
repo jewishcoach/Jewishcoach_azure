@@ -1,6 +1,8 @@
 import type { Message } from '../types';
 import ReactMarkdown from 'react-markdown';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
+import { emphasizeBsdCoachTerms } from '../utils/emphasizeBsdCoachTerms';
 
 interface Props {
   message: Message;
@@ -8,6 +10,11 @@ interface Props {
 
 export const MessageBubble = ({ message }: Props) => {
   const isUser = message.role === 'user';
+  const { i18n } = useTranslation();
+  const mdSource =
+    !isUser && message.content
+      ? emphasizeBsdCoachTerms(message.content, i18n.language)
+      : (message.content ?? '');
 
   return (
     <motion.div 
@@ -38,7 +45,12 @@ export const MessageBubble = ({ message }: Props) => {
               ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
               li: ({ children }) => <li className="mb-1">{children}</li>,
               strong: ({ children }) => (
-                <strong className={isUser ? 'text-[#24324A] font-bold' : 'text-[#0a0a0a] font-bold'}>{children}</strong>
+                <strong
+                  className={isUser ? 'text-[#24324A] font-bold' : 'text-[#7A5E16] font-bold'}
+                  style={isUser ? undefined : { fontWeight: 650 }}
+                >
+                  {children}
+                </strong>
               ),
               a: ({ href, children }) => (
                 <a
@@ -52,7 +64,7 @@ export const MessageBubble = ({ message }: Props) => {
               ),
             }}
           >
-            {message.content}
+            {mdSource}
           </ReactMarkdown>
         </div>
         <div className={`text-xs mt-2 ${isUser ? 'text-[#5A6B8A]/70' : 'text-[#0D0D0D]/42'}`}>

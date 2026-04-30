@@ -25,7 +25,7 @@ export function StationCheckpointBar({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const sendIntent = async (intent: 'pause_here' | 'continue_coaching') => {
+  const confirmContinue = async () => {
     setError(null);
     setBusy(true);
     try {
@@ -35,7 +35,7 @@ export function StationCheckpointBar({
         return;
       }
       apiClient.setToken(token);
-      await apiClient.sendStationIntent(conversationId, intent);
+      await apiClient.sendStationIntent(conversationId, 'continue_coaching');
       onIntentSent();
       onDismiss();
     } catch {
@@ -107,21 +107,12 @@ export function StationCheckpointBar({
               {error}
             </p>
           ) : null}
-          <div className="flex flex-wrap gap-2 pt-1">
+          <div className="pt-1">
             <button
               type="button"
               disabled={busy}
-              onClick={() => void sendIntent('pause_here')}
-              className="px-4 py-2.5 rounded-xl text-[13px] font-medium bg-white border border-[#E2E4E8] text-[#2E3A56] hover:bg-[#F8F9FA] disabled:opacity-50 transition-colors"
-              style={{ fontFamily: WORKSPACE_CHAT_FONT }}
-            >
-              {t('chat.stationPauseHere')}
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void sendIntent('continue_coaching')}
-              className="px-4 py-2.5 rounded-xl text-[13px] font-semibold bg-[#B38728] text-white hover:bg-[#9a7222] disabled:opacity-50 transition-colors shadow-sm"
+              onClick={() => void confirmContinue()}
+              className="w-full px-4 py-2.5 rounded-xl text-[13px] font-semibold bg-[#B38728] text-white hover:bg-[#9a7222] disabled:opacity-50 transition-colors shadow-sm"
               style={{ fontFamily: WORKSPACE_CHAT_FONT }}
             >
               {t('chat.stationContinue')}

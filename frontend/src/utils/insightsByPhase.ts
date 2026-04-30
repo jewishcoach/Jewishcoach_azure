@@ -4,6 +4,7 @@
  */
 
 import type { I18nT } from '../i18nT';
+import { formatActualInsightPlain, formatDesiredInsightPlain } from './formatMezuyDesiredInsights';
 
 export interface CognitiveData {
   topic?: string;
@@ -64,35 +65,23 @@ export function buildInsightsByPhase(
   const stanceData = data.stance;
   const kmz = data.kmz_forces ?? data.forces;
 
-  const actionLabel = t('insights.label.action');
-  const emotionLabel = t('insights.label.emotion');
-  const thoughtLabel = t('insights.label.thought');
-
-  // p1 - Current: topic, emotions, thought, action
+  // p1 — נושא + כרטיס מצוי אחד (מעשה / רגשות / אמירה פנימית), כמו בהוד
   if (currentIdx >= 1 && data.topic) {
     (result[1] ??= []).push({ label: t('insights.label.topic'), value: data.topic });
   }
-  if (currentIdx >= 2 && emotions.length > 0) {
-    (result[1] ??= []).push({ label: emotionLabel, value: emotions.join(', ') });
-  }
-  if (currentIdx >= 3 && thought) {
-    (result[1] ??= []).push({ label: thoughtLabel, value: thought });
-  }
-  if (currentIdx >= 4 && actionActual) {
-    (result[1] ??= []).push({ label: t('insights.label.actionActual'), value: actionActual });
+  const actualPlain = formatActualInsightPlain(t, currentIdx, emotions, thought, actionActual);
+  if (actualPlain) {
+    (result[1] ??= []).push({ label: t('insights.card.actual'), value: actualPlain });
   }
 
-  // p2 - Desired
+  // p2 — רצוי בכרטיסיה אחת
   if (currentIdx >= 5) {
     const ad = data.action_desired ?? data.event_actual?.action_desired;
     const ed = data.emotion_desired ?? data.event_actual?.emotion_desired;
     const td = data.thought_desired ?? data.event_actual?.thought_desired;
-    const parts: string[] = [];
-    if (ad) parts.push(`${actionLabel}: ${ad}`);
-    if (ed) parts.push(`${emotionLabel}: ${ed}`);
-    if (td) parts.push(`${thoughtLabel}: ${td}`);
-    if (parts.length) {
-      (result[2] ??= []).push({ label: t('insights.label.desired'), value: parts.join('\n') });
+    const desiredPlain = formatDesiredInsightPlain(t, ad, ed, td);
+    if (desiredPlain) {
+      (result[2] ??= []).push({ label: t('insights.card.desiredBlock'), value: desiredPlain });
     }
   }
 

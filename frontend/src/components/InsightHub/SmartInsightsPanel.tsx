@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { motion } from 'framer-motion';
 import { Brain } from 'lucide-react';
 import { useAuth } from '@clerk/clerk-react';
@@ -15,6 +16,9 @@ interface CognitiveData {
   emotions?: string[];
   thought?: string;
   action_actual?: string;
+  action_desired?: string;
+  emotion_desired?: string;
+  thought_desired?: string;
   event_actual?: {
     emotions_list?: string[];
     thought_content?: string;
@@ -196,16 +200,19 @@ export const SmartInsightsPanel = ({ conversationId, currentPhase }: SmartInsigh
   }
 
   // S6: Desired
-  if (insights.event_actual?.action_desired || insights.event_actual?.emotion_desired || insights.event_actual?.thought_desired) {
+  const ad = insights.action_desired ?? insights.event_actual?.action_desired;
+  const ed = insights.emotion_desired ?? insights.event_actual?.emotion_desired;
+  const td = insights.thought_desired ?? insights.event_actual?.thought_desired;
+  if (ad?.trim() || ed?.trim() || td?.trim()) {
     insightItems.push({
       stage: 'S6',
       title: stageTitles['S6'][lang],
       status: currentPhase === 'S6' ? 'draft' : 'final',
       data: {
-        action_desired: insights.event_actual?.action_desired,
-        emotion_desired: insights.event_actual?.emotion_desired,
-        thought_desired: insights.event_actual?.thought_desired
-      }
+        action_desired: ad,
+        emotion_desired: ed,
+        thought_desired: td,
+      },
     });
   }
 
@@ -326,7 +333,7 @@ export const SmartInsightsPanel = ({ conversationId, currentPhase }: SmartInsigh
           title={item.title}
           language={lang}
         >
-          {renderWidgetContent(item.stage, item.data, lang)}
+          {renderWidgetContent(item.stage, item.data, lang, t)}
         </ReflectionCard>
       ))}
     </div>
@@ -334,7 +341,7 @@ export const SmartInsightsPanel = ({ conversationId, currentPhase }: SmartInsigh
 };
 
 // Helper function to render the appropriate widget for each stage
-function renderWidgetContent(stage: string, data: any, language: 'he' | 'en') {
+function renderWidgetContent(stage: string, data: any, language: 'he' | 'en', t: TFunction) {
   switch (stage) {
     case 'SHEHIYA':
       return (
@@ -355,16 +362,23 @@ function renderWidgetContent(stage: string, data: any, language: 'he' | 'en') {
         </div>
       );
 
-    case 'MEZUY':
+    case 'MEZUY': {
+      const actionBlk = (data.action ?? '').trim();
+      const emotions = data.emotions_list ?? [];
+      const thoughtBlk = (data.thought ?? '').trim();
       return (
-        <div className="space-y-2 text-sm">
-          {data.emotions_list?.length > 0 && (
+        <div className="space-y-3 text-sm">
+          {actionBlk ? (
             <div>
-              <span className="font-semibold">
-                {language === 'he' ? 'רגש (מצוי):' : 'Emotion (actual):'}
-              </span>{' '}
-              <span className="inline-flex flex-wrap gap-1.5 align-middle">
-                {data.emotions_list.map((emotion: string, idx: number) => (
+              <div className="font-semibold text-primary-dark tracking-wide">{t('insights.section.actualAction')}</div>
+              <div className="text-primary mt-1">{actionBlk}</div>
+            </div>
+          ) : null}
+          {emotions.length > 0 ? (
+            <div>
+              <div className="font-semibold text-primary-dark tracking-wide">{t('insights.section.actualEmotions')}</div>
+              <div className="inline-flex flex-wrap gap-1.5 align-middle mt-1">
+                {emotions.map((emotion: string, idx: number) => (
                   <motion.span
                     key={idx}
                     initial={{ opacity: 0, scale: 0.8 }}
@@ -375,40 +389,40 @@ function renderWidgetContent(stage: string, data: any, language: 'he' | 'en') {
                     {emotion}
                   </motion.span>
                 ))}
-              </span>
-            </div>
-          )}
-          {data.thought ? (
-            <div>
-              <span className="font-semibold">
-                {language === 'he' ? 'מחשבה (מצוי):' : 'Thought (actual):'}
-              </span>{' '}
-              <span className="text-primary italic">"{data.thought}"</span>
+              </div>
             </div>
           ) : null}
-          {data.action ? (
+          {thoughtBlk ? (
             <div>
-              <span className="font-semibold">
-                {language === 'he' ? 'מעשה (מצוי):' : 'Action (actual):'}
-              </span>{' '}
-              <span className="text-primary">{data.action}</span>
+              <div className="font-semibold text-primary-dark tracking-wide">{t('insights.section.actualUtterance')}</div>
+              <div className="text-primary italic mt-1">&quot;{thoughtBlk}&quot;</div>
             </div>
           ) : null}
         </div>
       );
+    }
 
     case 'S6':
       return (
-        <div className="space-y-2 text-sm">
-          {data.action_desired && (
-            <div><span className="font-semibold">{language === 'he' ? 'מעשה רצוי:' : 'Desired action:'}</span> {data.action_desired}</div>
-          )}
-          {data.emotion_desired && (
-            <div><span className="font-semibold">{language === 'he' ? 'רגש רצוי:' : 'Desired emotion:'}</span> {data.emotion_desired}</div>
-          )}
-          {data.thought_desired && (
-            <div><span className="font-semibold">{language === 'he' ? 'מחשבה רצויה:' : 'Desired thought:'}</span> {data.thought_desired}</div>
-          )}
+        <div className="space-y-3 text-sm">
+          {data.action_desired?.trim() ? (
+            <div>
+              <div className="font-semibold text-primary-dark tracking-wide">{t('insights.section.desiredAction')}</div>
+              <div className="text-primary mt-1">{data.action_desired.trim()}</div>
+            </div>
+          ) : null}
+          {data.emotion_desired?.trim() ? (
+            <div>
+              <div className="font-semibold text-primary-dark tracking-wide">{t('insights.section.desiredEmotions')}</div>
+              <div className="text-primary mt-1">{data.emotion_desired.trim()}</div>
+            </div>
+          ) : null}
+          {data.thought_desired?.trim() ? (
+            <div>
+              <div className="font-semibold text-primary-dark tracking-wide">{t('insights.section.desiredUtterance')}</div>
+              <div className="text-primary italic mt-1">&quot;{data.thought_desired.trim()}&quot;</div>
+            </div>
+          ) : null}
         </div>
       );
 

@@ -4,6 +4,7 @@ import { Send, Mic } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@clerk/clerk-react';
 import { useChat } from '../hooks/useChat';
+import { useChatScrollIntoLatest } from '../hooks/useChatScrollIntoLatest';
 import { MessageBubble } from './MessageBubble';
 import { PhaseIndicator } from './PhaseIndicator';
 import { Sidebar } from './Sidebar';
@@ -28,16 +29,11 @@ export const ChatInterface = ({ displayName }: ChatInterfaceProps) => {
   // Get activeTool from useChat instead of local state
   const { messages, loading, currentPhase, conversationId, activeTool, sendMessage, loadConversation, startNewConversation } = useChat(displayName);
   const chatLockedByForm = isChatBlockedByActiveTool(activeTool);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { messagesEndRef, lastMessageRef } = useChatScrollIntoLatest(messages, loading);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const speakFunctionRef = useRef<((text: string) => Promise<void>) | null>(null);
   const stopVoiceSessionRef = useRef<(() => void) | null>(null);
   const isSendingRef = useRef(false); // Prevent duplicate sends
-
-  // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
 
   // Focus input on mount
   useEffect(() => {
@@ -288,6 +284,7 @@ export const ChatInterface = ({ displayName }: ChatInterfaceProps) => {
                     {messages.map((message, index) => (
                       <motion.div
                         key={message.id}
+                        ref={index === messages.length - 1 ? lastMessageRef : undefined}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.8 }}

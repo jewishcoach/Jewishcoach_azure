@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Send, Mic } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useChat } from '../hooks/useChat';
+import { useChatScrollIntoLatest } from '../hooks/useChatScrollIntoLatest';
 import { MessageBubble } from './MessageBubble';
 import { PhaseIndicator } from './PhaseIndicator';
 import { Sidebar } from './Sidebar';
@@ -34,16 +35,11 @@ export const ChatInterfaceDemo = ({ displayName }: ChatInterfaceDemoProps) => {
   const [voiceGender, setVoiceGender] = useState<VoiceGender>('female');
   const { messages, loading, currentPhase, conversationId, activeTool, sendMessage, loadConversation, startNewConversation } = useChat(displayName);
   const chatLockedByForm = isChatBlockedByActiveTool(activeTool);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { messagesEndRef, lastMessageRef } = useChatScrollIntoLatest(messages, loading);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const speakFunctionRef = useRef<((text: string) => Promise<void>) | null>(null);
   const stopVoiceSessionRef = useRef<(() => void) | null>(null);
   const isSendingRef = useRef(false);
-
-  // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
 
   // Focus input on mount
   useEffect(() => {
@@ -156,8 +152,10 @@ export const ChatInterfaceDemo = ({ displayName }: ChatInterfaceDemoProps) => {
         
         <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4" dir={i18n.language === 'he' ? 'rtl' : 'ltr'}>
           <AnimatePresence mode="popLayout">
-            {messages.map((message) => (
-              <MessageBubble key={message.id} message={message} />
+            {messages.map((message, index) => (
+              <div key={message.id} ref={index === messages.length - 1 ? lastMessageRef : undefined}>
+                <MessageBubble message={message} />
+              </div>
             ))}
           </AnimatePresence>
           

@@ -381,7 +381,7 @@ async def generate_coach_message(
     if intent == "STOP" or critique == "STOP":
         logger.info(f"🗣️ [TALKER S0] STOP - User refused")
         if language == "he":
-            text = "קיבלתי. אם תרצה/י לחזור לזה בהמשך — אני כאן."
+            text = "בסדר גמור. אם תרצה/י לחזור לזה בהמשך — אני כאן."
             return (adapt_to_gender(text, user_gender, language), None)
         else:
             return ("Understood. If you want to come back to this later — I'm here.", None)

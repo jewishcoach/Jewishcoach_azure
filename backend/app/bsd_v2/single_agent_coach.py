@@ -65,7 +65,7 @@ STAGE_EXAMPLES_HE = {
         {"tags": ["עלבון", "רגש"], "text": "מאמן: עלבון... ומה עוד?"}
     ],
     "S4": [
-        {"tags": ["מחשבה", "משפט"], "text": "מאמן: מה עבר לך בראש באותו רגע? מה המשפט שאמרת לעצמך?"},
+        {"tags": ["מחשבה", "משפט"], "text": "מאמן: מה האמירה הפנימית שעברה לך בראש באותו רגע — מה שחשבת לעצמך בפנים, לא בהכרח מה שנאמר בקול?"},
         {"tags": ["אמרתי", "לעצמי"], "text": "מאמן: אם היית שם כתובית פנימית למשפט הזה - מה הייתה הכתובת?"},
         {"tags": ["דיוק", "מילולי"], "text": "מאמן: תן את זה במילים המדויקות שרצו לך בראש."}
     ],
@@ -320,7 +320,7 @@ def _infer_step_from_coach_message(coach_message: str, language: str) -> Optiona
         indicators = [
             ("S2", ["מה קרה", "מתי זה היה", "מי היה שם", "ספר לי על אירוע", "סיפור אחד ספציפי", "עם מי זה היה"]),
             ("S3", ["מה הרגשת", "איזה רגש", "איפה הרגשת", "מה עבר בך", "להתעמק ברגשות"]),
-            ("S4", ["מה עבר לך בראש", "מה חשבת", "מה אמרת לעצמך"]),
+            ("S4", ["מה עבר לך בראש", "מה חשבת", "מה אמרת לעצמך", "אמירה פנימית", "בפנים", "לא בקול"]),
             ("S5", ["מה עשית", "איך הגבת", "מה עשית בפועל"]),
             ("S6", ["מה היית רוצה", "איך היית רוצה להרגיש", "מה לומר לעצמך"]),
             ("S7", ["איך תקרא לפער", "בסולם", "כמה חזק הפער"]),
@@ -335,7 +335,7 @@ def _infer_step_from_coach_message(coach_message: str, language: str) -> Optiona
         indicators = [
             ("S2", ["what happened", "when was", "who was there", "specific event", "one time"]),
             ("S3", ["what did you feel", "what emotion", "where did you feel"]),
-            ("S4", ["what went through", "what did you think", "what did you tell yourself"]),
+            ("S4", ["what went through", "what did you think", "what did you tell yourself", "inner sentence", "in your mind", "inside", "not out loud"]),
             ("S5", ["what did you do", "how did you respond"]),
             ("S6", ["what would you want", "how would you want to feel"]),
             ("S7", ["what would you call", "on a scale", "how strong"]),
@@ -553,7 +553,7 @@ def detect_stage_question_mismatch(
         stage_indicators = {
             "S2": ["מה קרה", "מתי זה היה", "מי היה שם", "מי עוד היה"],
             "S3": ["מה הרגשת", "איזה רגש", "איפה הרגשת", "מה עבר בך", "להתעמק ברגשות"],
-            "S4": ["מה עבר לך בראש", "מה חשבת", "מה אמרת לעצמך"],
+            "S4": ["מה עבר לך בראש", "מה חשבת", "מה אמרת לעצמך", "אמירה פנימית", "בפנים", "לא בקול"],
             # S5: require strong behavior indicators — avoid false positives from S2/S3 context
             "S5": ["מה עשית בפועל", "מה היית עושה", "אם הייתי צופה מהצד מה הייתי רואה"],
             "S6": ["מה היית רוצה", "איך היית רוצה להרגיש", "מה לומר לעצמך"],
@@ -569,7 +569,7 @@ def detect_stage_question_mismatch(
         stage_indicators = {
             "S2": ["what happened", "when was", "who was there"],
             "S3": ["what did you feel", "what emotion", "where did you feel"],
-            "S4": ["what went through", "what did you think", "what did you tell yourself"],
+            "S4": ["what went through", "what did you think", "what did you tell yourself", "inner sentence", "in your mind", "inside", "not out loud"],
             "S5": ["what did you do in practice", "what would you have done", "if i were watching"],
             "S6": ["what would you want", "how would you want to feel"],
             "S7": ["what would you call", "on a scale", "how strong"],
@@ -709,15 +709,15 @@ def get_next_step_question(current_step: str, language: str = "he") -> str:
             "S0": "על מה תרצה להתאמן?",
             "S1": "עכשיו כדי שנוכל להבין לעומק, אני מבקש שתשתף אותי בסיפור אחד ספציפי – שיחה או אינטראקציה שהתרחשה לאחרונה, עם אנשים נוספים, שבה הייתה סערה רגשית. ספר לי: עם מי זה היה? מתי? מה קרה שם?",  # Move to S2! (avoid "הרגשת" - triggers S3 mismatch)
             "S2": "ספר לי על רגע אחד ספציפי שבו זה קרה - מתי זה היה?",
-            "S3": "אני מבין. עכשיו אני רוצה לשמוע - מה עבר לך בראש באותו רגע?",
-            "S4": "מה עשית באותו רגע?",
+            "S3": "אני מבין. עכשיו אני רוצה להבין את הרגשות באותו רגע — מה הרגשת?",
+            "S4": "מה האמירה הפנימית שעברה לך בראש באותו רגע — מה שחשבת לעצמך בפנים, לא בהכרח מה שנאמר בקול?",
             "S5": "מה עשית בפועל? איך הגבת?",
             "S6": "מה היית רוצה לעשות במקום? איך היית רוצה להרגיש? מה היית רוצה לומר לעצמך?",
             "S7": "איך תקרא לפער הזה? תן לו שם משלך.",
             "S8": "איפה עוד זה קורה?",
             "S9": "מהו ה'ככה זה אצלי' שממנו מופיע הדפוס הזה?",
             "S10": "מאיזו תפיסת מציאות או אמונה הפרכדיגמה הזו נובעת? מה מדליק אותה?",
-            "S11": "מה אתה מרוויח מהדפוס הזה?",
+            "S11": "מה אתה מרוויח מלהחזיק בתפיסת המציאות ובעמדה שזיהינו — לא רק מהדפוס בשטח?",
             "S12": "מה כאן בשבילך מקור — אור או ערך שמדליק אותך?",
             "S13": "איזו עמדה חדשה אתה בוחר?",
             "S14": "איפה הבחירה הזו מובילה אותך?",
@@ -728,15 +728,15 @@ def get_next_step_question(current_step: str, language: str = "he") -> str:
             "S0": "What would you like to work on?",
             "S1": "Tell me about one specific time when this happened - when was it?",  # Move to S2!
             "S2": "Tell me about one specific moment when this happened - when was it?",
-            "S3": "I understand. Now I want to hear - what went through your mind in that moment?",
-            "S4": "What did you do in that moment?",
+            "S3": "I understand. Now I want to hear — what did you **feel** in that moment?",
+            "S4": "What was the **inner** sentence in your mind then — what you were saying to yourself **inside**, not necessarily out loud?",
             "S5": "What did you actually do? How did you respond?",
             "S6": "What would you have wanted to do instead? How would you want to feel? What would you want to tell yourself?",
             "S7": "What would you call this gap? Give it a name.",
             "S8": "Where else does this happen?",
             "S9": "What is the 'that's how it is for me' from which this pattern emerges?",
             "S10": "From what reality perception or belief does this paradigm stem? What activates it?",
-            "S11": "What do you gain from this pattern?",
+            "S11": "What do you gain from holding the stance and reality-perception we named—not only from the surface pattern?",
             "S12": "What here is source for you — light or a value that lifts you?",
             "S13": "What new stance do you choose?",
             "S14": "Where does this choice lead you?",
@@ -800,11 +800,11 @@ def detect_re_asking_for_event(
     # If we're already in S3 and still got an event-reask, move to S4 question.
     if language == "he":
         return (
-            "מצטער על החזרה! כבר יש לנו את האירוע. עכשיו אני רוצה להבין - מה עבר לך בראש באותו רגע?",
+            "מצטער על החזרה! כבר יש לנו את האירוע. עכשיו — מה האמירה **הפנימית** שעברה לך בראש באותו רגע (לא בהכרח מה שנאמר בקול)?",
             "S4",
         )
     return (
-        "Sorry for repeating! We already have the event. Now I want to understand - what went through your mind in that moment?",
+        "Sorry for repeating! We already have the event. What was the **inner** sentence in your mind in that moment—not necessarily anything said out loud?",
         "S4",
     )
 
@@ -2032,9 +2032,9 @@ def validate_stage_transition(
         # 🎯 Check if LLM already asked an S4 question (thoughts)
         # If yes, allow the transition even if s3_turns < 3
         if language == "he":
-            s4_indicators = ["מה עבר לך בראש", "מה חשבת", "מה אמרת לעצמך", "איזה משפט", "מחשב"]
+            s4_indicators = ["מה עבר לך בראש", "מה חשבת", "מה אמרת לעצמך", "אמירה פנימית", "בפנים", "לא בקול", "איזה משפט", "מחשב"]
         else:
-            s4_indicators = ["what went through your mind", "what did you think", "what did you tell yourself", "thought"]
+            s4_indicators = ["what went through your mind", "what did you think", "what did you tell yourself", "inner sentence", "in your mind", "not out loud", "thought"]
         
         llm_already_in_s4 = any(indicator in coach_message.lower() for indicator in s4_indicators)
         

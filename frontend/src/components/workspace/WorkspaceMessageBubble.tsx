@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import type { Message } from '../../types';
 import ReactMarkdown from 'react-markdown';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { stripUndefined } from '../../utils/messageContent';
+import { emphasizeBsdCoachTerms } from '../../utils/emphasizeBsdCoachTerms';
 import { WORKSPACE_CHAT_FONT } from '../../constants/workspaceFonts';
 
 const TYPING_MS_PER_WORD = 28;
@@ -14,6 +16,7 @@ interface Props {
 }
 
 export const WorkspaceMessageBubble = ({ message, animateTyping = false, dir = 'rtl' }: Props) => {
+  const { i18n } = useTranslation();
   const isUser = message.role === 'user';
   const fullContent = stripUndefined(message.content ?? '');
   const [displayedContent, setDisplayedContent] = useState(
@@ -55,7 +58,9 @@ export const WorkspaceMessageBubble = ({ message, animateTyping = false, dir = '
    * stray "undefined"). During typing, render plain text; run Markdown only on the final string.
    */
   const showPlainTyping = animateTyping && displayedContent !== fullContent;
-  const contentToRender = showPlainTyping ? displayedContent : fullContent;
+  const rawContent = showPlainTyping ? displayedContent : fullContent;
+  const contentToRender =
+    !isUser && !showPlainTyping ? emphasizeBsdCoachTerms(fullContent, i18n.language) : rawContent;
 
   return (
     <motion.div
@@ -105,7 +110,12 @@ export const WorkspaceMessageBubble = ({ message, animateTyping = false, dir = '
                 ol: ({ children }) => <ol className="list-decimal list-inside mb-3 md:mb-4 space-y-1 md:space-y-2 text-[14px] md:text-[16px]" style={{ lineHeight: 1.65 }}>{children}</ol>,
                 li: ({ children }) => <li className="mb-1">{children}</li>,
                 strong: ({ children }) => (
-                  <strong className={`font-semibold ${isUser ? '' : 'text-[#0a0a0a]'}`}>{children}</strong>
+                  <strong
+                    className={`font-semibold ${isUser ? '' : 'text-[#7A5E16]'}`}
+                    style={isUser ? undefined : { fontWeight: 650 }}
+                  >
+                    {children}
+                  </strong>
                 ),
                 a: ({ href, children }) => (
                   <a
