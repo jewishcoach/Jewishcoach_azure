@@ -5,6 +5,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import Optional
 from datetime import datetime
 
+from ..email_visibility import normalize_public_email
+
 
 class ProfileUpdate(BaseModel):
     """Request to update user profile"""
@@ -30,6 +32,11 @@ class ProfileResponse(BaseModel):
     created_at: Optional[datetime] = None
     
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def _scrub_placeholder_email(cls, v):
+        return normalize_public_email(v)
 
     @field_validator("current_plan", mode="before")
     @classmethod

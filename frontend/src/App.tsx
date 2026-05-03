@@ -12,6 +12,7 @@ import { AdminDashboard } from './pages/AdminDashboard';
 import { BillingPage } from './components/BillingPage';
 import { apiClient } from './services/api';
 import './i18n';
+import { isClerkSyntheticEmail } from './lib/clerkEmail';
 
 // Clear onboarding when user is signed out, so next login shows it again
 function SignedOutClearOnboarding() {
@@ -121,7 +122,11 @@ function SignedInContent() {
           {user && (
             <span className="text-white text-sm md:text-base font-light tracking-[0.02em] hidden sm:inline" style={{ fontFamily: 'Inter, sans-serif' }}>
               {(() => {
-                const raw = displayName ?? user?.firstName ?? user?.emailAddresses?.[0]?.emailAddress ?? '';
+                const clerkPrimary = user?.emailAddresses?.[0]?.emailAddress;
+                const raw =
+                  displayName ??
+                  user?.firstName ??
+                  (clerkPrimary && !isClerkSyntheticEmail(clerkPrimary) ? clerkPrimary : '');
                 const name = (typeof raw === 'string' ? raw : '').replace(/^undefined$/i, '').trim();
                 return name ? `${t('app.welcome')}, ${name}!` : `${t('app.welcome')}!`;
               })()}

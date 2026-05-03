@@ -17,6 +17,7 @@ import { TermsOfUsePage } from './TermsOfUsePage';
 import { PwaInstallCard } from './PwaInstallCard';
 import { apiClient } from '../services/api';
 import type { I18nT } from '../i18nT';
+import { friendlyEmailPrefix, isClerkSyntheticEmail } from '../lib/clerkEmail';
 
 // BSD palette: navy primary, minimal red - gold for soft accents
 const COLORS = {
@@ -36,12 +37,20 @@ const COLORS = {
 
 interface Profile {
   id: number;
-  email: string;
+  email: string | null;
   display_name: string | null;
   gender: string | null;
   is_admin: boolean;
   current_plan: string;
   created_at: string;
+}
+
+function profileHeadingName(profile: Profile, defaultLabel: string): string {
+  const dn = profile.display_name?.trim();
+  if (dn) return dn;
+  const fromEmail = friendlyEmailPrefix(profile.email);
+  if (fromEmail) return fromEmail;
+  return defaultLabel;
 }
 
 interface DashboardStats {
@@ -349,7 +358,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
         </button>
         <div className="min-w-0 flex-1 flex items-center gap-1.5 overflow-hidden">
           <p className="font-semibold truncate text-sm" style={{ color: COLORS.text }}>
-            {profile.display_name || profile.email?.split('@')[0] || t('dashboard.userDefault')}
+            {profileHeadingName(profile, t('dashboard.userDefault'))}
           </p>
           <div className="flex items-center gap-1 flex-shrink-0">
             {profile.gender && (
@@ -459,10 +468,17 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.05 }}
           >
-            <h1 className="text-xl font-semibold mb-0.5" style={{ color: COLORS.text }}>
-              {profile.display_name || profile.email?.split('@')[0] || t('dashboard.userDefault')}
+            <h1
+              className={`text-xl font-semibold ${profile.email && !isClerkSyntheticEmail(profile.email) ? 'mb-0.5' : 'mb-5'}`}
+              style={{ color: COLORS.text }}
+            >
+              {profileHeadingName(profile, t('dashboard.userDefault'))}
             </h1>
-            <p className="text-sm mb-5" style={{ color: COLORS.textMuted }}>{profile.email}</p>
+            {profile.email && !isClerkSyntheticEmail(profile.email) && (
+              <p className="text-sm mb-5" style={{ color: COLORS.textMuted }}>
+                {profile.email}
+              </p>
+            )}
 
             {/* Badges */}
             <div className="flex flex-wrap justify-center gap-2">

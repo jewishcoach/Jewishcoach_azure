@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..dependencies import get_current_user
 from ..models import User
+from ..email_visibility import normalize_public_email
+
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/users", tags=["users"])
@@ -20,7 +22,7 @@ def get_current_user_info(
     return {
         "id": user.id,
         "clerk_id": user.clerk_id,
-        "email": user.email,
+        "email": normalize_public_email(user.email),
         "display_name": user.display_name,
         "gender": user.gender,
         "isAdmin": user.is_admin,
