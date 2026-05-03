@@ -150,3 +150,30 @@ def send_reminder_email(
     if ok:
         print(f"[EMAIL] Sent reminder '{title}' to {to_email}")
     return ok
+
+
+def send_html_email(to_email: str, subject: str, body_html: str, body_plain: Optional[str] = None) -> bool:
+    """
+    Transactional HTML email (onboarding drip, admin tests).
+    Uses Azure Communication Services if EMAIL_CONNECTION_STRING is set,
+    otherwise SendGrid if SENDGRID_API_KEY is set.
+    """
+    plain = body_plain if (body_plain and body_plain.strip()) else body_html
+    # Minimal fallback if caller omitted plain text
+    import re
+
+    if plain == body_html:
+        plain = re.sub(r"<[^>]+>", " ", plain)
+        plain = re.sub(r"\s+", " ", plain).strip()
+
+    if os.getenv("EMAIL_CONNECTION_STRING", "").strip():
+        ok = _send_via_azure(subject, plain, body_html, to_email)
+    elif os.getenv("SENDGRID_API_KEY", "").strip():
+        ok = _send_via_sendgrid(subject, plain, body_html, to_email)
+    else:
+        print("[EMAIL] Neither EMAIL_CONNECTION_STRING nor SENDGRID_API_KEY set - skipping transactional send")
+        return False
+
+    if ok:
+        print(f"[EMAIL] Sent transactional '{subject[:48]}…' to {to_email}")
+    return ok

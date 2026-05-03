@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { apiClient } from '../services/api';
 import { useAuth } from '@clerk/clerk-react';
 import { AdminUsersPanel } from './AdminUsersPanel';
+import { AdminOnboardingEmailPanel } from './AdminOnboardingEmailPanel';
 
 interface Flag {
   id: number;
@@ -37,7 +38,7 @@ interface Stats {
 
 export const AdminDashboard: React.FC = () => {
   const { getToken } = useAuth();
-  const [adminTab, setAdminTab] = useState<'flags' | 'users'>('flags');
+  const [adminTab, setAdminTab] = useState<'flags' | 'users' | 'onboarding-email'>('flags');
   const [flags, setFlags] = useState<Flag[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -158,10 +159,23 @@ export const AdminDashboard: React.FC = () => {
           >
             Users & usage
           </button>
+          <button
+            type="button"
+            onClick={() => setAdminTab('onboarding-email')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              adminTab === 'onboarding-email'
+                ? 'bg-slate-800 text-white'
+                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            Onboarding emails
+          </button>
         </div>
 
         {adminTab === 'users' ? (
           <AdminUsersPanel />
+        ) : adminTab === 'onboarding-email' ? (
+          <AdminOnboardingEmailPanel />
         ) : (
           <>
         {/* Stats Cards */}

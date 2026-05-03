@@ -288,6 +288,113 @@ class ApiClient {
     const response = await this.client.get(`/admin/users/${userId}`);
     return response.data;
   }
+
+  // Admin — onboarding email sequences (new-user drip)
+  async getOnboardingEmailMeta() {
+    const response = await this.client.get('/admin/onboarding-email/meta');
+    return response.data;
+  }
+
+  async listOnboardingEmailSequences() {
+    const response = await this.client.get('/admin/onboarding-email/sequences');
+    return response.data;
+  }
+
+  async createOnboardingEmailSequence(payload: {
+    name: string;
+    description?: string | null;
+    is_active?: boolean;
+    is_default?: boolean;
+  }) {
+    const response = await this.client.post('/admin/onboarding-email/sequences', payload);
+    return response.data;
+  }
+
+  async patchOnboardingEmailSequence(
+    sequenceId: number,
+    payload: Partial<{ name: string; description: string | null; is_active: boolean; is_default: boolean }>,
+  ) {
+    const response = await this.client.patch(`/admin/onboarding-email/sequences/${sequenceId}`, payload);
+    return response.data;
+  }
+
+  async deleteOnboardingEmailSequence(sequenceId: number) {
+    const response = await this.client.delete(`/admin/onboarding-email/sequences/${sequenceId}`);
+    return response.data;
+  }
+
+  async createOnboardingEmailStep(
+    sequenceId: number,
+    payload: {
+      delay_after_previous_minutes: number;
+      subject: string;
+      body_html: string;
+      body_plain?: string | null;
+      image_urls?: string[];
+    },
+  ) {
+    const response = await this.client.post(`/admin/onboarding-email/sequences/${sequenceId}/steps`, payload);
+    return response.data;
+  }
+
+  async patchOnboardingEmailStep(
+    stepId: number,
+    payload: Partial<{
+      delay_after_previous_minutes: number;
+      subject: string;
+      body_html: string;
+      body_plain: string | null;
+      image_urls: string[];
+      sort_order: number;
+    }>,
+  ) {
+    const response = await this.client.patch(`/admin/onboarding-email/steps/${stepId}`, payload);
+    return response.data;
+  }
+
+  async deleteOnboardingEmailStep(stepId: number) {
+    const response = await this.client.delete(`/admin/onboarding-email/steps/${stepId}`);
+    return response.data;
+  }
+
+  async reorderOnboardingEmailSteps(sequenceId: number, orderedStepIds: number[]) {
+    const response = await this.client.put(`/admin/onboarding-email/sequences/${sequenceId}/steps/reorder`, {
+      ordered_step_ids: orderedStepIds,
+    });
+    return response.data;
+  }
+
+  async onboardingEmailAiDraft(payload: {
+    admin_prompt: string;
+    language?: string;
+    sequence_id?: number | null;
+    step_id?: number | null;
+  }) {
+    const response = await this.client.post('/admin/onboarding-email/ai/draft-step', payload);
+    return response.data;
+  }
+
+  async onboardingEmailPreviewStep(
+    sequenceId: number,
+    stepId: number,
+    payload: { sample_display_name: string; sample_email: string },
+  ) {
+    const response = await this.client.post(
+      `/admin/onboarding-email/sequences/${sequenceId}/preview-step/${stepId}`,
+      payload,
+    );
+    return response.data;
+  }
+
+  async onboardingEmailTestSend(sequenceId: number, payload: { step_id: number; to_email: string }) {
+    const response = await this.client.post(`/admin/onboarding-email/sequences/${sequenceId}/test-send`, payload);
+    return response.data;
+  }
+
+  async onboardingEmailProcessDue(limit = 50) {
+    const response = await this.client.post('/admin/onboarding-email/process-due', {}, { params: { limit } });
+    return response.data;
+  }
 }
 
 export const apiClient = new ApiClient();

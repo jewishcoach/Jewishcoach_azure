@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, Boolean
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from datetime import datetime
 from .database import Base, utc_now
 from typing import Optional
@@ -289,4 +289,63 @@ class CoachingReminder(Base):
     created_at = Column(DateTime, default=utc_now)
     
     user = relationship("User", backref="coaching_reminders")
+
+
+# ============================================================================
+# ONBOARDING EMAIL SEQUENCES (admin-built drip campaigns for new users)
+# ============================================================================
+
+
+class OnboardingEmailSequence(Base):
+    __tablename__ = "onboarding_email_sequences"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    is_default = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
+
+    steps = relationship(
+        "OnboardingEmailStep",
+        back_populates="sequence",
+        order_by="OnboardingEmailStep.sort_order",
+        cascade="all, delete-orphan",
+    )
+
+
+class OnboardingEmailStep(Base):
+    __tablename__ = "onboarding_email_steps"
+
+    id = Column(Integer, primary_key=True, index=True)
+    sequence_id = Column(Integer, ForeignKey("onboarding_email_sequences.id"), nullable=False, index=True)
+    sort_order = Column(Integer, default=0, nullable=False)
+    delay_after_previous_minutes = Column(Integer, default=0, nullable=False)
+    subject = Column(String(500), nullable=False)
+    body_html = Column(Text, nullable=False)
+    body_plain = Column(Text, nullable=True)
+    image_urls = Column(JSON, default=list)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
+
+    sequence = relationship("OnboardingEmailSequence", back_populates="steps")
+
+
+class UserOnboardingEmailState(Base):
+    """Tracks per-user progress through one onboarding sequence."""
+
+    __tablename__ = "user_onboarding_email_states"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True, index=True)
+    sequence_id = Column(Integer, ForeignKey("onboarding_email_sequences.id"), nullable=False, index=True)
+    next_step_index = Column(Integer, default=0, nullable=False)
+    next_send_at = Column(DateTime, nullable=True, index=True)
+    completed = Column(Boolean, default=False, nullable=False)
+    started_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
+
+    user = relationship("User", backref=backref("onboarding_email_state", uselist=False))
+    sequence = relationship("OnboardingEmailSequence")
 

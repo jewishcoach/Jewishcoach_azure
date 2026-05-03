@@ -44,7 +44,7 @@ echo "🌐 Port: $PORT"
 echo "📚 PYTHONPATH: $PYTHONPATH"
 
 # DB init: create new tables if missing
-python -c "from app.database import engine, Base; Base.metadata.create_all(bind=engine, checkfirst=True)" 2>&1 || true
+python -c "from app.database import engine, Base; import app.models; Base.metadata.create_all(bind=engine, checkfirst=True)" 2>&1 || true
 
 # Column migrations: add new columns to existing tables (idempotent)
 # Uses app.database.engine directly so it targets the same DB the app uses.

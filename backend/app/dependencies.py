@@ -336,6 +336,13 @@ async def get_current_user(
             db.add(user)
             db.commit()
             db.refresh(user)
+
+            try:
+                from .services.onboarding_email_runtime import maybe_enqueue_default_sequence
+
+                maybe_enqueue_default_sequence(db, user)
+            except Exception as oe:
+                print(f"⚠️ [OnboardingEmail] enqueue after signup failed: {type(oe).__name__}: {oe}")
             
             if should_be_admin:
                 print(f"✅ Admin user created: clerk_id={clerk_id} email={resolved_email or jwt_email}")
