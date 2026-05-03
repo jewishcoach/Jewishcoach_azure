@@ -1,7 +1,13 @@
 """
 Email service for sending reminder notifications.
 Supports Azure Communication Services Email (preferred) or SendGrid.
-Sender: reminders@jewishcoacher.com
+
+Sender address rules:
+- ACS: MAIL FROM must use a verified domain on your Email Communication Service.
+  With only the Azure-managed domain, use MailFrom like
+  donotreply@<guid>.azurecomm.net (see Azure Portal → Provision domains).
+  Custom domains (e.g. @jewishcoacher.com) require DNS verification first.
+- SendGrid: From must be verified for your SendGrid account.
 """
 import os
 from datetime import datetime
@@ -9,6 +15,18 @@ from typing import Optional
 
 SENDER_EMAIL = os.getenv("EMAIL_SENDER", "reminders@jewishcoacher.com")
 SENDER_NAME = "Jewish Coach - תזכורות אימון"
+
+
+def _reply_to_for_acs() -> list[dict] | None:
+    """Optional Reply-To list for ACS JSON payload."""
+    addr = os.getenv("EMAIL_REPLY_TO", "").strip()
+    if not addr or "@" not in addr:
+        return None
+    name = os.getenv("EMAIL_REPLY_TO_DISPLAY_NAME", "").strip()
+    entry: dict = {"address": addr}
+    if name:
+        entry["displayName"] = name
+    return [entry]
 
 
 def _build_reminder_content(
@@ -90,6 +108,9 @@ def _send_via_azure(subject: str, body_plain: str, body_html: str, to_email: str
             "recipients": {"to": [{"address": to_email}]},
             "senderAddress": SENDER_EMAIL,
         }
+        rt = _reply_to_for_acs()
+        if rt:
+            message["replyTo"] = rt
         poller = client.begin_send(message)
         poller.result()
         return True
@@ -105,7 +126,7 @@ def _send_via_sendgrid(subject: str, body_plain: str, body_html: str, to_email: 
         return False
     try:
         from sendgrid import SendGridAPIClient
-        from sendgrid.helpers.mail import Mail, Email, To, Content
+        from sendgrid.helpers.mail import Mail, Email, To, Content, ReplyTo
         message = Mail(
             from_email=Email(SENDER_EMAIL, SENDER_NAME),
             to_emails=To(to_email),
@@ -113,6 +134,9 @@ def _send_via_sendgrid(subject: str, body_plain: str, body_html: str, to_email: 
             plain_text_content=Content("text/plain", body_plain),
             html_content=Content("text/html", body_html),
         )
+        reply_addr = os.getenv("EMAIL_REPLY_TO", "").strip()
+        if reply_addr and "@" in reply_addr:
+            message.reply_to = ReplyTo(reply_addr)
         sg = SendGridAPIClient(api_key)
         sg.send(message)
         return True
