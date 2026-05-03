@@ -1,8 +1,15 @@
 # HeyGen walkthrough script — Jewish Coach AI (English)
 
 **Audience:** New users  
-**Tone:** Warm, clear, educational — not clinical  
+**Tone:** Warm, pleasant adult voice — clear and educational, not clinical  
 **Approx. length:** ~3–4 minutes at moderate pace (~450 words)
+
+### Presenter & setting (for HeyGen avatar + background)
+
+- **Presenter:** A **pleasant, grounded adult** — think **mature but not elderly**: confident middle-aged energy (roughly late forties to mid fifties), **not** a “senior” or grandparent stereotype. Friendly face, relaxed smile, speaks clearly and warmly as if welcoming someone into their home.
+- **Voice / manner:** Calm, approachable, slightly nurturing — never stiff or corporate. Small natural gestures; eye contact with camera.
+- **Setting:** A **warm, attractive Western-style home** interior — e.g. bright living room or home office with **natural light**, **wood tones**, soft neutrals (cream, sand, warm gray), **plants or books**, comfortable seating. Feels **inviting and lived-in**, not a studio podium, not clinical, not flashy luxury showroom.
+- **Wardrobe:** Smart-casual Western everyday — knit top, soft shirt, or light blazer; natural colors that fit the room.
 
 Use scenes as separate HeyGen clips or one continuous take with B-roll on screen recordings.
 
