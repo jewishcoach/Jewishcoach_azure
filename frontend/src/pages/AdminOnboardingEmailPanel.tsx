@@ -271,8 +271,18 @@ export const AdminOnboardingEmailPanel: React.FC = () => {
         <div>
           <h2 className="text-lg font-semibold text-gray-900">שרשרת אימיילים למשתמשים חדשים</h2>
           <p className="text-sm text-gray-600 mt-1">
-            סימון &quot;ברירת מחדל&quot; ירשום משתמשים חדשים אוטומטית (בהתחברות ראשונה). הפעל timers עם כפתור &quot;שליחת
-            תורים&quot; או Azure Scheduler על{' '}
+            סימון &quot;ברירת מחדל&quot; ירשום משתמשים חדשים אוטומטית (בהתחברות ראשונה). שליחה מתוזמנת: הגדר ב‑Azure{' '}
+            <code className="bg-slate-100 px-1 rounded text-xs">EMAIL_CONNECTION_STRING</code> או{' '}
+            <code className="bg-slate-100 px-1 rounded text-xs">SENDGRID_API_KEY</code>, וכן{' '}
+            <code className="bg-slate-100 px-1 rounded text-xs">PUBLIC_APP_URL</code> ו‑
+            <code className="bg-slate-100 px-1 rounded text-xs">CLERK_SECRET_KEY</code>. להפעלה אוטומטית של התור: סוד{' '}
+            <code className="bg-slate-100 px-1 rounded text-xs">ONBOARDING_EMAIL_CRON_SECRET</code> + קריאה מתוזמנת ל‑
+            <code className="bg-slate-100 px-1 rounded text-xs">
+              POST /api/internal/onboarding-email/process-due
+            </code>{' '}
+            (כותרת <code className="bg-slate-100 px-1 rounded text-xs">X-Onboarding-Email-Cron-Secret</code>) — ראה GitHub
+            workflow <code className="bg-slate-100 px-1 rounded text-xs">onboarding-email-dispatch.yml</code>. ידנית
+            (JWT אדמין):{' '}
             <code className="bg-slate-100 px-1 rounded text-xs">POST /api/admin/onboarding-email/process-due</code>.
           </p>
           {meta && (

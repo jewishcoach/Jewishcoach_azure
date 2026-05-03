@@ -1,5 +1,5 @@
 #!/bin/bash
-# הגדרת משתני תזכורות במייל ב-Azure App Service
+# הגדרת משתני מייל וסודות cron ב-Azure App Service (תזכורות + אונבורדינג).
 # שימוש: EMAIL_CONNECTION_STRING="..." REMINDER_CRON_SECRET="..." ./scripts/set_azure_email_settings.sh
 # או: ./scripts/set_azure_email_settings.sh  # יבקש את הערכים
 
@@ -18,6 +18,11 @@ if [ -z "$REMINDER_CRON_SECRET" ]; then
   [ -z "$REMINDER_CRON_SECRET" ] && REMINDER_CRON_SECRET=$(openssl rand -hex 24)
 fi
 
+# סוד זהה ברירת מחדל לשתי הקריאות המתוזמנות (ניתן לדרוס עם ONBOARDING_EMAIL_CRON_SECRET)
+ONBOARDING_EMAIL_CRON_SECRET="${ONBOARDING_EMAIL_CRON_SECRET:-$REMINDER_CRON_SECRET}"
+
+PUBLIC_APP_URL="${PUBLIC_APP_URL:-https://jewishcoacher.com}"
+
 echo "מגדיר ב-Azure ($APP_NAME)..."
 az webapp config appsettings set \
   --name "$APP_NAME" \
@@ -25,7 +30,11 @@ az webapp config appsettings set \
   --settings \
     EMAIL_CONNECTION_STRING="$EMAIL_CONNECTION_STRING" \
     REMINDER_CRON_SECRET="$REMINDER_CRON_SECRET" \
+    ONBOARDING_EMAIL_CRON_SECRET="$ONBOARDING_EMAIL_CRON_SECRET" \
+    PUBLIC_APP_URL="$PUBLIC_APP_URL" \
   -o none
 
 echo "✅ הוגדר. הפעל מחדש: az webapp restart --name $APP_NAME --resource-group $RG"
-echo "REMINDER_CRON_SECRET לשימוש ב-Logic App: $REMINDER_CRON_SECRET"
+echo "REMINDER_CRON_SECRET (Logic App תזכורות): $REMINDER_CRON_SECRET"
+echo "ONBOARDING_EMAIL_CRON_SECRET (GitHub Actions / cron אונבורדינג): $ONBOARDING_EMAIL_CRON_SECRET"
+echo "הוסף ב-GitHub Secrets אותו ערך כמו ONBOARDING_EMAIL_CRON_SECRET + ONBOARDING_EMAIL_CRON_POST_URL (ראה onboarding-email-dispatch.yml)"

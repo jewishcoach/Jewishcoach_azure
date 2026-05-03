@@ -1,0 +1,34 @@
+# Dispatches due onboarding emails every 15 minutes when secrets are configured.
+#
+# Azure App Service (jewishcoach-api):
+#   ONBOARDING_EMAIL_CRON_SECRET=<same random string as GitHub secret below>
+#
+# GitHub repo → Settings → Secrets and variables → Actions:
+#   ONBOARDING_EMAIL_CRON_SECRET   — same value as Azure
+#   ONBOARDING_EMAIL_CRON_POST_URL — full URL, e.g.
+#       https://jewishcoach-api.azurewebsites.net/api/internal/onboarding-email/process-due
+#     or with custom API domain:
+#       https://api.jewishcoacher.com/api/internal/onboarding-email/process-due
+
+name: Onboarding email dispatch (cron)
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: POST process-due (internal cron)
+        env:
+          URL: ${{ secrets.ONBOARDING_EMAIL_CRON_POST_URL }}
+          SECRET: ${{ secrets.ONBOARDING_EMAIL_CRON_SECRET }}
+        run: |
+          if [ -z "$URL" ] || [ -z "$SECRET" ]; then
+            echo "::notice::Skipped — add secrets ONBOARDING_EMAIL_CRON_POST_URL and ONBOARDING_EMAIL_CRON_SECRET (see workflow header comments)."
+            exit 0
+          fi
+          curl -fsS -X POST "${URL}?limit=50" \
+            -H "X-Onboarding-Email-Cron-Secret: ${SECRET}"
