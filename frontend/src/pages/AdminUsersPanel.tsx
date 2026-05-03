@@ -18,12 +18,26 @@ interface AdminUserRow {
   assistant_message_count: number;
   estimated_llm_tokens_approx: number;
   last_activity_at: string | null;
+  /** Catalog monthly list price from plan definitions (₪). Not Stripe-charged amounts. */
+  plan_list_price_ils_month: number;
+  has_active_coupon: boolean;
+  estimated_llm_cost_usd: number | null;
+  estimated_llm_cost_ils: number | null;
+  estimated_margin_catalog_minus_llm_ils: number | null;
+}
+
+interface EconomicsAssumptions {
+  llm_usd_per_million_tokens: number | null;
+  ils_per_usd: number | null;
+  revenue_note: string;
+  cost_note: string;
 }
 
 interface UsersListResponse {
   total: number;
   skip: number;
   limit: number;
+  economics_assumptions: EconomicsAssumptions;
   users: AdminUserRow[];
 }
 
@@ -89,9 +103,23 @@ export const AdminUsersPanel: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-950">
-        <strong className="font-semibold">LLM usage column</strong> is a rough estimate: sum of stored message
-        characters ÷ 4 (user + assistant). It does not match Azure billing or real tokenizer counts.
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-950 space-y-2">
+        <p>
+          <strong className="font-semibold">Cost vs revenue here are indicative.</strong>{' '}
+          <strong>Catalog ₪</strong> is the plan&apos;s list price in code (basic/premium/pro) — not what Stripe
+          actually charged (discounts, proration, failed renewals are not in our DB). For real payments use Stripe.
+        </p>
+        <p>
+          <strong>Est. LLM $</strong> uses persisted messages only: characters ÷ 4 ×{' '}
+          <code className="bg-amber-100 px-1 rounded">ADMIN_LLM_USD_PER_MILLION_TOKENS</code> (server env). It excludes
+          non-prompt tokens (routing, judge runs), embedding/search, speech, and fixed Azure fees.
+        </p>
+        {data?.economics_assumptions && (
+          <p className="text-xs text-amber-900 font-mono">
+            Env: LLM $/1M tok={data.economics_assumptions.llm_usd_per_million_tokens ?? '—'} · USD→ILS=
+            {data.economics_assumptions.ils_per_usd ?? '—'}
+          </p>
+        )}
       </div>
 
       <div className="bg-white rounded-lg shadow p-4 flex flex-wrap gap-3 items-end">
@@ -138,6 +166,10 @@ export const AdminUsersPanel: React.FC = () => {
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Msgs</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">User / Asst</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">~Tokens</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Catalog ₪</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Est LLM $</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Est LLM ₪</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Margin ₪*</th>
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Last activity</th>
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase"></th>
                   </tr>
@@ -166,6 +198,25 @@ export const AdminUsersPanel: React.FC = () => {
                       <td className="px-3 py-2 text-right tabular-nums text-xs">
                         {u.estimated_llm_tokens_approx.toLocaleString()}
                       </td>
+                      <td className="px-3 py-2 text-right tabular-nums text-xs">
+                        {u.plan_list_price_ils_month}
+                        {u.has_active_coupon && (
+                          <span className="ml-1 text-amber-800 font-medium" title="Active coupon — catalog tier may not reflect cash paid">
+                            coupon
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums text-xs">
+                        {u.estimated_llm_cost_usd != null ? u.estimated_llm_cost_usd.toFixed(4) : '—'}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums text-xs">
+                        {u.estimated_llm_cost_ils != null ? u.estimated_llm_cost_ils.toFixed(2) : '—'}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums text-xs">
+                        {u.estimated_margin_catalog_minus_llm_ils != null
+                          ? u.estimated_margin_catalog_minus_llm_ils.toFixed(2)
+                          : '—'}
+                      </td>
                       <td className="px-3 py-2 text-xs text-gray-600 whitespace-nowrap">
                         {u.last_activity_at ? new Date(u.last_activity_at).toLocaleString() : '—'}
                       </td>
@@ -184,6 +235,10 @@ export const AdminUsersPanel: React.FC = () => {
               </table>
             </div>
           </div>
+
+          <p className="text-xs text-gray-500">
+            *Margin = catalog list ₪ minus estimated LLM COGS in ₪ (needs both LLM rate + ADMIN_ILS_PER_USD). Not profit.
+          </p>
 
           <div className="flex justify-between items-center">
             <button

@@ -69,3 +69,6 @@ fi
 
 echo ""
 echo "🔍 Check health: curl -s https://jewishcoach-api.azurewebsites.net/health | python3 -m json.tool"
+echo ""
+echo "ℹ️  Admin dashboard needs ADMIN_EMAIL (+optional ADMIN_CLERK_IDS). JWT often lacks email:"
+echo "   Set CLERK_SECRET_KEY on the Web App so the API can resolve primary email from Clerk."

@@ -4,7 +4,11 @@ from sqlalchemy.orm import Session
 from jose import jwt as jose_jwt
 from .database import get_db, utc_now
 from .models import User
+import json
 import os
+import urllib.error
+import urllib.parse
+import urllib.request
 
 # Optional: JWT verification with Clerk JWKS (set CLERK_JWKS_URL for production)
 _jwks_client = None
@@ -92,6 +96,99 @@ def _extract_email(payload: dict) -> str | None:
 
     return None
 
+
+_CLERK_PRIMARY_EMAIL_CACHE: dict[str, str] = {}
+
+
+def _normalized_email_for_admin_match(email: str | None) -> str | None:
+    if not email or "@" not in email:
+        return None
+    return email.strip().lower()
+
+
+def _admin_email_allowlist_normalized() -> set[str]:
+    raw = os.getenv("ADMIN_EMAIL", "") or ""
+    out: set[str] = set()
+    for part in raw.split(","):
+        n = _normalized_email_for_admin_match(part.strip())
+        if n:
+            out.add(n)
+    return out
+
+
+def _admin_clerk_id_allowlist() -> set[str]:
+    raw = os.getenv("ADMIN_CLERK_IDS", "") or ""
+    return {x.strip() for x in raw.split(",") if x.strip()}
+
+
+def _should_grant_admin(clerk_id: str, resolved_email: str | None) -> bool:
+    """
+    Admin if Clerk user id is listed in ADMIN_CLERK_IDS, or resolved email matches ADMIN_EMAIL
+    (comma-separated, case-insensitive). JWT often omits email — use resolve + optional Clerk API.
+    """
+    if clerk_id and clerk_id in _admin_clerk_id_allowlist():
+        return True
+    allow = _admin_email_allowlist_normalized()
+    if not allow:
+        return False
+    em = _normalized_email_for_admin_match(resolved_email)
+    return bool(em and em in allow)
+
+
+def _fetch_clerk_primary_email(clerk_id: str) -> str | None:
+    """Backend API: needs CLERK_SECRET_KEY (sk_live_ / sk_test_). Cached per process."""
+    if clerk_id in _CLERK_PRIMARY_EMAIL_CACHE:
+        return _CLERK_PRIMARY_EMAIL_CACHE[clerk_id]
+    secret = os.getenv("CLERK_SECRET_KEY", "").strip()
+    if not secret or not clerk_id:
+        return None
+    safe_id = urllib.parse.quote(clerk_id, safe="")
+    url = f"https://api.clerk.com/v1/users/{safe_id}"
+    try:
+        req = urllib.request.Request(url, headers={"Authorization": f"Bearer {secret}"})
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            body = json.loads(resp.read().decode())
+    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError, ValueError) as e:
+        print(f"⚠️ [AUTH] Clerk user lookup failed for {clerk_id}: {type(e).__name__}: {e}")
+        return None
+    primary_id = body.get("primary_email_address_id")
+    emails = body.get("email_addresses") or []
+    chosen: str | None = None
+    if isinstance(emails, list) and primary_id:
+        for ea in emails:
+            if isinstance(ea, dict) and ea.get("id") == primary_id:
+                addr = ea.get("email_address")
+                if isinstance(addr, str) and "@" in addr:
+                    chosen = addr
+                    break
+    if chosen is None and isinstance(emails, list):
+        for ea in emails:
+            if isinstance(ea, dict):
+                addr = ea.get("email_address")
+                if isinstance(addr, str) and "@" in addr:
+                    chosen = addr
+                    break
+    if chosen:
+        _CLERK_PRIMARY_EMAIL_CACHE[clerk_id] = chosen
+        print(f"✅ [AUTH] Resolved primary email from Clerk API for {clerk_id}")
+    return chosen
+
+
+def _resolve_primary_email(
+    jwt_email: str | None,
+    clerk_id: str,
+    existing_db_email: str | None,
+) -> str | None:
+    """Prefer JWT email, then non-placeholder DB row, then Clerk Backend API."""
+    je = jwt_email.strip() if isinstance(jwt_email, str) else None
+    if je and "@" in je:
+        return je
+    db = (existing_db_email or "").strip()
+    if db and "@clerk.temp" not in db and "@" in db:
+        return db
+    return _fetch_clerk_primary_email(clerk_id)
+
+
 async def get_current_user(
     authorization: str = Header(None),
     db: Session = Depends(get_db),
@@ -156,48 +253,48 @@ async def get_current_user(
             payload = jose_jwt.get_unverified_claims(token)
         clerk_id = payload.get("sub")
         print(f"✅ [AUTH DEBUG] Decoded JWT, clerk_id: {clerk_id}")
-        email = _extract_email(payload)
-        
+        jwt_email = _extract_email(payload)
+        if jwt_email:
+            print(f"✅ [AUTH DEBUG] Email from JWT: {jwt_email[:3]}***")
+        else:
+            print("⚠️ [AUTH DEBUG] No email claim in JWT — will use DB or Clerk API if configured")
+
         if not clerk_id:
             raise HTTPException(status_code=401, detail="Invalid token: missing sub claim")
         
         # Sync user to database (upsert)
         user = db.query(User).filter(User.clerk_id == clerk_id).first()
+
+        resolved_email = _resolve_primary_email(jwt_email, clerk_id, user.email if user else None)
+        should_be_admin = _should_grant_admin(clerk_id, resolved_email)
         
         if not user:
             # Auto-register new user
-            # Check if this email should be an admin
-            admin_email = os.getenv("ADMIN_EMAIL")
-            is_admin = (email == admin_email) if admin_email else False
-            
+            row_email = resolved_email or jwt_email or f"{clerk_id}@clerk.temp"
             user = User(
                 clerk_id=clerk_id,
-                email=email or f"{clerk_id}@clerk.temp",
-                is_admin=is_admin,
+                email=row_email,
+                is_admin=should_be_admin,
                 created_at=utc_now()
             )
             db.add(user)
             db.commit()
             db.refresh(user)
             
-            if is_admin:
-                print(f"✅ Admin user created: {email}")
+            if should_be_admin:
+                print(f"✅ Admin user created: clerk_id={clerk_id} email={resolved_email or jwt_email}")
         else:
-            # Sync email/admin for existing users
-            admin_email = os.getenv("ADMIN_EMAIL")
-            should_be_admin = (email == admin_email) if admin_email else False
             updated = False
 
-            # Keep DB email aligned with Clerk whenever the token carries an address
-            # (fixes @clerk.temp placeholders and stale rows — needed for billing overrides).
-            if email and "@" in email and user.email != email:
-                user.email = email
+            # Prefer real email from JWT, Clerk API, or keep existing non-placeholder
+            if resolved_email and "@" in resolved_email and user.email != resolved_email:
+                user.email = resolved_email
                 updated = True
 
             if should_be_admin and not user.is_admin:
                 user.is_admin = True
                 updated = True
-                print(f"✅ Admin user promoted: {email}")
+                print(f"✅ Admin user promoted: clerk_id={clerk_id} email={resolved_email}")
 
             if updated:
                 db.commit()

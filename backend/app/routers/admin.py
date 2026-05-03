@@ -5,13 +5,17 @@ Protected endpoints for admin users to view quality flags,
 system stats, user directory / usage summaries, and manage the LLM-as-a-Judge audit results.
 """
 
+import os
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from ..dependencies import get_current_admin_user
 from ..database import get_db
-from ..models import ConversationFlag, User, Conversation, Message, UsageRecord
+from ..models import ConversationFlag, User, Conversation, Message, UsageRecord, CouponRedemption
+from ..schemas.billing import PLAN_LIMITS
 from typing import Optional
 
 router = APIRouter(
@@ -195,6 +199,91 @@ def _empty_user_agg() -> dict:
     }
 
 
+def _parse_optional_float(env_key: str) -> Optional[float]:
+    raw = os.getenv(env_key)
+    if raw is None or str(raw).strip() == "":
+        return None
+    try:
+        return float(raw)
+    except ValueError:
+        return None
+
+
+def economics_assumptions() -> dict:
+    """
+    Admin economics helpers (optional env):
+
+    - ADMIN_LLM_USD_PER_MILLION_TOKENS — blended $ / 1M tokens for rough LLM COGS
+      (multiply by estimated_llm_tokens_approx ≈ sum(chars)/4 over persisted messages).
+    - ADMIN_ILS_PER_USD — FX to show estimated LLM cost and margin in ₪.
+
+    Revenue shown is catalog list price from PLAN_LIMITS (ILS/month), not Stripe charges.
+    """
+    return {
+        "llm_usd_per_million_tokens": _parse_optional_float("ADMIN_LLM_USD_PER_MILLION_TOKENS"),
+        "ils_per_usd": _parse_optional_float("ADMIN_ILS_PER_USD"),
+        "revenue_note": "catalog_list_price_ils_not_stripe_actuals",
+        "cost_note": "llm_only_chars_over_4_proxy_not_azure_invoice",
+    }
+
+
+def _plan_catalog_price_ils(plan_key: Optional[str]) -> int:
+    p = (plan_key or "basic").strip() or "basic"
+    row = PLAN_LIMITS.get(p, PLAN_LIMITS["basic"])
+    return int(row.get("price") or 0)
+
+
+def _estimated_llm_cost_usd(tokens_approx: int, usd_per_million: Optional[float]) -> Optional[float]:
+    if usd_per_million is None:
+        return None
+    if tokens_approx <= 0:
+        return 0.0
+    return round((tokens_approx / 1_000_000.0) * usd_per_million, 6)
+
+
+def _users_with_active_coupon(db: Session, user_ids: list[int]) -> set[int]:
+    if not user_ids:
+        return set()
+    now = datetime.now(timezone.utc)
+    rows = (
+        db.query(CouponRedemption.user_id)
+        .filter(
+            CouponRedemption.user_id.in_(user_ids),
+            CouponRedemption.is_active.is_(True),
+            or_(CouponRedemption.expires_at.is_(None), CouponRedemption.expires_at > now),
+        )
+        .distinct()
+        .all()
+    )
+    return {int(r[0]) for r in rows}
+
+
+def _economics_row(
+    *,
+    tokens_approx: int,
+    plan_key: Optional[str],
+    has_active_coupon: bool,
+    assumptions: dict,
+) -> dict:
+    usd_rate = assumptions.get("llm_usd_per_million_tokens")
+    fx = assumptions.get("ils_per_usd")
+    cost_usd = _estimated_llm_cost_usd(tokens_approx, usd_rate)
+    cost_ils = None
+    if cost_usd is not None and fx is not None:
+        cost_ils = round(cost_usd * fx, 2)
+    catalog_ils = _plan_catalog_price_ils(plan_key)
+    margin_ils = None
+    if cost_ils is not None:
+        margin_ils = round(catalog_ils - cost_ils, 2)
+    return {
+        "plan_list_price_ils_month": catalog_ils,
+        "has_active_coupon": has_active_coupon,
+        "estimated_llm_cost_usd": cost_usd,
+        "estimated_llm_cost_ils": cost_ils,
+        "estimated_margin_catalog_minus_llm_ils": margin_ils,
+    }
+
+
 def _aggregate_user_stats(db: Session, user_ids: list[int]) -> dict[int, dict]:
     """Rollups from Conversation/Message. Token estimate ≈ sum(chars)/4 (rough proxy — no billing-meter logs)."""
     out: dict[int, dict] = {uid: _empty_user_agg() for uid in user_ids}
@@ -260,6 +349,9 @@ async def list_users(
 
     `estimated_llm_tokens_approx` sums ~(characters/4) over **both** user and assistant persisted
     messages (proxy for total text moved through the stack — not Azure billing).
+
+    When env `ADMIN_LLM_USD_PER_MILLION_TOKENS` (and optionally `ADMIN_ILS_PER_USD`) is set,
+    each row includes estimated LLM USD cost and catalog-vs-proxy margin in ₪; see `economics_assumptions`.
     """
     q = db.query(User)
     if search and search.strip():
@@ -276,10 +368,18 @@ async def list_users(
     users = q.order_by(User.created_at.desc()).offset(max(skip, 0)).limit(min(max(limit, 1), 200)).all()
     ids = [u.id for u in users]
     agg = _aggregate_user_stats(db, ids)
+    coupon_users = _users_with_active_coupon(db, ids)
+    assumptions = economics_assumptions()
 
     rows = []
     for u in users:
         a = agg.get(u.id, _empty_user_agg())
+        econ = _economics_row(
+            tokens_approx=int(a.get("estimated_llm_tokens_approx") or 0),
+            plan_key=u.current_plan,
+            has_active_coupon=u.id in coupon_users,
+            assumptions=assumptions,
+        )
         rows.append(
             {
                 "id": u.id,
@@ -292,10 +392,17 @@ async def list_users(
                 "stripe_customer_id": bool(u.stripe_customer_id),
                 "created_at": u.created_at.isoformat() if u.created_at else None,
                 **a,
+                **econ,
             }
         )
 
-    return {"total": total, "skip": skip, "limit": limit, "users": rows}
+    return {
+        "total": total,
+        "skip": skip,
+        "limit": limit,
+        "economics_assumptions": assumptions,
+        "users": rows,
+    }
 
 
 @router.get("/users/{user_id}")
@@ -306,6 +413,14 @@ async def get_user_detail(user_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="User not found")
 
     agg = _aggregate_user_stats(db, [user_id]).get(user_id, _empty_user_agg())
+    assumptions = economics_assumptions()
+    coupon_users = _users_with_active_coupon(db, [user_id])
+    econ = _economics_row(
+        tokens_approx=int(agg.get("estimated_llm_tokens_approx") or 0),
+        plan_key=user.current_plan,
+        has_active_coupon=user_id in coupon_users,
+        assumptions=assumptions,
+    )
 
     conversations = (
         db.query(Conversation).filter(Conversation.user_id == user_id).order_by(Conversation.updated_at.desc()).all()
@@ -341,6 +456,8 @@ async def get_user_detail(user_id: int, db: Session = Depends(get_db)):
     )
 
     return {
+        "economics_assumptions": assumptions,
+        "economics_per_user": econ,
         "user": {
             "id": user.id,
             "clerk_id": user.clerk_id,
