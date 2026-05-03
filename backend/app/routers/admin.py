@@ -603,6 +603,8 @@ async def get_user_detail(user_id: int, db: Session = Depends(get_db)):
 
 
 from .onboarding_email_admin import router as onboarding_email_router
+from .support_cs_admin import router as support_cs_router
 
 router.include_router(onboarding_email_router)
+router.include_router(support_cs_router)
 

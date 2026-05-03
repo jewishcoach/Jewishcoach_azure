@@ -395,6 +395,60 @@ class ApiClient {
     const response = await this.client.post('/admin/onboarding-email/process-due', {}, { params: { limit } });
     return response.data;
   }
+
+  // Admin — customer support (AI drafts + email audit trail)
+  async getSupportServiceSettings() {
+    const response = await this.client.get('/admin/support-service/settings');
+    return response.data;
+  }
+
+  async patchSupportServiceSettings(payload: {
+    personality_text?: string;
+    terms_and_boundaries_text?: string;
+    methodology_context_text?: string;
+  }) {
+    const response = await this.client.patch('/admin/support-service/settings', payload);
+    return response.data;
+  }
+
+  async supportServiceDraftReply(payload: {
+    customer_email: string;
+    incoming_message: string;
+    language?: string;
+    record_inbound?: boolean;
+    record_draft?: boolean;
+  }) {
+    const response = await this.client.post('/admin/support-service/draft-reply', payload);
+    return response.data;
+  }
+
+  async supportServiceLogInbound(payload: { customer_email: string; subject?: string | null; body: string }) {
+    const response = await this.client.post('/admin/support-service/logs/inbound', payload);
+    return response.data;
+  }
+
+  async supportServiceLogOutbound(payload: { customer_email: string; subject?: string | null; body: string }) {
+    const response = await this.client.post('/admin/support-service/logs/outbound', payload);
+    return response.data;
+  }
+
+  async listSupportServiceLogs(params?: {
+    user_id?: number;
+    customer_email?: string;
+    direction?: string;
+    skip?: number;
+    limit?: number;
+  }) {
+    const response = await this.client.get('/admin/support-service/logs', { params: params || {} });
+    return response.data;
+  }
+
+  async listSupportServiceLogsForUser(userId: number, params?: { skip?: number; limit?: number }) {
+    const response = await this.client.get(`/admin/support-service/users/${userId}/logs`, {
+      params: params || {},
+    });
+    return response.data;
+  }
 }
 
 export const apiClient = new ApiClient();

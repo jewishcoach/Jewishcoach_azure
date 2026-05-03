@@ -349,3 +349,38 @@ class UserOnboardingEmailState(Base):
     user = relationship("User", backref=backref("onboarding_email_state", uselist=False))
     sequence = relationship("OnboardingEmailSequence")
 
+
+# ============================================================================
+# ADMIN — CUSTOMER SUPPORT (support@ mailbox assistant + audit trail)
+# ============================================================================
+
+
+class SupportCustomerServiceSettings(Base):
+    """Singleton row (id=1): tone, policies, and product/methodology hints for support replies."""
+
+    __tablename__ = "support_customer_service_settings"
+
+    id = Column(Integer, primary_key=True, nullable=False)  # always 1
+    personality_text = Column(Text, nullable=True)
+    terms_and_boundaries_text = Column(Text, nullable=True)
+    methodology_context_text = Column(Text, nullable=True)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
+
+
+class SupportEmailLog(Base):
+    """Inbound / outbound / AI-draft messages tied to a customer email (and user when matched)."""
+
+    __tablename__ = "support_email_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    customer_email = Column(String, nullable=False, index=True)
+    direction = Column(String, nullable=False, index=True)  # inbound | outbound | draft
+    channel = Column(String, nullable=False, default="manual_admin")  # manual_admin | ai_draft | ...
+    subject = Column(String, nullable=True)
+    body = Column(Text, nullable=False)
+    meta = Column(JSON, default=dict)
+    created_at = Column(DateTime, default=utc_now, nullable=False, index=True)
+
+    user = relationship("User", backref="support_email_logs")
+
