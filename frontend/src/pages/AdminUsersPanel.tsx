@@ -26,18 +26,22 @@ interface AdminUserRow {
   estimated_margin_catalog_minus_llm_ils: number | null;
 }
 
-interface EconomicsAssumptions {
-  llm_usd_per_million_tokens: number | null;
-  ils_per_usd: number | null;
-  revenue_note: string;
-  cost_note: string;
+interface DirectoryTotals {
+  user_count: number;
+  message_count: number;
+  estimated_llm_tokens_approx: number;
+  estimated_llm_cost_usd: number | null;
+  estimated_llm_cost_ils: number | null;
+  catalog_list_price_ils_sum_month: number;
+  estimated_margin_catalog_minus_llm_ils: number | null;
 }
 
 interface UsersListResponse {
   total: number;
   skip: number;
   limit: number;
-  economics_assumptions: EconomicsAssumptions;
+  /** Present on API ≥ rollout with directory rollups; omit grid if missing. */
+  directory_totals?: DirectoryTotals;
   users: AdminUserRow[];
 }
 
@@ -103,25 +107,6 @@ export const AdminUsersPanel: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-950 space-y-2">
-        <p>
-          <strong className="font-semibold">Cost vs revenue here are indicative.</strong>{' '}
-          <strong>Catalog ₪</strong> is the plan&apos;s list price in code (basic/premium/pro) — not what Stripe
-          actually charged (discounts, proration, failed renewals are not in our DB). For real payments use Stripe.
-        </p>
-        <p>
-          <strong>Est. LLM $</strong> uses persisted messages only: characters ÷ 4 ×{' '}
-          <code className="bg-amber-100 px-1 rounded">ADMIN_LLM_USD_PER_MILLION_TOKENS</code> (server env). It excludes
-          non-prompt tokens (routing, judge runs), embedding/search, speech, and fixed Azure fees.
-        </p>
-        {data?.economics_assumptions && (
-          <p className="text-xs text-amber-900 font-mono">
-            Env: LLM $/1M tok={data.economics_assumptions.llm_usd_per_million_tokens ?? '—'} · USD→ILS=
-            {data.economics_assumptions.ils_per_usd ?? '—'}
-          </p>
-        )}
-      </div>
-
       <div className="bg-white rounded-lg shadow p-4 flex flex-wrap gap-3 items-end">
         <div className="flex-1 min-w-[200px]">
           <label className="block text-xs text-gray-500 mb-1">Search (email, Clerk id, display name)</label>
@@ -151,6 +136,67 @@ export const AdminUsersPanel: React.FC = () => {
         <div className="flex justify-center py-16 text-gray-600">Loading users…</div>
       ) : data ? (
         <>
+          {data.directory_totals && (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                {[
+                  {
+                    label: 'משתמשים (בסינון)',
+                    value: data.directory_totals.user_count.toLocaleString(),
+                    hint: 'סה״כ משתמשים התואמים לחיפוש',
+                  },
+                  {
+                    label: 'הודעות',
+                    value: data.directory_totals.message_count.toLocaleString(),
+                    hint: 'כל ההודעות של משתמשים אלה',
+                  },
+                  {
+                    label: 'טוקנים משוערים',
+                    value: data.directory_totals.estimated_llm_tokens_approx.toLocaleString(),
+                    hint: 'סכום תווים÷4 לפי תפקיד (כמו בעמודות השורה)',
+                  },
+                  {
+                    label: 'עלות LLM משוערת ($)',
+                    value:
+                      data.directory_totals.estimated_llm_cost_usd != null
+                        ? data.directory_totals.estimated_llm_cost_usd.toFixed(4)
+                        : '—',
+                    hint: 'דורש ADMIN_LLM_USD_PER_MILLION_TOKENS',
+                  },
+                  {
+                    label: 'עלות LLM משוערת (₪)',
+                    value:
+                      data.directory_totals.estimated_llm_cost_ils != null
+                        ? data.directory_totals.estimated_llm_cost_ils.toFixed(2)
+                        : '—',
+                    hint: 'דורש גם ADMIN_ILS_PER_USD',
+                  },
+                  {
+                    label: 'סה״כ מחירון ₪ (חודש)',
+                    value: data.directory_totals.catalog_list_price_ils_sum_month.toLocaleString(),
+                    hint: 'לא Stripe — סכום מחירי התוכניות מהקוד',
+                  },
+                ].map((card) => (
+                  <div
+                    key={card.label}
+                    title={card.hint}
+                    className="bg-white rounded-lg border border-slate-200 shadow-sm p-3"
+                  >
+                    <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">{card.label}</div>
+                    <div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">{card.value}</div>
+                  </div>
+                ))}
+              </div>
+              {data.directory_totals.estimated_margin_catalog_minus_llm_ils != null && (
+                <div className="text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                  הפרש משוער מחירון כולל פחות עלות LLM (₪):{' '}
+                  <strong className="tabular-nums text-slate-900">
+                    {data.directory_totals.estimated_margin_catalog_minus_llm_ils.toFixed(2)}
+                  </strong>
+                </div>
+              )}
+            </>
+          )}
           <div className="text-sm text-gray-600">
             Showing {data.users.length} of {data.total} users (skip {data.skip})
           </div>

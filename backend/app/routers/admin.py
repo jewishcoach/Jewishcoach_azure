@@ -284,6 +284,68 @@ def _economics_row(
     }
 
 
+def _aggregate_directory_totals(
+    db: Session,
+    matching_user_ids_subq,
+    *,
+    user_count: int,
+    assumptions: dict,
+) -> dict:
+    """
+    Rollups over every user matching the directory filter (not just the current page).
+    Token methodology matches _aggregate_user_stats (sum over roles of floor(chars/4)).
+    """
+    if user_count <= 0:
+        tokens = 0
+        msgs = 0
+    else:
+        role_rows = (
+            db.query(
+                Conversation.user_id,
+                Message.role,
+                func.coalesce(func.sum(func.length(Message.content)), 0),
+            )
+            .join(Message, Message.conversation_id == Conversation.id)
+            .filter(Conversation.user_id.in_(matching_user_ids_subq))
+            .group_by(Conversation.user_id, Message.role)
+            .all()
+        )
+        tokens = sum(max(0, int(char_sum or 0) // 4) for _, _, char_sum in role_rows)
+        msgs = (
+            db.query(func.count(Message.id))
+            .join(Conversation, Message.conversation_id == Conversation.id)
+            .filter(Conversation.user_id.in_(matching_user_ids_subq))
+            .scalar()
+        )
+        msgs = int(msgs or 0)
+
+    usd_rate = assumptions.get("llm_usd_per_million_tokens")
+    fx = assumptions.get("ils_per_usd")
+    cost_usd = _estimated_llm_cost_usd(tokens, usd_rate)
+    cost_ils = None
+    if cost_usd is not None and fx is not None:
+        cost_ils = round(cost_usd * fx, 2)
+
+    catalog_sum = 0
+    if user_count > 0:
+        for (plan_key,) in db.query(User.current_plan).filter(User.id.in_(matching_user_ids_subq)).all():
+            catalog_sum += _plan_catalog_price_ils(plan_key)
+
+    margin_ils = None
+    if cost_ils is not None:
+        margin_ils = round(catalog_sum - cost_ils, 2)
+
+    return {
+        "user_count": user_count,
+        "message_count": msgs,
+        "estimated_llm_tokens_approx": tokens,
+        "estimated_llm_cost_usd": cost_usd,
+        "estimated_llm_cost_ils": cost_ils,
+        "catalog_list_price_ils_sum_month": catalog_sum,
+        "estimated_margin_catalog_minus_llm_ils": margin_ils,
+    }
+
+
 def _aggregate_user_stats(db: Session, user_ids: list[int]) -> dict[int, dict]:
     """Rollups from Conversation/Message. Token estimate ≈ sum(chars)/4 (rough proxy — no billing-meter logs)."""
     out: dict[int, dict] = {uid: _empty_user_agg() for uid in user_ids}
@@ -365,11 +427,16 @@ async def list_users(
         )
 
     total = q.count()
+    matching_ids_sq = q.with_entities(User.id).subquery()
+    assumptions = economics_assumptions()
+    directory_totals = _aggregate_directory_totals(
+        db, matching_ids_sq, user_count=total, assumptions=assumptions
+    )
+
     users = q.order_by(User.created_at.desc()).offset(max(skip, 0)).limit(min(max(limit, 1), 200)).all()
     ids = [u.id for u in users]
     agg = _aggregate_user_stats(db, ids)
     coupon_users = _users_with_active_coupon(db, ids)
-    assumptions = economics_assumptions()
 
     rows = []
     for u in users:
@@ -401,6 +468,7 @@ async def list_users(
         "skip": skip,
         "limit": limit,
         "economics_assumptions": assumptions,
+        "directory_totals": directory_totals,
         "users": rows,
     }
 

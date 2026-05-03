@@ -253,7 +253,13 @@ function SignedInContent() {
           <UserButton afterSignOutUrl="/" />
         </div>
       </motion.header>
-      <main className="flex-1 flex overflow-hidden">
+      <main
+        className={
+          showBilling || showAdmin
+            ? 'flex-1 min-h-0 overflow-auto overscroll-contain'
+            : 'flex-1 flex min-h-0 overflow-hidden'
+        }
+      >
         {showBilling ? <BillingPage /> : showAdmin ? <AdminDashboard /> : !checkingAdmin && (
           <BSDWorkspace
             displayName={displayName}
@@ -351,7 +357,13 @@ function DemoModeContent() {
           <LanguageSwitcher />
         </div>
       </motion.header>
-      <main className="flex-1 flex overflow-hidden">
+      <main
+        className={
+          showBilling
+            ? 'flex-1 min-h-0 overflow-auto overscroll-contain'
+            : 'flex-1 flex min-h-0 overflow-hidden'
+        }
+      >
         {showBilling ? <BillingPage /> : (
           <BSDWorkspace
             displayName="Demo User"
