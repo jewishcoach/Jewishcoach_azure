@@ -161,6 +161,18 @@ class ApiClient {
     return response.data;
   }
 
+  /** Debug: why admin button is missing (authenticated). */
+  async getAdminDiagnosis() {
+    const response = await this.client.get('/users/me/admin-diagnosis');
+    return response.data;
+  }
+
+  /** One-time promote when server has ADMIN_PROMOTE_SECRET set. */
+  async claimAdmin(secret: string) {
+    const response = await this.client.post('/users/me/claim-admin', { secret });
+    return response.data;
+  }
+
   // Dashboard (profile + stats + recent conversations)
   async getDashboard() {
     const response = await this.client.get('/profile/dashboard');

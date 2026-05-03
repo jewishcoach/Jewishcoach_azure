@@ -189,6 +189,46 @@ def _resolve_primary_email(
     return _fetch_clerk_primary_email(clerk_id)
 
 
+def admin_diagnosis_for_request(authorization: str | None, user: User) -> dict:
+    """
+    Safe troubleshooting payload for the signed-in user only (no secrets).
+    Helps debug missing admin UI when JWT omits email / Clerk API issues.
+    """
+    out: dict = {
+        "db_user_id": user.id,
+        "db_clerk_id": user.clerk_id,
+        "db_email_raw": user.email,
+        "db_is_admin": bool(user.is_admin),
+        "env_ADMIN_EMAIL_set": bool(os.getenv("ADMIN_EMAIL", "").strip()),
+        "env_ADMIN_CLERK_IDS_set": bool(os.getenv("ADMIN_CLERK_IDS", "").strip()),
+        "env_CLERK_SECRET_KEY_set": bool(os.getenv("CLERK_SECRET_KEY", "").strip()),
+    }
+    if not authorization or not authorization.startswith("Bearer "):
+        out["jwt_error"] = "missing_bearer"
+        return out
+    token = authorization.replace("Bearer ", "", 1)
+    try:
+        payload = jose_jwt.get_unverified_claims(token)
+    except Exception as e:
+        out["jwt_error"] = f"decode_failed:{type(e).__name__}"
+        return out
+    clerk_sub = payload.get("sub")
+    jwt_email = _extract_email(payload)
+    resolved = _resolve_primary_email(jwt_email, clerk_sub or "", user.email)
+    out.update(
+        {
+            "jwt_sub": clerk_sub,
+            "jwt_matches_db_clerk": bool(clerk_sub and user.clerk_id == clerk_sub),
+            "jwt_has_email_claim": bool(jwt_email),
+            "resolved_email_for_admin_check": resolved,
+            "computed_should_be_admin": _should_grant_admin(clerk_sub or "", resolved),
+            "admin_email_allowlist_count": len(_admin_email_allowlist_normalized()),
+            "admin_clerk_id_allowlist_count": len(_admin_clerk_id_allowlist()),
+        }
+    )
+    return out
+
+
 async def get_current_user(
     authorization: str = Header(None),
     db: Session = Depends(get_db),

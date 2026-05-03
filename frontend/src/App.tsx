@@ -127,28 +127,42 @@ function SignedInContent() {
       return;
     }
 
-    const checkAdminStatus = async () => {
+    const checkAdminStatus = async (isRetry = false) => {
       try {
         const token = await getToken();
         if (token) {
           apiClient.setToken(token);
           const userData = await apiClient.getCurrentUser();
-          setIsAdmin(userData.isAdmin);
+          setIsAdmin(!!userData.isAdmin);
           setDisplayName(userData.display_name);
           console.log('👤 [App] User data loaded:', {
             display_name: userData.display_name,
             email: userData.email,
-            isAdmin: userData.isAdmin
+            isAdmin: userData.isAdmin,
+            isRetry,
           });
+          if (!userData.isAdmin && !isRetry) {
+            window.setTimeout(() => {
+              void checkAdminStatus(true);
+            }, 2000);
+          }
+        } else {
+          setIsAdmin(false);
+          console.warn('👤 [App] getToken() returned empty — admin check skipped');
         }
       } catch (error) {
         console.error('Failed to check admin status:', error);
+        if (!isRetry) {
+          window.setTimeout(() => {
+            void checkAdminStatus(true);
+          }, 2000);
+        }
       } finally {
         setCheckingAdmin(false);
       }
     };
 
-    checkAdminStatus();
+    void checkAdminStatus();
   }, [isLoaded, isSignedIn, getToken]);
 
   // Reload display name when returning from dashboard
