@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { apiClient } from '../services/api';
 import { useAuth } from '@clerk/clerk-react';
+import { AdminUsersPanel } from './AdminUsersPanel';
 
 interface Flag {
   id: number;
@@ -36,6 +37,7 @@ interface Stats {
 
 export const AdminDashboard: React.FC = () => {
   const { getToken } = useAuth();
+  const [adminTab, setAdminTab] = useState<'flags' | 'users'>('flags');
   const [flags, setFlags] = useState<Flag[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,8 +48,9 @@ export const AdminDashboard: React.FC = () => {
   }>({});
 
   useEffect(() => {
+    if (adminTab !== 'flags') return;
     loadData();
-  }, [filter]);
+  }, [filter, adminTab]);
 
   const loadData = async () => {
     try {
@@ -112,7 +115,7 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  if (loading) {
+  if (loading && adminTab === 'flags') {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -129,9 +132,38 @@ export const AdminDashboard: React.FC = () => {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-          <p className="text-gray-600 mt-2">Quality Audit & System Monitoring</p>
+          <p className="text-gray-600 mt-2">Quality audit, users & usage estimates</p>
         </div>
 
+        <div className="flex flex-wrap gap-2 mb-6">
+          <button
+            type="button"
+            onClick={() => setAdminTab('flags')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              adminTab === 'flags'
+                ? 'bg-slate-800 text-white'
+                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            Quality flags
+          </button>
+          <button
+            type="button"
+            onClick={() => setAdminTab('users')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              adminTab === 'users'
+                ? 'bg-slate-800 text-white'
+                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            Users & usage
+          </button>
+        </div>
+
+        {adminTab === 'users' ? (
+          <AdminUsersPanel />
+        ) : (
+          <>
         {/* Stats Cards */}
         {stats && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -332,6 +364,8 @@ export const AdminDashboard: React.FC = () => {
             </table>
           </div>
         </div>
+          </>
+        )}
       </div>
     </div>
   );

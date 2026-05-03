@@ -2,14 +2,16 @@
 Admin API Endpoints
 
 Protected endpoints for admin users to view quality flags,
-system stats, and manage the LLM-as-a-Judge audit results.
+system stats, user directory / usage summaries, and manage the LLM-as-a-Judge audit results.
 """
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
+
 from ..dependencies import get_current_admin_user
 from ..database import get_db
-from ..models import ConversationFlag, User, Conversation, Message
+from ..models import ConversationFlag, User, Conversation, Message, UsageRecord
 from typing import Optional
 
 router = APIRouter(
@@ -182,5 +184,185 @@ async def get_flag_details(
     }
 
 
+def _empty_user_agg() -> dict:
+    return {
+        "conversation_count": 0,
+        "message_count": 0,
+        "user_message_count": 0,
+        "assistant_message_count": 0,
+        "estimated_llm_tokens_approx": 0,
+        "last_activity_at": None,
+    }
+
+
+def _aggregate_user_stats(db: Session, user_ids: list[int]) -> dict[int, dict]:
+    """Rollups from Conversation/Message. Token estimate ≈ sum(chars)/4 (rough proxy — no billing-meter logs)."""
+    out: dict[int, dict] = {uid: _empty_user_agg() for uid in user_ids}
+    if not user_ids:
+        return out
+
+    conv_counts = (
+        db.query(Conversation.user_id, func.count(Conversation.id))
+        .filter(Conversation.user_id.in_(user_ids))
+        .group_by(Conversation.user_id)
+        .all()
+    )
+    for uid, cnt in conv_counts:
+        if uid in out:
+            out[uid]["conversation_count"] = cnt
+
+    role_rows = (
+        db.query(
+            Conversation.user_id,
+            Message.role,
+            func.count(Message.id),
+            func.coalesce(func.sum(func.length(Message.content)), 0),
+        )
+        .join(Message, Message.conversation_id == Conversation.id)
+        .filter(Conversation.user_id.in_(user_ids))
+        .group_by(Conversation.user_id, Message.role)
+        .all()
+    )
+    for uid, role, msg_cnt, char_sum in role_rows:
+        if uid not in out:
+            continue
+        char_sum = int(char_sum or 0)
+        out[uid]["message_count"] += int(msg_cnt)
+        out[uid]["estimated_llm_tokens_approx"] += max(0, char_sum // 4)
+        if role == "user":
+            out[uid]["user_message_count"] += int(msg_cnt)
+        elif role == "assistant":
+            out[uid]["assistant_message_count"] += int(msg_cnt)
+
+    last_rows = (
+        db.query(Conversation.user_id, func.max(Message.timestamp))
+        .join(Message, Message.conversation_id == Conversation.id)
+        .filter(Conversation.user_id.in_(user_ids))
+        .group_by(Conversation.user_id)
+        .all()
+    )
+    for uid, ts in last_rows:
+        if uid in out and ts is not None:
+            out[uid]["last_activity_at"] = ts.isoformat()
+
+    return out
+
+
+@router.get("/users")
+async def list_users(
+    db: Session = Depends(get_db),
+    skip: int = 0,
+    limit: int = 50,
+    search: Optional[str] = None,
+):
+    """
+    Paginated user directory with conversation/message counts and a rough LLM token estimate.
+
+    `estimated_llm_tokens_approx` sums ~(characters/4) over **both** user and assistant persisted
+    messages (proxy for total text moved through the stack — not Azure billing).
+    """
+    q = db.query(User)
+    if search and search.strip():
+        st = f"%{search.strip()}%"
+        q = q.filter(
+            or_(
+                User.email.ilike(st),
+                User.clerk_id.ilike(st),
+                User.display_name.ilike(st),
+            )
+        )
+
+    total = q.count()
+    users = q.order_by(User.created_at.desc()).offset(max(skip, 0)).limit(min(max(limit, 1), 200)).all()
+    ids = [u.id for u in users]
+    agg = _aggregate_user_stats(db, ids)
+
+    rows = []
+    for u in users:
+        a = agg.get(u.id, _empty_user_agg())
+        rows.append(
+            {
+                "id": u.id,
+                "clerk_id": u.clerk_id,
+                "email": u.email,
+                "display_name": u.display_name,
+                "gender": u.gender,
+                "current_plan": (u.current_plan or "basic").strip() or "basic",
+                "is_admin": bool(u.is_admin),
+                "stripe_customer_id": bool(u.stripe_customer_id),
+                "created_at": u.created_at.isoformat() if u.created_at else None,
+                **a,
+            }
+        )
+
+    return {"total": total, "skip": skip, "limit": limit, "users": rows}
+
+
+@router.get("/users/{user_id}")
+async def get_user_detail(user_id: int, db: Session = Depends(get_db)):
+    """Single user profile plus conversations and recent billing-period usage rows."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    agg = _aggregate_user_stats(db, [user_id]).get(user_id, _empty_user_agg())
+
+    conversations = (
+        db.query(Conversation).filter(Conversation.user_id == user_id).order_by(Conversation.updated_at.desc()).all()
+    )
+    conv_payload = []
+    for c in conversations:
+        mc = (
+            db.query(Message.role, func.count(Message.id), func.coalesce(func.sum(func.length(Message.content)), 0))
+            .filter(Message.conversation_id == c.id)
+            .group_by(Message.role)
+            .all()
+        )
+        by_role = {role: {"count": cnt, "chars": int(chars or 0)} for role, cnt, chars in mc}
+        conv_payload.append(
+            {
+                "id": c.id,
+                "title": c.title,
+                "created_at": c.created_at.isoformat() if c.created_at else None,
+                "updated_at": c.updated_at.isoformat() if c.updated_at else None,
+                "current_phase": c.current_phase,
+                "bsd_step": (c.v2_state or {}).get("current_step") if isinstance(c.v2_state, dict) else None,
+                "messages_total": sum(r["count"] for r in by_role.values()),
+                "by_role": by_role,
+            }
+        )
+
+    usage_history = (
+        db.query(UsageRecord)
+        .filter(UsageRecord.user_id == user_id)
+        .order_by(UsageRecord.period_start.desc())
+        .limit(12)
+        .all()
+    )
+
+    return {
+        "user": {
+            "id": user.id,
+            "clerk_id": user.clerk_id,
+            "email": user.email,
+            "display_name": user.display_name,
+            "gender": user.gender,
+            "current_plan": user.current_plan or "basic",
+            "is_admin": bool(user.is_admin),
+            "preferences_keys": list((user.preferences or {}).keys()) if isinstance(user.preferences, dict) else [],
+            "created_at": user.created_at.isoformat() if user.created_at else None,
+        },
+        "aggregates": agg,
+        "conversations": conv_payload,
+        "usage_records": [
+            {
+                "period_start": ur.period_start.isoformat(),
+                "period_end": ur.period_end.isoformat(),
+                "messages_used": ur.messages_used,
+                "speech_minutes_used": ur.speech_minutes_used,
+            }
+            for ur in usage_history
+        ],
+    }
 
 

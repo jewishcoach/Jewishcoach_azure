@@ -258,6 +258,18 @@ class ApiClient {
     const response = await this.client.get(`/admin/flags/${flagId}`);
     return response.data;
   }
+
+  async getAdminUsers(skip = 0, limit = 50, search?: string) {
+    const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
+    if (search?.trim()) params.set('search', search.trim());
+    const response = await this.client.get(`/admin/users?${params.toString()}`);
+    return response.data;
+  }
+
+  async getAdminUserDetail(userId: number) {
+    const response = await this.client.get(`/admin/users/${userId}`);
+    return response.data;
+  }
 }
 
 export const apiClient = new ApiClient();
