@@ -61,6 +61,18 @@ if ! echo "$raw" | all_verified; then
   exit 1
 fi
 
+COMM="${ACS_COMMUNICATION_SERVICE:-jewishcoach-email}"
+SUB="$(az account show --query id -o tsv)"
+MANAGED="/subscriptions/${SUB}/resourceGroups/${RG}/providers/Microsoft.Communication/emailServices/${EMAIL_SVC}/domains/AzureManagedDomain"
+CUSTOM="/subscriptions/${SUB}/resourceGroups/${RG}/providers/Microsoft.Communication/emailServices/${EMAIL_SVC}/domains/${DOMAIN}"
+
+echo "Linking Email domain to Communication Service '${COMM}' (required — fixes DomainNotLinked)..."
+az communication update \
+  --name "$COMM" \
+  --resource-group "$RG" \
+  --linked-domains "$MANAGED" "$CUSTOM" \
+  -o none
+
 echo "Creating sender username: ${SENDER_LOCAL}@${DOMAIN}"
 az communication email domain sender-username create \
   --resource-group "$RG" \

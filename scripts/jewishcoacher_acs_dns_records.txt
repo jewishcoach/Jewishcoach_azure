@@ -16,7 +16,8 @@
 ms-domain-verification=a73e1faf-b818-45ce-bf67-0d6b9c9b63c3
 
 --- TXT @ (SPF — ADD if missing, or EDIT existing SPF to exactly this one line) ---
-v=spf1 include:_spf.mail.hostinger.com include:spf.protection.outlook.com ~all
+# Use "-all" at the end (not "~all") — matches ACS verification template and improves SPF pass rate with Microsoft.
+v=spf1 include:_spf.mail.hostinger.com include:spf.protection.outlook.com -all
 
 --- CNAME (DKIM #1) ---
 Host/name: selector1-azurecomm-prod-net._domainkey
@@ -28,3 +29,10 @@ Target: selector2-azurecomm-prod-net._domainkey.azurecomm.net
 
 # After DNS propagates, run from repo root:
 #   bash scripts/acs_finalize_jewishcoacher_email.sh
+#
+# --- Why sends fail with DomainNotLinked / "check Email settings" ---
+# App Service uses EMAIL_CONNECTION_STRING from Communication resource "jewishcoach-email".
+# That resource must list BOTH Email domains in linkedDomains:
+#   .../domains/AzureManagedDomain  AND  .../domains/jewishcoacher.com
+# Azure blocks linking jewishcoacher.com until verificationStates.SPF (and other checks) allow it.
+# Script acs_finalize_jewishcoacher_email.sh links the domain after SPF+DKIM verify.
