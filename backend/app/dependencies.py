@@ -107,7 +107,7 @@ def _normalized_email_for_admin_match(email: str | None) -> str | None:
 
 
 def _admin_email_allowlist_normalized() -> set[str]:
-    raw = os.getenv("ADMIN_EMAIL", "") or ""
+    raw = (os.getenv("ADMIN_EMAIL", "") or "").strip()
     out: set[str] = set()
     for part in raw.split(","):
         n = _normalized_email_for_admin_match(part.strip())
@@ -117,8 +117,13 @@ def _admin_email_allowlist_normalized() -> set[str]:
 
 
 def _admin_clerk_id_allowlist() -> set[str]:
-    raw = os.getenv("ADMIN_CLERK_IDS", "") or ""
-    return {x.strip() for x in raw.split(",") if x.strip()}
+    raw = (os.getenv("ADMIN_CLERK_IDS", "") or "").strip()
+    ids: set[str] = set()
+    for x in raw.split(","):
+        s = x.strip().strip('"').strip("'").strip()
+        if s:
+            ids.add(s)
+    return ids
 
 
 def _should_grant_admin(clerk_id: str, resolved_email: str | None) -> bool:

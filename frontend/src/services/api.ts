@@ -157,13 +157,19 @@ class ApiClient {
 
   // User Info
   async getCurrentUser() {
-    const response = await this.client.get('/users/me');
+    const response = await this.client.get('/users/me', {
+      params: { _: Date.now() },
+      headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+    });
     return response.data;
   }
 
   /** Debug: why admin button is missing (authenticated). */
   async getAdminDiagnosis() {
-    const response = await this.client.get('/users/me/admin-diagnosis');
+    const response = await this.client.get('/users/me/admin-diagnosis', {
+      params: { _: Date.now() },
+      headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+    });
     return response.data;
   }
 

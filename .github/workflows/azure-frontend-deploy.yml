@@ -34,6 +34,8 @@ jobs:
       env:
         VITE_API_URL: ${{ secrets.VITE_API_URL }}
         VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
+        # Sync with Azure App Setting ADMIN_CLERK_IDS (comma-separated Clerk user ids)
+        VITE_ADMIN_CLERK_IDS: user_3BcUB9rksyoRUf6qbKsO28X6Cc9
       run: npm run build
     
     - name: Verify build output

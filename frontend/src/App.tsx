@@ -13,6 +13,7 @@ import { BillingPage } from './components/BillingPage';
 import { apiClient } from './services/api';
 import './i18n';
 import { isClerkSyntheticEmail } from './lib/clerkEmail';
+import { isClerkUiAdminAllowlisted } from './config';
 
 // Clear onboarding when user is signed out, so next login shows it again
 function SignedOutClearOnboarding() {
@@ -116,6 +117,9 @@ function SignedInContent() {
   const [displayName, setDisplayName] = useState<string | null>(null);
   /** Incremented from header "new chat" on mobile — BSDWorkspace runs startNewConversation */
   const [workspaceNewChatTick, setWorkspaceNewChatTick] = useState(0);
+
+  const adminUiAllowlisted = isClerkUiAdminAllowlisted(user?.id);
+  const showAdminChrome = isAdmin || adminUiAllowlisted;
 
   const isChatView = !showBilling && !showDashboard && !showAdmin && !checkingAdmin;
 
@@ -229,7 +233,7 @@ function SignedInContent() {
               setShowAdmin(false);
             }}
           />
-          {isAdmin && !checkingAdmin && (
+          {showAdminChrome && !checkingAdmin && (
             <button
               type="button"
               onClick={() => {

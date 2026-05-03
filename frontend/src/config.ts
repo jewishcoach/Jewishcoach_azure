@@ -19,6 +19,18 @@ export const BASIC_PLAN_MESSAGES_PER_MONTH = 1000;
 /** Free (basic) plan Azure Speech minutes per month (-1 = unlimited). Keep in sync with backend PLAN_LIMITS["basic"].speech_minutes_per_month */
 export const BASIC_PLAN_SPEECH_MINUTES_PER_MONTH = -1;
 
+/**
+ * Clerk user ids that may show the Admin UI entry without relying only on /users/me (comma-separated).
+ * Keep in sync with Azure `ADMIN_CLERK_IDS`. Set at build time (`VITE_ADMIN_CLERK_IDS`).
+ */
+export function isClerkUiAdminAllowlisted(clerkUserId: string | undefined): boolean {
+  if (!clerkUserId) return false;
+  const raw = (import.meta.env.VITE_ADMIN_CLERK_IDS || '').trim();
+  if (!raw) return false;
+  const ids = raw.split(',').map((s: string) => s.trim()).filter(Boolean);
+  return ids.includes(clerkUserId);
+}
+
 /** API when the SPA is served from the production custom domain (see scripts/setup_jewishcoacher_domain.sh). */
 const PRODUCTION_API_CUSTOM_DOMAIN = 'https://api.jewishcoacher.com/api';
 

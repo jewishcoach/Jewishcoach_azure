@@ -1,6 +1,6 @@
 import os
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Response
 from sqlalchemy.orm import Session
 from ..database import get_db
 from ..dependencies import get_current_user, admin_diagnosis_for_request
@@ -24,10 +24,13 @@ class ClaimAdminBody(BaseModel):
 
 @router.get("/me")
 def get_current_user_info(
+    response: Response,
     user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Get the current user's info"""
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
     return {
         "id": user.id,
         "clerk_id": user.clerk_id,
@@ -41,10 +44,13 @@ def get_current_user_info(
 
 @router.get("/me/admin-diagnosis")
 def admin_diagnosis(
+    response: Response,
     user: User = Depends(get_current_user),
     authorization: str | None = Header(None),
 ):
     """Authenticated self-diagnosis for missing admin button (no secrets returned)."""
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
     return admin_diagnosis_for_request(authorization, user)
 
 
