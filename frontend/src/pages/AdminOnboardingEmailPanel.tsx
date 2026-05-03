@@ -68,7 +68,12 @@ export const AdminOnboardingEmailPanel: React.FC = () => {
       });
     } catch (e: unknown) {
       console.error(e);
-      setError(e instanceof Error ? e.message : 'Failed to load onboarding emails');
+      let msg = e instanceof Error ? e.message : 'Failed to load onboarding emails';
+      if (/404/.test(msg)) {
+        msg =
+          '404 — השרת לא מצא את נתיב האונבורדינג. בדרך כלל זה אומר ש־jewishcoach-api בפרודקשן עדיין לא נפרס עם הקומיט האחרון (GitHub Action «Deploy Backend» אחרי push ל־backend/). אחרי פריסה תראה כאן את הרשימה.';
+      }
+      setError(msg);
       setSequences([]);
     } finally {
       setLoading(false);

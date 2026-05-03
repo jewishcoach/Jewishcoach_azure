@@ -25,7 +25,7 @@ from ..services.onboarding_email_runtime import (
 )
 
 router = APIRouter(
-    prefix="/api/admin/onboarding-email",
+    prefix="/onboarding-email",
     tags=["Admin onboarding email"],
     dependencies=[Depends(get_current_admin_user)],
 )

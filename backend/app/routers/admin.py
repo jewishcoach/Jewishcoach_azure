@@ -602,3 +602,7 @@ async def get_user_detail(user_id: int, db: Session = Depends(get_db)):
     }
 
 
+from .onboarding_email_admin import router as onboarding_email_router
+
+router.include_router(onboarding_email_router)
+
