@@ -209,19 +209,31 @@ def _parse_optional_float(env_key: str) -> Optional[float]:
         return None
 
 
+# Illustrative blended rates when App Service env vars are unset (override with ADMIN_*).
+_DEFAULT_LLM_USD_PER_MILLION_TOKENS = 2.50
+_DEFAULT_ILS_PER_USD = 3.65
+
+
 def economics_assumptions() -> dict:
     """
-    Admin economics helpers (optional env):
+    Admin economics helpers:
 
     - ADMIN_LLM_USD_PER_MILLION_TOKENS — blended $ / 1M tokens for rough LLM COGS
       (multiply by estimated_llm_tokens_approx ≈ sum(chars)/4 over persisted messages).
-    - ADMIN_ILS_PER_USD — FX to show estimated LLM cost and margin in ₪.
+      If unset, a conservative default is used (see llm_rate_is_default in the JSON).
+    - ADMIN_ILS_PER_USD — FX for ₪ display. If unset, a default FX is used (fx_is_default).
 
     Revenue shown is catalog list price from PLAN_LIMITS (ILS/month), not Stripe charges.
     """
+    llm_env = _parse_optional_float("ADMIN_LLM_USD_PER_MILLION_TOKENS")
+    fx_env = _parse_optional_float("ADMIN_ILS_PER_USD")
+    llm = float(llm_env if llm_env is not None else _DEFAULT_LLM_USD_PER_MILLION_TOKENS)
+    fx = float(fx_env if fx_env is not None else _DEFAULT_ILS_PER_USD)
     return {
-        "llm_usd_per_million_tokens": _parse_optional_float("ADMIN_LLM_USD_PER_MILLION_TOKENS"),
-        "ils_per_usd": _parse_optional_float("ADMIN_ILS_PER_USD"),
+        "llm_usd_per_million_tokens": llm,
+        "ils_per_usd": fx,
+        "llm_rate_is_default": llm_env is None,
+        "fx_is_default": fx_env is None,
         "revenue_note": "catalog_list_price_ils_not_stripe_actuals",
         "cost_note": "llm_only_chars_over_4_proxy_not_azure_invoice",
     }
@@ -412,8 +424,8 @@ async def list_users(
     `estimated_llm_tokens_approx` sums ~(characters/4) over **both** user and assistant persisted
     messages (proxy for total text moved through the stack — not Azure billing).
 
-    When env `ADMIN_LLM_USD_PER_MILLION_TOKENS` (and optionally `ADMIN_ILS_PER_USD`) is set,
-    each row includes estimated LLM USD cost and catalog-vs-proxy margin in ₪; see `economics_assumptions`.
+    Each row includes estimated LLM USD cost and margin in ₪ using `economics_assumptions`
+    (env overrides or built-in defaults when unset).
     """
     q = db.query(User)
     if search and search.strip():

@@ -26,6 +26,13 @@ interface AdminUserRow {
   estimated_margin_catalog_minus_llm_ils: number | null;
 }
 
+interface EconomicsAssumptions {
+  llm_usd_per_million_tokens: number;
+  ils_per_usd: number;
+  llm_rate_is_default?: boolean;
+  fx_is_default?: boolean;
+}
+
 interface DirectoryTotals {
   user_count: number;
   message_count: number;
@@ -40,6 +47,7 @@ interface UsersListResponse {
   total: number;
   skip: number;
   limit: number;
+  economics_assumptions?: EconomicsAssumptions;
   /** Present on API ≥ rollout with directory rollups; omit grid if missing. */
   directory_totals?: DirectoryTotals;
   users: AdminUserRow[];
@@ -136,6 +144,28 @@ export const AdminUsersPanel: React.FC = () => {
         <div className="flex justify-center py-16 text-gray-600">Loading users…</div>
       ) : data ? (
         <>
+          {data.economics_assumptions &&
+            (data.economics_assumptions.llm_rate_is_default || data.economics_assumptions.fx_is_default) && (
+              <p className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                עלויות מחושבות עם{' '}
+                {data.economics_assumptions.llm_rate_is_default ? (
+                  <>
+                    שיעור LLM ברירת־מחדל (${data.economics_assumptions.llm_usd_per_million_tokens.toFixed(2)} ל‑1M
+                    טוקנים)
+                  </>
+                ) : null}
+                {data.economics_assumptions.llm_rate_is_default && data.economics_assumptions.fx_is_default
+                  ? ' ו‑'
+                  : null}
+                {data.economics_assumptions.fx_is_default ? (
+                  <>שער ברירת־מחדל USD→ILS ({data.economics_assumptions.ils_per_usd.toFixed(2)})</>
+                ) : null}
+                . להגדרה מדויקת: ב‑Azure App Service הגדר{' '}
+                <code className="bg-slate-100 px-1 rounded">ADMIN_LLM_USD_PER_MILLION_TOKENS</code>
+                {' ו‑'}
+                <code className="bg-slate-100 px-1 rounded">ADMIN_ILS_PER_USD</code>.
+              </p>
+            )}
           {data.directory_totals && (
             <>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -161,7 +191,7 @@ export const AdminUsersPanel: React.FC = () => {
                       data.directory_totals.estimated_llm_cost_usd != null
                         ? data.directory_totals.estimated_llm_cost_usd.toFixed(4)
                         : '—',
-                    hint: 'דורש ADMIN_LLM_USD_PER_MILLION_TOKENS',
+                    hint: 'שיעור מ‑Azure או ברירת מחדל בשרת',
                   },
                   {
                     label: 'עלות LLM משוערת (₪)',
@@ -169,7 +199,7 @@ export const AdminUsersPanel: React.FC = () => {
                       data.directory_totals.estimated_llm_cost_ils != null
                         ? data.directory_totals.estimated_llm_cost_ils.toFixed(2)
                         : '—',
-                    hint: 'דורש גם ADMIN_ILS_PER_USD',
+                    hint: 'שער מ‑Azure או ברירת מחדל בשרת',
                   },
                   {
                     label: 'סה״כ מחירון ₪ (חודש)',
