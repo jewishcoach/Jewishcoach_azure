@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { apiClient } from '../services/api';
+import { getApiBase } from '../config';
 
 interface SupportSettings {
   personality_text: string;
   terms_and_boundaries_text: string;
   methodology_context_text: string;
+  auto_reply_enabled: boolean;
   updated_at: string | null;
 }
 
@@ -30,6 +32,7 @@ export const AdminSupportServicePanel: React.FC = () => {
     personality_text: '',
     terms_and_boundaries_text: '',
     methodology_context_text: '',
+    auto_reply_enabled: false,
     updated_at: null,
   });
   const [settingsBusy, setSettingsBusy] = useState(false);
@@ -100,8 +103,16 @@ export const AdminSupportServicePanel: React.FC = () => {
       setError(null);
       try {
         await authFetch();
-        const s = (await apiClient.getSupportServiceSettings()) as SupportSettings;
-        if (!cancelled) setSettings(s);
+        const raw = (await apiClient.getSupportServiceSettings()) as Partial<SupportSettings>;
+        if (!cancelled) {
+          setSettings({
+            personality_text: raw.personality_text ?? '',
+            terms_and_boundaries_text: raw.terms_and_boundaries_text ?? '',
+            methodology_context_text: raw.methodology_context_text ?? '',
+            auto_reply_enabled: Boolean(raw.auto_reply_enabled),
+            updated_at: raw.updated_at ?? null,
+          });
+        }
       } catch (e: unknown) {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load settings');
       } finally {
@@ -122,6 +133,7 @@ export const AdminSupportServicePanel: React.FC = () => {
         personality_text: settings.personality_text,
         terms_and_boundaries_text: settings.terms_and_boundaries_text,
         methodology_context_text: settings.methodology_context_text,
+        auto_reply_enabled: settings.auto_reply_enabled,
       })) as SupportSettings;
       setSettings(s);
     } catch (e: unknown) {
@@ -236,6 +248,42 @@ export const AdminSupportServicePanel: React.FC = () => {
               onChange={(e) => setSettings({ ...settings, methodology_context_text: e.target.value })}
             />
           </label>
+          <label className="flex items-start gap-2 text-sm text-slate-700 cursor-pointer">
+            <input
+              type="checkbox"
+              className="mt-1 rounded border-slate-300"
+              checked={settings.auto_reply_enabled}
+              onChange={(e) => setSettings({ ...settings, auto_reply_enabled: e.target.checked })}
+            />
+            <span>
+              <strong>תשובה אוטומטית ללקוח</strong> — כשמופעל, מייל נכנס שמגיע דרך ה־Webhook נרשם במערכת, נוצרת טיוטה ב־AI,
+              והתשובה נשלחת אוטומטית לכתובת השולח (דרך ACS/SendGrid כמו שאר המיילים). כבוי = רישום וטיוטה בלבד ללא שליחה.
+            </span>
+          </label>
+          <div className="rounded-lg border border-amber-100 bg-amber-50/80 p-4 text-sm text-slate-800 space-y-2">
+            <div className="font-semibold text-amber-950">חיבור inbound (למשל SendGrid Inbound Parse)</div>
+            <p className="text-slate-700">
+              הגדרו אצל ספק המייל הפניה של הודעות ל־<code className="bg-white px-1 rounded text-xs">POST</code> כארגון טופס
+              (שדות טיפוסיים: <code className="bg-white px-1 rounded text-xs">from</code>,{' '}
+              <code className="bg-white px-1 rounded text-xs">to</code>,{' '}
+              <code className="bg-white px-1 rounded text-xs">subject</code>,{' '}
+              <code className="bg-white px-1 rounded text-xs">text</code>,{' '}
+              <code className="bg-white px-1 rounded text-xs">html</code>,{' '}
+              <code className="bg-white px-1 rounded text-xs">headers</code>).
+            </p>
+            <div>
+              <span className="text-slate-600">כתובת Webhook בשרת:</span>
+              <code className="mt-1 block break-all rounded bg-white px-2 py-1.5 text-xs font-mono border border-amber-200">
+                {`${getApiBase()}/internal/support-email/inbound`}
+              </code>
+            </div>
+            <p className="text-xs text-slate-600">
+              חובה להגדיר ב־Azure (או בסביבת הריצה): <code className="bg-white px-1 rounded">SUPPORT_INBOUND_WEBHOOK_SECRET</code> —
+              אותו ערך נשלח בכותרת <code className="bg-white px-1 rounded">X-Support-Inbound-Secret</code>. אופציונלי:{' '}
+              <code className="bg-white px-1 rounded">SUPPORT_INBOUND_MAILBOX</code> (ברירת מחדל{' '}
+              <code className="bg-white px-1 rounded">support@jewishcoacher.com</code>) לסינון נמען.
+            </p>
+          </div>
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"

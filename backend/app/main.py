@@ -6,6 +6,7 @@ from slowapi.errors import RateLimitExceeded
 from .database import engine, Base
 from .limiter import limiter
 from .routers import chat, speech, feedback, users, journal, tools, admin, billing, profile, calendar, onboarding_email_cron
+from .routers.support_email_inbound import router as support_email_inbound_router
 from .api import chat_v2, debug_health, version, debug_logs  # BSD V2 + Debug + Version + Logs
 import os
 from dotenv import load_dotenv
@@ -88,6 +89,7 @@ app.include_router(journal.router)
 app.include_router(tools.router)
 app.include_router(admin.router)
 app.include_router(onboarding_email_cron.router)
+app.include_router(support_email_inbound_router)
 app.include_router(billing.router)
 app.include_router(profile.router)
 app.include_router(calendar.router)

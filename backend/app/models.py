@@ -364,6 +364,7 @@ class SupportCustomerServiceSettings(Base):
     personality_text = Column(Text, nullable=True)
     terms_and_boundaries_text = Column(Text, nullable=True)
     methodology_context_text = Column(Text, nullable=True)
+    auto_reply_enabled = Column(Boolean, default=False, nullable=False)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
 
@@ -380,6 +381,7 @@ class SupportEmailLog(Base):
     subject = Column(String, nullable=True)
     body = Column(Text, nullable=False)
     meta = Column(JSON, default=dict)
+    smtp_message_id = Column(String, nullable=True, index=True)
     created_at = Column(DateTime, default=utc_now, nullable=False, index=True)
 
     user = relationship("User", backref="support_email_logs")

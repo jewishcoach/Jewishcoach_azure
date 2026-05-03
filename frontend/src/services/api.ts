@@ -406,6 +406,7 @@ class ApiClient {
     personality_text?: string;
     terms_and_boundaries_text?: string;
     methodology_context_text?: string;
+    auto_reply_enabled?: boolean;
   }) {
     const response = await this.client.patch('/admin/support-service/settings', payload);
     return response.data;

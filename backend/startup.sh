@@ -90,6 +90,39 @@ except Exception as e:
     print(f'⚠️  users discipline column migration: {e}')
 " 2>&1 || true
 
+# Support email: auto-reply flag + inbound dedupe id (idempotent ALTER)
+python -c "
+from app.database import engine
+from sqlalchemy import text, inspect as sa_inspect
+try:
+    insp = sa_inspect(engine)
+    dialect = engine.dialect.name
+    tables = insp.get_table_names()
+    if 'support_customer_service_settings' in tables:
+        cols = [c['name'] for c in insp.get_columns('support_customer_service_settings')]
+        if 'auto_reply_enabled' not in cols:
+            with engine.connect() as conn:
+                if dialect == 'postgresql':
+                    conn.execute(text('ALTER TABLE support_customer_service_settings ADD COLUMN auto_reply_enabled BOOLEAN DEFAULT FALSE'))
+                else:
+                    conn.execute(text('ALTER TABLE support_customer_service_settings ADD COLUMN auto_reply_enabled INTEGER DEFAULT 0'))
+                conn.commit()
+            print('✓ Added auto_reply_enabled to support_customer_service_settings')
+        else:
+            print('✓ auto_reply_enabled already present')
+    if 'support_email_logs' in tables:
+        cols = [c['name'] for c in insp.get_columns('support_email_logs')]
+        if 'smtp_message_id' not in cols:
+            with engine.connect() as conn:
+                conn.execute(text('ALTER TABLE support_email_logs ADD COLUMN smtp_message_id VARCHAR'))
+                conn.commit()
+            print('✓ Added smtp_message_id to support_email_logs')
+        else:
+            print('✓ smtp_message_id already present')
+except Exception as e:
+    print(f'⚠️  support email column migration: {e}')
+" 2>&1 || true
+
 echo "🚀 Launching Gunicorn..."
 if [ -f "/home/site/wwwroot/gunicorn_conf.py" ]; then
   exec gunicorn -c /home/site/wwwroot/gunicorn_conf.py app.main:app

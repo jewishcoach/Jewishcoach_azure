@@ -6,13 +6,13 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..dependencies import get_current_admin_user
 from ..models import SupportCustomerServiceSettings, SupportEmailLog, User
 from ..services.support_customer_context import build_customer_support_snapshot
+from ..services.support_mail_repo import append_support_email_log, normalize_customer_email
 from ..services.support_reply_ai import generate_support_reply_draft
 
 router = APIRouter(
@@ -24,26 +24,12 @@ router = APIRouter(
 _SETTINGS_ID = 1
 
 
-def _normalize_email(email: str) -> str:
-    return (email or "").strip().lower()
-
-
-def _get_or_create_settings(db: Session) -> SupportCustomerServiceSettings:
-    row = db.query(SupportCustomerServiceSettings).filter(SupportCustomerServiceSettings.id == _SETTINGS_ID).first()
-    if row:
-        return row
-    row = SupportCustomerServiceSettings(id=_SETTINGS_ID)
-    db.add(row)
-    db.commit()
-    db.refresh(row)
-    return row
-
-
 def _settings_payload(row: SupportCustomerServiceSettings) -> dict[str, Any]:
     return {
         "personality_text": row.personality_text or "",
         "terms_and_boundaries_text": row.terms_and_boundaries_text or "",
         "methodology_context_text": row.methodology_context_text or "",
+        "auto_reply_enabled": bool(getattr(row, "auto_reply_enabled", False)),
         "updated_at": row.updated_at.isoformat() if row.updated_at else None,
     }
 
@@ -52,6 +38,7 @@ class SupportSettingsPatch(BaseModel):
     personality_text: Optional[str] = None
     terms_and_boundaries_text: Optional[str] = None
     methodology_context_text: Optional[str] = None
+    auto_reply_enabled: Optional[bool] = None
 
 
 class DraftReplyBody(BaseModel):
@@ -68,15 +55,15 @@ class ManualLogBody(BaseModel):
     body: str = Field(..., min_length=1, max_length=100_000)
 
 
-def _resolve_user_id_for_email(db: Session, customer_email: str) -> Optional[int]:
-    norm = _normalize_email(customer_email)
-    if not norm or "@" not in norm:
-        return None
-    u = db.query(User.id).filter(User.email.isnot(None)).filter(User.email == norm).first()
-    if u:
-        return int(u[0])
-    u2 = db.query(User.id).filter(func.lower(User.email) == norm).first()
-    return int(u2[0]) if u2 else None
+def _get_or_create_settings(db: Session) -> SupportCustomerServiceSettings:
+    row = db.query(SupportCustomerServiceSettings).filter(SupportCustomerServiceSettings.id == _SETTINGS_ID).first()
+    if row:
+        return row
+    row = SupportCustomerServiceSettings(id=_SETTINGS_ID)
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
 
 
 def _append_log(
@@ -88,22 +75,18 @@ def _append_log(
     subject: Optional[str],
     body: str,
     meta: Optional[dict] = None,
+    smtp_message_id: Optional[str] = None,
 ) -> SupportEmailLog:
-    norm = _normalize_email(customer_email)
-    uid = _resolve_user_id_for_email(db, norm)
-    row = SupportEmailLog(
-        user_id=uid,
-        customer_email=norm,
+    return append_support_email_log(
+        db,
+        customer_email=customer_email,
         direction=direction,
         channel=channel,
-        subject=(subject or "").strip() or None,
+        subject=subject,
         body=body,
-        meta=meta or {},
+        meta=meta,
+        smtp_message_id=smtp_message_id,
     )
-    db.add(row)
-    db.commit()
-    db.refresh(row)
-    return row
 
 
 def _log_row_payload(row: SupportEmailLog, display_name: Optional[str]) -> dict[str, Any]:
@@ -117,6 +100,7 @@ def _log_row_payload(row: SupportEmailLog, display_name: Optional[str]) -> dict[
         "subject": row.subject,
         "body": row.body,
         "meta": row.meta if isinstance(row.meta, dict) else {},
+        "smtp_message_id": row.smtp_message_id,
         "created_at": row.created_at.isoformat() if row.created_at else None,
     }
 
@@ -140,7 +124,7 @@ async def patch_support_settings(body: SupportSettingsPatch, db: Session = Depen
 
 @router.post("/draft-reply")
 async def draft_support_reply(body: DraftReplyBody, db: Session = Depends(get_db)):
-    norm = _normalize_email(body.customer_email)
+    norm = normalize_customer_email(body.customer_email)
     if "@" not in norm:
         raise HTTPException(status_code=400, detail="Invalid customer_email")
 
@@ -235,7 +219,7 @@ async def list_support_logs(
     if user_id is not None:
         q = q.filter(SupportEmailLog.user_id == user_id)
     if customer_email:
-        q = q.filter(SupportEmailLog.customer_email == _normalize_email(customer_email))
+        q = q.filter(SupportEmailLog.customer_email == normalize_customer_email(customer_email))
     if direction:
         d = direction.strip().lower()
         if d not in ("inbound", "outbound", "draft"):
