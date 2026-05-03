@@ -55,7 +55,13 @@ function unmaskInlineCode(marked: string, segments: string[]): string {
 
 function wrapHebrewTerms(masked: string, term: string): string {
   const esc = escapeRegExp(term);
-  const re = new RegExp(`(^|[^${HEBREW_BOUNDARY_CLASS}])((${esc}))(?=[^${HEBREW_BOUNDARY_CLASS}]|$)`, 'gu');
+  // Default: term must start after non-Hebrew (avoid matching inside longer words).
+  // Also allow common single-letter proclitics (ו״את בכל״ם / ולכבמשה) immediately before the term so
+  // "המצוי והרצוי" → והרצוי still wraps הרצוי, and "לפער" wraps פער after ל.
+  const re = new RegExp(
+    `(^|[^${HEBREW_BOUNDARY_CLASS}]|[ולבכמשה])(${esc})(?=[^${HEBREW_BOUNDARY_CLASS}]|$)`,
+    'gu',
+  );
   return masked.replace(re, (_full, sep: string, word: string) => `${sep}**${word}**`);
 }
 
@@ -117,6 +123,7 @@ const ENGLISH_BSD_TERMS: string[] = [
   'nature forces',
   'return process',
   'free choice',
+  'actual and desired',
   'KaMaZ',
   'paradigm',
   'pattern',
@@ -124,6 +131,13 @@ const ENGLISH_BSD_TERMS: string[] = [
   'trigger',
   'commitment',
   'vision',
+  /** BSD stages: actual / desired / gap (Hebrew מצוי·רצוי·פער) */
+  'desired state',
+  'actual state',
+  'the desired',
+  'the actual',
+  'desired',
+  'actual',
   'gap',
 ].sort((a, b) => b.length - a.length);
 

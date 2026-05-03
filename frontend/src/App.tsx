@@ -30,6 +30,78 @@ const isTunnelDomain = () => {
          hostname.includes('.localhost.run');
 };
 
+type ChatHeaderMobileControlsProps = {
+  isChatView: boolean;
+  showDashboard: boolean;
+  onArchiveOpen: () => void;
+  onNewConversation: () => void;
+  onToggleDashboard: () => void;
+};
+
+/** Icon + tiny label under each action — md+ unchanged text beside dashboard only */
+function ChatHeaderMobileControls({
+  isChatView,
+  showDashboard,
+  onArchiveOpen,
+  onNewConversation,
+  onToggleDashboard,
+}: ChatHeaderMobileControlsProps) {
+  const { t } = useTranslation();
+  const tile =
+    'flex flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 min-h-[52px] min-w-[58px] max-w-[76px]';
+
+  return (
+    <>
+      {isChatView && (
+        <>
+          <button
+            type="button"
+            onClick={onArchiveOpen}
+            title={t('chat.previousConversationsHint')}
+            aria-label={t('chat.previousConversations')}
+            className={`${tile} md:hidden bg-white border border-[#E2E4E8] text-[#2E3A56] shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors`}
+          >
+            <Archive className="w-[18px] h-[18px] flex-shrink-0 text-[#2E3A56]" strokeWidth={2} />
+            <span className="text-[9px] font-semibold leading-[1.15] text-center text-[#2E3A56] px-0.5">
+              {t('chat.mobileHeader.sessions')}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={onNewConversation}
+            title={t('chat.newConversation')}
+            aria-label={t('chat.newConversation')}
+            className={`${tile} md:hidden shadow-sm transition-all border border-[#FCF6BA]/50 bg-gradient-to-br from-[#BF953F] via-[#FCF6BA] to-[#B38728] hover:brightness-105 hover:border-[#FCF6BA]/80`}
+          >
+            <MessageSquarePlus className="w-[18px] h-[18px] flex-shrink-0 text-[#0f172a]" strokeWidth={2} />
+            <span className="text-[9px] font-semibold leading-[1.15] text-center text-[#0f172a] px-0.5">
+              {t('chat.mobileHeader.newChat')}
+            </span>
+          </button>
+        </>
+      )}
+      <button
+        type="button"
+        onClick={onToggleDashboard}
+        title={showDashboard ? t('chat.button') : t('dashboard.button')}
+        aria-label={showDashboard ? t('chat.button') : t('dashboard.button')}
+        className="inline-flex flex-col md:flex-row items-center justify-center gap-0.5 md:gap-2 px-1 md:px-4 py-1 md:py-2 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors min-h-[52px] min-w-[58px] max-w-[76px] md:max-w-none md:min-h-[44px] md:min-w-0 text-xs md:text-sm font-medium"
+        style={{ fontFamily: 'Inter, sans-serif' }}
+      >
+        {showDashboard ? (
+          <MessageCircle className="w-[18px] h-[18px] md:w-4 md:h-4 flex-shrink-0 text-[#2E3A56]" strokeWidth={2} />
+        ) : (
+          <LayoutDashboard className="w-[18px] h-[18px] md:w-4 md:h-4 flex-shrink-0 text-[#2E3A56]" strokeWidth={2} />
+        )}
+        <span className="md:hidden text-[9px] font-semibold leading-[1.15] text-center px-0.5">
+          {showDashboard ? t('chat.mobileHeader.backToChat') : t('chat.mobileHeader.personal')}
+        </span>
+        <span className="hidden md:inline">{showDashboard ? t('chat.button') : t('dashboard.button')}</span>
+      </button>
+    </>
+  );
+}
+
 // Separate component for signed-in content (so useUser is only called when signed in)
 function SignedInContent() {
   const { t } = useTranslation();
@@ -132,46 +204,17 @@ function SignedInContent() {
               })()}
             </span>
           )}
-          {isChatView && (
-            <>
-              <button
-                type="button"
-                onClick={() => setArchiveOpen(true)}
-                title={t('chat.previousConversationsHint')}
-                className="md:hidden inline-flex items-center justify-center rounded-xl min-h-[40px] min-w-[40px] p-0 bg-white border border-[#E2E4E8] text-[#2E3A56] shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors"
-                aria-label={t('chat.previousConversations')}
-              >
-                <Archive className="w-[18px] h-[18px] text-[#2E3A56]" strokeWidth={2} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setWorkspaceNewChatTick((n) => n + 1)}
-                title={t('chat.newConversation')}
-                className="md:hidden inline-flex items-center justify-center rounded-xl min-h-[40px] min-w-[40px] p-0 shadow-sm transition-all border border-[#FCF6BA]/50 bg-gradient-to-br from-[#BF953F] via-[#FCF6BA] to-[#B38728] text-[#0f172a] hover:brightness-105 hover:border-[#FCF6BA]/80"
-                aria-label={t('chat.newConversation')}
-              >
-                <MessageSquarePlus className="w-[18px] h-[18px] text-[#0f172a]" strokeWidth={2} />
-              </button>
-            </>
-          )}
-          <button
-            type="button"
-            onClick={() => {
+          <ChatHeaderMobileControls
+            isChatView={isChatView}
+            showDashboard={showDashboard}
+            onArchiveOpen={() => setArchiveOpen(true)}
+            onNewConversation={() => setWorkspaceNewChatTick((n) => n + 1)}
+            onToggleDashboard={() => {
               setShowDashboard(!showDashboard);
               setShowBilling(false);
               setShowAdmin(false);
             }}
-            title={showDashboard ? t('chat.button') : t('dashboard.button')}
-            className="inline-flex items-center justify-center gap-1.5 md:gap-2 px-2 md:px-4 py-2 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] text-xs md:text-sm font-medium shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors min-h-[40px] min-w-[40px] md:min-h-[44px] md:min-w-0"
-            style={{ fontFamily: 'Inter, sans-serif' }}
-          >
-            {showDashboard ? (
-              <MessageCircle className="w-[18px] h-[18px] md:w-4 md:h-4 flex-shrink-0 text-[#2E3A56]" strokeWidth={2} />
-            ) : (
-              <LayoutDashboard className="w-[18px] h-[18px] md:w-4 md:h-4 flex-shrink-0 text-[#2E3A56]" strokeWidth={2} />
-            )}
-            <span className="hidden md:inline">{showDashboard ? t('chat.button') : t('dashboard.button')}</span>
-          </button>
+          />
           {isAdmin && !checkingAdmin && (
             <button
               type="button"
@@ -277,45 +320,16 @@ function DemoModeContent() {
         </div>
         <div className="flex-1" />
         <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
-          {isChatView && (
-            <>
-              <button
-                type="button"
-                onClick={() => setArchiveOpen(true)}
-                title={t('chat.previousConversationsHint')}
-                className="md:hidden inline-flex items-center justify-center rounded-xl min-h-[40px] min-w-[40px] p-0 bg-white border border-[#E2E4E8] text-[#2E3A56] shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors"
-                aria-label={t('chat.previousConversations')}
-              >
-                <Archive className="w-[18px] h-[18px] text-[#2E3A56]" strokeWidth={2} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setWorkspaceNewChatTick((n) => n + 1)}
-                title={t('chat.newConversation')}
-                className="md:hidden inline-flex items-center justify-center rounded-xl min-h-[40px] min-w-[40px] p-0 shadow-sm transition-all border border-[#FCF6BA]/50 bg-gradient-to-br from-[#BF953F] via-[#FCF6BA] to-[#B38728] text-[#0f172a] hover:brightness-105 hover:border-[#FCF6BA]/80"
-                aria-label={t('chat.newConversation')}
-              >
-                <MessageSquarePlus className="w-[18px] h-[18px] text-[#0f172a]" strokeWidth={2} />
-              </button>
-            </>
-          )}
-          <button
-            type="button"
-            onClick={() => {
+          <ChatHeaderMobileControls
+            isChatView={isChatView}
+            showDashboard={showDashboard}
+            onArchiveOpen={() => setArchiveOpen(true)}
+            onNewConversation={() => setWorkspaceNewChatTick((n) => n + 1)}
+            onToggleDashboard={() => {
               setShowDashboard(!showDashboard);
               setShowBilling(false);
             }}
-            title={showDashboard ? t('chat.button') : t('dashboard.button')}
-            className="inline-flex items-center justify-center gap-1.5 md:gap-2 px-2 md:px-4 py-2 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] text-xs md:text-sm font-medium shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors min-h-[40px] min-w-[40px] md:min-h-[44px] md:min-w-0"
-            style={{ fontFamily: 'Inter, sans-serif' }}
-          >
-            {showDashboard ? (
-              <MessageCircle className="w-[18px] h-[18px] md:w-4 md:h-4 flex-shrink-0 text-[#2E3A56]" strokeWidth={2} />
-            ) : (
-              <LayoutDashboard className="w-[18px] h-[18px] md:w-4 md:h-4 flex-shrink-0 text-[#2E3A56]" strokeWidth={2} />
-            )}
-            <span className="hidden md:inline">{showDashboard ? t('chat.button') : t('dashboard.button')}</span>
-          </button>
+          />
           <LanguageSwitcher />
         </div>
       </motion.header>
