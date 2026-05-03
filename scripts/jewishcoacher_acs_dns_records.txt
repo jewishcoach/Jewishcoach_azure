@@ -1,0 +1,22 @@
+# Azure Communication Services — Email domain "jewishcoacher.com"
+# Resource: jewishcoach-email-svc (RG: jewish-coach-rg)
+#
+# Current apex SPF seen in DNS (Hostinger): v=spf1 include:_spf.mail.hostinger.com ~all
+# You must keep exactly ONE SPF TXT at @ — merge Hostinger + Microsoft into the line below.
+
+--- TXT @ (domain verification — ADD this record) ---
+ms-domain-verification=a73e1faf-b818-45ce-bf67-0d6b9c9b63c3
+
+--- TXT @ (SPF — REPLACE existing SPF with this merged value) ---
+v=spf1 include:_spf.mail.hostinger.com include:spf.protection.outlook.com ~all
+
+--- CNAME (DKIM #1) ---
+Host/name: selector1-azurecomm-prod-net._domainkey
+Target: selector1-azurecomm-prod-net._domainkey.azurecomm.net
+
+--- CNAME (DKIM #2) ---
+Host/name: selector2-azurecomm-prod-net._domainkey
+Target: selector2-azurecomm-prod-net._domainkey.azurecomm.net
+
+# After DNS propagates, run from repo root:
+#   bash scripts/acs_finalize_jewishcoacher_email.sh
