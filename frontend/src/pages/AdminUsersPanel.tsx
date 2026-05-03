@@ -256,7 +256,9 @@ export const AdminUsersPanel: React.FC = () => {
                       <td className="px-3 py-2 font-mono text-xs">{u.id}</td>
                       <td className="px-3 py-2 max-w-[220px]">
                         <div className="font-medium text-gray-900 truncate">{u.display_name || '—'}</div>
-                        <div className="text-xs text-gray-500 truncate">{u.email || u.clerk_id}</div>
+                        <div className="text-xs text-gray-500 truncate" title={`Clerk: ${u.clerk_id}`}>
+                          {u.email ?? '—'}
+                        </div>
                       </td>
                       <td className="px-3 py-2">
                         <span className="inline-flex px-2 py-0.5 rounded-full text-xs bg-slate-100 text-slate-800">

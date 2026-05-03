@@ -194,6 +194,17 @@ def _resolve_primary_email(
     return _fetch_clerk_primary_email(clerk_id)
 
 
+def resolve_email_from_db_and_clerk(clerk_id: str, db_email: str | None) -> str | None:
+    """
+    Real inbox for admin/support: prefer non-placeholder DB row, else Clerk Backend API.
+    Requires CLERK_SECRET_KEY for API fallback (same as login resolution).
+    """
+    cid = (clerk_id or "").strip()
+    if not cid:
+        return None
+    return _resolve_primary_email(None, cid, db_email)
+
+
 def admin_diagnosis_for_request(authorization: str | None, user: User) -> dict:
     """
     Safe troubleshooting payload for the signed-in user only (no secrets).

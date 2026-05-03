@@ -10,10 +10,12 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, or_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from ..dependencies import get_current_admin_user
+from ..dependencies import get_current_admin_user, resolve_email_from_db_and_clerk
 from ..database import get_db
+from ..email_visibility import normalize_public_email
 from ..models import ConversationFlag, User, Conversation, Message, UsageRecord, CouponRedemption
 from ..schemas.billing import PLAN_LIMITS
 from typing import Optional
@@ -23,6 +25,22 @@ router = APIRouter(
     tags=["Admin"],
     dependencies=[Depends(get_current_admin_user)]  # ALL routes require admin
 )
+
+
+def _admin_visible_email(u: User) -> Optional[str]:
+    raw = resolve_email_from_db_and_clerk(u.clerk_id, u.email)
+    return normalize_public_email(raw)
+
+
+def _maybe_persist_resolved_email(db: Session, u: User, visible: Optional[str]) -> None:
+    """Replace Clerk placeholder rows with API-resolved inbox when safe."""
+    if not visible or visible == u.email:
+        return
+    if normalize_public_email(u.email) is not None:
+        return
+    u.email = visible
+
+
 
 @router.get("/flags")
 async def get_all_flags(
@@ -451,6 +469,7 @@ async def list_users(
     coupon_users = _users_with_active_coupon(db, ids)
 
     rows = []
+    dirty_email = False
     for u in users:
         a = agg.get(u.id, _empty_user_agg())
         econ = _economics_row(
@@ -459,11 +478,16 @@ async def list_users(
             has_active_coupon=u.id in coupon_users,
             assumptions=assumptions,
         )
+        visible_email = _admin_visible_email(u)
+        email_before = u.email
+        _maybe_persist_resolved_email(db, u, visible_email)
+        if u.email != email_before:
+            dirty_email = True
         rows.append(
             {
                 "id": u.id,
                 "clerk_id": u.clerk_id,
-                "email": u.email,
+                "email": visible_email,
                 "display_name": u.display_name,
                 "gender": u.gender,
                 "current_plan": (u.current_plan or "basic").strip() or "basic",
@@ -474,6 +498,12 @@ async def list_users(
                 **econ,
             }
         )
+
+    if dirty_email:
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
 
     return {
         "total": total,
@@ -501,6 +531,15 @@ async def get_user_detail(user_id: int, db: Session = Depends(get_db)):
         has_active_coupon=user_id in coupon_users,
         assumptions=assumptions,
     )
+
+    visible_email = _admin_visible_email(user)
+    email_before = user.email
+    _maybe_persist_resolved_email(db, user, visible_email)
+    if user.email != email_before:
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
 
     conversations = (
         db.query(Conversation).filter(Conversation.user_id == user_id).order_by(Conversation.updated_at.desc()).all()
@@ -541,7 +580,7 @@ async def get_user_detail(user_id: int, db: Session = Depends(get_db)):
         "user": {
             "id": user.id,
             "clerk_id": user.clerk_id,
-            "email": user.email,
+            "email": visible_email,
             "display_name": user.display_name,
             "gender": user.gender,
             "current_plan": user.current_plan or "basic",
