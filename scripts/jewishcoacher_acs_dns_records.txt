@@ -1,6 +1,14 @@
 # Azure Communication Services — Email domain "jewishcoacher.com"
 # Resource: jewishcoach-email-svc (RG: jewish-coach-rg)
 #
+# --- Proper fix when sends fail / Azure SPF "MultipleSPFRecordsFound" ---
+# Nameservers ns*.dns-parking.com are normal for Hostinger — the issue is inconsistent apex TXT.
+# In Hostinger DNS there must be exactly ONE TXT row on @ whose value starts with v=spf1 (merged SPF below).
+# If you edited SPF but Azure still fails: old SPF may still be served globally — delete the SPF TXT @ row,
+# wait until propagation clears it everywhere (use whatsmydns.net), then add again ONLY the merged line once.
+# Optionally set TTL on TXT @ to 300 while fixing, then raise after stable.
+# Validate stability from your machine:  bash scripts/check_jewishcoacher_email_dns.sh
+#
 # SPF = ONE TXT record at @ whose value starts with v=spf1 (never two different SPF lines on @).
 # If Hostinger shows "no SPF": ADD this as a new TXT @ anyway (same panel row type TXT, Host @).
 
