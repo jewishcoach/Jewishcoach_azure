@@ -19,7 +19,7 @@ from ..schemas.billing import PLAN_LIMITS
 from typing import Optional
 
 router = APIRouter(
-    prefix="/admin",
+    prefix="/api/admin",
     tags=["Admin"],
     dependencies=[Depends(get_current_admin_user)]  # ALL routes require admin
 )
