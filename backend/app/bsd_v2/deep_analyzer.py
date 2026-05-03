@@ -9,7 +9,6 @@ Analyzes ALL of a user's conversations to surface:
   5. Core beliefs (implicit, derived from recurring language)
   6. Coping style
   7. Self-agency (internal vs. external locus of control)
-  8. Growth trajectory (changes between early and recent sessions)
 
 This runs ONLY when the user explicitly grants consent.
 Result is cached in User.preferences["last_analysis"] for 7 days.
@@ -40,13 +39,6 @@ class CoreBelief(BaseModel):
     belief: str = Field(description="האמונה כפי שניסחה: 'אני לא מספיק...'")
     evidence: List[str] = Field(default_factory=list, description="2-3 ציטוטים שתומכים")
     stage: str = Field(default="", description="שלב BSD שממנו עלה (S1-S12)")
-
-
-class GrowthPoint(BaseModel):
-    area: str = Field(description="תחום הצמיחה")
-    early_example: str = Field(description="ניסוח/עמדה בשיחות הראשונות")
-    recent_example: str = Field(description="ניסוח/עמדה בשיחות האחרונות")
-    direction: str = Field(description="positive | stagnant | negative")
 
 
 class DeepProfileInsights(BaseModel):
@@ -82,9 +74,6 @@ class DeepProfileInsights(BaseModel):
     # 7. Self-agency
     self_agency_score: float = Field(ge=0.0, le=1.0, description="0=חיצוני לגמרי, 1=פנימי לגמרי")
     agency_examples: List[str] = Field(default_factory=list)
-
-    # 8. Growth trajectory
-    growth_points: List[GrowthPoint] = Field(default_factory=list)
 
     # Summary
     summary: str = Field(description="פסקת פורטרט אישי (3-4 משפטים)")
@@ -147,10 +136,6 @@ ANALYSIS_HUMAN_TEMPLATE = """=== נתונים מ-{n_conversations} שיחות א
 
   "self_agency_score": <0.0-1.0>,
   "agency_examples": ["<ציטוט>", ...],
-
-  "growth_points": [
-    {{"area": "<תחום>", "early_example": "<ניסוח ישן>", "recent_example": "<ניסוח חדש>", "direction": "positive|stagnant|negative"}}
-  ],
 
   "summary": "<פסקת פורטרט 3-4 משפטים>",
   "key_insight": "<התובנה האחת החזקה>",

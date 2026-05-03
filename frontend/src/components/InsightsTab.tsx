@@ -10,7 +10,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { useTranslation } from 'react-i18next';
-import type { I18nT } from '../i18nT';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Lock,
@@ -84,13 +83,6 @@ interface CoreBelief {
   stage: string;
 }
 
-interface GrowthPoint {
-  area: string;
-  early_example: string;
-  recent_example: string;
-  direction: 'positive' | 'stagnant' | 'negative';
-}
-
 interface Analysis {
   generated_at: string;
   conversations_analyzed: number;
@@ -110,7 +102,6 @@ interface Analysis {
   coping_description: string;
   self_agency_score: number;
   agency_examples: string[];
-  growth_points: GrowthPoint[];
   summary: string;
   key_insight: string;
   one_invitation: string;
@@ -153,7 +144,7 @@ function SectionCard({
 }) {
   return (
     <motion.div
-      className="rounded-2xl p-5"
+      className="min-w-0 rounded-2xl p-5"
       style={{ background: C.card, boxShadow: C.shadow }}
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
@@ -249,49 +240,6 @@ function ExpandableBlock({ block }: { block: Block }) {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
-  );
-}
-
-function GrowthItem({ point, t }: { point: GrowthPoint; t: I18nT }) {
-  const icon =
-    point.direction === 'positive' ? (
-      <TrendingUp className="w-4 h-4" style={{ color: C.green }} />
-    ) : point.direction === 'negative' ? (
-      <TrendingDown className="w-4 h-4" style={{ color: C.red }} />
-    ) : (
-      <Minus className="w-4 h-4" style={{ color: C.muted }} />
-    );
-
-  const bg =
-    point.direction === 'positive'
-      ? C.greenLight
-      : point.direction === 'negative'
-      ? C.redLight
-      : C.accentLight;
-
-  return (
-    <div className="rounded-xl p-4 space-y-2.5" style={{ background: bg }}>
-      <div className="flex items-center gap-2">
-        {icon}
-        <span className="text-sm font-semibold" style={{ color: C.text }}>
-          {point.area}
-        </span>
-      </div>
-      <div className="grid grid-cols-2 gap-3 text-xs" style={{ color: C.muted }}>
-        <div>
-          <p className="font-medium mb-1" style={{ color: C.muted }}>
-            {t('insights.then')}
-          </p>
-          <p className="italic">"{point.early_example}"</p>
-        </div>
-        <div>
-          <p className="font-medium mb-1" style={{ color: C.green }}>
-            {t('insights.now')}
-          </p>
-          <p className="italic">"{point.recent_example}"</p>
-        </div>
-      </div>
     </div>
   );
 }
@@ -554,16 +502,16 @@ export function InsightsTab() {
     <div className="space-y-5 pb-8">
       {/* Header bar */}
       <div
-        className="flex items-center justify-between rounded-xl px-4 py-3"
+        className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl px-4 py-3"
         style={{ background: C.card, boxShadow: C.shadow }}
       >
-        <div>
-          <p className="text-xs" style={{ color: C.muted }}>
+        <div className="min-w-0">
+          <p className="text-xs leading-relaxed break-words" style={{ color: C.muted }}>
             {t('insights.basedOn', { count: analysis.conversations_analyzed })} •{' '}
             {analysis.total_user_words.toLocaleString(locale)} {t('insights.words')} • {generatedDate}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-shrink-0 items-center gap-2 sm:justify-end">
           {status.cache_stale && (
             <span
               className="text-xs px-2 py-1 rounded-lg"
@@ -621,8 +569,8 @@ export function InsightsTab() {
         </div>
       </motion.div>
 
-      {/* 3-column metrics */}
-      <div className="grid grid-cols-3 gap-4">
+      {/* Metrics: stacked vertically on all breakpoints */}
+      <div className="flex flex-col gap-4">
         <SectionCard
           icon={<MessageSquareText className="w-4 h-4" />}
           title={t('insights.languageDepth')}
@@ -712,52 +660,12 @@ export function InsightsTab() {
         </SectionCard>
       </div>
 
-      {/* Psychological blocks */}
-      {analysis.psychological_blocks.length > 0 && (
-        <SectionCard
-          icon={<Layers className="w-4 h-4" />}
-          title="חסמים שזוהו"
-          delay={0.2}
-          accent={C.amberLight}
-        >
-          <div className="space-y-2">
-            {analysis.psychological_blocks.map((block, i) => (
-              <ExpandableBlock key={i} block={block} />
-            ))}
-          </div>
-        </SectionCard>
-      )}
-
-      {/* Core beliefs + self-agency */}
-      <div className="grid md:grid-cols-2 gap-4">
-        {analysis.core_beliefs.length > 0 && (
-          <SectionCard
-            icon={<Brain className="w-4 h-4" />}
-            title="אמונות ליבה מרומזות"
-            delay={0.25}
-          >
-            <div className="space-y-4">
-              {analysis.core_beliefs.map((cb, i) => (
-                <div key={i}>
-                  <p className="text-sm font-medium mb-1.5" style={{ color: C.text }}>
-                    "{cb.belief}"
-                  </p>
-                  {cb.stage && (
-                    <Chip label={`שלב ${cb.stage}`} variant="gold" />
-                  )}
-                  {cb.evidence.slice(0, 2).map((ev, j) => (
-                    <InlineQuote key={j} text={ev} />
-                  ))}
-                </div>
-              ))}
-            </div>
-          </SectionCard>
-        )}
-
+      {/* Full-width stack: self-agency, then core beliefs */}
+      <div className="flex w-full min-w-0 flex-col gap-4">
         <SectionCard
           icon={<Compass className="w-4 h-4" />}
           title="עמדה עצמית — מוקד שליטה"
-          delay={0.3}
+          delay={0.2}
         >
           <div className="mb-3">
             <div className="flex justify-between text-xs mb-1.5" style={{ color: C.muted }}>
@@ -779,7 +687,41 @@ export function InsightsTab() {
             ))}
           </div>
         </SectionCard>
+
+        {analysis.core_beliefs.length > 0 && (
+          <SectionCard icon={<Brain className="w-4 h-4" />} title="אמונות ליבה מרומזות" delay={0.25}>
+            <div className="space-y-4">
+              {analysis.core_beliefs.map((cb, i) => (
+                <div key={i}>
+                  <p className="text-sm font-medium mb-1.5" style={{ color: C.text }}>
+                    "{cb.belief}"
+                  </p>
+                  {cb.stage && <Chip label={`שלב ${cb.stage}`} variant="gold" />}
+                  {cb.evidence.slice(0, 2).map((ev, j) => (
+                    <InlineQuote key={j} text={ev} />
+                  ))}
+                </div>
+              ))}
+            </div>
+          </SectionCard>
+        )}
       </div>
+
+      {/* Psychological blocks */}
+      {analysis.psychological_blocks.length > 0 && (
+        <SectionCard
+          icon={<Layers className="w-4 h-4" />}
+          title="חסמים שזוהו"
+          delay={0.3}
+          accent={C.amberLight}
+        >
+          <div className="space-y-2">
+            {analysis.psychological_blocks.map((block, i) => (
+              <ExpandableBlock key={i} block={block} />
+            ))}
+          </div>
+        </SectionCard>
+      )}
 
       {/* Coping style */}
       <SectionCard
@@ -795,22 +737,6 @@ export function InsightsTab() {
           </p>
         </div>
       </SectionCard>
-
-      {/* Growth trajectory */}
-      {analysis.growth_points.length > 0 && (
-        <SectionCard
-          icon={<TrendingUp className="w-4 h-4" />}
-          title="מסלול הצמיחה"
-          delay={0.4}
-          accent={C.greenLight}
-        >
-          <div className="space-y-3">
-            {analysis.growth_points.map((gp, i) => (
-              <GrowthItem key={i} point={gp} t={t} />
-            ))}
-          </div>
-        </SectionCard>
-      )}
 
       {/* Invitation */}
       <motion.div
