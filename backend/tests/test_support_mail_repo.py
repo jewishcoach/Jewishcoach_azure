@@ -136,3 +136,32 @@ class TestFetchSupportEmailThreadForLlm:
         full = fetch_support_email_thread_for_llm(self.db, cust)
         assert len(full) == 3
         assert full[-1]["body"] == "third"
+
+
+class TestAppendSupportEmailLogExplicitUser:
+    def setup_method(self):
+        Base.metadata.create_all(bind=engine)
+        self.Session = sessionmaker(bind=engine)
+        self.db = self.Session()
+
+    def teardown_method(self):
+        self.db.close()
+        Base.metadata.drop_all(bind=engine)
+
+    def test_explicit_user_id_when_email_unregistered(self):
+        """Dashboard sends Reply-To that does not match DB.email — thread still ties via user_id."""
+        u = User(clerk_id="cl_dashboard", email="profile_only@test.com", created_at=datetime.now(timezone.utc))
+        self.db.add(u)
+        self.db.commit()
+
+        row = append_support_email_log(
+            self.db,
+            customer_email="different_inbox@test.com",
+            direction="inbound",
+            channel="user_dashboard",
+            subject="Hi",
+            body="Body",
+            user_id=u.id,
+        )
+        assert row.user_id == u.id
+        assert row.customer_email == "different_inbox@test.com"

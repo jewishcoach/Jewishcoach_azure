@@ -157,28 +157,49 @@ export function DashboardSupportPanel({ colors, profileEmail, refreshAuthToken }
     setReplyEmail(defaultReply);
   }, [defaultReply]);
 
-  const loadThread = useCallback(async () => {
-    setThreadError(null);
-    setThreadLoading(true);
-    try {
-      if (refreshAuthToken) {
-        const tok = await refreshAuthToken();
-        if (tok) apiClient.setToken(tok);
+  const loadThread = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      const silent = !!opts?.silent;
+      if (!silent) setThreadError(null);
+      if (!silent) setThreadLoading(true);
+      try {
+        if (refreshAuthToken) {
+          const tok = await refreshAuthToken();
+          if (tok) apiClient.setToken(tok);
+        }
+        const data = await apiClient.getSupportThread();
+        setThread(data.items ?? []);
+      } catch (err: unknown) {
+        if (silent) {
+          console.debug('[support] thread refresh failed', err);
+          return;
+        }
+        const { status } = parseAxiosErr(err);
+        if (status === 401) setThreadError(t('support.thread.sessionExpired'));
+        else setThreadError(t('support.thread.loadError'));
+        setThread([]);
+      } finally {
+        if (!silent) setThreadLoading(false);
       }
-      const data = await apiClient.getSupportThread();
-      setThread(data.items ?? []);
-    } catch (err: unknown) {
-      const { status } = parseAxiosErr(err);
-      if (status === 401) setThreadError(t('support.thread.sessionExpired'));
-      else setThreadError(t('support.thread.loadError'));
-      setThread([]);
-    } finally {
-      setThreadLoading(false);
-    }
-  }, [refreshAuthToken, t]);
+    },
+    [refreshAuthToken, t],
+  );
 
   useEffect(() => {
     void loadThread();
+  }, [loadThread]);
+
+  /** Inbound webhook / mail routing can lag a few seconds — poll quietly while this tab is open. */
+  useEffect(() => {
+    const tick = window.setInterval(() => void loadThread({ silent: true }), 25_000);
+    const onVis = () => {
+      if (document.visibilityState === 'visible') void loadThread({ silent: true });
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      window.clearInterval(tick);
+      document.removeEventListener('visibilitychange', onVis);
+    };
   }, [loadThread]);
 
   useEffect(() => {
@@ -213,11 +234,23 @@ export function DashboardSupportPanel({ colors, profileEmail, refreshAuthToken }
         message: msg,
         reply_email: reply,
       });
+      const fullSubj = `[Jewish Coach app] ${sub}`;
+      setThread((prev) => [
+        ...prev,
+        {
+          id: -Date.now(),
+          direction: 'inbound',
+          channel: 'user_dashboard',
+          subject: fullSubj,
+          body: msg,
+          created_at: new Date().toISOString(),
+        },
+      ]);
       setDone(true);
       setSubject('');
       setMessage('');
       setReplyEmail(reply);
-      await loadThread();
+      await loadThread({ silent: true });
     } catch (err: unknown) {
       const { status, detail } = parseAxiosErr(err);
       if (status === 401) setError(t('support.thread.sessionExpired'));

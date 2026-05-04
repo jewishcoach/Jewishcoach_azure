@@ -267,9 +267,10 @@ def append_support_email_log(
     body: str,
     meta: Optional[dict[str, Any]] = None,
     smtp_message_id: Optional[str] = None,
+    user_id: Optional[int] = None,
 ) -> SupportEmailLog:
     norm = normalize_customer_email(customer_email)
-    uid = resolve_user_id_for_email(db, norm)
+    uid = int(user_id) if user_id is not None else resolve_user_id_for_email(db, norm)
     row = SupportEmailLog(
         user_id=uid,
         customer_email=norm,

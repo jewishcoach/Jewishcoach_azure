@@ -71,6 +71,26 @@ def _customer_email_candidates(user: User) -> list[str]:
     return out
 
 
+def _support_thread_email_candidates(db: Session, user: User) -> list[str]:
+    """Union profile emails with any customer_email ever logged for this user_id (reply aliases, Gmail variants)."""
+    base = _customer_email_candidates(user)
+    seen: set[str] = set(base)
+    ordered = list(base)
+    for (em,) in (
+        db.query(SupportEmailLog.customer_email)
+        .filter(SupportEmailLog.user_id == user.id)
+        .distinct()
+        .all()
+    ):
+        if not em:
+            continue
+        for cand in _candidate_lookup_emails(normalize_customer_email(em)):
+            if cand not in seen:
+                seen.add(cand)
+                ordered.append(cand)
+    return ordered
+
+
 def _resolve_customer_reply_email(user: User, body: ContactSupportBody) -> str:
     if body.reply_email:
         return _canonical_reply_from_override(str(body.reply_email))
@@ -110,7 +130,7 @@ def get_support_thread(
     (matched by user_id and/or normalized customer email variants).
     Omits draft rows (AI drafts / internal).
     """
-    candidates = _customer_email_candidates(user)
+    candidates = _support_thread_email_candidates(db, user)
     conds = [SupportEmailLog.user_id == user.id]
     if candidates:
         conds.append(SupportEmailLog.customer_email.in_(candidates))
@@ -170,6 +190,7 @@ def post_support_contact(
             "user_id": user.id,
             "support_inbox": inbox,
         },
+        user_id=user.id,
     )
 
     ok, err = send_html_email_detailed(
