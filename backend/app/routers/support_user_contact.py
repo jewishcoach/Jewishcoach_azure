@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import html
 import json
+import logging
 import os
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -23,6 +24,8 @@ from ..services.support_mail_repo import (
 )
 
 DEFAULT_SUPPORT_INBOX = "support@jewishcoacher.com"
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/support", tags=["support"])
 
@@ -92,11 +95,48 @@ def _support_thread_email_candidates(db: Session, user: User) -> list[str]:
     return ordered
 
 
+def _utf8_safe(text: str | None, max_len: int | None = None) -> str:
+    """Avoid UnicodeEncodeError / surrogates breaking FastAPI JSONResponse."""
+    s = "" if text is None else str(text)
+    s = s.encode("utf-8", errors="replace").decode("utf-8")
+    if max_len is not None and len(s) > max_len:
+        return s[: max_len - 1] + "…"
+    return s
+
+
+def _safe_created_ts(dt: object) -> float:
+    if dt is None or not hasattr(dt, "timestamp"):
+        return 0.0
+    try:
+        return float(dt.timestamp())  # type: ignore[union-attr]
+    except (OSError, OverflowError, ValueError):
+        return 0.0
+
+
+def _safe_created_iso(dt: object) -> str | None:
+    if dt is None or not hasattr(dt, "isoformat"):
+        return None
+    try:
+        return dt.isoformat()  # type: ignore[union-attr]
+    except (OSError, ValueError):
+        return None
+
+
 def _meta_as_dict(meta: object) -> dict | None:
     if meta is None:
         return None
     if isinstance(meta, dict):
         return meta
+    if isinstance(meta, (bytes, bytearray)):
+        try:
+            meta = meta.decode("utf-8", errors="replace")
+        except Exception:
+            return None
+    if isinstance(meta, memoryview):
+        try:
+            meta = meta.tobytes().decode("utf-8", errors="replace")
+        except Exception:
+            return None
     if isinstance(meta, str):
         try:
             parsed = json.loads(meta)
@@ -128,13 +168,16 @@ def _legacy_dashboard_thread_rows(
         q = q.filter(~SupportEmailLog.id.in_(exclude_ids))
     matched: list[SupportEmailLog] = []
     for row in q.all():
-        m = _meta_as_dict(row.meta)
-        if not m or m.get("source") != "dashboard_contact":
-            continue
-        if str(m.get("user_id")) != str(user.id):
-            continue
-        matched.append(row)
-    matched.sort(key=lambda r: (r.created_at.timestamp() if r.created_at else 0.0, r.id))
+        try:
+            m = _meta_as_dict(row.meta)
+            if not m or m.get("source") != "dashboard_contact":
+                continue
+            if str(m.get("user_id")) != str(user.id):
+                continue
+            matched.append(row)
+        except Exception:
+            logger.warning("support_thread skipped legacy candidate row id=%s", getattr(row, "id", "?"), exc_info=True)
+    matched.sort(key=lambda r: (_safe_created_ts(r.created_at), r.id))
     return matched
 
 
@@ -152,15 +195,15 @@ def _resolve_customer_reply_email(user: User, body: ContactSupportBody) -> str:
 
 
 def _serialize_log_row(row: SupportEmailLog) -> dict:
-    body = row.body or ""
-    if len(body) > 12_000:
-        body = body[:12_000] + "…"
-    ts = row.created_at.isoformat() if row.created_at else None
+    body = _utf8_safe(row.body, 12_000)
+    subject = row.subject
+    subject_out = _utf8_safe(subject, 500) if subject else None
+    ts = _safe_created_iso(row.created_at)
     return {
         "id": row.id,
-        "direction": row.direction,
-        "channel": row.channel,
-        "subject": row.subject,
+        "direction": _utf8_safe(row.direction, 128),
+        "channel": _utf8_safe(row.channel, 128),
+        "subject": subject_out,
         "body": body,
         "created_at": ts,
     }
@@ -177,27 +220,51 @@ def get_support_thread(
     (matched by user_id and/or normalized customer email variants).
     Omits draft rows (AI drafts / internal).
     """
-    candidates = _support_thread_email_candidates(db, user)
+    try:
+        candidates = _support_thread_email_candidates(db, user)
+    except Exception:
+        logger.exception("support_thread email candidates failed")
+        candidates = []
+
     conds = [SupportEmailLog.user_id == user.id]
     if candidates:
         conds.append(SupportEmailLog.customer_email.in_(candidates))
 
-    rows = (
-        db.query(SupportEmailLog)
-        .filter(or_(*conds))
-        .filter(SupportEmailLog.direction.in_(["inbound", "outbound"]))
-        .order_by(SupportEmailLog.created_at.asc(), SupportEmailLog.id.asc())
-        .limit(limit)
-        .all()
-    )
+    try:
+        primary_rows = (
+            db.query(SupportEmailLog)
+            .filter(or_(*conds))
+            .filter(SupportEmailLog.direction.in_(["inbound", "outbound"]))
+            .order_by(SupportEmailLog.created_at.asc(), SupportEmailLog.id.asc())
+            .limit(limit)
+            .all()
+        )
+    except Exception:
+        logger.exception("support_thread primary query failed")
+        primary_rows = []
 
-    seen_ids = {r.id for r in rows}
-    rows.extend(_legacy_dashboard_thread_rows(db, user, exclude_ids=seen_ids))
-    rows.sort(key=lambda r: (r.created_at.timestamp() if r.created_at else 0.0, r.id))
-    if len(rows) > limit:
-        rows = rows[:limit]
+    seen_ids = {r.id for r in primary_rows}
+    legacy_rows: list[SupportEmailLog] = []
+    try:
+        legacy_rows = _legacy_dashboard_thread_rows(db, user, exclude_ids=seen_ids)
+    except Exception:
+        logger.exception("support_thread legacy scan failed")
 
-    return {"items": [_serialize_log_row(r) for r in rows]}
+    by_id: dict[int, SupportEmailLog] = {r.id: r for r in primary_rows}
+    for r in legacy_rows:
+        by_id[r.id] = r
+    merged = sorted(by_id.values(), key=lambda r: (_safe_created_ts(r.created_at), r.id))
+    if len(merged) > limit:
+        merged = merged[:limit]
+
+    items: list[dict] = []
+    for r in merged:
+        try:
+            items.append(_serialize_log_row(r))
+        except Exception:
+            logger.warning("support_thread serialize skip id=%s", getattr(r, "id", "?"), exc_info=True)
+
+    return {"items": items}
 
 
 @router.post("/contact")
