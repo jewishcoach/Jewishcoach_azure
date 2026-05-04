@@ -38,6 +38,13 @@ export PYTHONPATH="$DEPS_DIR:/home/site/wwwroot:${PYTHONPATH}"
 export PYTHONUTF8=1
 export LANG=en_US.UTF-8
 export LC_ALL=en_US.UTF-8
+
+# Self-heal: pip --target occasionally omits azure.communication.* namespace merge on Azure.
+if ! python -c "from azure.communication.email import EmailClient" 2>/dev/null; then
+  echo "⚠️  azure.communication.email missing — reinstalling ACS Email SDK into $DEPS_DIR ..."
+  python -m pip install "azure-communication-email==1.1.0" "azure-core>=1.30.0,<2.0.0" --target "$DEPS_DIR" --no-cache-dir --upgrade
+fi
+
 PORT="${PORT:-8000}"
 
 echo "🌐 Port: $PORT"
