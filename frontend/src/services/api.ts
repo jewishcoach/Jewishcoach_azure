@@ -450,6 +450,16 @@ class ApiClient {
     });
     return response.data;
   }
+
+  /** Signed-in user: contact support from personal dashboard (delivered to support inbox). */
+  async submitSupportContact(payload: {
+    subject: string;
+    message: string;
+    reply_email?: string | null;
+  }) {
+    const response = await this.client.post('/support/contact', payload);
+    return response.data as { ok: boolean; support_inbox?: string };
+  }
 }
 
 export const apiClient = new ApiClient();

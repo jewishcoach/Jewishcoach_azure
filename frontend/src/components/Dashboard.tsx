@@ -5,12 +5,13 @@ import { motion } from 'framer-motion';
 import {
   User, Settings, Save, Target, History,
   Loader2, CreditCard, FileText, ExternalLink, BookOpen,
-  ScanEye, Scale, MessageCircle,
+  ScanEye, Scale, MessageCircle, LifeBuoy,
 } from 'lucide-react';
 import { CoachingCalendar } from './CoachingCalendar';
 import { RemindersManager } from './RemindersManager';
 import { GoalsManager } from './GoalsManager';
 import { PhaseDonutChart } from './dashboard/PhaseDonutChart';
+import { DashboardSupportPanel } from './dashboard/DashboardSupportPanel';
 import { InsightsTab } from './InsightsTab';
 import { PrivacyPolicyPage } from './PrivacyPolicyPage';
 import { TermsOfUsePage } from './TermsOfUsePage';
@@ -76,7 +77,7 @@ interface DashboardProps {
   onShowBilling?: () => void;
 }
 
-type DashboardTab = 'settings' | 'goals' | 'history' | 'insights';
+type DashboardTab = 'settings' | 'goals' | 'history' | 'insights' | 'support';
 
 type LegalPanel = null | 'privacy' | 'terms';
 
@@ -85,6 +86,7 @@ const NAV_ITEMS: { id: DashboardTab; labelKey: string; icon: React.ReactNode }[]
   { id: 'goals', labelKey: 'dashboard.tab.goalsReminders', icon: <Target className="w-5 h-5" /> },
   { id: 'history', labelKey: 'dashboard.tab.history', icon: <History className="w-5 h-5" /> },
   { id: 'insights', labelKey: 'dashboard.tab.insights', icon: <ScanEye className="w-5 h-5" /> },
+  { id: 'support', labelKey: 'dashboard.tab.support', icon: <LifeBuoy className="w-5 h-5" /> },
 ];
 
 const BSD_WEBSITE_URL = 'https://bsdcoach.com';
@@ -580,6 +582,11 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
 
           {/* Tab: Insights */}
           {activeTab === 'insights' && <InsightsTab />}
+
+          {/* Tab: Support */}
+          {activeTab === 'support' && (
+            <DashboardSupportPanel colors={COLORS} profileEmail={profile.email} />
+          )}
 
           {/* Tab: History */}
           {activeTab === 'history' && (

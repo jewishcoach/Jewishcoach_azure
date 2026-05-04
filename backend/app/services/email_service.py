@@ -91,7 +91,24 @@ https://jewishcoacher.com
     return subject, body_plain, body_html
 
 
-def _send_via_azure(subject: str, body_plain: str, body_html: str, to_email: str) -> Tuple[bool, Optional[str]]:
+def _reply_list_from_override(reply_to_override: Optional[str]) -> Optional[list[dict]]:
+    """Per-message Reply-To (e.g. user's inbox on support tickets)."""
+    if not reply_to_override or not isinstance(reply_to_override, str):
+        return None
+    addr = reply_to_override.strip()
+    if not addr or "@" not in addr:
+        return None
+    return [{"address": addr}]
+
+
+def _send_via_azure(
+    subject: str,
+    body_plain: str,
+    body_html: str,
+    to_email: str,
+    *,
+    reply_to_override: Optional[str] = None,
+) -> Tuple[bool, Optional[str]]:
     """Send via Azure Communication Services Email."""
     conn_str = os.getenv("EMAIL_CONNECTION_STRING", "").strip()
     if not conn_str:
@@ -108,7 +125,7 @@ def _send_via_azure(subject: str, body_plain: str, body_html: str, to_email: str
             "recipients": {"to": [{"address": to_email}]},
             "senderAddress": SENDER_EMAIL,
         }
-        rt = _reply_to_for_acs()
+        rt = _reply_list_from_override(reply_to_override) or _reply_to_for_acs()
         if rt:
             message["replyTo"] = rt
         poller = client.begin_send(message)
@@ -120,7 +137,14 @@ def _send_via_azure(subject: str, body_plain: str, body_html: str, to_email: str
         return False, err
 
 
-def _send_via_sendgrid(subject: str, body_plain: str, body_html: str, to_email: str) -> Tuple[bool, Optional[str]]:
+def _send_via_sendgrid(
+    subject: str,
+    body_plain: str,
+    body_html: str,
+    to_email: str,
+    *,
+    reply_to_override: Optional[str] = None,
+) -> Tuple[bool, Optional[str]]:
     """Send via SendGrid."""
     api_key = os.getenv("SENDGRID_API_KEY", "").strip()
     if not api_key:
@@ -135,9 +159,13 @@ def _send_via_sendgrid(subject: str, body_plain: str, body_html: str, to_email: 
             plain_text_content=Content("text/plain", body_plain),
             html_content=Content("text/html", body_html),
         )
-        reply_addr = os.getenv("EMAIL_REPLY_TO", "").strip()
+        reply_addr = (reply_to_override or "").strip()
         if reply_addr and "@" in reply_addr:
             message.reply_to = ReplyTo(reply_addr)
+        else:
+            reply_env = os.getenv("EMAIL_REPLY_TO", "").strip()
+            if reply_env and "@" in reply_env:
+                message.reply_to = ReplyTo(reply_env)
         sg = SendGridAPIClient(api_key)
         sg.send(message)
         return True, None
@@ -166,9 +194,9 @@ def send_reminder_email(
     )
 
     if os.getenv("EMAIL_CONNECTION_STRING", "").strip():
-        ok, _err = _send_via_azure(subject, body_plain, body_html, to_email)
+        ok, _err = _send_via_azure(subject, body_plain, body_html, to_email, reply_to_override=None)
     elif os.getenv("SENDGRID_API_KEY", "").strip():
-        ok, _err = _send_via_sendgrid(subject, body_plain, body_html, to_email)
+        ok, _err = _send_via_sendgrid(subject, body_plain, body_html, to_email, reply_to_override=None)
     else:
         print("[EMAIL] Neither EMAIL_CONNECTION_STRING nor SENDGRID_API_KEY set - skipping")
         return False
@@ -179,10 +207,16 @@ def send_reminder_email(
 
 
 def send_html_email_detailed(
-    to_email: str, subject: str, body_html: str, body_plain: Optional[str] = None
+    to_email: str,
+    subject: str,
+    body_html: str,
+    body_plain: Optional[str] = None,
+    *,
+    reply_to: Optional[str] = None,
 ) -> Tuple[bool, Optional[str]]:
     """
     Like send_html_email but returns (success, error_message) for audit trails.
+    reply_to: optional Reply-To header (e.g. customer inbox on tickets to support).
     """
     plain = body_plain if (body_plain and body_plain.strip()) else body_html
     import re
@@ -192,9 +226,9 @@ def send_html_email_detailed(
         plain = re.sub(r"\s+", " ", plain).strip()
 
     if os.getenv("EMAIL_CONNECTION_STRING", "").strip():
-        return _send_via_azure(subject, plain, body_html, to_email)
+        return _send_via_azure(subject, plain, body_html, to_email, reply_to_override=reply_to)
     if os.getenv("SENDGRID_API_KEY", "").strip():
-        return _send_via_sendgrid(subject, plain, body_html, to_email)
+        return _send_via_sendgrid(subject, plain, body_html, to_email, reply_to_override=reply_to)
     msg = "Neither EMAIL_CONNECTION_STRING nor SENDGRID_API_KEY set"
     print(f"[EMAIL] {msg} - skipping transactional send")
     return False, msg

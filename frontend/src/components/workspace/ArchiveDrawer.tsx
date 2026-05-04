@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { X, MessageSquare, Search } from 'lucide-react';
+import { X, MessageSquare, Search, Loader2 } from 'lucide-react';
 import type { Conversation } from '../../types';
 
 function phaseLabel(t: (k: string) => string, step: string | undefined): string {
@@ -15,6 +15,8 @@ interface ArchiveDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   conversations: Conversation[];
+  /** True while GET /conversations is in flight (first load). */
+  listLoading?: boolean;
   activeId: number | null;
   onSelect: (id: number) => void;
   onNewChat: () => void;
@@ -27,6 +29,7 @@ export const ArchiveDrawer = ({
   isOpen,
   onClose,
   conversations,
+  listLoading = false,
   activeId,
   onSelect,
   onNewChat,
@@ -59,27 +62,31 @@ export const ArchiveDrawer = ({
             animate={{ x: 0 }}
             exit={{ x: -320 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed top-0 bottom-0 left-0 w-[min(85vw,320px)] max-w-[320px] bg-[#0F172A]/95 backdrop-blur-md border-r border-white/10 z-50 shadow-2xl"
+            className="fixed top-0 bottom-0 left-0 w-[min(85vw,320px)] max-w-[320px] bg-[#0F172A]/95 backdrop-blur-md border-r border-white/10 z-50 shadow-2xl flex flex-col min-h-0"
           >
-            <div className="p-4 border-b border-white/10 flex justify-between items-center">
+            <div className="p-4 border-b border-white/10 flex justify-between items-center shrink-0">
               <h3 className="text-sm font-medium text-white/90">{t('chat.archiveTitle')}</h3>
               <button
+                type="button"
                 onClick={onClose}
                 className="p-2 rounded-xl text-white/60 hover:text-white hover:bg-white/5"
               >
                 <X size={18} />
               </button>
             </div>
-            <button
-              onClick={() => {
-                onNewChat();
-                onClose();
-              }}
-              className="w-full mx-4 mt-4 py-2.5 rounded-xl text-sm font-semibold transition-all border border-[#FCF6BA]/45 bg-gradient-to-br from-[#BF953F] via-[#FCF6BA] to-[#B38728] text-[#0f172a] shadow-sm hover:brightness-105"
-            >
-              {t('chat.newConversation')}
-            </button>
-            <div className="px-4 py-2">
+            <div className="px-4 pt-4 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  onNewChat();
+                  onClose();
+                }}
+                className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all border border-[#FCF6BA]/45 bg-gradient-to-br from-[#BF953F] via-[#FCF6BA] to-[#B38728] text-[#0f172a] shadow-sm hover:brightness-105"
+              >
+                {t('chat.newConversation')}
+              </button>
+            </div>
+            <div className="px-4 py-2 shrink-0">
               <div className="relative">
                 <Search size={16} className={`absolute top-1/2 -translate-y-1/2 text-white/40 ${isRTL ? 'right-3' : 'left-3'}`} />
                 <input
@@ -92,8 +99,13 @@ export const ArchiveDrawer = ({
                 />
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto custom-scrollbar px-2 pb-4">
-              {conversations.length === 0 ? (
+            <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-2 pb-4">
+              {listLoading ? (
+                <div className="flex flex-col items-center justify-center gap-3 py-16 text-white/70">
+                  <Loader2 className="h-8 w-8 animate-spin text-[#FCF6BA]/90" strokeWidth={2} />
+                  <p className="text-xs text-center px-4">{t('chat.loadingConversations')}</p>
+                </div>
+              ) : conversations.length === 0 ? (
                 <div className="text-center py-12 text-white/40">
                   <MessageSquare size={32} className="mx-auto mb-2" />
                   <p className="text-xs">{t('chat.archiveEmpty')}</p>

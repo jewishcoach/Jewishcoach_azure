@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Send, Mic } from 'lucide-react';
+import { Send, Mic, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@clerk/clerk-react';
 import { useChat } from '../hooks/useChat';
@@ -27,9 +27,9 @@ export const ChatInterface = ({ displayName }: ChatInterfaceProps) => {
   const [isVoiceMode, setIsVoiceMode] = useState(false);
   const [voiceGender, setVoiceGender] = useState<VoiceGender>('female');
   // Get activeTool from useChat instead of local state
-  const { messages, loading, currentPhase, conversationId, activeTool, sendMessage, loadConversation, startNewConversation } = useChat(displayName);
+  const { messages, loading, historyLoading, currentPhase, conversationId, activeTool, sendMessage, loadConversation, startNewConversation } = useChat(displayName);
   const chatLockedByForm = isChatBlockedByActiveTool(activeTool);
-  const { messagesEndRef, lastMessageRef } = useChatScrollIntoLatest(messages, loading);
+  const { messagesEndRef, lastMessageRef } = useChatScrollIntoLatest(messages, loading || historyLoading);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const speakFunctionRef = useRef<((text: string) => Promise<void>) | null>(null);
   const stopVoiceSessionRef = useRef<(() => void) | null>(null);
@@ -69,7 +69,7 @@ export const ChatInterface = ({ displayName }: ChatInterfaceProps) => {
     e.preventDefault();
     
     // Prevent duplicate submissions
-    if (chatLockedByForm || !inputValue.trim() || loading || isSendingRef.current) {
+    if (chatLockedByForm || !inputValue.trim() || loading || historyLoading || isSendingRef.current) {
       console.log('⚠️ Ignoring duplicate submit attempt');
       return;
     }
@@ -264,7 +264,13 @@ export const ChatInterface = ({ displayName }: ChatInterfaceProps) => {
         </div>
 
       {/* Messages Area - Glass Container */}
-      <div className="flex-1 overflow-y-auto px-2 py-6">
+      <div className="flex-1 overflow-y-auto px-2 py-6 relative">
+        {historyLoading && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-cream/90 backdrop-blur-sm px-4">
+            <Loader2 className="h-8 w-8 text-accent animate-spin" strokeWidth={2} />
+            <p className="text-sm text-gray-600 text-center" dir={i18n.dir()}>{t('chat.loadingHistory')}</p>
+          </div>
+        )}
         <div className="w-full">
           {messages.length === 0 ? (
             <motion.div 
@@ -294,7 +300,7 @@ export const ChatInterface = ({ displayName }: ChatInterfaceProps) => {
                         <MessageBubble message={message} />
                       </motion.div>
                     ))}
-                    {loading && (
+                    {loading && !historyLoading && (
                       <motion.div
                         key="loading-dots"
                         initial={{ opacity: 0 }}
@@ -366,7 +372,7 @@ export const ChatInterface = ({ displayName }: ChatInterfaceProps) => {
                     }}
                     onKeyDown={handleKeyDown}
                     placeholder={chatLockedByForm ? t('chat.formBlocksTyping') : t('chat.placeholder')}
-                    disabled={loading || chatLockedByForm}
+                    disabled={loading || historyLoading || chatLockedByForm}
                     className="
                       flex-1 resize-none rounded-xl border-0 bg-transparent
                       px-4 py-3 text-gray-900 placeholder-gray-500
@@ -422,7 +428,7 @@ export const ChatInterface = ({ displayName }: ChatInterfaceProps) => {
                   {/* Send Button */}
                   <motion.button
                     type="submit"
-                    disabled={chatLockedByForm || !inputValue.trim() || loading}
+                    disabled={chatLockedByForm || !inputValue.trim() || loading || historyLoading}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     className="

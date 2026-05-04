@@ -49,6 +49,8 @@ export const useChat = (displayName?: string | null) => {
   const user = displayName ? { firstName: displayName } : null;
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
+  /** Fetching past messages when opening a conversation from archive (separate from assistant "thinking"). */
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [currentPhase, setCurrentPhase] = useState<string>('S0');
   const [activeTool, setActiveTool] = useState<ToolCall | null>(null); // NEW: Track active tool from backend
@@ -101,13 +103,15 @@ export const useChat = (displayName?: string | null) => {
     return response;
   };
 
-  const loadConversation = async (conversationId: number) => {
+  const loadConversation = async (convId: number) => {
+    setHistoryLoading(true);
+    setMessages([]);
+    setConversationId(convId);
     try {
-      setLoading(false); // Clear any loading state when switching conversations
-      const conv = await apiClient.getConversation(conversationId);
-      
+      const conv = await apiClient.getConversation(convId);
+
       // Filter out metadata and undefined from all messages; enrich phase for smart scroll
-      const currentPhase = conv.current_phase || 'S0';
+      const phaseNow = conv.current_phase || 'S0';
       const raw = conv.messages || [];
       const lastAssistantIdx = raw.map((m: Message) => m.role).lastIndexOf('assistant');
       const cleanMessages = raw.map((msg: Message, idx: number) => {
@@ -119,27 +123,28 @@ export const useChat = (displayName?: string | null) => {
         let meta = msg.meta ?? {};
         // Ensure last assistant message has phase for smart scroll (backend may not have saved it for older convs)
         if (msg.role === 'assistant' && !meta.phase && idx === lastAssistantIdx) {
-          meta = { ...meta, phase: currentPhase };
+          meta = { ...meta, phase: phaseNow };
         }
         return { ...msg, content: cleanContent, meta };
       });
-      
+
       setMessages(cleanMessages);
       setCurrentPhase(conv.current_phase || 'S0');
-      setConversationId(conversationId);
+      setConversationId(convId);
       setStationCheckpoint(null);
       commitActiveTool(null); // NEW: Clear active tool when loading different conversation
       setHasInitialized(true);
-      setLoading(false); // Ensure loading is off
     } catch (error) {
       console.error('Error loading conversation:', error);
-      setLoading(false); // Clear loading state on error
+    } finally {
+      setHistoryLoading(false);
     }
   };
 
   const startNewConversation = async () => {
     setLoading(false); // Clear any loading state when starting new chat
-    
+    setHistoryLoading(false);
+
     const greeting = buildWelcomeMessage(displayName, clerkUser?.firstName, i18n.language, t);
 
     // Add welcome message immediately to prevent visual "jump"
@@ -529,6 +534,7 @@ export const useChat = (displayName?: string | null) => {
   return { 
     messages, 
     loading,
+    historyLoading,
     currentPhase,
     conversationId,
     activeTool,

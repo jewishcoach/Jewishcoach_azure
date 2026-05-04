@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { PHASE_TO_STAGES } from './phaseMapping';
 import { useTranslation } from 'react-i18next';
-import { Send, Mic, Square } from 'lucide-react';
+import { Loader2, Send, Mic, Square } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@clerk/clerk-react';
 import { useChat } from '../../hooks/useChat';
@@ -45,12 +45,14 @@ export const BSDWorkspace = ({
   const { getToken, isLoaded, isSignedIn } = useAuth();
   const [inputValue, setInputValue] = useState('');
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [conversationsLoading, setConversationsLoading] = useState(true);
   const [archiveOpenLocal, setArchiveOpenLocal] = useState(false);
   const archiveOpen = archiveOpenProp ?? archiveOpenLocal;
   const setArchiveOpen = onArchiveOpenChange ?? setArchiveOpenLocal;
   const {
     messages,
     loading,
+    historyLoading,
     currentPhase,
     conversationId,
     activeTool,
@@ -72,7 +74,7 @@ export const BSDWorkspace = ({
   }, [isRecording]);
   const chatToolRef = useRef<HTMLDivElement>(null);
   const messagesScrollRef = useRef<HTMLDivElement>(null);
-  const { messagesEndRef, lastMessageRef } = useChatScrollIntoLatest(messages, loading);
+  const { messagesEndRef, lastMessageRef } = useChatScrollIntoLatest(messages, loading || historyLoading);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isSendingRef = useRef(false);
 
@@ -114,6 +116,7 @@ export const BSDWorkspace = ({
     if (!isLoaded || !isSignedIn) return;
 
     const init = async () => {
+      setConversationsLoading(true);
       try {
         const token = (await getToken()) || apiClient.getToken();
         if (token) {
@@ -123,6 +126,8 @@ export const BSDWorkspace = ({
         }
       } catch (error) {
         console.error('Error initializing:', error);
+      } finally {
+        setConversationsLoading(false);
       }
     };
     init();
@@ -130,7 +135,7 @@ export const BSDWorkspace = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (chatLockedByForm || !inputValue.trim() || loading || isSendingRef.current) return;
+    if (chatLockedByForm || !inputValue.trim() || loading || historyLoading || isSendingRef.current) return;
     const messageToSend = inputValue.trim();
     setInputValue('');
     isSendingRef.current = true;
@@ -258,7 +263,7 @@ export const BSDWorkspace = ({
           }}
           onKeyDown={handleKeyDown}
           placeholder={chatLockedByForm ? t('chat.formBlocksTyping') : t('chat.placeholder')}
-          disabled={loading || isRecording || chatLockedByForm}
+          disabled={loading || historyLoading || isRecording || chatLockedByForm}
           className="flex-1 min-w-0 resize-none rounded-xl px-4 md:px-6 py-3 md:py-5 text-[14px] md:text-[16px] max-h-28 placeholder-[#5A6B8A]/60 placeholder:text-[12px] md:placeholder:text-[16px] focus:border-[#B38728]/50 focus:ring-2 focus:ring-[#B38728]/20 focus:outline-none"
           style={{
             fontFamily: WORKSPACE_CHAT_FONT,
@@ -274,7 +279,7 @@ export const BSDWorkspace = ({
         <button
           type="button"
           onClick={handleMicClick}
-          disabled={loading || chatLockedByForm}
+          disabled={loading || historyLoading || chatLockedByForm}
           title={
             chatLockedByForm
               ? t('chat.formBlocksTyping')
@@ -292,7 +297,7 @@ export const BSDWorkspace = ({
         </button>
         <button
           type="submit"
-          disabled={chatLockedByForm || !displayValue.trim() || loading || isRecording}
+          disabled={chatLockedByForm || !displayValue.trim() || loading || historyLoading || isRecording}
           className="premium-cta-btn p-3 md:p-4 rounded-xl text-[#2E3A56] font-semibold disabled:opacity-50 min-h-[44px] min-w-[44px] flex items-center justify-center flex-shrink-0"
         >
           <Send size={18} strokeWidth={1.5} />
@@ -314,6 +319,7 @@ export const BSDWorkspace = ({
           isOpen={archiveOpen}
           onClose={() => setArchiveOpen(false)}
           conversations={conversations}
+          listLoading={conversationsLoading}
           activeId={conversationId}
           onSelect={handleSelectConversation}
           onNewChat={handleNewChat}
@@ -346,7 +352,7 @@ export const BSDWorkspace = ({
           <HudPanel
             conversationId={conversationId}
             currentPhase={currentPhase}
-            loading={loading}
+            loading={loading && !historyLoading}
             onArchiveClick={() => setArchiveOpen(true)}
             onNewChat={() => void handleNewChat()}
           />
@@ -357,6 +363,7 @@ export const BSDWorkspace = ({
           isOpen={archiveOpen}
           onClose={() => setArchiveOpen(false)}
           conversations={conversations}
+          listLoading={conversationsLoading}
           activeId={conversationId}
           onSelect={handleSelectConversation}
           onNewChat={handleNewChat}
@@ -376,13 +383,29 @@ export const BSDWorkspace = ({
               </div>
             </div>
             <div className="flex min-w-0 min-h-0 flex-1 flex-col relative overflow-hidden bg-[#F5F5F0]">
-              <ShehiyaProgress loading={loading} />
+              <ShehiyaProgress loading={loading && !historyLoading} />
               {/* dir=ltr כאן קובע יישור פיזי: מאמן מימין, משתמש משמאל (גם בעברית). כיוון טקסט בבועות — ב-WorkspaceMessageBubble */}
               <div
                 ref={messagesScrollRef}
-                className="min-h-0 flex-1 overflow-y-auto px-3 py-4 md:px-10 md:py-10 custom-scrollbar bg-[#F5F5F0]"
+                className="min-h-0 flex-1 overflow-y-auto px-3 py-4 md:px-10 md:py-10 custom-scrollbar bg-[#F5F5F0] relative"
                 dir="ltr"
               >
+          {historyLoading && (
+            <div
+              className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#F5F5F0]/90 backdrop-blur-[2px] px-6"
+              aria-busy="true"
+              aria-live="polite"
+            >
+              <Loader2 className="h-9 w-9 text-[#AA771C] animate-spin" strokeWidth={2} />
+              <p
+                className="text-sm md:text-base text-[#2E3A56]/85 text-center max-w-sm font-medium"
+                style={{ fontFamily: WORKSPACE_CHAT_FONT }}
+                dir={i18n.dir()}
+              >
+                {t('chat.loadingHistory')}
+              </p>
+            </div>
+          )}
           {messages.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
