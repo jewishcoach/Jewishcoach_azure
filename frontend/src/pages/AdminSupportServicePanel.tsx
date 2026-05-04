@@ -96,6 +96,14 @@ export const AdminSupportServicePanel: React.FC = () => {
     }
   }, [authFetch, filterEmail, filterUserId, filterDirection]);
 
+  /** טעינת תיעוד אוטומטית אחרי טעינת ההגדרות. לשינוי סינון — לחץ «רענן תיעוד». */
+  useEffect(() => {
+    if (!loading) {
+      void reloadLogs();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- לא לגשת ל-API על כל תו בשדה הסינון
+  }, [loading]);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
