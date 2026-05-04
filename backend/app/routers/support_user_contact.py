@@ -7,7 +7,7 @@ import os
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, EmailStr, Field, field_validator
-from sqlalchemy import or_
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -91,6 +91,17 @@ def _support_thread_email_candidates(db: Session, user: User) -> list[str]:
     return ordered
 
 
+def _legacy_dashboard_contact_clause(user: User):
+    """
+    Rows from dashboard_contact saved before user_id was written on SupportEmailLog.
+    Match meta.{source,user_id} (SQLite + Postgres JSON).
+    """
+    return and_(
+        SupportEmailLog.meta["source"].astext == "dashboard_contact",
+        SupportEmailLog.meta["user_id"].astext == str(user.id),
+    )
+
+
 def _resolve_customer_reply_email(user: User, body: ContactSupportBody) -> str:
     if body.reply_email:
         return _canonical_reply_from_override(str(body.reply_email))
@@ -131,7 +142,10 @@ def get_support_thread(
     Omits draft rows (AI drafts / internal).
     """
     candidates = _support_thread_email_candidates(db, user)
-    conds = [SupportEmailLog.user_id == user.id]
+    conds = [
+        SupportEmailLog.user_id == user.id,
+        _legacy_dashboard_contact_clause(user),
+    ]
     if candidates:
         conds.append(SupportEmailLog.customer_email.in_(candidates))
 
