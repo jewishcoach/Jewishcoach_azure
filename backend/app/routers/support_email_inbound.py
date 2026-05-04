@@ -15,14 +15,30 @@ from __future__ import annotations
 import hmac
 import os
 
-from fastapi import APIRouter, Depends, Form, Header, HTTPException
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
+from fastapi import APIRouter, Depends, Form, Header, HTTPException, Request
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError, field_validator
 from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..services.support_inbound_pipeline import process_inbound_support_email
 
 router = APIRouter(prefix="/api/internal/support-email", tags=["Internal support email"])
+
+
+def _flatten_make_style_json(raw: dict) -> dict:
+    """
+    Make.com sometimes POSTs {"1": {"From": "...", "Subject": "..."}, ...}.
+    Merge numeric-key inner dicts so From/to/subject map into the root object.
+    """
+    out: dict = {}
+    nested_merged: dict = {}
+    for key, val in raw.items():
+        if isinstance(val, dict) and str(key).isdigit():
+            nested_merged.update(val)
+        else:
+            out[key] = val
+    out.update(nested_merged)
+    return out
 
 
 def _verify_inbound_secret(header_secret: str | None) -> None:
@@ -81,6 +97,12 @@ class InboundJsonBody(BaseModel):
             "sender",
             "From",
             "Sender",
+            "SenderEmail",
+            "sender_email",
+            "senderEmail",
+            "SenderEmailAddress",
+            "sender_email_address",
+            "Source",
             "mail_from",
             "reply_from",
         ),
@@ -121,13 +143,28 @@ class InboundJsonBody(BaseModel):
     def _coerce_from(cls, v):
         if v is None:
             return ""
+        if isinstance(v, list):
+            for item in v:
+                if item is None:
+                    continue
+                if isinstance(item, dict):
+                    inner = cls._coerce_from(item)
+                    if inner:
+                        return inner
+                else:
+                    s = str(item).strip()
+                    if s:
+                        return s
+            return ""
         if isinstance(v, dict):
             return str(
                 v.get("emailAddress")
                 or v.get("email_address")
+                or v.get("EmailAddress")
                 or v.get("email")
                 or v.get("address")
                 or v.get("text")
+                or v.get("value")
                 or ""
             ).strip()
         return str(v).strip()
@@ -145,20 +182,38 @@ class InboundJsonBody(BaseModel):
 
 
 @router.post("/inbound-json")
-def webhook_inbound_json(
-    body: InboundJsonBody,
+async def webhook_inbound_json(
+    request: Request,
     db: Session = Depends(get_db),
     x_support_inbound_secret: str | None = Header(None, alias="X-Support-Inbound-Secret"),
 ):
     """JSON body — typical for Make.com / Zapier 'HTTP' actions after an IMAP trigger."""
     _verify_inbound_secret(x_support_inbound_secret)
+    try:
+        raw_body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body") from None
+    if not isinstance(raw_body, dict):
+        raise HTTPException(status_code=400, detail="JSON body must be a JSON object")
+
+    payload = _flatten_make_style_json(raw_body)
+    try:
+        body = InboundJsonBody.model_validate(payload)
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=e.errors()) from None
+
     if not (body.from_ or "").strip():
+        keys_preview = sorted(payload.keys())[:48]
         raise HTTPException(
             status_code=400,
-            detail=(
-                "Missing sender: set JSON key 'from', 'sender', or 'from_email' to the customer's "
-                "address (map the IMAP / email module 'From' field in Make)."
-            ),
+            detail={
+                "error": "missing_sender",
+                "hint": (
+                    "Map the Email module field «Sender: Email address» or «From» into JSON key "
+                    "`from`, `sender`, or `From`. If Make wraps output under `1`, merge or map from inside that object."
+                ),
+                "received_top_level_keys": keys_preview,
+            },
         )
     mailbox = (os.getenv("SUPPORT_INBOUND_MAILBOX", "support@jewishcoacher.com") or "").strip()
     result = process_inbound_support_email(
