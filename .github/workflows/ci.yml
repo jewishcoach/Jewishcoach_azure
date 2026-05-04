@@ -38,7 +38,7 @@ jobs:
           python3 test_prompts_simple.py
 
       - name: Run pytest
-        run: python -m pytest tests/ -v
+        run: python3 -m pytest tests/ -v
         env:
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
