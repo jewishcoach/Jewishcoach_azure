@@ -90,7 +90,16 @@ class InboundJsonBody(BaseModel):
     subject: str = Field(default="", validation_alias=AliasChoices("subject", "Subject", "title"))
     text: str | None = Field(
         default=None,
-        validation_alias=AliasChoices("text", "plain", "body", "snippet", "Text", "PlainText", "content"),
+        validation_alias=AliasChoices(
+            "text",
+            "plain",
+            "body",
+            "snippet",
+            "Text",
+            "PlainText",
+            "content",
+            "Content",
+        ),
     )
     html: str | None = Field(default=None, validation_alias=AliasChoices("html", "Html", "HTML"))
     headers: str | None = Field(default=None, validation_alias=AliasChoices("headers", "Headers", "raw_headers"))
