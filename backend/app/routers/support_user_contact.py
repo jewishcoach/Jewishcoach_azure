@@ -157,15 +157,13 @@ def _legacy_dashboard_thread_rows(
     Dashboard rows saved before user_id was populated on SupportEmailLog.
     Resolved in Python to avoid PostgreSQL JSON path SQL that returned 500 on Azure.
     """
-    q = (
-        db.query(SupportEmailLog)
-        .filter(SupportEmailLog.direction.in_(["inbound", "outbound"]))
-        .filter(SupportEmailLog.channel == "user_dashboard")
-        .order_by(SupportEmailLog.created_at.desc())
-        .limit(scan_limit)
+    q = db.query(SupportEmailLog).filter(
+        SupportEmailLog.direction.in_(["inbound", "outbound"]),
+        SupportEmailLog.channel == "user_dashboard",
     )
     if exclude_ids:
         q = q.filter(~SupportEmailLog.id.in_(exclude_ids))
+    q = q.order_by(SupportEmailLog.created_at.desc()).limit(scan_limit)
     matched: list[SupportEmailLog] = []
     for row in q.all():
         try:
