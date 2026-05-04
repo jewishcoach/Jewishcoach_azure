@@ -47,17 +47,48 @@ function isProductionFrontendHost(hostname: string): boolean {
   );
 }
 
+/** Session hint: browser couldn't complete TLS to api.jewishcoacher.com; use App Service hostname immediately on next load. */
+export const SESSION_API_TLS_FALLBACK_KEY = 'bsd_api_use_appservice_tls';
+
+export function shouldUsePersistedAppServiceApi(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return sessionStorage.getItem(SESSION_API_TLS_FALLBACK_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function persistUseAppServiceApiForSession(): void {
+  try {
+    sessionStorage.setItem(SESSION_API_TLS_FALLBACK_KEY, '1');
+  } catch {
+    /* private mode / blocked storage */
+  }
+}
+
 /** Normalize API base URL - backend expects /api prefix. Exported for api.ts */
 export function getApiBase(): string {
   const viteRaw = import.meta.env.VITE_API_URL;
   const vite = typeof viteRaw === 'string' ? viteRaw.trim() : '';
   if (vite) {
-    return vite.endsWith('/api') ? vite : `${vite.replace(/\/$/, '')}/api`;
+    let base = vite.endsWith('/api') ? vite : `${vite.replace(/\/$/, '')}/api`;
+    try {
+      if (new URL(base).hostname === 'api.jewishcoacher.com' && shouldUsePersistedAppServiceApi()) {
+        base = PRODUCTION_API_AZURE_DEFAULT;
+      }
+    } catch {
+      /* ignore */
+    }
+    return base;
   }
 
   if (typeof window !== 'undefined') {
     const h = window.location.hostname;
     if (isProductionFrontendHost(h)) {
+      if (shouldUsePersistedAppServiceApi()) {
+        return PRODUCTION_API_AZURE_DEFAULT;
+      }
       return PRODUCTION_API_CUSTOM_DOMAIN;
     }
     if (!h.includes('localhost')) {

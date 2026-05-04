@@ -1,8 +1,25 @@
 import axios from 'axios';
 import type { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
-import { apiTlsFallbackBase, getApiBase } from '../config';
+import {
+  apiTlsFallbackBase,
+  getApiBase,
+  persistUseAppServiceApiForSession,
+} from '../config';
 
 type AxiosConfigWithTlsFallback = InternalAxiosRequestConfig & { __tlsFallbackDone?: boolean };
+
+/** Once TLS to api.jewishcoacher.com fails, force all subsequent requests in this tab to *.azurewebsites.net (parallel-safe). */
+let tlsFallbackActiveBase: string | null = null;
+
+function relativeUrlFromConfig(url: string | undefined): string | undefined {
+  if (!url || !/^https?:\/\//i.test(url)) return url;
+  try {
+    const p = new URL(url);
+    return `${p.pathname}${p.search}`;
+  } catch {
+    return url;
+  }
+}
 
 /**
  * Starlette/FastAPI return 400 for path params that are not valid integers
@@ -35,6 +52,13 @@ class ApiClient {
       withCredentials: true, // Enable CORS credentials
     });
     
+    this.client.interceptors.request.use((config) => {
+      if (tlsFallbackActiveBase) {
+        config.baseURL = tlsFallbackActiveBase;
+      }
+      return config;
+    });
+
     // Add token to every request
     this.client.interceptors.request.use((config) => {
       if (this.token) {
@@ -59,11 +83,24 @@ class ApiClient {
         const fallback = apiTlsFallbackBase(activeBase);
         if (!transportFail || !fallback) return Promise.reject(error);
 
-        console.warn('[API] TLS/network failed on api.jewishcoacher.com — retrying via App Service default hostname');
-        cfg.__tlsFallbackDone = true;
+        tlsFallbackActiveBase = fallback;
         this.client.defaults.baseURL = fallback;
-        cfg.baseURL = fallback;
-        return this.client.request(cfg);
+        cfg.__tlsFallbackDone = true;
+
+        const retryUrl = relativeUrlFromConfig(cfg.url);
+        console.debug('[API] TLS/network failed on api.jewishcoacher.com — retrying via App Service hostname');
+
+        try {
+          const res = await this.client.request({
+            ...cfg,
+            baseURL: fallback,
+            url: retryUrl,
+          });
+          persistUseAppServiceApiForSession();
+          return res;
+        } catch (retryErr) {
+          return Promise.reject(retryErr);
+        }
       },
     );
   }
