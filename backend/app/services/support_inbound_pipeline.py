@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from ..models import SupportCustomerServiceSettings
 from .email_service import send_html_email
 from .support_customer_context import build_customer_support_snapshot
+from .support_auto_reply_env import effective_auto_reply_enabled
 from .support_mail_repo import append_support_email_log, find_log_by_smtp_message_id, normalize_customer_email
 from .support_reply_ai import generate_support_reply_draft
 
@@ -154,7 +155,7 @@ def process_inbound_support_email(
     )
 
     settings = _get_settings_row(db)
-    auto_reply = bool(getattr(settings, "auto_reply_enabled", False))
+    auto_reply = effective_auto_reply_enabled(settings)
 
     snapshot = build_customer_support_snapshot(db, sender_email)
     lang = detect_language_hint(body_plain + " " + subj)

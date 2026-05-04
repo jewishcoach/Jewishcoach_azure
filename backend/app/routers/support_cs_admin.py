@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..dependencies import get_current_admin_user
 from ..models import SupportCustomerServiceSettings, SupportEmailLog, User
+from ..services.support_auto_reply_env import effective_auto_reply_enabled, support_auto_reply_env_raw
 from ..services.support_customer_context import build_customer_support_snapshot
 from ..services.support_mail_repo import append_support_email_log, normalize_customer_email
 from ..services.support_reply_ai import generate_support_reply_draft
@@ -36,11 +37,15 @@ def _transactional_email_status() -> tuple[bool, Literal["acs", "sendgrid", "non
 
 def _settings_payload(row: SupportCustomerServiceSettings) -> dict[str, Any]:
     configured, via = _transactional_email_status()
+    db_auto = bool(getattr(row, "auto_reply_enabled", False))
+    effective = effective_auto_reply_enabled(row)
     return {
         "personality_text": row.personality_text or "",
         "terms_and_boundaries_text": row.terms_and_boundaries_text or "",
         "methodology_context_text": row.methodology_context_text or "",
-        "auto_reply_enabled": bool(getattr(row, "auto_reply_enabled", False)),
+        "auto_reply_enabled": db_auto,
+        "auto_reply_effective": effective,
+        "support_auto_reply_env": support_auto_reply_env_raw(),
         "updated_at": row.updated_at.isoformat() if row.updated_at else None,
         "transactional_email_configured": configured,
         "transactional_email_via": via,

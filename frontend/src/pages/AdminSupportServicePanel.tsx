@@ -9,6 +9,9 @@ interface SupportSettings {
   methodology_context_text: string;
   auto_reply_enabled: boolean;
   updated_at: string | null;
+  /** מה שהשרת באמת משתמש בו אחרי SUPPORT_AUTO_REPLY_ENABLED */
+  auto_reply_effective?: boolean;
+  support_auto_reply_env?: string | null;
   /** בשרת: האם מוגדר EMAIL_CONNECTION_STRING או SENDGRID_API_KEY */
   transactional_email_configured?: boolean;
   transactional_email_via?: 'acs' | 'sendgrid' | 'none';
@@ -129,6 +132,14 @@ export const AdminSupportServicePanel: React.FC = () => {
             methodology_context_text: raw.methodology_context_text ?? '',
             auto_reply_enabled: Boolean(raw.auto_reply_enabled),
             updated_at: raw.updated_at ?? null,
+            auto_reply_effective:
+              typeof raw.auto_reply_effective === 'boolean' ? raw.auto_reply_effective : undefined,
+            support_auto_reply_env:
+              typeof raw.support_auto_reply_env === 'string'
+                ? raw.support_auto_reply_env
+                : raw.support_auto_reply_env === null
+                  ? null
+                  : undefined,
             transactional_email_configured: hasEmailStatus
               ? raw.transactional_email_configured
               : undefined,
@@ -165,6 +176,14 @@ export const AdminSupportServicePanel: React.FC = () => {
         auto_reply_enabled:
           typeof s.auto_reply_enabled === 'boolean' ? s.auto_reply_enabled : prev.auto_reply_enabled,
         updated_at: s.updated_at ?? prev.updated_at,
+        auto_reply_effective:
+          typeof s.auto_reply_effective === 'boolean' ? s.auto_reply_effective : prev.auto_reply_effective,
+        support_auto_reply_env:
+          typeof s.support_auto_reply_env === 'string'
+            ? s.support_auto_reply_env
+            : s.support_auto_reply_env === null
+              ? null
+              : prev.support_auto_reply_env,
         transactional_email_configured:
           typeof s.transactional_email_configured === 'boolean'
             ? s.transactional_email_configured
@@ -327,6 +346,26 @@ export const AdminSupportServicePanel: React.FC = () => {
               והתשובה נשלחת אוטומטית לכתובת השולח (דרך ACS/SendGrid כמו שאר המיילים). כבוי = רישום וטיוטה בלבד ללא שליחה.
             </span>
           </label>
+          {(typeof settings.auto_reply_effective === 'boolean' ||
+            Boolean(settings.support_auto_reply_env?.trim())) && (
+            <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-950 space-y-1">
+              <div>
+                <strong>בפועל כעת בשרת:</strong>{' '}
+                {settings.auto_reply_effective === true
+                  ? 'שולח תשובה אוטומטית (כולל אחרי מייל נכנס).'
+                  : settings.auto_reply_effective === false
+                    ? 'לא שולח — רישום וטיוטה בלבד.'
+                    : '—'}
+              </div>
+              {settings.support_auto_reply_env?.trim() ? (
+                <div>
+                  Azure דורס את המסד:{' '}
+                  <code className="rounded bg-white px-1">SUPPORT_AUTO_REPLY_ENABLED</code>={' '}
+                  <code className="rounded bg-white px-1">{settings.support_auto_reply_env.trim()}</code>
+                </div>
+              ) : null}
+            </div>
+          )}
           <div className="rounded-lg border border-amber-100 bg-amber-50/80 p-4 text-sm text-slate-800 space-y-2">
             <div className="font-semibold text-amber-950">חיבור inbound (SendGrid, Make, Zapier…)</div>
             <p className="text-slate-700">
