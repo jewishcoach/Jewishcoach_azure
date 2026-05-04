@@ -24,6 +24,22 @@ function unmaskBoldSegments(marked: string, segments: string[]): string {
   return marked.replace(/<<<BSD_MD_(\d+)>>>/g, (_, i) => segments[Number(i)] ?? '');
 }
 
+/**
+ * Coach/server sometimes leaves closing `**` without a proper pair (e.g. המצוי**).
+ * After we auto-wrap terms, that becomes **** and Markdown shows literal stars.
+ * Strip orphan ** immediately after a Hebrew run (repeat until stable).
+ */
+function stripOrphanStarsAfterHebrew(text: string): string {
+  let prev = '';
+  let out = text;
+  const re = /([\u0590-\u05FF]{2,})\*{2}(?!\*)/gu;
+  while (out !== prev) {
+    prev = out;
+    out = out.replace(re, '$1');
+  }
+  return out;
+}
+
 /** Don't break `[טקסט](url)` or `` `code` `` while wrapping terms */
 function maskMarkdownLinks(text: string): { masked: string; segments: string[] } {
   const segments: string[] = [];
@@ -56,10 +72,11 @@ function unmaskInlineCode(marked: string, segments: string[]): string {
 function wrapHebrewTerms(masked: string, term: string): string {
   const esc = escapeRegExp(term);
   // Default: term must start after non-Hebrew (avoid matching inside longer words).
+  // Exclude predecessor `*` so we never wrap inside broken `*מילה` / partial markdown.
   // Also allow common single-letter proclitics (ו״את בכל״ם / ולכבמשה) immediately before the term so
   // "המצוי והרצוי" → והרצוי still wraps הרצוי, and "לפער" wraps פער after ל.
   const re = new RegExp(
-    `(^|[^${HEBREW_BOUNDARY_CLASS}]|[ולבכמשה])(${esc})(?=[^${HEBREW_BOUNDARY_CLASS}]|$)`,
+    `(^|[^*${HEBREW_BOUNDARY_CLASS}]|[ולבכמשה])(${esc})(?=[^${HEBREW_BOUNDARY_CLASS}]|$)`,
     'gu',
   );
   return masked.replace(re, (_full, sep: string, word: string) => `${sep}**${word}**`);
@@ -153,7 +170,7 @@ export function emphasizeBsdCoachTerms(text: string, lang: string): string {
   const { masked: linkMasked, segments: linkSeg } = maskMarkdownLinks(text);
   const { masked: codeMasked, segments: codeSeg } = maskInlineCode(linkMasked);
   const { masked, segments: boldSeg } = maskBoldSegments(codeMasked);
-  let out = masked;
+  let out = stripOrphanStarsAfterHebrew(masked);
   for (const term of terms) {
     out = wrap(out, term);
   }
