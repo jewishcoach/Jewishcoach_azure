@@ -116,6 +116,8 @@ def process_inbound_support_email(
     html_part: Optional[str],
     headers_raw: Optional[str],
     mailbox_must_match: Optional[str] = None,
+    message_id_override: Optional[str] = None,
+    inbound_channel: str = "sendgrid_inbound",
 ) -> dict[str, Any]:
     """
     Idempotent when Message-ID is present and stored on first inbound log.
@@ -129,7 +131,8 @@ def process_inbound_support_email(
     if expected_mailbox and not mailbox_matches_recipient(to_field, expected_mailbox):
         return {"skipped": True, "reason": "recipient_not_support_mailbox", "expected": expected_mailbox}
 
-    msg_id = extract_message_id_from_headers(headers_raw)
+    msg_id = (message_id_override or "").strip() or extract_message_id_from_headers(headers_raw)
+    msg_id = msg_id.strip().strip("<>") if msg_id else None
     if msg_id and find_log_by_smtp_message_id(db, msg_id):
         return {"skipped": True, "reason": "duplicate_message_id", "smtp_message_id": msg_id}
 
@@ -143,7 +146,7 @@ def process_inbound_support_email(
         db,
         customer_email=sender_email,
         direction="inbound",
-        channel="sendgrid_inbound",
+        channel=inbound_channel,
         subject=subj,
         body=body_plain,
         meta={"to": to_field[:500] if to_field else None},

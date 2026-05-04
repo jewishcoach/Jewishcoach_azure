@@ -261,27 +261,46 @@ export const AdminSupportServicePanel: React.FC = () => {
             </span>
           </label>
           <div className="rounded-lg border border-amber-100 bg-amber-50/80 p-4 text-sm text-slate-800 space-y-2">
-            <div className="font-semibold text-amber-950">חיבור inbound (למשל SendGrid Inbound Parse)</div>
+            <div className="font-semibold text-amber-950">חיבור inbound (SendGrid, Make, Zapier…)</div>
             <p className="text-slate-700">
-              הגדרו אצל ספק המייל הפניה של הודעות ל־<code className="bg-white px-1 rounded text-xs">POST</code> כארגון טופס
-              (שדות טיפוסיים: <code className="bg-white px-1 rounded text-xs">from</code>,{' '}
+              <strong>Multipart</strong> (SendGrid Inbound Parse וכדומה): שדות טיפוסיים{' '}
+              <code className="bg-white px-1 rounded text-xs">from</code>,{' '}
               <code className="bg-white px-1 rounded text-xs">to</code>,{' '}
               <code className="bg-white px-1 rounded text-xs">subject</code>,{' '}
-              <code className="bg-white px-1 rounded text-xs">text</code>,{' '}
+              <code className="bg-white px-1 rounded text-xs">text</code> /{' '}
               <code className="bg-white px-1 rounded text-xs">html</code>,{' '}
-              <code className="bg-white px-1 rounded text-xs">headers</code>).
+              <code className="bg-white px-1 rounded text-xs">headers</code>.
+            </p>
+            <p className="text-slate-700">
+              <strong>Make / Zapier</strong> אחרי טריגר IMAP לתיבת Hostinger: השתמשו במודול HTTP עם{' '}
+              <code className="bg-white px-1 rounded text-xs">POST</code> וגוף{' '}
+              <code className="bg-white px-1 rounded text-xs">JSON</code> — אין צורך בצעד נפרד ל-OpenAI או ל-Google Sheets:
+              השרת כבר מריץ AI (Azure OpenAI), רושם בתיעוד במסד, ושולח תשובה דרך ACS/SendGrid כשמופעלת התשובה האוטומטית.
             </p>
             <div>
-              <span className="text-slate-600">כתובת Webhook בשרת:</span>
+              <span className="text-slate-600">Webhook multipart:</span>
               <code className="mt-1 block break-all rounded bg-white px-2 py-1.5 text-xs font-mono border border-amber-200">
                 {`${getApiBase()}/internal/support-email/inbound`}
               </code>
             </div>
+            <div>
+              <span className="text-slate-600">Webhook JSON (מומלץ ל-Make/Zapier):</span>
+              <code className="mt-1 block break-all rounded bg-white px-2 py-1.5 text-xs font-mono border border-amber-200">
+                {`${getApiBase()}/internal/support-email/inbound-json`}
+              </code>
+            </div>
             <p className="text-xs text-slate-600">
-              חובה להגדיר ב־Azure (או בסביבת הריצה): <code className="bg-white px-1 rounded">SUPPORT_INBOUND_WEBHOOK_SECRET</code> —
-              אותו ערך נשלח בכותרת <code className="bg-white px-1 rounded">X-Support-Inbound-Secret</code>. אופציונלי:{' '}
+              מפתחות JSON נתמכים: <code className="bg-white px-1 rounded">from</code>,{' '}
+              <code className="bg-white px-1 rounded">to</code>, <code className="bg-white px-1 rounded">subject</code>,{' '}
+              <code className="bg-white px-1 rounded">text</code>, <code className="bg-white px-1 rounded">html</code>,{' '}
+              <code className="bg-white px-1 rounded">headers</code>,{' '}
+              <code className="bg-white px-1 rounded">message_id</code> (אופציונלי — למניעת כפילויות אם Make מריץ שוב אותה הודעה).
+            </p>
+            <p className="text-xs text-slate-600">
+              חובה ב-Azure: <code className="bg-white px-1 rounded">SUPPORT_INBOUND_WEBHOOK_SECRET</code> — אותו ערך בכותרת{' '}
+              <code className="bg-white px-1 rounded">X-Support-Inbound-Secret</code>. אופציונלי:{' '}
               <code className="bg-white px-1 rounded">SUPPORT_INBOUND_MAILBOX</code> (ברירת מחדל{' '}
-              <code className="bg-white px-1 rounded">support@jewishcoacher.com</code>) לסינון נמען.
+              <code className="bg-white px-1 rounded">support@jewishcoacher.com</code>).
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
