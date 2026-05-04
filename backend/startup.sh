@@ -4,13 +4,14 @@ set -e
 echo "🚀 Starting Jewish Coach Backend..."
 cd /home/site/wwwroot
 
-# Persistent dependency cache in /home (survives restarts)
-DEPS_DIR="/home/site/python_deps"
+# Use a real venv under /home (survives restarts). pip install --target breaks Azure SDK
+# namespace packages (e.g. azure.communication.email missing while azure.core exists).
+VENV="/home/site/jc_backend_venv"
 STATE_DIR="/home/site/startup_state"
 REQ_FILE="/home/site/wwwroot/requirements.txt"
 REQ_HASH_FILE="$STATE_DIR/requirements.sha256"
 
-mkdir -p "$DEPS_DIR" "$STATE_DIR"
+mkdir -p "$STATE_DIR"
 
 if [ ! -f "$REQ_FILE" ]; then
   echo "❌ requirements.txt not found at $REQ_FILE"
@@ -23,39 +24,35 @@ if [ -f "$REQ_HASH_FILE" ]; then
   PREV_HASH=$(cat "$REQ_HASH_FILE")
 fi
 
-# Install deps only on first boot or when requirements changed
-if [ "$CURRENT_HASH" != "$PREV_HASH" ]; then
-  echo "📦 requirements changed (or first boot) -> installing dependencies..."
-  python -m pip install --upgrade pip --no-cache-dir
-  python -m pip install -r "$REQ_FILE" --target "$DEPS_DIR" --no-cache-dir --ignore-installed
+if [ "$CURRENT_HASH" != "$PREV_HASH" ] || [ ! -x "$VENV/bin/python" ]; then
+  echo "📦 requirements changed or venv missing — installing into $VENV ..."
+  python -m venv "$VENV"
+  "$VENV/bin/pip" install --upgrade pip --no-cache-dir
+  "$VENV/bin/pip" install -r "$REQ_FILE" --no-cache-dir
   echo "$CURRENT_HASH" > "$REQ_HASH_FILE"
-  echo "✅ Dependencies installed in $DEPS_DIR"
+  echo "✅ Venv ready"
 else
-  echo "✅ Dependency cache hit, skipping pip install"
+  echo "✅ Venv dependency cache hit"
 fi
 
-export PYTHONPATH="$DEPS_DIR:/home/site/wwwroot:${PYTHONPATH}"
+PYTHON="$VENV/bin/python"
+export PYTHONPATH="/home/site/wwwroot:${PYTHONPATH}"
 export PYTHONUTF8=1
 export LANG=en_US.UTF-8
 export LC_ALL=en_US.UTF-8
-
-# Self-heal: pip --target occasionally omits azure.communication.* namespace merge on Azure.
-if ! python -c "from azure.communication.email import EmailClient" 2>/dev/null; then
-  echo "⚠️  azure.communication.email missing — reinstalling ACS Email SDK into $DEPS_DIR ..."
-  python -m pip install "azure-communication-email==1.1.0" "azure-core>=1.30.0,<2.0.0" --target "$DEPS_DIR" --no-cache-dir --upgrade
-fi
 
 PORT="${PORT:-8000}"
 
 echo "🌐 Port: $PORT"
 echo "📚 PYTHONPATH: $PYTHONPATH"
+echo "🐍 Python: $PYTHON"
 
 # DB init: create new tables if missing
-python -c "from app.database import engine, Base; import app.models; Base.metadata.create_all(bind=engine, checkfirst=True)" 2>&1 || true
+"$PYTHON" -c "from app.database import engine, Base; import app.models; Base.metadata.create_all(bind=engine, checkfirst=True)" 2>&1 || true
 
 # Column migrations: add new columns to existing tables (idempotent)
 # Uses app.database.engine directly so it targets the same DB the app uses.
-python -c "
+"$PYTHON" -c "
 from app.database import engine
 from sqlalchemy import text, inspect as sa_inspect
 try:
@@ -73,7 +70,7 @@ except Exception as e:
 " 2>&1 || true
 
 # Users: discipline columns (must match app.models.User — fixes prod SQLite missing columns)
-python -c "
+"$PYTHON" -c "
 from app.database import engine
 from sqlalchemy import text, inspect as sa_inspect
 try:
@@ -98,7 +95,7 @@ except Exception as e:
 " 2>&1 || true
 
 # Support email: auto-reply flag + inbound dedupe id (idempotent ALTER)
-python -c "
+"$PYTHON" -c "
 from app.database import engine
 from sqlalchemy import text, inspect as sa_inspect
 try:
@@ -132,10 +129,10 @@ except Exception as e:
 
 echo "🚀 Launching Gunicorn..."
 if [ -f "/home/site/wwwroot/gunicorn_conf.py" ]; then
-  exec gunicorn -c /home/site/wwwroot/gunicorn_conf.py app.main:app
+  exec "$VENV/bin/gunicorn" -c /home/site/wwwroot/gunicorn_conf.py app.main:app
 else
   echo "⚠️ gunicorn_conf.py missing, starting with safe inline defaults"
-  exec gunicorn \
+  exec "$VENV/bin/gunicorn" \
     -w "${GUNICORN_WORKERS:-2}" \
     -k uvicorn.workers.UvicornWorker \
     app.main:app \

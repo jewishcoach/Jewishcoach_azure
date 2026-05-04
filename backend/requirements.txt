@@ -1,4 +1,4 @@
-# Core FastAPI
+# Core FastAPI — jc_backend_venv in startup.sh (avoid pip --target + Azure SDK namespace issues)
 fastapi==0.115.5
 uvicorn[standard]==0.32.1
 gunicorn==23.0.0
