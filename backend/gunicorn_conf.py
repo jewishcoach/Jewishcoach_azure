@@ -5,14 +5,25 @@ Optimized for Azure App Service with Hebrew text support
 """
 
 import os
-import multiprocessing
 
 # Server socket
 bind = f"0.0.0.0:{os.getenv('PORT', '8000')}"
 backlog = 2048
 
-# Worker processes - 2 for Azure (avoids OOM on B1/S1); override with GUNICORN_WORKERS
-workers = int(os.getenv("GUNICORN_WORKERS", "2"))
+# Worker processes - 2 for Azure (avoids OOM on B1/S1); override with GUNICORN_WORKERS.
+# SQLite file DB + multiple Gunicorn workers often loses writes or shows stale reads on App Service
+# (webhook hits worker A, admin list hits worker B). Postgres can safely use multiple workers.
+_database_url = (os.getenv("DATABASE_URL") or "").lower()
+_requested_workers = int(os.getenv("GUNICORN_WORKERS", "2"))
+if "sqlite" in _database_url:
+    workers = 1
+    if _requested_workers != 1:
+        print(
+            f"⚠️ SQLite DATABASE_URL: forcing Gunicorn workers=1 "
+            f"(ignoring GUNICORN_WORKERS={_requested_workers})"
+        )
+else:
+    workers = _requested_workers
 worker_class = "uvicorn.workers.UvicornWorker"
 worker_connections = 1000
 max_requests = 1000
