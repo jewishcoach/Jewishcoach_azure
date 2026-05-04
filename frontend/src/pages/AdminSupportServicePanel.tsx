@@ -9,6 +9,9 @@ interface SupportSettings {
   methodology_context_text: string;
   auto_reply_enabled: boolean;
   updated_at: string | null;
+  /** בשרת: האם מוגדר EMAIL_CONNECTION_STRING או SENDGRID_API_KEY */
+  transactional_email_configured?: boolean;
+  transactional_email_via?: 'acs' | 'sendgrid' | 'none';
 }
 
 interface SupportLogRow {
@@ -113,12 +116,23 @@ export const AdminSupportServicePanel: React.FC = () => {
         await authFetch();
         const raw = (await apiClient.getSupportServiceSettings()) as Partial<SupportSettings>;
         if (!cancelled) {
+          const viaOk =
+            raw.transactional_email_via === 'acs' ||
+            raw.transactional_email_via === 'sendgrid' ||
+            raw.transactional_email_via === 'none';
+          const hasEmailStatus =
+            typeof raw.transactional_email_configured === 'boolean' && viaOk;
+
           setSettings({
             personality_text: raw.personality_text ?? '',
             terms_and_boundaries_text: raw.terms_and_boundaries_text ?? '',
             methodology_context_text: raw.methodology_context_text ?? '',
             auto_reply_enabled: Boolean(raw.auto_reply_enabled),
             updated_at: raw.updated_at ?? null,
+            transactional_email_configured: hasEmailStatus
+              ? raw.transactional_email_configured
+              : undefined,
+            transactional_email_via: hasEmailStatus ? raw.transactional_email_via : undefined,
           });
         }
       } catch (e: unknown) {
@@ -142,8 +156,21 @@ export const AdminSupportServicePanel: React.FC = () => {
         terms_and_boundaries_text: settings.terms_and_boundaries_text,
         methodology_context_text: settings.methodology_context_text,
         auto_reply_enabled: settings.auto_reply_enabled,
-      })) as SupportSettings;
-      setSettings(s);
+      })) as Partial<SupportSettings>;
+      setSettings((prev) => ({
+        ...prev,
+        personality_text: s.personality_text ?? prev.personality_text,
+        terms_and_boundaries_text: s.terms_and_boundaries_text ?? prev.terms_and_boundaries_text,
+        methodology_context_text: s.methodology_context_text ?? prev.methodology_context_text,
+        auto_reply_enabled:
+          typeof s.auto_reply_enabled === 'boolean' ? s.auto_reply_enabled : prev.auto_reply_enabled,
+        updated_at: s.updated_at ?? prev.updated_at,
+        transactional_email_configured:
+          typeof s.transactional_email_configured === 'boolean'
+            ? s.transactional_email_configured
+            : prev.transactional_email_configured,
+        transactional_email_via: s.transactional_email_via ?? prev.transactional_email_via,
+      }));
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Save failed');
     } finally {
@@ -256,6 +283,38 @@ export const AdminSupportServicePanel: React.FC = () => {
               onChange={(e) => setSettings({ ...settings, methodology_context_text: e.target.value })}
             />
           </label>
+          <div
+            className={`rounded-lg border px-3 py-2 text-sm ${
+              settings.transactional_email_configured === false
+                ? 'border-red-200 bg-red-50 text-red-950'
+                : settings.transactional_email_configured === true
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-950'
+                  : 'border-slate-200 bg-slate-50 text-slate-700'
+            }`}
+          >
+            <strong>מנוע שליחת מייל (Azure)</strong>
+            {settings.transactional_email_configured === true &&
+              settings.transactional_email_via === 'acs' && (
+                <span className="block mt-1">מוגדר: Azure Communication Services (EMAIL_CONNECTION_STRING).</span>
+              )}
+            {settings.transactional_email_configured === true &&
+              settings.transactional_email_via === 'sendgrid' && (
+                <span className="block mt-1">מוגדר: SendGrid (SENDGRID_API_KEY).</span>
+              )}
+            {settings.transactional_email_configured === false && (
+              <span className="block mt-1">
+                לא מוגדר בשרת — לא תישלח תשובה אוטומטית בפועל. ב-Azure App Service הוסף{' '}
+                <code className="rounded bg-white/80 px-1 text-xs">EMAIL_CONNECTION_STRING</code> או{' '}
+                <code className="rounded bg-white/80 px-1 text-xs">SENDGRID_API_KEY</code> (+ כתובת שולח מאומתת ב־
+                <code className="rounded bg-white/80 px-1 text-xs">EMAIL_SENDER</code>).
+              </span>
+            )}
+            {settings.transactional_email_configured === undefined && (
+              <span className="block mt-1 text-slate-600">
+                סטטוס מנוע השליחה זמין אחרי פריסת שרת מעודכן — או רענון דף אחרי העדכון.
+              </span>
+            )}
+          </div>
           <label className="flex items-start gap-2 text-sm text-slate-700 cursor-pointer">
             <input
               type="checkbox"

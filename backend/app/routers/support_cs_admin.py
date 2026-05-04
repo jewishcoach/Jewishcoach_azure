@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+import os
+from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -24,13 +25,25 @@ router = APIRouter(
 _SETTINGS_ID = 1
 
 
+def _transactional_email_status() -> tuple[bool, Literal["acs", "sendgrid", "none"]]:
+    """Mirrors email_service.send_html_email routing (no secrets exposed)."""
+    if os.getenv("EMAIL_CONNECTION_STRING", "").strip():
+        return True, "acs"
+    if os.getenv("SENDGRID_API_KEY", "").strip():
+        return True, "sendgrid"
+    return False, "none"
+
+
 def _settings_payload(row: SupportCustomerServiceSettings) -> dict[str, Any]:
+    configured, via = _transactional_email_status()
     return {
         "personality_text": row.personality_text or "",
         "terms_and_boundaries_text": row.terms_and_boundaries_text or "",
         "methodology_context_text": row.methodology_context_text or "",
         "auto_reply_enabled": bool(getattr(row, "auto_reply_enabled", False)),
         "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+        "transactional_email_configured": configured,
+        "transactional_email_via": via,
     }
 
 
