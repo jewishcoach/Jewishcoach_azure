@@ -55,7 +55,7 @@ jobs:
           python3 test_prompts_simple.py
 
       - name: Run pytest
-        run: cd backend && python -m pytest tests/test_chat_v2_ownership.py tests/test_support_mail_repo.py -q
+        run: cd backend && python -m pytest tests/test_chat_v2_ownership.py tests/test_support_mail_repo.py tests/test_support_inbound_pipeline.py -q
 
       - name: Create deploy zip (code only, no venv)
         run: |
