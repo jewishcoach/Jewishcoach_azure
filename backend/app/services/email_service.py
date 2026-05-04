@@ -7,6 +7,9 @@ Sender address rules:
   With only the Azure-managed domain, use MailFrom like
   donotreply@<guid>.azurecomm.net (see Azure Portal → Provision domains).
   Custom domains (e.g. @jewishcoacher.com) require DNS verification first.
+- While MAIL FROM is *.azurecomm.net, Reply-To defaults to SUPPORT_INBOUND_MAILBOX
+  (support@jewishcoacher.com) unless EMAIL_REPLY_TO is set — so "Reply" in the inbox
+  targets support, not the provisional sender address.
 - SendGrid: From must be verified for your SendGrid account.
 """
 import os
@@ -17,16 +20,44 @@ SENDER_EMAIL = os.getenv("EMAIL_SENDER", "reminders@jewishcoacher.com")
 SENDER_NAME = "Jewish Coach - תזכורות אימון"
 
 
-def _reply_to_for_acs() -> list[dict] | None:
-    """Optional Reply-To list for ACS JSON payload."""
-    addr = os.getenv("EMAIL_REPLY_TO", "").strip()
-    if not addr or "@" not in addr:
-        return None
+def _sender_is_azure_managed_mail_from() -> bool:
+    """True when MAIL FROM is Azure's provisional *.azurecomm.net address."""
+    return "azurecomm.net" in (SENDER_EMAIL or "").lower()
+
+
+def _support_inbound_mailbox() -> str:
+    return os.getenv("SUPPORT_INBOUND_MAILBOX", "support@jewishcoacher.com").strip()
+
+
+def _effective_general_reply_to_address() -> Optional[str]:
+    """
+    Reply-To for transactional mail (reminders, onboarding, etc.).
+    EMAIL_REPLY_TO wins when set; otherwise, if MAIL FROM is *.azurecomm.net,
+    default Replies to the product support inbox so users never answer the ugly address.
+    """
+    explicit = os.getenv("EMAIL_REPLY_TO", "").strip()
+    if explicit and "@" in explicit:
+        return explicit
+    if _sender_is_azure_managed_mail_from():
+        box = _support_inbound_mailbox()
+        return box if "@" in box else None
+    return None
+
+
+def _reply_to_entry_for_acs_address(addr: str) -> list[dict]:
     name = os.getenv("EMAIL_REPLY_TO_DISPLAY_NAME", "").strip()
     entry: dict = {"address": addr}
     if name:
         entry["displayName"] = name
     return [entry]
+
+
+def _reply_to_for_acs() -> list[dict] | None:
+    """Reply-To for ACS when no per-message override (see _effective_general_reply_to_address)."""
+    addr = _effective_general_reply_to_address()
+    if not addr:
+        return None
+    return _reply_to_entry_for_acs_address(addr)
 
 
 def _build_reminder_content(
@@ -163,9 +194,10 @@ def _send_via_sendgrid(
         if reply_addr and "@" in reply_addr:
             message.reply_to = ReplyTo(reply_addr)
         else:
-            reply_env = os.getenv("EMAIL_REPLY_TO", "").strip()
-            if reply_env and "@" in reply_env:
-                message.reply_to = ReplyTo(reply_env)
+            gen = _effective_general_reply_to_address()
+            if gen:
+                dn = os.getenv("EMAIL_REPLY_TO_DISPLAY_NAME", "").strip()
+                message.reply_to = ReplyTo(gen, dn) if dn else ReplyTo(gen)
         sg = SendGridAPIClient(api_key)
         sg.send(message)
         return True, None

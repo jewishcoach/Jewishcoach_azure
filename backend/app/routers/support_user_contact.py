@@ -5,14 +5,15 @@ from __future__ import annotations
 import html
 import os
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, EmailStr, Field, field_validator
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..dependencies import get_current_user, resolve_email_from_db_and_clerk
 from ..email_visibility import normalize_public_email
-from ..models import User
+from ..models import SupportEmailLog, User
 from ..services.email_service import send_html_email_detailed
 from ..services.support_mail_repo import append_support_email_log, normalize_customer_email
 
@@ -46,6 +47,22 @@ def _canonical_reply_from_override(raw: str) -> str:
     return normalize_customer_email(pub)
 
 
+def _customer_email_candidates(user: User) -> list[str]:
+    raw_list: list[str] = []
+    resolved = resolve_email_from_db_and_clerk(user.clerk_id, user.email)
+    if resolved and "@" in resolved:
+        raw_list.append(normalize_customer_email(resolved))
+    if user.email and "@" in user.email:
+        raw_list.append(normalize_customer_email(user.email))
+    seen: set[str] = set()
+    out: list[str] = []
+    for x in raw_list:
+        if x and x not in seen:
+            seen.add(x)
+            out.append(x)
+    return out
+
+
 def _resolve_customer_reply_email(user: User, body: ContactSupportBody) -> str:
     if body.reply_email:
         return _canonical_reply_from_override(str(body.reply_email))
@@ -57,6 +74,48 @@ def _resolve_customer_reply_email(user: User, body: ContactSupportBody) -> str:
         status_code=400,
         detail="No email on file. Please enter your email address in the form.",
     )
+
+
+def _serialize_log_row(row: SupportEmailLog) -> dict:
+    body = row.body or ""
+    if len(body) > 12_000:
+        body = body[:12_000] + "…"
+    ts = row.created_at.isoformat() if row.created_at else None
+    return {
+        "id": row.id,
+        "direction": row.direction,
+        "channel": row.channel,
+        "subject": row.subject,
+        "body": body,
+        "created_at": ts,
+    }
+
+
+@router.get("/thread")
+def get_support_thread(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    limit: int = Query(default=150, ge=1, le=300),
+):
+    """
+    Chronological inbound/outbound support messages for the signed-in user
+    (matched by user_id and/or normalized customer email variants).
+    Omits draft rows (AI drafts / internal).
+    """
+    candidates = _customer_email_candidates(user)
+    conds = [SupportEmailLog.user_id == user.id]
+    if candidates:
+        conds.append(SupportEmailLog.customer_email.in_(candidates))
+
+    rows = (
+        db.query(SupportEmailLog)
+        .filter(or_(*conds))
+        .filter(SupportEmailLog.direction.in_(["inbound", "outbound"]))
+        .order_by(SupportEmailLog.created_at.asc(), SupportEmailLog.id.asc())
+        .limit(limit)
+        .all()
+    )
+    return {"items": [_serialize_log_row(r) for r in rows]}
 
 
 @router.post("/contact")

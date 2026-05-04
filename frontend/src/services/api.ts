@@ -460,6 +460,21 @@ class ApiClient {
     const response = await this.client.post('/support/contact', payload);
     return response.data as { ok: boolean; support_inbox?: string };
   }
+
+  /** Signed-in user: support email thread (inbound/outbound), chronological. */
+  async getSupportThread() {
+    const response = await this.client.get('/support/thread');
+    return response.data as {
+      items: Array<{
+        id: number;
+        direction: string;
+        channel: string;
+        subject: string | null;
+        body: string;
+        created_at: string | null;
+      }>;
+    };
+  }
 }
 
 export const apiClient = new ApiClient();

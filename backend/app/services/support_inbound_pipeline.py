@@ -57,20 +57,44 @@ def plain_text_from_parts(text: Optional[str], html_part: Optional[str]) -> str:
 
 
 def plain_to_reply_html(body_plain: str, *, rtl: bool = True) -> str:
+    """Wrap plain text as HTML. For Hebrew, force RTL on html/body/wrapper — many clients ignore dir on <html> alone."""
     escaped_lines = []
     for line in (body_plain or "").split("\n"):
         escaped_lines.append(html.escape(line, quote=False))
     inner = "<br/>\n".join(escaped_lines)
-    dir_attr = ' dir="rtl" lang="he"' if rtl else ' lang="en"'
-    return f"""<!DOCTYPE html>
-<html{dir_attr}>
-<head><meta charset="utf-8"></head>
-<body style="font-family: Heebo, Arial, sans-serif; line-height: 1.6; color: #2E3A56; max-width: 560px; margin: 0 auto; padding: 20px;">
-  {inner}
-  <p style="color: #64748b; font-size: 12px; margin-top: 24px;">
+    if rtl:
+        html_open = '<html dir="rtl" lang="he">'
+        body_style = (
+            "font-family: Heebo, Arial, sans-serif; line-height: 1.65; color: #2E3A56; "
+            "max-width: 560px; margin: 0 auto; padding: 20px; direction: rtl; text-align: start;"
+        )
+        wrap_open = '<div dir="rtl" style="direction: rtl; text-align: start;">'
+        wrap_close = "</div>"
+        footer = """  <p dir="rtl" style="color: #64748b; font-size: 12px; margin-top: 24px; direction: rtl; text-align: start;">
     Jewish Coach · תמיכה<br/>
     <a href="https://jewishcoacher.com" style="color: #B38728;">jewishcoacher.com</a>
-  </p>
+  </p>"""
+    else:
+        html_open = '<html lang="en" dir="ltr">'
+        body_style = (
+            "font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.65; color: #2E3A56; "
+            "max-width: 560px; margin: 0 auto; padding: 20px; direction: ltr; text-align: start;"
+        )
+        wrap_open = '<div dir="ltr" style="direction: ltr; text-align: start;">'
+        wrap_close = "</div>"
+        footer = """  <p dir="ltr" style="color: #64748b; font-size: 12px; margin-top: 24px; direction: ltr; text-align: start;">
+    Jewish Coach · Support<br/>
+    <a href="https://jewishcoacher.com" style="color: #B38728;">jewishcoacher.com</a>
+  </p>"""
+
+    return f"""<!DOCTYPE html>
+{html_open}
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+<body style="{body_style}">
+  {wrap_open}
+  {inner}
+  {wrap_close}
+{footer}
 </body>
 </html>
 """
@@ -228,7 +252,7 @@ def process_inbound_support_email(
     suffix_en = "\n\n—\nThis message was drafted automatically; our team can follow up by email if needed."
     reply_plain_full = reply_plain + (suffix_he if lang.startswith("he") else suffix_en)
 
-    rtl = lang.startswith("he")
+    rtl = lang.startswith("he") or bool(re.search(r"[\u0590-\u05FF]", reply_plain_full))
     reply_html = plain_to_reply_html(reply_plain_full, rtl=rtl)
 
     ok, send_err = send_html_email_detailed(sender_email, reply_subj, reply_html, body_plain=reply_plain_full)
