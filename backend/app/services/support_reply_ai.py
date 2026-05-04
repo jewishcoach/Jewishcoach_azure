@@ -45,6 +45,7 @@ def generate_support_reply_draft(
     terms_text: Optional[str],
     methodology_text: Optional[str],
     language: str = "he",
+    prior_support_email_thread: Optional[list[dict[str, Any]]] = None,
 ) -> SupportDraftReplyResult:
     lang = (language or "he").lower()
     methodology_block = (methodology_text or "").strip()
@@ -82,6 +83,11 @@ def generate_support_reply_draft(
 - תמיד תן תשובת תמיכה מלאה ומועילה לכל פונה — גם כשאין התאמת משתמש במערכת.
 - כש־customer_snapshot.matched_user הוא true: התבסס על הנתונים שם (מנוי, שימוש, שיחות אחרונות וכו') והתייחס אליהם במידת הצורך.
 - כש־matched_user הוא false או חסר: אל תמציא פרטי חשבון, מנוי או שימוש; ענה לפי שאלת הלקוח והקשר המוצרי הכללי, הצע צעדי המשך סבירים (למשל התחברות, אימות כתובת המייל בפרופיל, צילום מסך), ובקש בעדינות פרטים לאימות אם צריך — בלי לחשוף מידע על משתמשים אחרים.
+
+שרשור תמיכה קודם:
+- השדה JSON prior_support_email_thread מכיל הודעות קודמות (כיוון: inbound / outbound / draft וערוץ) בסדר כרונולוגי מוקדם→מאוחר.
+- התייחס אליהן כהמשך טבעי של השיחה; אל תסתור הבטחות או עובדות שנאמרו קודם אלא אם מדובר בתיקון טעות ברור או בעדכון מדיניות.
+- הנושא והגוף הרלוונטיים למענה עכשיו נמצאים רק ב־customer_message (לא לשכפל את השרשור בתשובה רק כציטוט ארוך).
 """
     else:
         sys_msg = f"""You are Jewish Coach customer support (support@jewishcoacher.com). Reply as a polished support email.
@@ -102,9 +108,22 @@ Always write a complete, helpful support reply for every sender.
 When customer_snapshot.matched_user is true, ground account-specific statements ONLY in that snapshot (plan, usage, recent conversations, etc.).
 
 When matched_user is false or absent, do not invent subscriptions, billing, or usage; answer from the general product context and the customer's question, suggest sensible next steps (sign-in, verify profile email, screenshots), and ask gently for verification details if needed — never disclose other users' data.
+
+Prior thread:
+- prior_support_email_thread lists earlier messages (direction inbound/outbound/draft, channel) in chronological order oldest→newest.
+- Continue naturally; do not contradict earlier commitments unless correcting a clear mistake or policy update.
+- customer_message alone is what you must answer now (do not merely paste the whole thread back).
 """
 
-    human = json.dumps({"customer_snapshot": customer_snapshot, "customer_message": incoming_message.strip()}, ensure_ascii=False)
+    thread = prior_support_email_thread or []
+    human = json.dumps(
+        {
+            "customer_snapshot": customer_snapshot,
+            "prior_support_email_thread": thread,
+            "customer_message": incoming_message.strip(),
+        },
+        ensure_ascii=False,
+    )
 
     llm = get_azure_chat_llm_4o_mini()
     resp = llm.invoke([SystemMessage(content=sys_msg), HumanMessage(content=human)])

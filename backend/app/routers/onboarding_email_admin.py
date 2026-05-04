@@ -20,6 +20,8 @@ from ..services.email_service import send_html_email
 from ..services.onboarding_email_ai import generate_onboarding_step_draft
 from ..services.onboarding_email_runtime import (
     build_final_html,
+    enqueue_existing_users_missing_default_sequence,
+    onboarding_email_queue_stats,
     process_due_onboarding_emails,
     public_app_url,
 )
@@ -132,7 +134,26 @@ def onboarding_email_meta():
     return {
         "placeholders": ["{{display_name}}", "{{email}}", "{{app_url}}"],
         "default_app_url": public_app_url(),
+        "cron_endpoint": "POST /api/internal/onboarding-email/process-due (header X-Onboarding-Email-Cron-Secret)",
+        "backfill_endpoint": "POST /api/admin/onboarding-email/enroll-missing-users",
+        "queue_stats_endpoint": "GET /api/admin/onboarding-email/queue-stats",
     }
+
+
+@router.get("/queue-stats")
+def queue_stats(db: Session = Depends(get_db)):
+    """Diagnose drip queue vs total users (existing users need enroll-missing-users once)."""
+    return onboarding_email_queue_stats(db)
+
+
+@router.post("/enroll-missing-users")
+def enroll_missing_users(db: Session = Depends(get_db), limit: int = Query(2000, ge=1, le=50_000)):
+    """
+    Register users who have no onboarding queue row onto the active default sequence.
+
+    New signups are enrolled automatically; call this once after enabling the drip for legacy users.
+    """
+    return enqueue_existing_users_missing_default_sequence(db, limit=limit)
 
 
 @router.get("/sequences")

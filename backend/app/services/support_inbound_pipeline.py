@@ -14,7 +14,12 @@ from ..models import SupportCustomerServiceSettings
 from .email_service import send_html_email_detailed
 from .support_customer_context import build_customer_support_snapshot
 from .support_auto_reply_env import effective_auto_reply_enabled
-from .support_mail_repo import append_support_email_log, find_log_by_smtp_message_id, normalize_customer_email
+from .support_mail_repo import (
+    append_support_email_log,
+    fetch_support_email_thread_for_llm,
+    find_log_by_smtp_message_id,
+    normalize_customer_email,
+)
 from .support_reply_ai import generate_support_reply_draft
 
 _SETTINGS_ID = 1
@@ -160,6 +165,8 @@ def process_inbound_support_email(
     snapshot = build_customer_support_snapshot(db, sender_email)
     lang = detect_language_hint(body_plain + " " + subj)
 
+    prior_thread = fetch_support_email_thread_for_llm(db, sender_email, exclude_log_id=inbound_row.id)
+
     try:
         draft = generate_support_reply_draft(
             customer_snapshot=snapshot,
@@ -168,6 +175,7 @@ def process_inbound_support_email(
             terms_text=settings.terms_and_boundaries_text,
             methodology_text=settings.methodology_context_text,
             language=lang,
+            prior_support_email_thread=prior_thread,
         )
     except Exception as e:
         append_support_email_log(

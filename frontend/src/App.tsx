@@ -113,7 +113,6 @@ function SignedInContent() {
   const [showBilling, setShowBilling] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
-  const [checkingAdmin, setCheckingAdmin] = useState(true);
   const [displayName, setDisplayName] = useState<string | null>(null);
   /** Incremented from header "new chat" on mobile — BSDWorkspace runs startNewConversation */
   const [workspaceNewChatTick, setWorkspaceNewChatTick] = useState(0);
@@ -121,15 +120,10 @@ function SignedInContent() {
   const adminUiAllowlisted = isClerkUiAdminAllowlisted(user?.id);
   const showAdminChrome = isAdmin || adminUiAllowlisted;
 
-  const isChatView = !showBilling && !showDashboard && !showAdmin && !checkingAdmin;
+  const isChatView = !showBilling && !showDashboard && !showAdmin;
 
   useEffect(() => {
-    if (!isLoaded) return;
-
-    if (!isSignedIn) {
-      setCheckingAdmin(false);
-      return;
-    }
+    if (!isLoaded || !isSignedIn) return;
 
     const checkAdminStatus = async (isRetry = false) => {
       try {
@@ -161,8 +155,6 @@ function SignedInContent() {
             void checkAdminStatus(true);
           }, 2000);
         }
-      } finally {
-        setCheckingAdmin(false);
       }
     };
 
@@ -233,7 +225,7 @@ function SignedInContent() {
               setShowAdmin(false);
             }}
           />
-          {showAdminChrome && !checkingAdmin && (
+          {showAdminChrome && (
             <button
               type="button"
               onClick={() => {
@@ -260,7 +252,7 @@ function SignedInContent() {
             : 'flex-1 flex min-h-0 overflow-hidden'
         }
       >
-        {showBilling ? <BillingPage /> : showAdmin ? <AdminDashboard /> : !checkingAdmin && (
+        {showBilling ? <BillingPage /> : showAdmin ? <AdminDashboard /> : (
           <BSDWorkspace
             displayName={displayName}
             showDashboard={showDashboard}

@@ -14,7 +14,7 @@ from ..dependencies import get_current_admin_user
 from ..models import SupportCustomerServiceSettings, SupportEmailLog, User
 from ..services.support_auto_reply_env import effective_auto_reply_enabled, support_auto_reply_env_raw
 from ..services.support_customer_context import build_customer_support_snapshot
-from ..services.support_mail_repo import append_support_email_log, normalize_customer_email
+from ..services.support_mail_repo import append_support_email_log, fetch_support_email_thread_for_llm, normalize_customer_email
 from ..services.support_reply_ai import generate_support_reply_draft
 
 router = APIRouter(
@@ -149,6 +149,8 @@ async def draft_support_reply(body: DraftReplyBody, db: Session = Depends(get_db
     snapshot = build_customer_support_snapshot(db, norm)
     settings = _get_or_create_settings(db)
 
+    prior_thread = fetch_support_email_thread_for_llm(db, norm)
+
     if body.record_inbound and body.incoming_message.strip():
         _append_log(
             db,
@@ -168,6 +170,7 @@ async def draft_support_reply(body: DraftReplyBody, db: Session = Depends(get_db
             terms_text=settings.terms_and_boundaries_text,
             methodology_text=settings.methodology_context_text,
             language=body.language,
+            prior_support_email_thread=prior_thread,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
