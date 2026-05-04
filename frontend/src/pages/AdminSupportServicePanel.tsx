@@ -628,6 +628,15 @@ export const AdminSupportServicePanel: React.FC = () => {
                         {row.direction}
                       </span>
                       <div className="text-[10px] text-slate-400 mt-0.5">{row.channel}</div>
+                      {row.direction === 'outbound' && typeof row.meta?.send_ok === 'boolean' ? (
+                        <div
+                          className={`text-[10px] mt-0.5 font-medium ${row.meta.send_ok ? 'text-emerald-700' : 'text-red-600'}`}
+                        >
+                          {row.meta.send_ok
+                            ? 'שליחה: אושר ע״י ACS/SendGrid (לא תמיד אומר שהגיע לתיבה)'
+                            : `שליחה נכשלה: ${String(row.meta.send_error || 'לא ידוע').slice(0, 180)}${String(row.meta.send_error || '').length > 180 ? '…' : ''}`}
+                        </div>
+                      ) : null}
                     </td>
                     <td className="px-3 py-2 font-mono text-xs">{row.customer_email}</td>
                     <td className="px-3 py-2 text-xs">

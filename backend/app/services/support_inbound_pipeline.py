@@ -11,7 +11,7 @@ from typing import Any, Optional
 from sqlalchemy.orm import Session
 
 from ..models import SupportCustomerServiceSettings
-from .email_service import send_html_email
+from .email_service import send_html_email_detailed
 from .support_customer_context import build_customer_support_snapshot
 from .support_auto_reply_env import effective_auto_reply_enabled
 from .support_mail_repo import append_support_email_log, find_log_by_smtp_message_id, normalize_customer_email
@@ -223,7 +223,10 @@ def process_inbound_support_email(
     rtl = lang.startswith("he")
     reply_html = plain_to_reply_html(reply_plain_full, rtl=rtl)
 
-    ok = send_html_email(sender_email, reply_subj, reply_html, body_plain=reply_plain_full)
+    ok, send_err = send_html_email_detailed(sender_email, reply_subj, reply_html, body_plain=reply_plain_full)
+    out_meta: dict[str, Any] = {"inbound_log_id": inbound_row.id, "send_ok": ok, "to": sender_email}
+    if send_err:
+        out_meta["send_error"] = send_err[:2000]
     append_support_email_log(
         db,
         customer_email=sender_email,
@@ -231,7 +234,7 @@ def process_inbound_support_email(
         channel="auto_reply",
         subject=reply_subj,
         body=reply_plain_full,
-        meta={"inbound_log_id": inbound_row.id, "send_ok": ok},
+        meta=out_meta,
         smtp_message_id=None,
     )
 
@@ -240,6 +243,7 @@ def process_inbound_support_email(
         "inbound_log_id": inbound_row.id,
         "auto_reply": True,
         "sent": ok,
+        "send_error": send_err,
         "reply_subject": reply_subj,
     }
 

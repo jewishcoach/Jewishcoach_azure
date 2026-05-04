@@ -11,7 +11,7 @@ Sender address rules:
 """
 import os
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Tuple
 
 SENDER_EMAIL = os.getenv("EMAIL_SENDER", "reminders@jewishcoacher.com")
 SENDER_NAME = "Jewish Coach - תזכורות אימון"
@@ -91,11 +91,11 @@ https://jewishcoacher.com
     return subject, body_plain, body_html
 
 
-def _send_via_azure(subject: str, body_plain: str, body_html: str, to_email: str) -> bool:
+def _send_via_azure(subject: str, body_plain: str, body_html: str, to_email: str) -> Tuple[bool, Optional[str]]:
     """Send via Azure Communication Services Email."""
     conn_str = os.getenv("EMAIL_CONNECTION_STRING", "").strip()
     if not conn_str:
-        return False
+        return False, "EMAIL_CONNECTION_STRING missing"
     try:
         from azure.communication.email import EmailClient
         client = EmailClient.from_connection_string(conn_str)
@@ -113,17 +113,18 @@ def _send_via_azure(subject: str, body_plain: str, body_html: str, to_email: str
             message["replyTo"] = rt
         poller = client.begin_send(message)
         poller.result()
-        return True
+        return True, None
     except Exception as e:
-        print(f"[EMAIL Azure] Failed to send to {to_email}: {e}")
-        return False
+        err = f"{type(e).__name__}: {e}"
+        print(f"[EMAIL Azure] Failed to send to {to_email}: {err}")
+        return False, err
 
 
-def _send_via_sendgrid(subject: str, body_plain: str, body_html: str, to_email: str) -> bool:
+def _send_via_sendgrid(subject: str, body_plain: str, body_html: str, to_email: str) -> Tuple[bool, Optional[str]]:
     """Send via SendGrid."""
     api_key = os.getenv("SENDGRID_API_KEY", "").strip()
     if not api_key:
-        return False
+        return False, "SENDGRID_API_KEY missing"
     try:
         from sendgrid import SendGridAPIClient
         from sendgrid.helpers.mail import Mail, Email, To, Content, ReplyTo
@@ -139,10 +140,11 @@ def _send_via_sendgrid(subject: str, body_plain: str, body_html: str, to_email: 
             message.reply_to = ReplyTo(reply_addr)
         sg = SendGridAPIClient(api_key)
         sg.send(message)
-        return True
+        return True, None
     except Exception as e:
-        print(f"[EMAIL SendGrid] Failed to send to {to_email}: {e}")
-        return False
+        err = f"{type(e).__name__}: {e}"
+        print(f"[EMAIL SendGrid] Failed to send to {to_email}: {err}")
+        return False, err
 
 
 def send_reminder_email(
@@ -164,9 +166,9 @@ def send_reminder_email(
     )
 
     if os.getenv("EMAIL_CONNECTION_STRING", "").strip():
-        ok = _send_via_azure(subject, body_plain, body_html, to_email)
+        ok, _err = _send_via_azure(subject, body_plain, body_html, to_email)
     elif os.getenv("SENDGRID_API_KEY", "").strip():
-        ok = _send_via_sendgrid(subject, body_plain, body_html, to_email)
+        ok, _err = _send_via_sendgrid(subject, body_plain, body_html, to_email)
     else:
         print("[EMAIL] Neither EMAIL_CONNECTION_STRING nor SENDGRID_API_KEY set - skipping")
         return False
@@ -176,14 +178,13 @@ def send_reminder_email(
     return ok
 
 
-def send_html_email(to_email: str, subject: str, body_html: str, body_plain: Optional[str] = None) -> bool:
+def send_html_email_detailed(
+    to_email: str, subject: str, body_html: str, body_plain: Optional[str] = None
+) -> Tuple[bool, Optional[str]]:
     """
-    Transactional HTML email (onboarding drip, admin tests).
-    Uses Azure Communication Services if EMAIL_CONNECTION_STRING is set,
-    otherwise SendGrid if SENDGRID_API_KEY is set.
+    Like send_html_email but returns (success, error_message) for audit trails.
     """
     plain = body_plain if (body_plain and body_plain.strip()) else body_html
-    # Minimal fallback if caller omitted plain text
     import re
 
     if plain == body_html:
@@ -191,13 +192,21 @@ def send_html_email(to_email: str, subject: str, body_html: str, body_plain: Opt
         plain = re.sub(r"\s+", " ", plain).strip()
 
     if os.getenv("EMAIL_CONNECTION_STRING", "").strip():
-        ok = _send_via_azure(subject, plain, body_html, to_email)
-    elif os.getenv("SENDGRID_API_KEY", "").strip():
-        ok = _send_via_sendgrid(subject, plain, body_html, to_email)
-    else:
-        print("[EMAIL] Neither EMAIL_CONNECTION_STRING nor SENDGRID_API_KEY set - skipping transactional send")
-        return False
+        return _send_via_azure(subject, plain, body_html, to_email)
+    if os.getenv("SENDGRID_API_KEY", "").strip():
+        return _send_via_sendgrid(subject, plain, body_html, to_email)
+    msg = "Neither EMAIL_CONNECTION_STRING nor SENDGRID_API_KEY set"
+    print(f"[EMAIL] {msg} - skipping transactional send")
+    return False, msg
 
+
+def send_html_email(to_email: str, subject: str, body_html: str, body_plain: Optional[str] = None) -> bool:
+    """
+    Transactional HTML email (onboarding drip, admin tests).
+    Uses Azure Communication Services if EMAIL_CONNECTION_STRING is set,
+    otherwise SendGrid if SENDGRID_API_KEY is set.
+    """
+    ok, _err = send_html_email_detailed(to_email, subject, body_html, body_plain)
     if ok:
         print(f"[EMAIL] Sent transactional '{subject[:48]}…' to {to_email}")
     return ok
