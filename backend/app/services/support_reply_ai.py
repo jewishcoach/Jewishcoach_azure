@@ -79,8 +79,9 @@ def generate_support_reply_draft(
 {methodology_block}
 
 כללי נתונים:
-- השתמש רק במידע על המשתמש שמופיע ב־JSON המצורף (customer_snapshot).
-- אם המשתמש לא נמצא במערכת — הסבר בעדינות שאולי נרשם עם מייל אחר, ובקש פרטים לאימות בלי לחשוף מידע על משתמשים אחרים.
+- תמיד תן תשובת תמיכה מלאה ומועילה לכל פונה — גם כשאין התאמת משתמש במערכת.
+- כש־customer_snapshot.matched_user הוא true: התבסס על הנתונים שם (מנוי, שימוש, שיחות אחרונות וכו') והתייחס אליהם במידת הצורך.
+- כש־matched_user הוא false או חסר: אל תמציא פרטי חשבון, מנוי או שימוש; ענה לפי שאלת הלקוח והקשר המוצרי הכללי, הצע צעדי המשך סבירים (למשל התחברות, אימות כתובת המייל בפרופיל, צילום מסך), ובקש בעדינות פרטים לאימות אם צריך — בלי לחשוף מידע על משתמשים אחרים.
 """
     else:
         sys_msg = f"""You are Jewish Coach customer support (support@jewishcoacher.com). Reply as a polished support email.
@@ -96,7 +97,11 @@ Policies / boundaries:
 Product & methodology context:
 {methodology_block}
 
-Use ONLY facts from the attached customer_snapshot JSON. If no user match, explain gently and ask for details without leaking other users' data.
+Always write a complete, helpful support reply for every sender.
+
+When customer_snapshot.matched_user is true, ground account-specific statements ONLY in that snapshot (plan, usage, recent conversations, etc.).
+
+When matched_user is false or absent, do not invent subscriptions, billing, or usage; answer from the general product context and the customer's question, suggest sensible next steps (sign-in, verify profile email, screenshots), and ask gently for verification details if needed — never disclose other users' data.
 """
 
     human = json.dumps({"customer_snapshot": customer_snapshot, "customer_message": incoming_message.strip()}, ensure_ascii=False)
