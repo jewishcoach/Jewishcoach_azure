@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import html
+import json
 import os
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, EmailStr, Field, field_validator
-from sqlalchemy import and_, or_
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -91,15 +92,50 @@ def _support_thread_email_candidates(db: Session, user: User) -> list[str]:
     return ordered
 
 
-def _legacy_dashboard_contact_clause(user: User):
+def _meta_as_dict(meta: object) -> dict | None:
+    if meta is None:
+        return None
+    if isinstance(meta, dict):
+        return meta
+    if isinstance(meta, str):
+        try:
+            parsed = json.loads(meta)
+            return parsed if isinstance(parsed, dict) else None
+        except (json.JSONDecodeError, TypeError):
+            return None
+    return None
+
+
+def _legacy_dashboard_thread_rows(
+    db: Session,
+    user: User,
+    *,
+    exclude_ids: set[int],
+    scan_limit: int = 200,
+) -> list[SupportEmailLog]:
     """
-    Rows from dashboard_contact saved before user_id was written on SupportEmailLog.
-    Match meta.{source,user_id} (SQLite + Postgres JSON).
+    Dashboard rows saved before user_id was populated on SupportEmailLog.
+    Resolved in Python to avoid PostgreSQL JSON path SQL that returned 500 on Azure.
     """
-    return and_(
-        SupportEmailLog.meta["source"].astext == "dashboard_contact",
-        SupportEmailLog.meta["user_id"].astext == str(user.id),
+    q = (
+        db.query(SupportEmailLog)
+        .filter(SupportEmailLog.direction.in_(["inbound", "outbound"]))
+        .filter(SupportEmailLog.channel == "user_dashboard")
+        .order_by(SupportEmailLog.created_at.desc())
+        .limit(scan_limit)
     )
+    if exclude_ids:
+        q = q.filter(~SupportEmailLog.id.in_(exclude_ids))
+    matched: list[SupportEmailLog] = []
+    for row in q.all():
+        m = _meta_as_dict(row.meta)
+        if not m or m.get("source") != "dashboard_contact":
+            continue
+        if str(m.get("user_id")) != str(user.id):
+            continue
+        matched.append(row)
+    matched.sort(key=lambda r: (r.created_at.timestamp() if r.created_at else 0.0, r.id))
+    return matched
 
 
 def _resolve_customer_reply_email(user: User, body: ContactSupportBody) -> str:
@@ -142,10 +178,7 @@ def get_support_thread(
     Omits draft rows (AI drafts / internal).
     """
     candidates = _support_thread_email_candidates(db, user)
-    conds = [
-        SupportEmailLog.user_id == user.id,
-        _legacy_dashboard_contact_clause(user),
-    ]
+    conds = [SupportEmailLog.user_id == user.id]
     if candidates:
         conds.append(SupportEmailLog.customer_email.in_(candidates))
 
@@ -157,6 +190,13 @@ def get_support_thread(
         .limit(limit)
         .all()
     )
+
+    seen_ids = {r.id for r in rows}
+    rows.extend(_legacy_dashboard_thread_rows(db, user, exclude_ids=seen_ids))
+    rows.sort(key=lambda r: (r.created_at.timestamp() if r.created_at else 0.0, r.id))
+    if len(rows) > limit:
+        rows = rows[:limit]
+
     return {"items": [_serialize_log_row(r) for r in rows]}
 
 
