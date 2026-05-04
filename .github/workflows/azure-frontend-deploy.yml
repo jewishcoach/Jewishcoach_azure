@@ -28,8 +28,8 @@ jobs:
       working-directory: frontend
       run: npm ci
     
-    # Secrets: VITE_API_URL should be https://api.jewishcoacher.com/api once DNS + App Service hostname + SSL exist;
-    # until then https://jewishcoach-api.azurewebsites.net/api is OK. Runtime on jewishcoacher.com also forces api subdomain in getApiBase().
+    # Optional VITE_API_URL: overrides api base baked into the bundle (staging / alternate backend).
+    # When unset, jewishcoacher.com uses https://api.jewishcoacher.com/api — TLS requires App Service hostname + Managed Certificate (scripts/bind_app_service_api_hostname_tls.sh).
     - name: Build
       working-directory: frontend
       env:

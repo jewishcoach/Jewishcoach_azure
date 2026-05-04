@@ -1,6 +1,8 @@
 import axios from 'axios';
-import type { AxiosInstance } from 'axios';
-import { getApiBase } from '../config';
+import type { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import { apiTlsFallbackBase, getApiBase } from '../config';
+
+type AxiosConfigWithTlsFallback = InternalAxiosRequestConfig & { __tlsFallbackDone?: boolean };
 
 /**
  * Starlette/FastAPI return 400 for path params that are not valid integers
@@ -40,6 +42,30 @@ class ApiClient {
       }
       return config;
     });
+
+    this.client.interceptors.response.use(
+      (r) => r,
+      async (error: AxiosError) => {
+        const cfg = error.config as AxiosConfigWithTlsFallback | undefined;
+        if (!cfg || cfg.__tlsFallbackDone) return Promise.reject(error);
+
+        const msg = String(error.message || '');
+        const transportFail =
+          error.code === 'ERR_NETWORK' ||
+          msg === 'Network Error' ||
+          /ERR_SSL|SSL|CERT_/i.test(msg);
+
+        const activeBase = String(cfg.baseURL || this.client.defaults.baseURL || '');
+        const fallback = apiTlsFallbackBase(activeBase);
+        if (!transportFail || !fallback) return Promise.reject(error);
+
+        console.warn('[API] TLS/network failed on api.jewishcoacher.com — retrying via App Service default hostname');
+        cfg.__tlsFallbackDone = true;
+        this.client.defaults.baseURL = fallback;
+        cfg.baseURL = fallback;
+        return this.client.request(cfg);
+      },
+    );
   }
 
   setToken(token: string) {

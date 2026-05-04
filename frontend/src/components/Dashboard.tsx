@@ -92,6 +92,14 @@ const NAV_ITEMS: { id: DashboardTab; labelKey: string; icon: React.ReactNode }[]
 const BSD_WEBSITE_URL = 'https://bsdcoach.com';
 const BSD_BOOKS_URL = 'https://bsdcoach.com/post/the-books';
 
+function isLikelyApiNetworkOrTlsError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const e = err as { code?: string; message?: string };
+  if (e.code === 'ERR_NETWORK') return true;
+  const msg = typeof e.message === 'string' ? e.message : '';
+  return msg === 'Network Error' || /SSL|ERR_SSL/i.test(msg);
+}
+
 export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
   const { getToken } = useAuth();
   const { t, i18n } = useTranslation();
@@ -145,13 +153,22 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
         setData(null);
         setError(t('error.loadData'));
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error loading dashboard:', err);
       setData(null);
       setBillingUsage(null);
-      const status = err?.response?.status;
-      const msg = err?.response?.data?.detail || err?.message;
-      setError(status === 401 ? t('error.reconnect') : msg || t('error.loadData'));
+      const e = err as { response?: { status?: number; data?: { detail?: unknown } }; message?: string };
+      const status = e.response?.status;
+      const detail = e.response?.data?.detail;
+      const detailStr = typeof detail === 'string' ? detail : undefined;
+      const fallbackMsg = typeof e.message === 'string' ? e.message : undefined;
+      if (status === 401) {
+        setError(t('error.reconnect'));
+      } else if (isLikelyApiNetworkOrTlsError(err)) {
+        setError(t('error.apiUnreachable'));
+      } else {
+        setError(detailStr || fallbackMsg || t('error.loadData'));
+      }
     } finally {
       setLoading(false);
     }

@@ -267,6 +267,8 @@ const resources = {
       "ladder.scrollHint": "Scroll to this part of the conversation",
       "error.reconnect": "Please sign in again",
       "error.loadData": "Error loading data",
+      "error.apiUnreachable":
+        "Can't reach the API securely (connection or SSL certificate issue). If this persists, your administrator may need to fix TLS on the API domain. As a temporary workaround, the app can be rebuilt with VITE_API_URL pointing at the Azure default hostname.",
       "error.tryAgain": "Try again",
       "error.back": "Back",
       "dashboard.userDefault": "User",
@@ -643,6 +645,8 @@ const resources = {
       "ladder.scrollHint": "גלילה לחלק זה בשיחה",
       "error.reconnect": "יש להתחבר מחדש",
       "error.loadData": "שגיאה בטעינת נתונים",
+      "error.apiUnreachable":
+        "לא ניתן להגיע לשרת ה־API בצורה מאובטחת (חיבור או תעודת SSL). אם זה נמשך, ייתכן שצריך לתקן TLS בדומיין ה־API בצד השרת. כפתרון זמני ניתן לבנות מחדש עם VITE_API_URL לכתובת ברירת המחדל של Azure.",
       "error.tryAgain": "נסה שוב",
       "error.back": "חזרה",
       "dashboard.userDefault": "משתמש",

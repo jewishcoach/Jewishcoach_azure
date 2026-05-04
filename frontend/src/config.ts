@@ -31,13 +31,13 @@ export function isClerkUiAdminAllowlisted(clerkUserId: string | undefined): bool
   return ids.includes(clerkUserId);
 }
 
-/** API when the SPA is served from the production custom domain (see scripts/setup_jewishcoacher_domain.sh). */
+/** Production API host on App Service custom domain (TLS via Managed Certificate — see scripts/bind_app_service_api_hostname_tls.sh). */
 const PRODUCTION_API_CUSTOM_DOMAIN = 'https://api.jewishcoacher.com/api';
 
-/** Legacy Azure default hostname (SWA + App Service *.azurewebsites.net). */
+/** Default Azure hostname when the SPA is not served from production custom domains (e.g. *.azurestaticapps.net only). */
 const PRODUCTION_API_AZURE_DEFAULT = 'https://jewishcoach-api.azurewebsites.net/api';
 
-/** Production sites that should talk to api.jewishcoacher.com when VITE_API_URL is unset at build time. */
+/** Production sites whose SPA should call api.jewishcoacher.com when VITE_API_URL is unset. */
 function isProductionFrontendHost(hostname: string): boolean {
   return (
     hostname === 'jewishcoacher.com' ||
@@ -49,27 +49,34 @@ function isProductionFrontendHost(hostname: string): boolean {
 
 /** Normalize API base URL - backend expects /api prefix. Exported for api.ts */
 export function getApiBase(): string {
-  let base: string | undefined;
+  const viteRaw = import.meta.env.VITE_API_URL;
+  const vite = typeof viteRaw === 'string' ? viteRaw.trim() : '';
+  if (vite) {
+    return vite.endsWith('/api') ? vite : `${vite.replace(/\/$/, '')}/api`;
+  }
 
   if (typeof window !== 'undefined') {
     const h = window.location.hostname;
     if (isProductionFrontendHost(h)) {
-      base = PRODUCTION_API_CUSTOM_DOMAIN;
+      return PRODUCTION_API_CUSTOM_DOMAIN;
+    }
+    if (!h.includes('localhost')) {
+      return PRODUCTION_API_AZURE_DEFAULT;
     }
   }
 
-  if (!base) {
-    base = import.meta.env.VITE_API_URL;
-  }
+  return 'http://localhost:8000/api';
+}
 
-  if (!base || base.trim() === '') {
-    if (typeof window !== 'undefined' && !window.location.hostname.includes('localhost')) {
-      base = PRODUCTION_API_AZURE_DEFAULT;
-    } else {
-      base = 'http://localhost:8000/api';
-    }
+/** Same App Service as api.jewishcoacher.com — retry target when browser TLS to custom hostname fails (local DNS/AV). */
+export function apiTlsFallbackBase(currentApiBase: string): string | null {
+  try {
+    const u = new URL(currentApiBase);
+    if (u.hostname !== 'api.jewishcoacher.com') return null;
+    return PRODUCTION_API_AZURE_DEFAULT;
+  } catch {
+    return null;
   }
-  return base.endsWith('/api') ? base : `${base.replace(/\/$/, '')}/api`;
 }
 
 /**
