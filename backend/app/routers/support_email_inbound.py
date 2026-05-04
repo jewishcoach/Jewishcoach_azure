@@ -16,7 +16,7 @@ import hmac
 import os
 
 from fastapi import APIRouter, Depends, Form, Header, HTTPException
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -66,17 +66,73 @@ def webhook_inbound(
 
 
 class InboundJsonBody(BaseModel):
-    """Payload for Make/Zapier HTTP modules (map IMAP fields into JSON)."""
+    """Payload for Make/Zapier HTTP modules (map IMAP fields into JSON).
 
-    model_config = ConfigDict(populate_by_name=True)
+    Accepts several key aliases — automation tools often rename fields (e.g. Sender vs from).
+    """
 
-    from_: str = Field(..., alias="from", description="RFC5322 From, e.g. Name <user@example.com>")
-    to: str = ""
-    subject: str = ""
-    text: str | None = None
-    html: str | None = None
-    headers: str | None = None
-    message_id: str | None = Field(None, description="Optional Message-ID for deduplication (IMAP UID + mailbox if needed)")
+    model_config = ConfigDict(populate_by_name=True, str_strip_whitespace=True)
+
+    from_: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "from",
+            "from_email",
+            "sender",
+            "From",
+            "Sender",
+            "mail_from",
+            "reply_from",
+        ),
+        description="RFC5322 From, e.g. Name <user@example.com>",
+    )
+    to: str = Field(default="", validation_alias=AliasChoices("to", "To", "recipient", "Recipient"))
+    subject: str = Field(default="", validation_alias=AliasChoices("subject", "Subject", "title"))
+    text: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("text", "plain", "body", "snippet", "Text", "PlainText", "content"),
+    )
+    html: str | None = Field(default=None, validation_alias=AliasChoices("html", "Html", "HTML"))
+    headers: str | None = Field(default=None, validation_alias=AliasChoices("headers", "Headers", "raw_headers"))
+    message_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "message_id",
+            "Message-ID",
+            "messageId",
+            "MessageId",
+            "uid",
+            "email_id",
+        ),
+        description="Optional Message-ID or unique id for deduplication",
+    )
+
+    @field_validator("from_", mode="before")
+    @classmethod
+    def _coerce_from(cls, v):
+        if v is None:
+            return ""
+        if isinstance(v, dict):
+            return str(
+                v.get("emailAddress")
+                or v.get("email_address")
+                or v.get("email")
+                or v.get("address")
+                or v.get("text")
+                or ""
+            ).strip()
+        return str(v).strip()
+
+    @field_validator("text", "html", mode="before")
+    @classmethod
+    def _coerce_optional_text(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, dict):
+            merged = str(v.get("plain") or v.get("text") or v.get("html") or v.get("body") or "").strip()
+            return merged or None
+        s = str(v).strip()
+        return s or None
 
 
 @router.post("/inbound-json")
@@ -87,6 +143,14 @@ def webhook_inbound_json(
 ):
     """JSON body — typical for Make.com / Zapier 'HTTP' actions after an IMAP trigger."""
     _verify_inbound_secret(x_support_inbound_secret)
+    if not (body.from_ or "").strip():
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Missing sender: set JSON key 'from', 'sender', or 'from_email' to the customer's "
+                "address (map the IMAP / email module 'From' field in Make)."
+            ),
+        )
     mailbox = (os.getenv("SUPPORT_INBOUND_MAILBOX", "support@jewishcoacher.com") or "").strip()
     result = process_inbound_support_email(
         db,
