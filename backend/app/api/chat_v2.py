@@ -129,13 +129,13 @@ def save_v2_state(conversation_id: int, state: Dict[str, Any], db: Session) -> N
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.get("/warmup")
-async def warmup_cache(
-    language: str = "he",
-    current_user: User = Depends(get_current_user),
-):
+@limiter.limit("120/minute")
+async def warmup_cache(request: Request, language: str = "he"):
     """
     Pre-warm Azure prompt cache for new conversations.
     Call when user opens/creates a conversation - before first message.
+    No auth required (best-effort shared cache); rate-limited by IP behind proxy.
+
     Returns immediately; warm-up runs in background.
     """
     import asyncio

@@ -61,12 +61,11 @@ class ApiClient {
   }
 
   /**
-   * Pre-warm Azure / connection for faster first coach response.
-   * Base URL already includes `/api` (see getApiBase); path must be `/chat/v2/warmup` (not `/api/...` twice).
-   * No-op without auth token (avoids 401 when hook runs before Clerk sets token).
+   * Pre-warm Azure prompt cache for faster first coach response.
+   * Base URL already includes `/api`; path is `/chat/v2/warmup`.
+   * Backend allows anonymous calls (rate-limited); optional Bearer if token is set.
    */
   async warmupCache(language: string = 'he') {
-    if (!this.getToken()) return;
     const lang = language.toLowerCase().startsWith('en') ? 'en' : 'he';
     try {
       await this.client.get('/chat/v2/warmup', { params: { language: lang } });
