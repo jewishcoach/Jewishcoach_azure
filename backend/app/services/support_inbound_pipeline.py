@@ -25,6 +25,134 @@ from .support_reply_ai import generate_support_reply_draft
 _SETTINGS_ID = 1
 
 
+def parse_sender_email(from_field: str) -> tuple[str, str]:
+    """Returns (display_name_or_empty, email_lower)."""
+    raw = (from_field or "").strip()
+    name, addr = parseaddr(raw)
+    norm = normalize_customer_email(addr)
+    return (name or "").strip(), norm
+
+
+def extract_reply_to_from_headers(headers_raw: Optional[str]) -> Optional[str]:
+    """First mailbox from Reply-To (handles simple folded continuation lines)."""
+    if not headers_raw or not headers_raw.strip():
+        return None
+    lines = headers_raw.replace("\r\n", "\n").split("\n")
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if not line.lower().startswith("reply-to:"):
+            i += 1
+            continue
+        chunks = [line.split(":", 1)[1].strip()]
+        i += 1
+        while i < len(lines) and lines[i] and lines[i][0] in " \t":
+            chunks.append(lines[i].strip())
+            i += 1
+        combined = " ".join(chunks)
+        for part in combined.split(","):
+            _, addr = parseaddr(part.strip())
+            norm = normalize_customer_email(addr)
+            if norm and "@" in norm:
+                return norm
+        continue
+    return None
+
+
+def extract_reply_to_from_dashboard_body(text_part: Optional[str], html_part: Optional[str]) -> Optional[str]:
+    """Parse Reply-To from dashboard HTML/plain templates (support_user_contact)."""
+    html_blob = html_part or ""
+    if html_blob.strip():
+        m = re.search(r"<strong>\s*Reply-To:\s*</strong>\s*([^<\n]+)", html_blob, re.I)
+        if m:
+            _, addr = parseaddr(m.group(1).strip())
+            norm = normalize_customer_email(addr)
+            if norm and "@" in norm:
+                return norm
+    plain = (text_part or "").strip()
+    if plain:
+        m = re.search(r"(?im)^Reply-To:\s*(.+)$", plain)
+        if m:
+            _, addr = parseaddr(m.group(1).strip())
+            norm = normalize_customer_email(addr)
+            if norm and "@" in norm:
+                return norm
+    return None
+
+
+def _support_mailbox_norm() -> str:
+    return normalize_customer_email(os.getenv("SUPPORT_INBOUND_MAILBOX", "support@jewishcoacher.com"))
+
+
+def _reply_to_is_customer_identity(reply_to: str, support_mailbox_norm: str) -> bool:
+    """False when Reply-To is just our support inbox (mis-route)."""
+    rt = normalize_customer_email(reply_to)
+    if not rt or "@" not in rt:
+        return False
+    if support_mailbox_norm and rt == support_mailbox_norm:
+        return False
+    return True
+
+
+def _configured_sender_email_norm() -> Optional[str]:
+    raw = (os.getenv("EMAIL_SENDER") or "").strip()
+    if not raw or "@" not in raw:
+        return None
+    _, addr = parseaddr(raw)
+    norm = normalize_customer_email(addr)
+    return norm if norm and "@" in norm else None
+
+
+def _is_relay_mail_from(from_email: str) -> bool:
+    """
+    True when visible From is our transactional MAIL FROM (ACS provisional domain, etc.)
+    and the real customer inbox is expected on Reply-To / body.
+    """
+    em = normalize_customer_email(from_email)
+    if not em:
+        return False
+    if em.endswith(".azurecomm.net"):
+        return True
+    cfg = _configured_sender_email_norm()
+    if cfg and em == cfg:
+        return True
+    return False
+
+
+def resolve_inbound_customer_email(
+    *,
+    from_field: str,
+    headers_raw: Optional[str],
+    text_part: Optional[str],
+    html_part: Optional[str],
+) -> tuple[Optional[str], Optional[str], str]:
+    """
+    Map inbound message to a customer inbox for logging + auto-reply.
+
+    Returns (normalized_customer_email or None, skip_reason or None, identity_source).
+    identity_source is one of: from, reply_to_header, dashboard_body_reply_to, skipped.
+    """
+    _, from_email = parse_sender_email(from_field)
+    if not from_email or "@" not in from_email:
+        return None, "invalid_sender", "skipped"
+
+    support_n = _support_mailbox_norm()
+
+    if _is_relay_mail_from(from_email):
+        rt_h = extract_reply_to_from_headers(headers_raw)
+        if rt_h and _reply_to_is_customer_identity(rt_h, support_n):
+            return normalize_customer_email(rt_h), None, "reply_to_header"
+        rt_b = extract_reply_to_from_dashboard_body(text_part, html_part)
+        if rt_b and _reply_to_is_customer_identity(rt_b, support_n):
+            return normalize_customer_email(rt_b), None, "dashboard_body_reply_to"
+        return None, "relay_sender_no_customer_reply_to", "skipped"
+
+    skip = should_skip_customer(from_email)
+    if skip:
+        return None, skip, "skipped"
+    return from_email, None, "from"
+
+
 def extract_message_id_from_headers(headers_raw: Optional[str]) -> Optional[str]:
     if not headers_raw or not headers_raw.strip():
         return None
@@ -33,14 +161,6 @@ def extract_message_id_from_headers(headers_raw: Optional[str]) -> Optional[str]
         if low.startswith("message-id:"):
             return line.split(":", 1)[1].strip().strip("<>")
     return None
-
-
-def parse_sender_email(from_field: str) -> tuple[str, str]:
-    """Returns (display_name_or_empty, email_lower)."""
-    raw = (from_field or "").strip()
-    name, addr = parseaddr(raw)
-    norm = normalize_customer_email(addr)
-    return (name or "").strip(), norm
 
 
 def plain_text_from_parts(text: Optional[str], html_part: Optional[str]) -> str:
@@ -152,11 +272,6 @@ def process_inbound_support_email(
     """
     Idempotent when Message-ID is present and stored on first inbound log.
     """
-    _, sender_email = parse_sender_email(from_field)
-    skip = should_skip_customer(sender_email)
-    if skip:
-        return {"skipped": True, "reason": skip}
-
     expected_mailbox = (mailbox_must_match or os.getenv("SUPPORT_INBOUND_MAILBOX", "support@jewishcoacher.com")).strip()
     if expected_mailbox and not mailbox_matches_recipient(to_field, expected_mailbox):
         return {"skipped": True, "reason": "recipient_not_support_mailbox", "expected": expected_mailbox}
@@ -166,30 +281,44 @@ def process_inbound_support_email(
     if msg_id and find_log_by_smtp_message_id(db, msg_id):
         return {"skipped": True, "reason": "duplicate_message_id", "smtp_message_id": msg_id}
 
+    customer_email, cust_skip, identity_src = resolve_inbound_customer_email(
+        from_field=from_field,
+        headers_raw=headers_raw,
+        text_part=text_part,
+        html_part=html_part,
+    )
+    if cust_skip:
+        return {"skipped": True, "reason": cust_skip}
+
     body_plain = plain_text_from_parts(text_part, html_part)
     if not body_plain:
         return {"skipped": True, "reason": "empty_body"}
 
     subj = (subject or "").strip() or "(ללא נושא)"
+    _, envelope_from = parse_sender_email(from_field)
 
     inbound_row = append_support_email_log(
         db,
-        customer_email=sender_email,
+        customer_email=customer_email,
         direction="inbound",
         channel=inbound_channel,
         subject=subj,
         body=body_plain,
-        meta={"to": to_field[:500] if to_field else None},
+        meta={
+            "to": to_field[:500] if to_field else None,
+            "envelope_from": envelope_from,
+            "customer_identity_source": identity_src,
+        },
         smtp_message_id=msg_id,
     )
 
     settings = _get_settings_row(db)
     auto_reply = effective_auto_reply_enabled(settings)
 
-    snapshot = build_customer_support_snapshot(db, sender_email)
+    snapshot = build_customer_support_snapshot(db, customer_email)
     lang = detect_language_hint(body_plain + " " + subj)
 
-    prior_thread = fetch_support_email_thread_for_llm(db, sender_email, exclude_log_id=inbound_row.id)
+    prior_thread = fetch_support_email_thread_for_llm(db, customer_email, exclude_log_id=inbound_row.id)
 
     try:
         draft = generate_support_reply_draft(
@@ -204,7 +333,7 @@ def process_inbound_support_email(
     except Exception as e:
         append_support_email_log(
             db,
-            customer_email=sender_email,
+            customer_email=customer_email,
             direction="draft",
             channel="auto_reply_failed",
             subject=subj,
@@ -225,7 +354,7 @@ def process_inbound_support_email(
 
     append_support_email_log(
         db,
-        customer_email=sender_email,
+        customer_email=customer_email,
         direction="draft",
         channel="ai_draft_auto",
         subject=draft.subject.strip() or None,
@@ -255,13 +384,13 @@ def process_inbound_support_email(
     rtl = lang.startswith("he") or bool(re.search(r"[\u0590-\u05FF]", reply_plain_full))
     reply_html = plain_to_reply_html(reply_plain_full, rtl=rtl)
 
-    ok, send_err = send_html_email_detailed(sender_email, reply_subj, reply_html, body_plain=reply_plain_full)
-    out_meta: dict[str, Any] = {"inbound_log_id": inbound_row.id, "send_ok": ok, "to": sender_email}
+    ok, send_err = send_html_email_detailed(customer_email, reply_subj, reply_html, body_plain=reply_plain_full)
+    out_meta: dict[str, Any] = {"inbound_log_id": inbound_row.id, "send_ok": ok, "to": customer_email}
     if not ok:
         out_meta["send_error"] = (send_err or "unknown_send_failure").strip()[:2000]
     append_support_email_log(
         db,
-        customer_email=sender_email,
+        customer_email=customer_email,
         direction="outbound",
         channel="auto_reply",
         subject=reply_subj,
