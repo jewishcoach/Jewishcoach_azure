@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { i18n as I18nType } from 'i18next';
 import { useUser } from '@clerk/clerk-react';
@@ -35,6 +35,8 @@ export type SupportThreadItem = {
 interface DashboardSupportPanelProps {
   colors: DashboardSupportPalette;
   profileEmail: string | null;
+  /** Clerk — מרענן JWT לפני קריאות תמיכה (מפחית 401 וטעינת היסטוריה ריקה). */
+  refreshAuthToken?: () => Promise<string | null>;
 }
 
 function formatThreadTime(iso: string | null, locale: string): string {
@@ -125,7 +127,7 @@ function SupportBubble({
   );
 }
 
-export function DashboardSupportPanel({ colors, profileEmail }: DashboardSupportPanelProps) {
+export function DashboardSupportPanel({ colors, profileEmail, refreshAuthToken }: DashboardSupportPanelProps) {
   const { t, i18n } = useTranslation();
   const { user } = useUser();
   const [subject, setSubject] = useState('');
@@ -155,10 +157,14 @@ export function DashboardSupportPanel({ colors, profileEmail }: DashboardSupport
     setReplyEmail(defaultReply);
   }, [defaultReply]);
 
-  const loadThread = async () => {
+  const loadThread = useCallback(async () => {
     setThreadError(null);
     setThreadLoading(true);
     try {
+      if (refreshAuthToken) {
+        const tok = await refreshAuthToken();
+        if (tok) apiClient.setToken(tok);
+      }
       const data = await apiClient.getSupportThread();
       setThread(data.items ?? []);
     } catch (err: unknown) {
@@ -169,11 +175,11 @@ export function DashboardSupportPanel({ colors, profileEmail }: DashboardSupport
     } finally {
       setThreadLoading(false);
     }
-  };
+  }, [refreshAuthToken, t]);
 
   useEffect(() => {
-    loadThread();
-  }, []);
+    void loadThread();
+  }, [loadThread]);
 
   useEffect(() => {
     if (!threadLoading && thread.length > 0) {
@@ -198,6 +204,10 @@ export function DashboardSupportPanel({ colors, profileEmail }: DashboardSupport
     }
     setSubmitting(true);
     try {
+      if (refreshAuthToken) {
+        const tok = await refreshAuthToken();
+        if (tok) apiClient.setToken(tok);
+      }
       await apiClient.submitSupportContact({
         subject: sub,
         message: msg,
@@ -220,59 +230,11 @@ export function DashboardSupportPanel({ colors, profileEmail }: DashboardSupport
 
   return (
     <div className="max-w-2xl w-full mx-auto space-y-6">
-      <motion.section
-        className="rounded-2xl overflow-hidden border"
-        style={{ background: colors.card, borderColor: colors.border, boxShadow: colors.shadow }}
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        aria-labelledby="support-thread-heading"
-      >
-        <header className="px-5 pt-5 pb-3 border-b" style={{ borderColor: colors.border }}>
-          <h2 id="support-thread-heading" className="text-base font-semibold" style={{ color: colors.text }}>
-            {t('support.thread.title')}
-          </h2>
-          <p className="text-xs mt-1 leading-relaxed" style={{ color: colors.textMuted }}>
-            {t('support.thread.subtitle')}
-          </p>
-        </header>
-
-        <div
-          className="max-h-[min(440px,52vh)] overflow-y-auto custom-scrollbar px-3 sm:px-4 py-4 space-y-4"
-          style={{ background: threadScrollBg }}
-        >
-          {threadLoading ? (
-            <div className="flex flex-col items-center justify-center gap-3 py-14">
-              <Loader2 className="w-9 h-9 animate-spin" style={{ color: colors.accent }} aria-hidden />
-              <p className="text-sm" style={{ color: colors.textMuted }}>
-                {t('support.thread.loading')}
-              </p>
-            </div>
-          ) : threadError ? (
-            <p className="text-sm text-center py-10 px-4 text-red-600" role="alert">
-              {threadError}
-            </p>
-          ) : thread.length === 0 ? (
-            <p
-              className="text-sm text-center py-12 px-5 leading-relaxed max-w-md mx-auto"
-              style={{ color: colors.textMuted }}
-            >
-              {t('support.thread.empty')}
-            </p>
-          ) : (
-            thread.map((item) => (
-              <SupportBubble key={item.id} item={item} colors={colors} t={t} i18n={i18n} />
-            ))
-          )}
-          <div ref={threadEndRef} className="h-px" aria-hidden />
-        </div>
-      </motion.section>
-
       <motion.div
         className="rounded-xl p-5 md:p-6 border"
         style={{ background: colors.card, borderColor: colors.border, boxShadow: colors.shadow }}
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.05 }}
       >
         <h3 className="text-base font-semibold mb-1" style={{ color: colors.text }}>
           {t('support.contact.title')}
@@ -328,6 +290,7 @@ export function DashboardSupportPanel({ colors, profileEmail }: DashboardSupport
               className="w-full px-3 py-2.5 text-sm rounded-lg border focus:ring-2 focus:ring-blue-200 focus:outline-none"
               style={{ borderColor: colors.border, color: colors.text }}
               placeholder={t('support.contact.subjectPlaceholder')}
+              dir={textFieldsDir}
             />
           </div>
           <div>
@@ -342,6 +305,7 @@ export function DashboardSupportPanel({ colors, profileEmail }: DashboardSupport
               className="w-full px-3 py-2.5 text-sm rounded-lg border focus:ring-2 focus:ring-blue-200 focus:outline-none resize-y min-h-[120px]"
               style={{ borderColor: colors.border, color: colors.text }}
               placeholder={t('support.contact.messagePlaceholder')}
+              dir={textFieldsDir}
             />
           </div>
 
@@ -367,6 +331,54 @@ export function DashboardSupportPanel({ colors, profileEmail }: DashboardSupport
           </button>
         </form>
       </motion.div>
+
+      <motion.section
+        className="rounded-2xl overflow-hidden border"
+        style={{ background: colors.card, borderColor: colors.border, boxShadow: colors.shadow }}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+        aria-labelledby="support-thread-heading"
+      >
+        <header className="px-5 pt-5 pb-3 border-b" style={{ borderColor: colors.border }}>
+          <h2 id="support-thread-heading" className="text-base font-semibold" style={{ color: colors.text }}>
+            {t('support.thread.title')}
+          </h2>
+          <p className="text-xs mt-1 leading-relaxed" style={{ color: colors.textMuted }}>
+            {t('support.thread.subtitle')}
+          </p>
+        </header>
+
+        <div
+          className="max-h-[min(440px,52vh)] overflow-y-auto custom-scrollbar px-3 sm:px-4 py-4 space-y-4"
+          style={{ background: threadScrollBg }}
+        >
+          {threadLoading ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-14">
+              <Loader2 className="w-9 h-9 animate-spin" style={{ color: colors.accent }} aria-hidden />
+              <p className="text-sm" style={{ color: colors.textMuted }}>
+                {t('support.thread.loading')}
+              </p>
+            </div>
+          ) : threadError ? (
+            <p className="text-sm text-center py-10 px-4 text-red-600" role="alert">
+              {threadError}
+            </p>
+          ) : thread.length === 0 ? (
+            <p
+              className="text-sm text-center py-12 px-5 leading-relaxed max-w-md mx-auto"
+              style={{ color: colors.textMuted }}
+            >
+              {t('support.thread.empty')}
+            </p>
+          ) : (
+            thread.map((item) => (
+              <SupportBubble key={item.id} item={item} colors={colors} t={t} i18n={i18n} />
+            ))
+          )}
+          <div ref={threadEndRef} className="h-px" aria-hidden />
+        </div>
+      </motion.section>
     </div>
   );
 }

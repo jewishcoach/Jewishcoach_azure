@@ -585,7 +585,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
 
           {/* Tab: Support */}
           {activeTab === 'support' && (
-            <DashboardSupportPanel colors={COLORS} profileEmail={profile.email} />
+            <DashboardSupportPanel colors={COLORS} profileEmail={profile.email} refreshAuthToken={getToken} />
           )}
 
           {/* Tab: History */}

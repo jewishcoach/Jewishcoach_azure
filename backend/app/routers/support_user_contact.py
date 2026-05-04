@@ -15,7 +15,11 @@ from ..dependencies import get_current_user, resolve_email_from_db_and_clerk
 from ..email_visibility import normalize_public_email
 from ..models import SupportEmailLog, User
 from ..services.email_service import send_html_email_detailed
-from ..services.support_mail_repo import append_support_email_log, normalize_customer_email
+from ..services.support_mail_repo import (
+    append_support_email_log,
+    normalize_customer_email,
+    _candidate_lookup_emails,
+)
 
 DEFAULT_SUPPORT_INBOX = "support@jewishcoacher.com"
 
@@ -48,6 +52,7 @@ def _canonical_reply_from_override(raw: str) -> str:
 
 
 def _customer_email_candidates(user: User) -> list[str]:
+    """Normalized inbox(es) for the user plus Gmail/GoogleMail aliases (dots, +tags, domains)."""
     raw_list: list[str] = []
     resolved = resolve_email_from_db_and_clerk(user.clerk_id, user.email)
     if resolved and "@" in resolved:
@@ -57,9 +62,12 @@ def _customer_email_candidates(user: User) -> list[str]:
     seen: set[str] = set()
     out: list[str] = []
     for x in raw_list:
-        if x and x not in seen:
-            seen.add(x)
-            out.append(x)
+        if not x:
+            continue
+        for cand in _candidate_lookup_emails(x):
+            if cand and cand not in seen:
+                seen.add(cand)
+                out.append(cand)
     return out
 
 
