@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from ..models import Conversation, CouponRedemption, Subscription, UsageRecord, User
+from ..models import Conversation, CouponRedemption, Subscription, UsageRecord
+
+from .support_mail_repo import match_user_by_support_email
 
 
 def _active_coupon(db: Session, user_id: int) -> bool:
@@ -32,7 +33,7 @@ def build_customer_support_snapshot(db: Session, customer_email: str) -> dict:
     if not norm or "@" not in norm:
         return {"matched_user": False, "lookup_email": raw, "reason": "invalid_email"}
 
-    user = db.query(User).filter(func.lower(User.email) == norm).first()
+    user = match_user_by_support_email(db, raw)
     if not user:
         return {
             "matched_user": False,

@@ -13,7 +13,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from ..dependencies import get_current_admin_user, resolve_email_from_db_and_clerk
+from ..dependencies import get_current_admin_user, resolve_email_from_db_and_clerk, warm_clerk_email_cache_for_users
 from ..database import get_db
 from ..email_visibility import normalize_public_email
 from ..models import ConversationFlag, User, Conversation, Message, UsageRecord, CouponRedemption
@@ -464,6 +464,7 @@ async def list_users(
     )
 
     users = q.order_by(User.created_at.desc()).offset(max(skip, 0)).limit(min(max(limit, 1), 200)).all()
+    warm_clerk_email_cache_for_users(users)
     ids = [u.id for u in users]
     agg = _aggregate_user_stats(db, ids)
     coupon_users = _users_with_active_coupon(db, ids)
@@ -521,6 +522,8 @@ async def get_user_detail(user_id: int, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    warm_clerk_email_cache_for_users([user])
 
     agg = _aggregate_user_stats(db, [user_id]).get(user_id, _empty_user_agg())
     assumptions = economics_assumptions()

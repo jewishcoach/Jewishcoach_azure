@@ -1,9 +1,16 @@
+from __future__ import annotations
+
+from concurrent.futures import ThreadPoolExecutor
+from typing import Any
+
 from fastapi import Depends, HTTPException, Header
+from jose import jwt as jose_jwt
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
-from jose import jwt as jose_jwt
+
 from .database import get_db, utc_now
 from .models import User
+
 import json
 import os
 import urllib.error
@@ -140,6 +147,33 @@ def _should_grant_admin(clerk_id: str, resolved_email: str | None) -> bool:
     return bool(em and em in allow)
 
 
+def _pick_email_from_clerk_user_body(body: dict[str, Any]) -> str | None:
+    """Best-effort inbox from Clerk GET /v1/users/{id} JSON (shape varies slightly)."""
+    pe = body.get("primary_email_address")
+    if isinstance(pe, dict):
+        addr = pe.get("email_address") or pe.get("emailAddress")
+        if isinstance(addr, str) and "@" in addr:
+            return addr
+    primary_id = body.get("primary_email_address_id")
+    emails = body.get("email_addresses") or []
+    chosen: str | None = None
+    if isinstance(emails, list) and primary_id:
+        for ea in emails:
+            if isinstance(ea, dict) and ea.get("id") == primary_id:
+                addr = ea.get("email_address") or ea.get("emailAddress")
+                if isinstance(addr, str) and "@" in addr:
+                    chosen = addr
+                    break
+    if chosen is None and isinstance(emails, list):
+        for ea in emails:
+            if isinstance(ea, dict):
+                addr = ea.get("email_address") or ea.get("emailAddress")
+                if isinstance(addr, str) and "@" in addr:
+                    chosen = addr
+                    break
+    return chosen
+
+
 def _fetch_clerk_primary_email(clerk_id: str) -> str | None:
     """Backend API: needs CLERK_SECRET_KEY (sk_live_ / sk_test_). Cached per process."""
     if clerk_id in _CLERK_PRIMARY_EMAIL_CACHE:
@@ -151,32 +185,52 @@ def _fetch_clerk_primary_email(clerk_id: str) -> str | None:
     url = f"https://api.clerk.com/v1/users/{safe_id}"
     try:
         req = urllib.request.Request(url, headers={"Authorization": f"Bearer {secret}"})
-        with urllib.request.urlopen(req, timeout=8) as resp:
+        with urllib.request.urlopen(req, timeout=12) as resp:
             body = json.loads(resp.read().decode())
-    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError, ValueError) as e:
+    except urllib.error.HTTPError as e:
+        detail = ""
+        try:
+            detail = e.read().decode(errors="replace")[:400]
+        except Exception:
+            pass
+        print(f"⚠️ [AUTH] Clerk user lookup HTTP {e.code} for {clerk_id}: {detail or e.reason}")
+        return None
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, ValueError) as e:
         print(f"⚠️ [AUTH] Clerk user lookup failed for {clerk_id}: {type(e).__name__}: {e}")
         return None
-    primary_id = body.get("primary_email_address_id")
-    emails = body.get("email_addresses") or []
-    chosen: str | None = None
-    if isinstance(emails, list) and primary_id:
-        for ea in emails:
-            if isinstance(ea, dict) and ea.get("id") == primary_id:
-                addr = ea.get("email_address")
-                if isinstance(addr, str) and "@" in addr:
-                    chosen = addr
-                    break
-    if chosen is None and isinstance(emails, list):
-        for ea in emails:
-            if isinstance(ea, dict):
-                addr = ea.get("email_address")
-                if isinstance(addr, str) and "@" in addr:
-                    chosen = addr
-                    break
+    if not isinstance(body, dict):
+        return None
+    chosen = _pick_email_from_clerk_user_body(body)
     if chosen:
         _CLERK_PRIMARY_EMAIL_CACHE[clerk_id] = chosen
         print(f"✅ [AUTH] Resolved primary email from Clerk API for {clerk_id}")
-    return chosen
+        return chosen
+    return None
+
+
+def warm_clerk_email_cache_for_users(users: list[Any]) -> None:
+    """
+    Pre-fetch Clerk primary emails for directory rows that still lack a real inbox in DB.
+
+    Without this, /admin/users hits Clerk sequentially once per row (slow; looks like 'no emails').
+    Safe to call repeatedly; uses per-process cache and skips users who already have public emails in DB.
+    """
+    need: list[str] = []
+    seen: set[str] = set()
+    for u in users:
+        db = (getattr(u, "email", None) or "").strip()
+        if db and "@clerk.temp" not in db and "@" in db:
+            continue
+        cid = (getattr(u, "clerk_id", None) or "").strip()
+        if not cid or cid in seen:
+            continue
+        seen.add(cid)
+        need.append(cid)
+    if not need:
+        return
+    workers = min(12, max(1, len(need)))
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        list(pool.map(_fetch_clerk_primary_email, need))
 
 
 def _resolve_primary_email(
