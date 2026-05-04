@@ -30,6 +30,15 @@ interface SupportLogRow {
   created_at: string | null;
 }
 
+/** SQLite/JSON sometimes stores send_ok as 0/1 instead of boolean */
+function coerceOutboundSendOk(meta: Record<string, unknown> | undefined): boolean | undefined {
+  if (!meta || !('send_ok' in meta)) return undefined;
+  const v = meta.send_ok;
+  if (v === true || v === 1 || v === '1' || v === 'true') return true;
+  if (v === false || v === 0 || v === '0' || v === 'false') return false;
+  return undefined;
+}
+
 export const AdminSupportServicePanel: React.FC = () => {
   const { getToken } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -610,7 +619,9 @@ export const AdminSupportServicePanel: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                logs.map((row) => (
+                logs.map((row) => {
+                  const outboundSendOk = coerceOutboundSendOk(row.meta);
+                  return (
                   <tr key={row.id} className="align-top hover:bg-slate-50/80">
                     <td className="px-3 py-2 whitespace-nowrap text-slate-600">
                       {row.created_at ? new Date(row.created_at).toLocaleString() : '—'}
@@ -628,13 +639,19 @@ export const AdminSupportServicePanel: React.FC = () => {
                         {row.direction}
                       </span>
                       <div className="text-[10px] text-slate-400 mt-0.5">{row.channel}</div>
-                      {row.direction === 'outbound' && typeof row.meta?.send_ok === 'boolean' ? (
+                      {row.direction === 'outbound' && outboundSendOk !== undefined ? (
                         <div
-                          className={`text-[10px] mt-0.5 font-medium ${row.meta.send_ok ? 'text-emerald-700' : 'text-red-600'}`}
+                          className={`text-[10px] mt-0.5 font-medium ${outboundSendOk ? 'text-emerald-700' : 'text-red-600'}`}
                         >
-                          {row.meta.send_ok
+                          {outboundSendOk
                             ? 'שליחה: אושר ע״י ACS/SendGrid (לא תמיד אומר שהגיע לתיבה)'
-                            : `שליחה נכשלה: ${String(row.meta.send_error || 'לא ידוע').slice(0, 180)}${String(row.meta.send_error || '').length > 180 ? '…' : ''}`}
+                            : (() => {
+                                const err =
+                                  typeof row.meta.send_error === 'string' && row.meta.send_error.trim()
+                                    ? row.meta.send_error.trim()
+                                    : 'לא נשמרה סיבה (רישום ישן או לפני עדכון השרת)';
+                                return `שליחה נכשלה: ${err.slice(0, 180)}${err.length > 180 ? '…' : ''}`;
+                              })()}
                         </div>
                       ) : null}
                     </td>
@@ -661,7 +678,8 @@ export const AdminSupportServicePanel: React.FC = () => {
                       </details>
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>

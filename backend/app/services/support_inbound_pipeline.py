@@ -225,8 +225,8 @@ def process_inbound_support_email(
 
     ok, send_err = send_html_email_detailed(sender_email, reply_subj, reply_html, body_plain=reply_plain_full)
     out_meta: dict[str, Any] = {"inbound_log_id": inbound_row.id, "send_ok": ok, "to": sender_email}
-    if send_err:
-        out_meta["send_error"] = send_err[:2000]
+    if not ok:
+        out_meta["send_error"] = (send_err or "unknown_send_failure").strip()[:2000]
     append_support_email_log(
         db,
         customer_email=sender_email,
@@ -243,7 +243,7 @@ def process_inbound_support_email(
         "inbound_log_id": inbound_row.id,
         "auto_reply": True,
         "sent": ok,
-        "send_error": send_err,
+        "send_error": (send_err or ("unknown_send_failure" if not ok else None)),
         "reply_subject": reply_subj,
     }
 
