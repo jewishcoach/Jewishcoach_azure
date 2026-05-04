@@ -155,17 +155,19 @@ def _legacy_dashboard_thread_rows(
 ) -> list[SupportEmailLog]:
     """
     Dashboard rows saved before user_id was populated on SupportEmailLog.
-    Resolved in Python to avoid PostgreSQL JSON path SQL that returned 500 on Azure.
+    Resolved in Python (meta.source / meta.user_id). Avoid adding filters after .limit() — SQLAlchemy rejects that on some versions.
+    Narrow with user_id IS NULL so we do not scan everyone's dashboard rows.
     """
     q = db.query(SupportEmailLog).filter(
         SupportEmailLog.direction.in_(["inbound", "outbound"]),
         SupportEmailLog.channel == "user_dashboard",
+        SupportEmailLog.user_id.is_(None),
     )
-    if exclude_ids:
-        q = q.filter(~SupportEmailLog.id.in_(exclude_ids))
     q = q.order_by(SupportEmailLog.created_at.desc()).limit(scan_limit)
     matched: list[SupportEmailLog] = []
     for row in q.all():
+        if row.id in exclude_ids:
+            continue
         try:
             m = _meta_as_dict(row.meta)
             if not m or m.get("source") != "dashboard_contact":
