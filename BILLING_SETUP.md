@@ -219,6 +219,19 @@ db.commit()
 
 דוגמה ראו ב־`backend/.env.example`.
 
+### הגדרה אוטומטית ב-Azure (אחרי `az login`)
+
+```bash
+az login --use-device-code   # אם עדיין לא מחובר
+
+export PAYME_API_KEY='המפתח_מקונסול_PayMe'
+export PAYME_PAYMENTS_API_BASE='https://…'   # מדף Sandbox/Production בתיעוד PayMe
+
+bash scripts/set_payme_azure_app_settings.sh
+```
+
+הסקריפט: `scripts/set_payme_azure_app_settings.sh` — מעדכן App Settings ומפעיל מחדש את `jewishcoach-api` (ברירת מחדל `AZURE_RESOURCE_GROUP=jewish-coach-rg`).
+
 ### בדיקה
 
 עם JWT משתמש מחובר:
