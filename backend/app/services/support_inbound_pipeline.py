@@ -5,12 +5,14 @@ from __future__ import annotations
 import html
 import os
 import re
+from datetime import timedelta
 from email.utils import parseaddr
 from typing import Any, Optional
 
 from sqlalchemy.orm import Session
 
-from ..models import SupportCustomerServiceSettings
+from ..database import utc_now
+from ..models import SupportCustomerServiceSettings, SupportEmailLog
 from .email_service import send_html_email_detailed
 from .support_customer_context import build_customer_support_snapshot
 from .support_auto_reply_env import effective_auto_reply_enabled
@@ -176,6 +178,232 @@ def plain_text_from_parts(text: Optional[str], html_part: Optional[str]) -> str:
     return html.unescape(plain)
 
 
+def extract_dashboard_ticket_body_from_html(html_part: Optional[str]) -> Optional[str]:
+    """If this is our dashboard contact template, return the user's message from <pre> only."""
+    if not html_part or not html_part.strip():
+        return None
+    if "from user id" not in html_part.lower():
+        return None
+    m = re.search(r"<pre\b[^>]*>(.*?)</pre>", html_part, re.I | re.DOTALL)
+    if not m:
+        return None
+    inner = html.unescape(m.group(1))
+    inner = inner.replace("\r\n", "\n").strip()
+    return inner if inner else None
+
+
+def strip_dashboard_contact_plain_envelope(body_plain: str) -> tuple[str, bool]:
+    """
+    Remove legacy multipart/plain header block from dashboard-sent support mail.
+    Returns (cleaned_body, stripped_anything).
+    """
+    s = (body_plain or "").replace("\r\n", "\n").strip()
+    if not s:
+        return "", False
+    m = re.match(
+        r"(?ms)^From user id:\s*\d+\s*\n"
+        r"Clerk id:\s*\S+\s*\n"
+        r"Reply-To:\s*\S+\s*\n"
+        r"Subject:\s*.+?\n\s*\n(.*)$",
+        s,
+    )
+    if m:
+        return m.group(1).strip(), True
+    m2 = re.match(
+        r"(?is)^From\s+user\s+id:\s*\d+\s+"
+        r"Clerk\s+id:\s*\S+\s+"
+        r"Reply-To:\s*\S+@\S+\s+"
+        r"Subject:\s*.+?\s+(.*)$",
+        s,
+    )
+    if m2:
+        tail = m2.group(1).strip()
+        if tail:
+            return tail, True
+    return s, False
+
+
+def normalize_inbound_dashboard_ticket_body(
+    html_part: Optional[str],
+    *,
+    fallback_plain: str,
+) -> tuple[str, dict[str, Any]]:
+    """Prefer HTML <pre> user body; else strip known plain envelope (legacy)."""
+    meta_frag: dict[str, Any] = {}
+    pre = extract_dashboard_ticket_body_from_html(html_part)
+    if pre is not None:
+        meta_frag["dashboard_ticket_parse"] = "html_pre"
+        return pre, meta_frag
+    cleaned, stripped = strip_dashboard_contact_plain_envelope(fallback_plain)
+    if stripped:
+        meta_frag["dashboard_ticket_parse"] = "plain_envelope_stripped"
+    return cleaned, meta_frag
+
+
+def find_recent_dashboard_contact_duplicate_row(
+    db: Session,
+    *,
+    customer_email: str,
+    subject: str,
+    body: str,
+    window_minutes: int = 90,
+) -> Optional[SupportEmailLog]:
+    """Existing dashboard ticket row when support inbox echoes the same mail (IMAP/automation)."""
+    ce = normalize_customer_email(customer_email)
+    b = (body or "").replace("\r\n", "\n").strip()
+    subj_n = (subject or "").strip()
+    if not b or not subj_n:
+        return None
+    cutoff = utc_now() - timedelta(minutes=window_minutes)
+    return (
+        db.query(SupportEmailLog)
+        .filter(
+            SupportEmailLog.direction == "inbound",
+            SupportEmailLog.channel == "user_dashboard",
+            SupportEmailLog.customer_email == ce,
+            SupportEmailLog.subject == subj_n,
+            SupportEmailLog.body == b,
+            SupportEmailLog.created_at >= cutoff,
+        )
+        .order_by(SupportEmailLog.created_at.desc(), SupportEmailLog.id.desc())
+        .first()
+    )
+
+
+def _support_auto_reply_already_started(db: Session, inbound_log_id: int) -> bool:
+    """Draft/outbound already recorded for this inbound (webhook retries / duplicate scenarios)."""
+    horizon = utc_now() - timedelta(days=14)
+    candidates = (
+        db.query(SupportEmailLog)
+        .filter(
+            SupportEmailLog.direction.in_(["draft", "outbound"]),
+            SupportEmailLog.channel.in_(["ai_draft_auto", "auto_reply", "auto_reply_failed"]),
+            SupportEmailLog.created_at >= horizon,
+        )
+        .limit(800)
+        .all()
+    )
+    for r in candidates:
+        meta = r.meta if isinstance(r.meta, dict) else {}
+        if meta.get("inbound_log_id") == inbound_log_id:
+            return True
+    return False
+
+
+def run_support_auto_reply_after_inbound(
+    db: Session,
+    *,
+    inbound_row: SupportEmailLog,
+    customer_email: str,
+    subj: str,
+    body_for_log: str,
+) -> dict[str, Any]:
+    """LLM draft + optional outbound reply for one inbound log row (shared by webhook + retries)."""
+    if _support_auto_reply_already_started(db, inbound_row.id):
+        return {
+            "skipped": False,
+            "inbound_log_id": inbound_row.id,
+            "auto_reply": False,
+            "note": "support_auto_reply_already_handled",
+        }
+
+    settings = _get_settings_row(db)
+    auto_reply = effective_auto_reply_enabled(settings)
+
+    snapshot = build_customer_support_snapshot(db, customer_email)
+    lang = detect_language_hint(body_for_log + " " + subj)
+
+    prior_thread = fetch_support_email_thread_for_llm(db, customer_email, exclude_log_id=inbound_row.id)
+
+    try:
+        draft = generate_support_reply_draft(
+            customer_snapshot=snapshot,
+            incoming_message=f"נושא / Subject: {subj}\n\n{body_for_log}",
+            personality_text=settings.personality_text,
+            terms_text=settings.terms_and_boundaries_text,
+            methodology_text=settings.methodology_context_text,
+            language=lang,
+            prior_support_email_thread=prior_thread,
+        )
+    except Exception as e:
+        append_support_email_log(
+            db,
+            customer_email=customer_email,
+            direction="draft",
+            channel="auto_reply_failed",
+            subject=subj,
+            body=str(e),
+            meta={"inbound_log_id": inbound_row.id},
+            smtp_message_id=None,
+        )
+        return {
+            "skipped": False,
+            "inbound_log_id": inbound_row.id,
+            "auto_reply": False,
+            "error": f"llm: {e!s}",
+        }
+
+    draft_meta: dict[str, Any] = {"inbound_log_id": inbound_row.id}
+    if draft.internal_notes:
+        draft_meta["internal_notes"] = draft.internal_notes
+
+    append_support_email_log(
+        db,
+        customer_email=customer_email,
+        direction="draft",
+        channel="ai_draft_auto",
+        subject=draft.subject.strip() or None,
+        body=draft.body_plain.strip(),
+        meta=draft_meta,
+        smtp_message_id=None,
+    )
+
+    if not auto_reply:
+        return {
+            "skipped": False,
+            "inbound_log_id": inbound_row.id,
+            "auto_reply": False,
+            "draft_subject": draft.subject,
+            "note": "auto_reply_disabled_in_admin_settings",
+        }
+
+    reply_subj = (draft.subject or "").strip() or f"Re: {subj}"
+    reply_plain = (draft.body_plain or "").strip()
+    if not reply_plain:
+        return {"skipped": False, "inbound_log_id": inbound_row.id, "auto_reply": False, "error": "empty_draft"}
+
+    suffix_he = "\n\n—\nתשובה אוטומטית שנוצרה באמצעות AI; אם צריך צוות אנושי נשמח להמשיך כאן באימייל."
+    suffix_en = "\n\n—\nThis message was drafted automatically; our team can follow up by email if needed."
+    reply_plain_full = reply_plain + (suffix_he if lang.startswith("he") else suffix_en)
+
+    rtl = lang.startswith("he") or bool(re.search(r"[\u0590-\u05FF]", reply_plain_full))
+    reply_html = plain_to_reply_html(reply_plain_full, rtl=rtl)
+
+    ok, send_err = send_html_email_detailed(customer_email, reply_subj, reply_html, body_plain=reply_plain_full)
+    out_meta: dict[str, Any] = {"inbound_log_id": inbound_row.id, "send_ok": ok, "to": customer_email}
+    if not ok:
+        out_meta["send_error"] = (send_err or "unknown_send_failure").strip()[:2000]
+    append_support_email_log(
+        db,
+        customer_email=customer_email,
+        direction="outbound",
+        channel="auto_reply",
+        subject=reply_subj,
+        body=reply_plain_full,
+        meta=out_meta,
+        smtp_message_id=None,
+    )
+
+    return {
+        "skipped": False,
+        "inbound_log_id": inbound_row.id,
+        "auto_reply": True,
+        "sent": ok,
+        "send_error": (send_err or ("unknown_send_failure" if not ok else None)),
+        "reply_subject": reply_subj,
+    }
+
+
 def plain_to_reply_html(body_plain: str, *, rtl: bool = True) -> str:
     """Wrap plain text as HTML. For Hebrew, force RTL on html/body/wrapper — many clients ignore dir on <html> alone."""
     escaped_lines = []
@@ -297,114 +525,51 @@ def process_inbound_support_email(
     subj = (subject or "").strip() or "(ללא נושא)"
     _, envelope_from = parse_sender_email(from_field)
 
-    inbound_row = append_support_email_log(
+    body_for_log, dash_meta = normalize_inbound_dashboard_ticket_body(
+        html_part,
+        fallback_plain=body_plain,
+    )
+
+    dup_row = find_recent_dashboard_contact_duplicate_row(
         db,
         customer_email=customer_email,
-        direction="inbound",
-        channel=inbound_channel,
         subject=subj,
-        body=body_plain,
-        meta={
+        body=body_for_log,
+    )
+    if dup_row:
+        inbound_row = dup_row
+        inbound_meta = dict(dup_row.meta or {})
+        channels = list(inbound_meta.get("support_inbox_echo_channels") or [])
+        if inbound_channel not in channels:
+            channels.append(inbound_channel)
+        inbound_meta["support_inbox_echo_channels"] = channels
+        dup_row.meta = inbound_meta
+        db.add(dup_row)
+        db.commit()
+        db.refresh(dup_row)
+    else:
+        inbound_meta = {
             "to": to_field[:500] if to_field else None,
             "envelope_from": envelope_from,
             "customer_identity_source": identity_src,
-        },
-        smtp_message_id=msg_id,
-    )
-
-    settings = _get_settings_row(db)
-    auto_reply = effective_auto_reply_enabled(settings)
-
-    snapshot = build_customer_support_snapshot(db, customer_email)
-    lang = detect_language_hint(body_plain + " " + subj)
-
-    prior_thread = fetch_support_email_thread_for_llm(db, customer_email, exclude_log_id=inbound_row.id)
-
-    try:
-        draft = generate_support_reply_draft(
-            customer_snapshot=snapshot,
-            incoming_message=f"נושא / Subject: {subj}\n\n{body_plain}",
-            personality_text=settings.personality_text,
-            terms_text=settings.terms_and_boundaries_text,
-            methodology_text=settings.methodology_context_text,
-            language=lang,
-            prior_support_email_thread=prior_thread,
-        )
-    except Exception as e:
-        append_support_email_log(
+            **dash_meta,
+        }
+        inbound_row = append_support_email_log(
             db,
             customer_email=customer_email,
-            direction="draft",
-            channel="auto_reply_failed",
+            direction="inbound",
+            channel=inbound_channel,
             subject=subj,
-            body=str(e),
-            meta={"inbound_log_id": inbound_row.id},
-            smtp_message_id=None,
+            body=body_for_log,
+            meta=inbound_meta,
+            smtp_message_id=msg_id,
         )
-        return {
-            "skipped": False,
-            "inbound_log_id": inbound_row.id,
-            "auto_reply": False,
-            "error": f"llm: {e!s}",
-        }
 
-    draft_meta: dict[str, Any] = {"inbound_log_id": inbound_row.id}
-    if draft.internal_notes:
-        draft_meta["internal_notes"] = draft.internal_notes
-
-    append_support_email_log(
+    return run_support_auto_reply_after_inbound(
         db,
+        inbound_row=inbound_row,
         customer_email=customer_email,
-        direction="draft",
-        channel="ai_draft_auto",
-        subject=draft.subject.strip() or None,
-        body=draft.body_plain.strip(),
-        meta=draft_meta,
-        smtp_message_id=None,
+        subj=subj,
+        body_for_log=body_for_log,
     )
-
-    if not auto_reply:
-        return {
-            "skipped": False,
-            "inbound_log_id": inbound_row.id,
-            "auto_reply": False,
-            "draft_subject": draft.subject,
-            "note": "auto_reply_disabled_in_admin_settings",
-        }
-
-    reply_subj = (draft.subject or "").strip() or f"Re: {subj}"
-    reply_plain = (draft.body_plain or "").strip()
-    if not reply_plain:
-        return {"skipped": False, "inbound_log_id": inbound_row.id, "auto_reply": False, "error": "empty_draft"}
-
-    suffix_he = "\n\n—\nתשובה אוטומטית שנוצרה באמצעות AI; אם צריך צוות אנושי נשמח להמשיך כאן באימייל."
-    suffix_en = "\n\n—\nThis message was drafted automatically; our team can follow up by email if needed."
-    reply_plain_full = reply_plain + (suffix_he if lang.startswith("he") else suffix_en)
-
-    rtl = lang.startswith("he") or bool(re.search(r"[\u0590-\u05FF]", reply_plain_full))
-    reply_html = plain_to_reply_html(reply_plain_full, rtl=rtl)
-
-    ok, send_err = send_html_email_detailed(customer_email, reply_subj, reply_html, body_plain=reply_plain_full)
-    out_meta: dict[str, Any] = {"inbound_log_id": inbound_row.id, "send_ok": ok, "to": customer_email}
-    if not ok:
-        out_meta["send_error"] = (send_err or "unknown_send_failure").strip()[:2000]
-    append_support_email_log(
-        db,
-        customer_email=customer_email,
-        direction="outbound",
-        channel="auto_reply",
-        subject=reply_subj,
-        body=reply_plain_full,
-        meta=out_meta,
-        smtp_message_id=None,
-    )
-
-    return {
-        "skipped": False,
-        "inbound_log_id": inbound_row.id,
-        "auto_reply": True,
-        "sent": ok,
-        "send_error": (send_err or ("unknown_send_failure" if not ok else None)),
-        "reply_subject": reply_subj,
-    }
 

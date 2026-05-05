@@ -291,13 +291,8 @@ def post_support_contact(
 <pre style="white-space:pre-wrap;font-family:inherit;">{esc_msg}</pre>
 </body></html>"""
 
-    plain = (
-        f"From user id: {user.id}\n"
-        f"Clerk id: {user.clerk_id}\n"
-        f"Reply-To: {reply_norm}\n"
-        f"Subject: {body.subject.strip()}\n\n"
-        f"{body.message.strip()}"
-    )
+    # Plain alternative: user message only — ticket metadata stays in HTML (avoid duplicate noisy logs via IMAP/webhook).
+    plain = body.message.strip()
 
     append_support_email_log(
         db,

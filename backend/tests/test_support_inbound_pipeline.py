@@ -10,12 +10,22 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.services.support_mail_repo import normalize_customer_email  # noqa: E402
+import app.models  # noqa: F401
+from app.database import Base, engine  # noqa: E402
+from app.services.support_mail_repo import (  # noqa: E402
+    append_support_email_log,
+    normalize_customer_email,
+)
 from app.services.support_inbound_pipeline import (  # noqa: E402
+    extract_dashboard_ticket_body_from_html,
     extract_reply_to_from_dashboard_body,
     extract_reply_to_from_headers,
+    find_recent_dashboard_contact_duplicate_row,
+    normalize_inbound_dashboard_ticket_body,
     resolve_inbound_customer_email,
+    strip_dashboard_contact_plain_envelope,
 )
+from sqlalchemy.orm import sessionmaker  # noqa: E402
 
 
 class TestExtractReplyToHeaders:
@@ -106,3 +116,92 @@ class TestResolveInboundCustomerEmail:
         assert skip is None
         assert em == "me@client.org"
         assert src == "reply_to_header"
+
+
+class TestStripDashboardPlainEnvelope:
+    def test_multiline_legacy_plain(self):
+        raw = (
+            "From user id: 8\n"
+            "Clerk id: user_abc\n"
+            "Reply-To: x@example.com\n"
+            "Subject: what up?\n\n"
+            "you didnt wrote back yet\n"
+        )
+        cleaned, stripped = strip_dashboard_contact_plain_envelope(raw)
+        assert stripped
+        assert cleaned == "you didnt wrote back yet"
+
+    def test_collapsed_single_line(self):
+        raw = "From user id: 8 Clerk id: user_x Reply-To: a@b.com Subject: hi hello there"
+        cleaned, stripped = strip_dashboard_contact_plain_envelope(raw)
+        assert stripped
+        assert cleaned == "hello there"
+
+
+class TestExtractDashboardTicketHtmlPre:
+    def test_pre_body_only(self):
+        html = (
+            "<body><p><strong>From user id:</strong> 8</p>"
+            "<pre style=\"x\">line1\nline2</pre></body>"
+        )
+        assert extract_dashboard_ticket_body_from_html(html) == "line1\nline2"
+
+    def test_non_dashboard_returns_none(self):
+        assert extract_dashboard_ticket_body_from_html("<pre>only</pre>") is None
+
+
+class TestNormalizeInboundDashboardBody:
+    def test_prefers_html_pre_over_plain_noise(self):
+        html = '<html><body><p><strong>From user id:</strong> 1</p><pre>User says hi</pre></body></html>'
+        plain = "From user id: 1\nClerk id: x\nReply-To: y@z\nSubject: s\n\nignored"
+        body, meta = normalize_inbound_dashboard_ticket_body(html, fallback_plain=plain)
+        assert body == "User says hi"
+        assert meta["dashboard_ticket_parse"] == "html_pre"
+
+
+class TestDuplicateDashboardEcho:
+    def setup_method(self):
+        Base.metadata.create_all(bind=engine)
+        self.Session = sessionmaker(bind=engine)
+        self.db = self.Session()
+
+    def teardown_method(self):
+        self.db.close()
+        Base.metadata.drop_all(bind=engine)
+
+    def test_finder_returns_matching_row(self):
+        append_support_email_log(
+            self.db,
+            customer_email="cust@example.com",
+            direction="inbound",
+            channel="user_dashboard",
+            subject="[Jewish Coach app] hi",
+            body="same text",
+        )
+        row = find_recent_dashboard_contact_duplicate_row(
+            self.db,
+            customer_email="cust@example.com",
+            subject="[Jewish Coach app] hi",
+            body="same text",
+        )
+        assert row is not None
+        assert row.body == "same text"
+
+    def test_finder_none_when_body_differs(self):
+        append_support_email_log(
+            self.db,
+            customer_email="cust@example.com",
+            direction="inbound",
+            channel="user_dashboard",
+            subject="[Jewish Coach app] hi",
+            body="first",
+        )
+        assert (
+            find_recent_dashboard_contact_duplicate_row(
+                self.db,
+                customer_email="cust@example.com",
+                subject="[Jewish Coach app] hi",
+                body="second",
+            )
+            is None
+        )
