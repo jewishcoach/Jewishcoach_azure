@@ -102,15 +102,32 @@ def upgrade():
         """))
         print("✓ Created coupon_redemptions table")
         
-        # Insert BSD100 coupon
-        conn.execute(text("""
-            INSERT OR IGNORE INTO coupons 
-            (code, plan_granted, duration_days, max_uses, is_active, description)
-            VALUES 
-            ('BSD100', 'premium', NULL, NULL, 1, 
-             'BSD Special Launch Offer — lifetime Premium access')
-        """))
-        print("✓ Inserted BSD100 coupon")
+        # Insert BSD100 coupon (portable: INSERT OR IGNORE is SQLite-only and skips silently on Postgres)
+        dialect = engine.dialect.name
+        bsd_desc = "BSD Special Launch Offer — lifetime Premium access"
+        if dialect == "postgresql":
+            conn.execute(
+                text(
+                    """
+                    INSERT INTO coupons (code, plan_granted, duration_days, max_uses, current_uses, is_active, description)
+                    SELECT 'BSD100', 'premium', NULL, NULL, 0, TRUE, :desc
+                    WHERE NOT EXISTS (SELECT 1 FROM coupons WHERE code = 'BSD100')
+                    """
+                ),
+                {"desc": bsd_desc},
+            )
+        else:
+            conn.execute(
+                text(
+                    """
+                    INSERT INTO coupons (code, plan_granted, duration_days, max_uses, current_uses, is_active, description)
+                    SELECT 'BSD100', 'premium', NULL, NULL, 0, 1, :desc
+                    WHERE NOT EXISTS (SELECT 1 FROM coupons WHERE code = 'BSD100')
+                    """
+                ),
+                {"desc": bsd_desc},
+            )
+        print("✓ Ensured BSD100 coupon exists")
         
         conn.commit()
         print("\n✅ Migration completed successfully!")
