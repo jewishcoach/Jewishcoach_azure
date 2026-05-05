@@ -364,20 +364,10 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
       dir={i18n.dir() as 'ltr' | 'rtl'}
       style={{ background: COLORS.bg }}
     >
-      {/* Mobile: Sticky top bar - one row: settings | profile | header links */}
+      {/* Mobile: Sticky top bar — profile name + header links (settings via bottom nav) */}
       <div className="md:hidden sticky top-0 z-10 flex items-center gap-2 px-3 py-2 border-b flex-nowrap min-w-0" style={{ background: COLORS.card, borderColor: COLORS.border, boxShadow: COLORS.shadow }}>
-        <button
-          type="button"
-          onClick={() => setActiveTab('settings')}
-          className="p-1.5 rounded-lg transition-colors hover:bg-gray-100 flex-shrink-0"
-          style={{ color: COLORS.textMuted }}
-          title={t('dashboard.tab.settings')}
-          aria-label={t('dashboard.tab.settings')}
-        >
-          <Settings className="w-5 h-5" />
-        </button>
         <div className="min-w-0 flex-1 flex items-center gap-1.5 overflow-hidden">
-          <p className="font-semibold truncate text-sm" style={{ color: COLORS.text }}>
+          <p className="font-semibold truncate text-sm min-w-0" style={{ color: COLORS.text }}>
             {profileHeadingName(profile, t('dashboard.userDefault'))}
           </p>
           <div className="flex items-center gap-1 flex-shrink-0">
