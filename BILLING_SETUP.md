@@ -203,6 +203,48 @@ db.commit()
 
 ---
 
+## PayMe (ישראל) — הגדרת סביבה
+
+אין עדיין זרימת תשלום מלאה מול PayMe בקוד; המפתח וה־URL נקראים מהסביבה וניתן לבדוק שהשרת "רואה" אותם.
+
+### משתני סביבה
+
+הגדר ב־**Azure App Service** → האפליקציה של הבקאנד → **Configuration** → Application settings (או ב־`backend/.env` מקומית בלבד — לא בקומיט):
+
+| משתנה | תיאור |
+|--------|--------|
+| `PAYME_API_KEY` | מפתח הסוחר מממשק PayMe |
+| `PAYME_PAYMENTS_API_BASE` | כתובת בסיס ל־API (sandbox / production לפי התיעוד) |
+| `PAYME_WEBHOOK_SECRET` | אופציונלי — אם PayMe נותנים סוד לחתימת webhook |
+
+דוגמה ראו ב־`backend/.env.example`.
+
+### בדיקה
+
+עם JWT משתמש מחובר:
+
+```bash
+curl -sS -H "Authorization: Bearer YOUR_CLERK_JWT" \
+  https://jewishcoach-api.azurewebsites.net/api/billing/payme/status
+```
+
+תשובה לדוגמה (בלי חשיפת סודות):
+
+```json
+{
+  "payme_api_key_configured": true,
+  "payme_api_base_configured": true,
+  "payme_webhook_secret_configured": false,
+  "payme_ready_for_http": true
+}
+```
+
+כדי להפעיל גבייה אמיתית חסר עדיין: קריאות PayMe (יצירת sale / redirect), ו־endpoint webhook מאומת שמעדכן `Subscription` / `current_plan`.
+
+תיעוד רשמי: [PayMe Docs](https://docs.payme.io/).
+
+---
+
 ## אינטגרציה עם Stripe (עתידי)
 
 התשתית מוכנה לאינטגרציה עם Stripe:

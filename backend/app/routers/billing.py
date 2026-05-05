@@ -21,6 +21,12 @@ from ..schemas.billing import (
     PlanType,
     effective_messages_per_month,
 )
+from ..services.payme_settings import (
+    payme_api_base_url,
+    payme_api_key,
+    payme_webhook_secret,
+    payme_is_ready_for_requests,
+)
 
 router = APIRouter(prefix="/api/billing", tags=["billing"])
 
@@ -145,6 +151,20 @@ def get_active_coupon(db: Session, user: User) -> CouponRedemption | None:
 # ============================================================================
 # API ENDPOINTS
 # ============================================================================
+
+@router.get("/payme/status")
+def payme_integration_status(_user: User = Depends(get_current_user)):
+    """
+    Whether PayMe env is configured on the server (no secrets returned).
+    Full checkout/webhook flow still requires implementation against PayMe API docs.
+    """
+    return {
+        "payme_api_key_configured": bool(payme_api_key()),
+        "payme_api_base_configured": bool(payme_api_base_url()),
+        "payme_webhook_secret_configured": bool(payme_webhook_secret()),
+        "payme_ready_for_http": payme_is_ready_for_requests(),
+    }
+
 
 @router.get("/plans", response_model=List[PlanInfo])
 def get_available_plans():
