@@ -448,35 +448,40 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
       {/* Main Content - pb for mobile bottom nav */}
       <main className="flex-1 overflow-y-auto custom-scrollbar pb-24 md:pb-0">
         <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-8 overflow-x-hidden">
-          {/* Hero Banner - desktop only; mobile has compact top bar */}
+          {/* Hero Banner - desktop only; avatar centered on bottom edge (half on banner, half below). */}
           <motion.div
-            className="relative mb-6 hidden md:block pb-12"
+            className="mb-6 hidden md:block pb-12"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <div className="rounded-2xl overflow-hidden" style={{ boxShadow: COLORS.shadowSm }}>
+            <div className="relative h-36 w-full">
               <div
-                className="h-36 w-full"
-                style={{
-                  background: `linear-gradient(135deg, ${COLORS.primaryLight} 0%, ${COLORS.primary} 60%, ${COLORS.gold} 100%)`,
-                }}
-              />
-            </div>
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2">
-              <div
-                className="w-20 h-20 rounded-full flex items-center justify-center border-4 overflow-hidden shrink-0 aspect-square"
-                style={{ background: COLORS.card, borderColor: COLORS.card, boxShadow: COLORS.shadowSm }}
+                className="h-full w-full rounded-2xl overflow-hidden"
+                style={{ boxShadow: COLORS.shadowSm }}
               >
-                {user?.imageUrl ? (
-                  <img
-                    src={user.imageUrl}
-                    alt=""
-                    className="h-full w-full object-cover object-center"
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  <User className="w-10 h-10" style={{ color: COLORS.gold }} aria-hidden />
-                )}
+                <div
+                  className="h-full w-full"
+                  style={{
+                    background: `linear-gradient(135deg, ${COLORS.primaryLight} 0%, ${COLORS.primary} 60%, ${COLORS.gold} 100%)`,
+                  }}
+                />
+              </div>
+              <div className="absolute bottom-0 left-1/2 z-10 -translate-x-1/2 translate-y-1/2">
+                <div
+                  className="w-20 h-20 rounded-full flex items-center justify-center border-4 overflow-hidden shrink-0 aspect-square"
+                  style={{ background: COLORS.card, borderColor: COLORS.card, boxShadow: COLORS.shadowSm }}
+                >
+                  {user?.imageUrl ? (
+                    <img
+                      src={user.imageUrl}
+                      alt=""
+                      className="h-full w-full object-cover object-center"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <User className="w-10 h-10" style={{ color: COLORS.gold }} aria-hidden />
+                  )}
+                </div>
               </div>
             </div>
           </motion.div>
