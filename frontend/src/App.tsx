@@ -63,7 +63,7 @@ function ChatHeaderMobileControls({
             className={`${tile} md:hidden bg-white border border-[#E2E4E8] text-[#2E3A56] shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors`}
           >
             <Archive className="w-[18px] h-[18px] flex-shrink-0 text-[#2E3A56]" strokeWidth={2} />
-            <span className="text-[9px] font-semibold leading-[1.15] text-center text-[#2E3A56] px-0.5">
+            <span className="text-[8px] font-semibold leading-[1.15] text-center text-[#2E3A56] px-0.5">
               {t('chat.mobileHeader.sessions')}
             </span>
           </button>
@@ -75,7 +75,7 @@ function ChatHeaderMobileControls({
             className={`${tile} md:hidden shadow-sm transition-all border border-[#FCF6BA]/50 bg-gradient-to-br from-[#BF953F] via-[#FCF6BA] to-[#B38728] hover:brightness-105 hover:border-[#FCF6BA]/80`}
           >
             <MessageSquarePlus className="w-[18px] h-[18px] flex-shrink-0 text-[#0f172a]" strokeWidth={2} />
-            <span className="text-[9px] font-semibold leading-[1.15] text-center text-[#0f172a] px-0.5">
+            <span className="text-[8px] font-semibold leading-[1.15] text-center text-[#0f172a] px-0.5">
               {t('chat.mobileHeader.newChat')}
             </span>
           </button>
@@ -94,7 +94,7 @@ function ChatHeaderMobileControls({
         ) : (
           <LayoutDashboard className="w-[18px] h-[18px] md:w-4 md:h-4 flex-shrink-0 text-[#2E3A56]" strokeWidth={2} />
         )}
-        <span className="md:hidden text-[9px] font-semibold leading-[1.15] text-center px-0.5">
+        <span className="md:hidden text-[8px] font-semibold leading-[1.15] text-center px-0.5">
           {showDashboard ? t('chat.mobileHeader.backToChat') : t('chat.mobileHeader.personal')}
         </span>
         <span className="hidden md:inline">{showDashboard ? t('chat.button') : t('dashboard.button')}</span>
