@@ -45,6 +45,8 @@ function ensurePayMeScript(scriptSrc: string): Promise<void> {
 type Props = {
   open: boolean;
   plan: PayMePlanPick | null;
+  /** From GET /billing/overview when backend embeds PayMe (avoids extra route / 404 on some proxies). */
+  payMeCheckoutFromOverview?: CheckoutConfig | null;
   getToken: () => Promise<string | null>;
   onClose: () => void;
   onCompleted: () => void;
@@ -52,7 +54,14 @@ type Props = {
 
 const API_BASE = getApiBase();
 
-export function PayMeCheckoutModal({ open, plan, getToken, onClose, onCompleted }: Props) {
+export function PayMeCheckoutModal({
+  open,
+  plan,
+  payMeCheckoutFromOverview,
+  getToken,
+  onClose,
+  onCompleted,
+}: Props) {
   const { t, i18n } = useTranslation();
   const rtl = i18n.language?.startsWith('he');
 
@@ -107,12 +116,16 @@ export function PayMeCheckoutModal({ open, plan, getToken, onClose, onCompleted 
         const jwt = await getToken();
         if (!jwt) throw new Error('auth');
 
-        const cr = await fetch(`${API_BASE}/billing/payme/checkout-config`, {
-          headers: { Authorization: `Bearer ${jwt}` },
-        });
-        if (!cr.ok) throw new Error('config');
-
-        const cfg = (await cr.json()) as CheckoutConfig;
+        let cfg: CheckoutConfig;
+        if (payMeCheckoutFromOverview?.merchant_public_key) {
+          cfg = payMeCheckoutFromOverview;
+        } else {
+          const cr = await fetch(`${API_BASE}/billing/payme/checkout-config`, {
+            headers: { Authorization: `Bearer ${jwt}` },
+          });
+          if (!cr.ok) throw new Error(`config-${cr.status}`);
+          cfg = (await cr.json()) as CheckoutConfig;
+        }
         if (cancelled) return;
 
         setConfig(cfg);
@@ -146,8 +159,19 @@ export function PayMeCheckoutModal({ open, plan, getToken, onClose, onCompleted 
 
         if (cancelled) return;
         setFieldsReady(true);
-      } catch {
-        if (!cancelled) setBootstrapErr(t('billing.paymeLoadFailed'));
+      } catch (e: unknown) {
+        console.error('[PayMe] bootstrap failed', e);
+        if (!cancelled) {
+          let msg = t('billing.paymeLoadFailed');
+          if (e instanceof Error && e.message.startsWith('config-')) {
+            const code = e.message.slice('config-'.length);
+            msg = `${msg} (HTTP ${code})`;
+            if (code === '404') {
+              msg = `${msg}. ${t('billing.payme404DeployHint')}`;
+            }
+          }
+          setBootstrapErr(msg);
+        }
       } finally {
         if (!cancelled) setBusy(false);
       }
@@ -158,8 +182,8 @@ export function PayMeCheckoutModal({ open, plan, getToken, onClose, onCompleted 
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional reset when modal opens with plan context
-  }, [open, plan?.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset when modal opens; overview may gain payme_checkout after refresh
+  }, [open, plan?.id, payMeCheckoutFromOverview?.merchant_public_key, payMeCheckoutFromOverview?.test_mode]);
 
   const submitPay = async (ev: FormEvent) => {
     ev.preventDefault();

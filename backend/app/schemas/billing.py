@@ -202,6 +202,13 @@ class CouponResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class PayMeCheckoutClientConfig(BaseModel):
+    """Browser Hosted Fields — same shape as GET /payme/checkout-config (also embedded in /overview)."""
+    merchant_public_key: str
+    test_mode: bool
+    checkout_js_url: str = "https://cdn.payme.io/hf/v1/hostedfields.js"
+
+
 class BillingOverviewResponse(BaseModel):
     """Complete billing overview"""
     current_plan: str
@@ -210,6 +217,7 @@ class BillingOverviewResponse(BaseModel):
     available_plans: list[PlanInfo]
     has_active_coupon: bool
     coupon_code: Optional[str]
+    payme_checkout: Optional[PayMeCheckoutClientConfig] = None
 
     model_config = ConfigDict(from_attributes=True)
 

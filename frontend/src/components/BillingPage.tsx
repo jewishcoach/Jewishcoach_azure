@@ -37,6 +37,11 @@ interface BillingOverview {
   available_plans: Plan[];
   has_active_coupon: boolean;
   coupon_code?: string;
+  payme_checkout?: {
+    merchant_public_key: string;
+    test_mode: boolean;
+    checkout_js_url?: string;
+  } | null;
 }
 
 const API_BASE = getApiBase();
@@ -313,6 +318,7 @@ export const BillingPage = () => {
             key={payMeSession}
             open
             plan={checkoutPlan}
+            payMeCheckoutFromOverview={overview?.payme_checkout ?? null}
             getToken={getToken}
             onClose={() => setCheckoutPlan(null)}
             onCompleted={() => void loadBillingData()}

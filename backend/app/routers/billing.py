@@ -19,6 +19,7 @@ from ..schemas.billing import (
     SubscriptionResponse,
     UsageResponse,
     BillingOverviewResponse,
+    PayMeCheckoutClientConfig,
     PLAN_LIMITS,
     PayMeSubscribeRequest,
     effective_messages_per_month,
@@ -409,14 +410,24 @@ def get_billing_overview(
     
     # Check for active coupon
     active_coupon = get_active_coupon(db, user)
-    
+
+    payme_checkout: PayMeCheckoutClientConfig | None = None
+    if payme_is_ready_for_requests():
+        base = payme_api_base_url()
+        payme_checkout = PayMeCheckoutClientConfig(
+            merchant_public_key=payme_api_key(),
+            test_mode="sandbox" in base.lower(),
+            checkout_js_url="https://cdn.payme.io/hf/v1/hostedfields.js",
+        )
+
     return BillingOverviewResponse(
         current_plan=user.current_plan,
         subscription=SubscriptionResponse.from_orm(subscription) if subscription else None,
         usage=usage,
         available_plans=available_plans,
         has_active_coupon=active_coupon is not None,
-        coupon_code=active_coupon.coupon.code if active_coupon else None
+        coupon_code=active_coupon.coupon.code if active_coupon else None,
+        payme_checkout=payme_checkout,
     )
 
 
