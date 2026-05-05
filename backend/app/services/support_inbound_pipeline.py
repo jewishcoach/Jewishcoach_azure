@@ -372,9 +372,7 @@ def run_support_auto_reply_after_inbound(
     if not reply_plain:
         return {"skipped": False, "inbound_log_id": inbound_row.id, "auto_reply": False, "error": "empty_draft"}
 
-    suffix_he = "\n\n—\nתשובה אוטומטית שנוצרה באמצעות AI; אם צריך צוות אנושי נשמח להמשיך כאן באימייל."
-    suffix_en = "\n\n—\nThis message was drafted automatically; our team can follow up by email if needed."
-    reply_plain_full = reply_plain + (suffix_he if lang.startswith("he") else suffix_en)
+    reply_plain_full = reply_plain
 
     rtl = lang.startswith("he") or bool(re.search(r"[\u0590-\u05FF]", reply_plain_full))
     reply_html = plain_to_reply_html(reply_plain_full, rtl=rtl)
