@@ -50,6 +50,17 @@ echo "🐍 Python: $PYTHON"
 # DB init: create new tables if missing
 "$PYTHON" -c "from app.database import engine, Base; import app.models; Base.metadata.create_all(bind=engine, checkfirst=True)" 2>&1 || true
 
+# Default billing coupons (BSD100, etc.) — runs once per instance boot before workers fork.
+"$PYTHON" -c "
+from app.database import SessionLocal
+from app.services.coupon_bootstrap import ensure_bsd100_coupon
+_db = SessionLocal()
+try:
+    ensure_bsd100_coupon(_db)
+finally:
+    _db.close()
+" 2>&1 || true
+
 # Column migrations: add new columns to existing tables (idempotent)
 # Uses app.database.engine directly so it targets the same DB the app uses.
 "$PYTHON" -c "

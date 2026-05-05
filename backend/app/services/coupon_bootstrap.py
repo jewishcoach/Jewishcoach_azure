@@ -12,7 +12,7 @@ import logging
 from sqlalchemy.exc import IntegrityError, OperationalError, ProgrammingError
 from sqlalchemy.orm import Session
 
-from ..models import Coupon
+from ..models import Coupon, CouponRedemption
 
 logger = logging.getLogger(__name__)
 
@@ -21,12 +21,28 @@ BSD100_DESCRIPTION = (
 )
 
 
-def ensure_bsd100_coupon(db: Session) -> None:
+def _maybe_create_coupon_tables() -> bool:
+    """Create coupons / coupon_redemptions if metadata drift left them missing."""
+    try:
+        from ..database import engine, Base
+
+        Base.metadata.create_all(
+            bind=engine,
+            tables=[Coupon.__table__, CouponRedemption.__table__],
+            checkfirst=True,
+        )
+        return True
+    except Exception as ex:
+        logger.warning("Could not create coupon tables via metadata: %s", ex)
+        return False
+
+
+def ensure_bsd100_coupon(db: Session, *, _ddl_retry: bool = False) -> None:
     """
     Guarantee BSD100 exists, grants premium, is active.
 
     Safe under multi-worker Gunicorn: duplicate inserts raise IntegrityError → rollback.
-    Missing `coupons` table → log and skip (migrations not applied yet).
+    If `coupons` is missing, attempts SQLAlchemy DDL once then retries.
     """
     try:
         existing = db.query(Coupon).filter(Coupon.code == "BSD100").first()
@@ -65,4 +81,9 @@ def ensure_bsd100_coupon(db: Session) -> None:
         logger.debug("BSD100 insert raced or duplicate; treating as ok")
     except (OperationalError, ProgrammingError) as e:
         db.rollback()
-        logger.warning("BSD100 bootstrap skipped (coupons table missing or DB error): %s", e)
+        if _ddl_retry:
+            logger.warning("BSD100 bootstrap failed after DDL retry: %s", e)
+            return
+        logger.warning("BSD100 bootstrap DB error (will try DDL once): %s", e)
+        if _maybe_create_coupon_tables():
+            ensure_bsd100_coupon(db, _ddl_retry=True)

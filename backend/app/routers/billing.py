@@ -426,6 +426,11 @@ def redeem_coupon(
     db: Session = Depends(get_db)
 ):
     """Redeem a promotional coupon"""
+    from ..services.coupon_bootstrap import ensure_bsd100_coupon
+
+    # Lazily ensure default coupons exist even if worker lifespan missed or table was created late.
+    ensure_bsd100_coupon(db)
+
     code_norm = (request.code or "").strip().upper()
     if not code_norm:
         raise HTTPException(status_code=400, detail="Enter a coupon code")
