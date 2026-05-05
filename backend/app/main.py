@@ -1,9 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-from .database import engine, Base
+from .database import engine
 from .limiter import limiter
 from .routers import chat, speech, feedback, users, journal, tools, admin, billing, profile, calendar, onboarding_email_cron
 from .routers.support_email_inbound import router as support_email_inbound_router
@@ -14,6 +15,28 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup/shutdown hooks (runs once per worker process)."""
+    try:
+        from .database import SessionLocal
+        from .services.coupon_bootstrap import ensure_bsd100_coupon
+
+        db = SessionLocal()
+        try:
+            ensure_bsd100_coupon(db)
+        finally:
+            db.close()
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).exception(
+            "Coupon bootstrap failed at startup (non-fatal); redeem-coupon may fail until DB is ready"
+        )
+    yield
+
+
 # Important: do not create DB schema at import-time.
 # With multiple Gunicorn workers this can race (especially on SQLite)
 # and fail the whole app boot. Schema init is handled in startup.sh once.
@@ -21,7 +44,8 @@ load_dotenv()
 app = FastAPI(
     title="Jewish Coaching API",
     description="AI Coaching platform with RAG and Voice support",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
