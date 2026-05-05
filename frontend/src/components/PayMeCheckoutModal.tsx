@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback, type FormEvent } from 'react';
-import { Loader2, X, Shield, Lock } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { getApiBase } from '../config';
 
@@ -299,24 +299,39 @@ export function PayMeCheckoutModal({
           <p className="text-[#94a3b8] text-sm">{t('billing.paymeSubtitle', { plan: rtl ? plan.name_he : plan.name_en })}</p>
 
           <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 space-y-2">
-            <div className="flex items-start gap-2">
-              <Shield className="w-4 h-4 text-emerald-500/90 flex-shrink-0 mt-0.5" aria-hidden />
-              <p className="text-[#94a3b8] text-xs leading-relaxed">{t('billing.paymeTrustBlurb')}</p>
-            </div>
-            <div className="flex items-start gap-2">
-              <Lock className="w-4 h-4 text-slate-500 flex-shrink-0 mt-0.5" aria-hidden />
-              <p className="text-[#94a3b8] text-xs leading-relaxed">
-                {t('billing.paymeWhyIdPhone')}{' '}
-                <a
-                  href="https://payme.io/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[#7dd3fc] hover:underline"
-                >
-                  {t('billing.paymeVendorLink')}
-                </a>
-              </p>
-            </div>
+            <p className="text-[#94a3b8] text-xs leading-relaxed">{t('billing.paymeLegalIntro')}</p>
+            <p className="text-xs leading-relaxed flex flex-wrap items-center gap-x-2 gap-y-1">
+              <a
+                href="https://payme.io/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#7dd3fc] hover:underline font-medium"
+              >
+                {t('billing.paymeLegalWebsite')}
+              </a>
+              <span className="text-[#64748b]" aria-hidden>
+                ·
+              </span>
+              <a
+                href="https://payme.io/privacy/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#7dd3fc] hover:underline"
+              >
+                {t('billing.paymeLegalPrivacy')}
+              </a>
+              <span className="text-[#64748b]" aria-hidden>
+                ·
+              </span>
+              <a
+                href="https://payme.io/terms-conditions/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#7dd3fc] hover:underline"
+              >
+                {t('billing.paymeLegalTerms')}
+              </a>
+            </p>
           </div>
           {bootstrapErr && (
             <div className="rounded-lg bg-red-500/10 text-red-400 text-sm px-3 py-2">{bootstrapErr}</div>
