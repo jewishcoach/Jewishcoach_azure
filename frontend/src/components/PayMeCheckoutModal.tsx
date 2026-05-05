@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback, type FormEvent } from 'react';
-import { Loader2, X } from 'lucide-react';
+import { Loader2, X, Shield, Lock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { getApiBase } from '../config';
 
@@ -278,6 +278,26 @@ export function PayMeCheckoutModal({
         <form onSubmit={submitPay} className="p-5 space-y-4">
           <p className="text-[#94a3b8] text-sm">{t('billing.paymeSubtitle', { plan: rtl ? plan.name_he : plan.name_en })}</p>
 
+          <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 space-y-2">
+            <div className="flex items-start gap-2">
+              <Shield className="w-4 h-4 text-emerald-500/90 flex-shrink-0 mt-0.5" aria-hidden />
+              <p className="text-[#94a3b8] text-xs leading-relaxed">{t('billing.paymeTrustBlurb')}</p>
+            </div>
+            <div className="flex items-start gap-2">
+              <Lock className="w-4 h-4 text-slate-500 flex-shrink-0 mt-0.5" aria-hidden />
+              <p className="text-[#94a3b8] text-xs leading-relaxed">
+                {t('billing.paymeWhyIdPhone')}{' '}
+                <a
+                  href="https://payme.io/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#7dd3fc] hover:underline"
+                >
+                  {t('billing.paymeVendorLink')}
+                </a>
+              </p>
+            </div>
+          </div>
           {bootstrapErr && (
             <div className="rounded-lg bg-red-500/10 text-red-400 text-sm px-3 py-2">{bootstrapErr}</div>
           )}
@@ -308,6 +328,7 @@ export function PayMeCheckoutModal({
           <input
             ref={phoneRef}
             required
+            autoComplete="tel"
             className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/[0.04] text-[#F5F5F0] text-sm"
             placeholder={t('billing.fieldPhone')}
             dir="ltr"
@@ -315,6 +336,8 @@ export function PayMeCheckoutModal({
           <input
             ref={socialRef}
             required
+            autoComplete="off"
+            inputMode="numeric"
             className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/[0.04] text-[#F5F5F0] text-sm"
             placeholder={t('billing.fieldNationalId')}
             dir="ltr"
