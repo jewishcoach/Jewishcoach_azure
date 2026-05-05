@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '@clerk/clerk-react';
+import { useAuth, useUser } from '@clerk/clerk-react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import {
@@ -102,6 +102,7 @@ function isLikelyApiNetworkOrTlsError(err: unknown): boolean {
 
 export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
   const { getToken } = useAuth();
+  const { user } = useUser();
   const { t, i18n } = useTranslation();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -472,10 +473,19 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
             />
             <div className="absolute bottom-0 right-1/2 translate-x-1/2 translate-y-1/2">
               <div
-                className="w-20 h-20 rounded-full flex items-center justify-center border-4"
+                className="w-20 h-20 rounded-full flex items-center justify-center border-4 overflow-hidden shrink-0"
                 style={{ background: COLORS.card, borderColor: COLORS.card, boxShadow: COLORS.shadowSm }}
               >
-                <User className="w-10 h-10" style={{ color: COLORS.gold }} />
+                {user?.imageUrl ? (
+                  <img
+                    src={user.imageUrl}
+                    alt=""
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <User className="w-10 h-10" style={{ color: COLORS.gold }} aria-hidden />
+                )}
               </div>
             </div>
           </motion.div>
