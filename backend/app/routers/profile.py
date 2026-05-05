@@ -176,7 +176,7 @@ def get_dashboard(
 # INSIGHTS — Deep psychological profile analysis
 # ══════════════════════════════════════════════════════════════════════════════
 
-MIN_USER_WORDS = 150   # minimum words across all conversations to unlock analysis
+MIN_USER_WORDS = 151  # Insights unlock: strictly more than 150 words (≥151)
 CACHE_TTL_DAYS = 7     # days before re-analysis is recommended
 
 

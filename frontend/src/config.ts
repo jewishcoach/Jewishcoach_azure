@@ -14,7 +14,7 @@
 export const BSD_VERSION = (localStorage.getItem('bsd_version') || 'v2') as 'v1' | 'v2';
 
 /** Free (basic) plan total message quota — keep in sync with backend PLAN_LIMITS["basic"].messages_per_month */
-export const BASIC_PLAN_MESSAGES_PER_MONTH = 1000;
+export const BASIC_PLAN_MESSAGES_PER_MONTH = 150;
 
 /** Free (basic) plan Azure Speech minutes per month (-1 = unlimited). Keep in sync with backend PLAN_LIMITS["basic"].speech_minutes_per_month */
 export const BASIC_PLAN_SPEECH_MINUTES_PER_MONTH = -1;
