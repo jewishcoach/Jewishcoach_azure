@@ -3,6 +3,7 @@ import { useAuth } from '@clerk/clerk-react';
 import { useTranslation } from 'react-i18next';
 import { Check, Loader2, CreditCard } from 'lucide-react';
 import { getApiBase } from '../config';
+import { formatCouponRedeemError } from '../lib/couponRedeemError';
 import { PayMeCheckoutModal } from './PayMeCheckoutModal';
 
 interface Plan {
@@ -99,7 +100,7 @@ export const BillingPage = () => {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ code: couponCode.toUpperCase() }),
+        body: JSON.stringify({ code: couponCode.trim() }),
       });
       const data = await response.json();
       if (response.ok) {
@@ -107,7 +108,7 @@ export const BillingPage = () => {
         setCouponCode('');
         setTimeout(() => loadBillingData(), 800);
       } else {
-        setCouponMessage({ type: 'error', text: Array.isArray(data.detail) ? data.detail[0]?.msg || data.detail : data.detail || t('billing.couponError') });
+        setCouponMessage({ type: 'error', text: formatCouponRedeemError(data.detail, t) });
       }
     } catch {
       setCouponMessage({ type: 'error', text: t('billing.couponServerError') });

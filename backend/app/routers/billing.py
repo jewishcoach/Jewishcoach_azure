@@ -426,15 +426,17 @@ def redeem_coupon(
     db: Session = Depends(get_db)
 ):
     """Redeem a promotional coupon"""
-    
-    # Find coupon
-    coupon = db.query(Coupon).filter(
-        Coupon.code == request.code.upper(),
-        Coupon.is_active == True
-    ).first()
-    
-    if not coupon:
-        raise HTTPException(status_code=404, detail="Coupon not found or inactive")
+    code_norm = (request.code or "").strip().upper()
+    if not code_norm:
+        raise HTTPException(status_code=400, detail="Enter a coupon code")
+
+    row = db.query(Coupon).filter(Coupon.code == code_norm).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Coupon code not found")
+    if not row.is_active:
+        raise HTTPException(status_code=404, detail="Coupon is no longer active")
+
+    coupon = row
     
     # Check if coupon is expired
     if coupon.expires_at and coupon.expires_at < datetime.now(timezone.utc):

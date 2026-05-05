@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { useTranslation } from 'react-i18next';
 import { Gift, Sparkles, Check, Zap } from 'lucide-react';
-import { BASIC_PLAN_MESSAGES_PER_MONTH, BASIC_PLAN_SPEECH_MINUTES_PER_MONTH } from '../config';
+import { BASIC_PLAN_MESSAGES_PER_MONTH, BASIC_PLAN_SPEECH_MINUTES_PER_MONTH, getApiBase } from '../config';
+import { formatCouponRedeemError } from '../lib/couponRedeemError';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE = getApiBase();
 
 export const BillingPageSimple = () => {
   const { getToken } = useAuth();
@@ -21,13 +22,13 @@ export const BillingPageSimple = () => {
     
     try {
       const token = await getToken();
-      const response = await fetch(`${API_URL}/api/billing/redeem-coupon`, {
+      const response = await fetch(`${API_BASE}/billing/redeem-coupon`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ code: couponCode.toUpperCase() })
+        body: JSON.stringify({ code: couponCode.trim() })
       });
       
       const data = await response.json();
@@ -36,7 +37,7 @@ export const BillingPageSimple = () => {
         setCouponMessage({ type: 'success', text: data.message || t('billing.couponSuccess') });
         setCouponCode('');
       } else {
-        setCouponMessage({ type: 'error', text: data.detail || t('billing.couponError') });
+        setCouponMessage({ type: 'error', text: formatCouponRedeemError(data.detail, t) });
       }
     } catch (error) {
       console.error('Coupon error:', error);
