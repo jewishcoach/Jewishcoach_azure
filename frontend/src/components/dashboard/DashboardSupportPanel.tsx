@@ -377,9 +377,6 @@ export function DashboardSupportPanel({ colors, profileEmail, refreshAuthToken }
           <h2 id="support-thread-heading" className="text-base font-semibold" style={{ color: colors.text }}>
             {t('support.thread.title')}
           </h2>
-          <p className="text-xs mt-1 leading-relaxed" style={{ color: colors.textMuted }}>
-            {t('support.thread.subtitle')}
-          </p>
         </header>
 
         <div
