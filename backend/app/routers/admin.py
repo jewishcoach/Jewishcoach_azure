@@ -27,9 +27,27 @@ router = APIRouter(
 )
 
 
-def _admin_visible_email(u: User) -> Optional[str]:
-    raw = resolve_email_from_db_and_clerk(u.clerk_id, u.email)
-    return normalize_public_email(raw)
+def _admin_directory_display_email(u: User, resolved: Optional[str]) -> Optional[str]:
+    """
+    Email string for admin grids — prefer real inbox; never hide rows behind empty cells.
+
+    Public APIs still use normalize_public_email alone; operators need to see Clerk placeholders
+    (@clerk.temp) when Backend API cannot resolve a primary address (missing CLERK_SECRET_KEY, etc.).
+    """
+    pub = normalize_public_email(resolved)
+    if pub:
+        return pub
+    if resolved and isinstance(resolved, str):
+        r = resolved.strip()
+        if r:
+            return r
+    raw_db = (u.email or "").strip()
+    return raw_db if raw_db else None
+
+
+def _admin_email_for_persist(resolved: Optional[str]) -> Optional[str]:
+    """Only normalized real inboxes should be written onto User.email."""
+    return normalize_public_email(resolved)
 
 
 def _maybe_persist_resolved_email(db: Session, u: User, visible: Optional[str]) -> None:
@@ -479,9 +497,11 @@ async def list_users(
             has_active_coupon=u.id in coupon_users,
             assumptions=assumptions,
         )
-        visible_email = _admin_visible_email(u)
+        resolved = resolve_email_from_db_and_clerk(u.clerk_id, u.email)
+        persist_candidate = _admin_email_for_persist(resolved)
+        visible_email = _admin_directory_display_email(u, resolved)
         email_before = u.email
-        _maybe_persist_resolved_email(db, u, visible_email)
+        _maybe_persist_resolved_email(db, u, persist_candidate)
         if u.email != email_before:
             dirty_email = True
         rows.append(
@@ -535,9 +555,11 @@ async def get_user_detail(user_id: int, db: Session = Depends(get_db)):
         assumptions=assumptions,
     )
 
-    visible_email = _admin_visible_email(user)
+    resolved = resolve_email_from_db_and_clerk(user.clerk_id, user.email)
+    persist_candidate = _admin_email_for_persist(resolved)
+    visible_email = _admin_directory_display_email(user, resolved)
     email_before = user.email
-    _maybe_persist_resolved_email(db, user, visible_email)
+    _maybe_persist_resolved_email(db, user, persist_candidate)
     if user.email != email_before:
         try:
             db.commit()
