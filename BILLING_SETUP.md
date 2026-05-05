@@ -214,8 +214,17 @@ db.commit()
 | משתנה | תיאור |
 |--------|--------|
 | `PAYME_API_KEY` | מפתח הסוחר מממשק PayMe |
-| `PAYME_PAYMENTS_API_BASE` | כתובת בסיס ל־API (sandbox / production לפי התיעוד) |
+| `PAYME_PAYMENTS_API_BASE` | כתובת בסיס ל־Payments API (ראו טבלה למטה) |
 | `PAYME_WEBHOOK_SECRET` | אופציונלי — אם PayMe נותנים סוד לחתימת webhook |
+
+כתובות רשמיות (מקונסול/תיעוד PayMe):
+
+| סביבה | URL |
+|--------|-----|
+| Staging | `https://sandbox.payme.io/api/` |
+| Production | `https://live.payme.io/api/` |
+
+ב־`.env` אפשר עם או בלי סלאש בסוף; הקוד מנקה סלאש אחרון.
 
 דוגמה ראו ב־`backend/.env.example`.
 
@@ -225,7 +234,7 @@ db.commit()
 az login --use-device-code   # אם עדיין לא מחובר
 
 export PAYME_API_KEY='המפתח_מקונסול_PayMe'
-export PAYME_PAYMENTS_API_BASE='https://…'   # מדף Sandbox/Production בתיעוד PayMe
+export PAYME_PAYMENTS_API_BASE='https://sandbox.payme.io/api'   # או live: https://live.payme.io/api
 
 bash scripts/set_payme_azure_app_settings.sh
 ```

@@ -35,8 +35,8 @@ fi
 
 if [ -z "${PAYME_PAYMENTS_API_BASE:-}" ]; then
   echo "❌ Missing PAYME_PAYMENTS_API_BASE."
-  echo "   Copy sandbox/production Payments API base URL from PayMe docs:"
-  echo "   https://docs.payme.io/docs/payments/v4n3lbk5v9qpj-sandbox-and-production-ur-ls"
+  echo "   Example bases: Staging https://sandbox.payme.io/api  Production https://live.payme.io/api"
+  echo "   Docs: https://docs.payme.io/docs/payments/v4n3lbk5v9qpj-sandbox-and-production-ur-ls"
   exit 1
 fi
 
