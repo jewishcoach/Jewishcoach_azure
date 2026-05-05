@@ -72,7 +72,8 @@ export function getApiBase(): string {
   const viteRaw = import.meta.env.VITE_API_URL;
   const vite = typeof viteRaw === 'string' ? viteRaw.trim() : '';
   if (vite) {
-    let base = vite.endsWith('/api') ? vite : `${vite.replace(/\/$/, '')}/api`;
+    const trimmed = vite.replace(/\/+$/, '');
+    let base = trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
     try {
       if (new URL(base).hostname === 'api.jewishcoacher.com' && shouldUsePersistedAppServiceApi()) {
         base = PRODUCTION_API_AZURE_DEFAULT;

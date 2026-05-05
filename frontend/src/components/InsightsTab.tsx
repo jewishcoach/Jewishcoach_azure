@@ -11,6 +11,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getApiBase } from '../config';
 import {
   Lock,
   ShieldCheck,
@@ -33,10 +34,6 @@ import {
   Quote,
   ArrowRight,
 } from 'lucide-react';
-
-const RAW_API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-// VITE_API_URL already ends with /api in production; strip trailing /api to get base, then re-add
-const API_BASE = RAW_API.endsWith('/api') ? RAW_API.slice(0, -4) : RAW_API.replace(/\/$/, '');
 
 const C = {
   bg: '#F0F1F3',
@@ -264,7 +261,7 @@ export function InsightsTab() {
     setLoadingStatus(true);
     try {
       const token = await getToken();
-      const res = await fetch(`${API_BASE}/api/profile/insights/status`, {
+      const res = await fetch(`${getApiBase()}/profile/insights/status`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error(`status ${res.status}`);
@@ -285,7 +282,7 @@ export function InsightsTab() {
     setGrantingConsent(true);
     try {
       const token = await getToken();
-      await fetch(`${API_BASE}/api/profile/insights/consent`, {
+      await fetch(`${getApiBase()}/profile/insights/consent`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -300,7 +297,7 @@ export function InsightsTab() {
 
   const revokeConsent = async () => {
     const token = await getToken();
-    await fetch(`${API_BASE}/api/profile/insights/consent`, {
+    await fetch(`${getApiBase()}/profile/insights/consent`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -313,7 +310,7 @@ export function InsightsTab() {
     setError(null);
     try {
       const token = await getToken();
-      const url = `${API_BASE}/api/profile/insights${forceRefresh ? '?refresh=true' : ''}`;
+      const url = `${getApiBase()}/profile/insights${forceRefresh ? '?refresh=true' : ''}`;
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
