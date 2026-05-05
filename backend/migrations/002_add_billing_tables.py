@@ -107,8 +107,8 @@ def upgrade():
             INSERT OR IGNORE INTO coupons 
             (code, plan_granted, duration_days, max_uses, is_active, description)
             VALUES 
-            ('BSD100', 'pro', NULL, NULL, 1, 
-             'BSD Special Launch Offer - Lifetime PRO access')
+            ('BSD100', 'premium', NULL, NULL, 1, 
+             'BSD Special Launch Offer — lifetime Premium access')
         """))
         print("✓ Inserted BSD100 coupon")
         

@@ -12,10 +12,10 @@
 ## 🎫 קופון מיוחד: BSD100
 
 **קוד הקופון:** `BSD100`
-- ✨ **גישה לצמיתות לחבילת PRO בחינם**
-- 🎯 הודעות ללא הגבלה
-- 🗣️ זמן דיבור ללא הגבלה
-- 📊 כל הפיצ'רים המתקדמים
+- ✨ **גישה לצמיתות לחבילת Premium בחינם**
+- 🎯 הודעות ללא הגבלה (לפי `PLAN_LIMITS["premium"]`)
+- 🗣️ זמן דיבור ללא הגבלה (כהגדרת התוכנית)
+- 📊 פיצ'רים של פרימיום בקטלוג (לא שכבת Legacy של PRO)
 - ✅ כבר מוכן לשימוש!
 
 ---
@@ -93,7 +93,7 @@ Content-Type: application/json
 {
   "success": true,
   "message": "Coupon BSD100 redeemed successfully!",
-  "plan_granted": "pro",
+  "plan_granted": "premium",
   "expires_at": null
 }
 ```
