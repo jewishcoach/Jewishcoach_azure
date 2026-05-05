@@ -275,7 +275,7 @@ export const BillingPage = () => {
                         className={`w-4 h-4 flex-shrink-0 ${premiumHighlight ? 'text-[#B38728]' : 'text-[#64748b]'}`}
                       />
                       {plan.messages_per_month === -1
-                        ? `${t('billing.unlimited')} ${t('dashboard.messages')}`
+                        ? `${t('billing.unlimited')} · ${t('billing.messagesPerMonthShort')}`
                         : `${plan.messages_per_month} ${t('billing.messagesPerMonthShort')}`}
                     </li>
                     <li className="flex items-center gap-2 text-[#94a3b8] text-sm">
