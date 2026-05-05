@@ -54,6 +54,10 @@ type Props = {
 
 const API_BASE = getApiBase();
 
+/** PayMe injects iframes here; constrain iframe element height or it balloons vertically in flex layouts. */
+const PAYME_HF_SLOT =
+  'h-11 max-h-11 shrink-0 rounded-lg border border-white/10 bg-white/[0.04] px-2 overflow-hidden [&_iframe]:block [&_iframe]:!h-11 [&_iframe]:!max-h-11 [&_iframe]:w-full [&_iframe]:border-0 [&_iframe]:align-middle';
+
 export function PayMeCheckoutModal({
   open,
   plan,
@@ -146,8 +150,22 @@ export function PayMeCheckoutModal({
         const hf = instance.hostedFields();
         const stylesBase =
           rtl
-            ? { 'font-size': '16px', 'text-align': 'right', color: '#F5F5F0', '::placeholder': { color: '#64748b' } }
-            : { 'font-size': '16px', 'text-align': 'left', color: '#F5F5F0', '::placeholder': { color: '#64748b' } };
+            ? {
+                'font-size': '16px',
+                'line-height': '44px',
+                height: '44px',
+                'text-align': 'right',
+                color: '#F5F5F0',
+                '::placeholder': { color: '#64748b' },
+              }
+            : {
+                'font-size': '16px',
+                'line-height': '44px',
+                height: '44px',
+                'text-align': 'left',
+                color: '#F5F5F0',
+                '::placeholder': { color: '#64748b' },
+              };
 
         const cardNumber = hf.create('cardNumber', { styles: { base: stylesBase } });
         const expiration = hf.create('cardExpiration', { styles: { base: stylesBase } });
@@ -347,15 +365,15 @@ export function PayMeCheckoutModal({
 
           <div className="space-y-2 pt-1">
             <label className="text-xs text-[#94a3b8]">{t('billing.cardNumber')}</label>
-            <div id={idCn} className="min-h-[44px] rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5" />
+            <div id={idCn} className={PAYME_HF_SLOT} />
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-[#94a3b8]">{t('billing.cardExpiry')}</label>
-                <div id={idExp} className="min-h-[44px] rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 mt-1" />
+                <div id={idExp} className={`${PAYME_HF_SLOT} mt-1`} />
               </div>
               <div>
                 <label className="text-xs text-[#94a3b8]">{t('billing.cardCvv')}</label>
-                <div id={idCvv} className="min-h-[44px] rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 mt-1" />
+                <div id={idCvv} className={`${PAYME_HF_SLOT} mt-1`} />
               </div>
             </div>
           </div>
