@@ -261,7 +261,12 @@ curl -sS -H "Authorization: Bearer YOUR_CLERK_JWT" \
 }
 ```
 
-כדי להפעיל גבייה אמיתית חסר עדיין: קריאות PayMe (יצירת sale / redirect), ו־endpoint webhook מאומת שמעדכן `Subscription` / `current_plan`.
+### זרימת תשלום (מומש בקוד)
+
+- בפרונט: דף המנוי טוען `hostedfields.js`, מבצע `tokenize()` כמו בתיעוד PayMe.
+- בבקאנד: `POST /api/billing/payme/subscribe` קורא ל־PayMe `POST …/generate-sale` עם טוקן הקונה + `sale_price` מהחבילה.
+- `seller_payme_id` בבקשה: ברירת מחדל זהה ל־`PAYME_API_KEY` (ניתן להפריד עם `PAYME_SELLER_PAYME_ID` אם מופיע בקונסול הסוחר).
+- Webhook גיבוי: `POST /api/billing/payme/webhook` — אם מוגדר `PAYME_WEBHOOK_SECRET`, צריך לשלוח את אותו ערך בכותרת `X-PayMe-Webhook-Token`.
 
 תיעוד רשמי: [PayMe Docs](https://docs.payme.io/).
 

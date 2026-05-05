@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { useTranslation } from 'react-i18next';
-import { Check, Loader2, MessageSquare, CreditCard } from 'lucide-react';
+import { Check, Loader2, CreditCard } from 'lucide-react';
 import { getApiBase } from '../config';
+import { PayMeCheckoutModal } from './PayMeCheckoutModal';
 
 interface Plan {
   id: string;
@@ -48,7 +49,8 @@ export const BillingPage = () => {
   const [couponCode, setCouponCode] = useState('');
   const [couponMessage, setCouponMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [couponLoading, setCouponLoading] = useState(false);
-  const [showUpgradeNote, setShowUpgradeNote] = useState(false);
+  const [checkoutPlan, setCheckoutPlan] = useState<Plan | null>(null);
+  const [payMeSession, setPayMeSession] = useState(0);
 
   const loadBillingData = useCallback(async () => {
     try {
@@ -275,7 +277,11 @@ export const BillingPage = () => {
                   </ul>
                   {!isCurrent && plan.price > 0 && (
                     <button
-                      onClick={() => setShowUpgradeNote(true)}
+                      type="button"
+                      onClick={() => {
+                        setCheckoutPlan(plan);
+                        setPayMeSession((s) => s + 1);
+                      }}
                       className="w-full py-2.5 rounded-lg bg-white/10 text-[#F5F5F0] text-sm font-medium hover:bg-white/15 transition-colors"
                     >
                       {t('billing.upgradeNow')}
@@ -296,30 +302,21 @@ export const BillingPage = () => {
                 {t('billing.paymentDetails')}
               </h3>
               <p className="text-[#94a3b8] text-sm">
-                {t('billing.paymentComingSoon')}
+                {t('billing.paymentPayMeHint')}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Upgrade note modal */}
-        {showUpgradeNote && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={() => setShowUpgradeNote(false)}>
-            <div className="bg-[#1e293b] rounded-lg p-6 max-w-sm border border-white/10" onClick={(e) => e.stopPropagation()}>
-              <h3 className="text-lg font-medium text-[#F5F5F0] mb-2">
-                {t('billing.upgradePlan')}
-              </h3>
-              <p className="text-[#94a3b8] text-sm mb-4">
-                {t('billing.upgradeNote')}
-              </p>
-              <button
-                onClick={() => setShowUpgradeNote(false)}
-                className="w-full py-2 rounded-lg bg-white/10 text-[#F5F5F0] text-sm font-medium hover:bg-white/15"
-              >
-                {t('billing.gotIt')}
-              </button>
-            </div>
-          </div>
+        {checkoutPlan && (
+          <PayMeCheckoutModal
+            key={payMeSession}
+            open
+            plan={checkoutPlan}
+            getToken={getToken}
+            onClose={() => setCheckoutPlan(null)}
+            onCompleted={() => void loadBillingData()}
+          />
         )}
       </div>
     </div>

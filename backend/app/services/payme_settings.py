@@ -10,6 +10,17 @@ def payme_api_key() -> str:
     return (os.getenv("PAYME_API_KEY") or "").strip()
 
 
+def payme_seller_payme_id() -> str:
+    """
+    Merchant seller id for REST generate-sale (often the same string as PAYME_API_KEY).
+    Override with PAYME_SELLER_PAYME_ID if PayMe dashboard shows a distinct seller id.
+    """
+    env = (os.getenv("PAYME_SELLER_PAYME_ID") or "").strip()
+    if env:
+        return env
+    return payme_api_key()
+
+
 def payme_api_base_url() -> str:
     """Payments API base URL (sandbox vs production) — see PayMe docs."""
     return (os.getenv("PAYME_PAYMENTS_API_BASE") or "").strip().rstrip("/")

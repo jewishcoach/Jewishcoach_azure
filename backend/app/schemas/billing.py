@@ -2,7 +2,7 @@
 Pydantic schemas for billing and subscription management
 """
 from pydantic import BaseModel, ConfigDict, Field
-from typing import Optional
+from typing import Optional, Literal
 from datetime import datetime
 from enum import Enum
 
@@ -116,6 +116,17 @@ def effective_messages_per_month(
 # ============================================================================
 # REQUEST SCHEMAS
 # ============================================================================
+
+class PayMeSubscribeRequest(BaseModel):
+    """Complete subscription payment after PayMe Hosted Fields tokenize()."""
+    plan: Literal["premium", "pro"]
+    buyer_token: str = Field(..., min_length=6)
+    payer_first_name: str = Field("", max_length=120)
+    payer_last_name: str = Field("", max_length=120)
+    payer_email: str = Field("", max_length=320)
+    payer_phone: str = Field("", max_length=40)
+    payer_social_id: str = Field("", max_length=20)
+
 
 class CouponRedeemRequest(BaseModel):
     """Request to redeem a coupon"""

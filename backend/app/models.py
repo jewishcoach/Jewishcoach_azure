@@ -190,6 +190,21 @@ class CouponRedemption(Base):
     coupon = relationship("Coupon", backref="redemptions")
 
 
+class PayMeCheckoutIntent(Base):
+    """Pending PayMe card checkout — correlates generate-sale transaction_id with webhooks."""
+    __tablename__ = "payme_checkout_intents"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    plan = Column(String, nullable=False)
+    transaction_id = Column(String, unique=True, index=True, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    fulfilled_at = Column(DateTime, nullable=True)
+    last_payme_json = Column(Text, nullable=True)
+
+    user = relationship("User", backref="payme_checkout_intents")
+
+
 # ============================================================================
 # BSD CORE (LangGraph Orchestrator) - State + Audit
 # ============================================================================

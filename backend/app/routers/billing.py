@@ -1,15 +1,17 @@
 """
 Billing and subscription management endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import datetime, timedelta, timezone
 from typing import List
-import os
+import json
+import secrets
+import uuid
 
 from ..database import get_db
-from ..models import User, Subscription, UsageRecord, Coupon, CouponRedemption, Message, Conversation
+from ..models import User, Subscription, UsageRecord, Coupon, CouponRedemption, Message, Conversation, PayMeCheckoutIntent
 from ..dependencies import get_current_user
 from ..schemas.billing import (
     CouponRedeemRequest,
@@ -18,7 +20,7 @@ from ..schemas.billing import (
     UsageResponse,
     BillingOverviewResponse,
     PLAN_LIMITS,
-    PlanType,
+    PayMeSubscribeRequest,
     effective_messages_per_month,
 )
 from ..services.payme_settings import (
@@ -26,6 +28,14 @@ from ..services.payme_settings import (
     payme_api_key,
     payme_webhook_secret,
     payme_is_ready_for_requests,
+)
+from ..services.payme_api import (
+    payme_generate_sale,
+    payme_response_failed,
+    payme_sale_reference,
+    PayMeAPIError,
+    deep_find_transaction_id,
+    webhook_payload_suggests_success,
 )
 
 router = APIRouter(prefix="/api/billing", tags=["billing"])
@@ -148,6 +158,52 @@ def get_active_coupon(db: Session, user: User) -> CouponRedemption | None:
     ).first()
 
 
+def _payme_plan_rank(plan_key: str) -> int:
+    return {"basic": 0, "premium": 1, "pro": 2}.get(plan_key, 0)
+
+
+def _apply_payme_paid_plan(
+    db: Session,
+    user: User,
+    plan: str,
+    transaction_id: str,
+    payme_resp: dict | None,
+) -> None:
+    """Grant recurring subscription after successful PayMe payment."""
+    now = datetime.now(timezone.utc)
+    period_end = now + timedelta(days=31)
+    user.current_plan = plan
+    sale_ref = payme_sale_reference(payme_resp or {})
+    ext_id = f"payme:{sale_ref}" if sale_ref else f"payme_tx:{transaction_id}"
+    sub = db.query(Subscription).filter(
+        Subscription.user_id == user.id,
+        Subscription.status == "active",
+    ).first()
+    if sub:
+        sub.plan = plan
+        sub.status = "active"
+        sub.stripe_subscription_id = ext_id
+        sub.coupon_code = None
+        sub.current_period_start = now
+        sub.current_period_end = period_end
+    else:
+        db.add(
+            Subscription(
+                user_id=user.id,
+                plan=plan,
+                status="active",
+                stripe_subscription_id=ext_id,
+                current_period_start=now,
+                current_period_end=period_end,
+            )
+        )
+
+
+def _public_payme_snapshot(d: dict) -> dict:
+    keys = ("status_code", "session", "pay_me_sale_id", "sale_pay_me_id", "sale_id")
+    return {k: d[k] for k in keys if k in d}
+
+
 # ============================================================================
 # API ENDPOINTS
 # ============================================================================
@@ -164,6 +220,145 @@ def payme_integration_status(_user: User = Depends(get_current_user)):
         "payme_webhook_secret_configured": bool(payme_webhook_secret()),
         "payme_ready_for_http": payme_is_ready_for_requests(),
     }
+
+
+@router.get("/payme/checkout-config")
+def payme_checkout_client_config(_user: User = Depends(get_current_user)):
+    """Merchant key + mode for PayMe Hosted Fields (browser). Same pattern as PayMe JS examples."""
+    if not payme_is_ready_for_requests():
+        raise HTTPException(status_code=503, detail="PayMe is not configured on the server")
+    base = payme_api_base_url()
+    test_mode = "sandbox" in base.lower()
+    return {
+        "merchant_public_key": payme_api_key(),
+        "test_mode": test_mode,
+        "checkout_js_url": "https://cdn.payme.io/hf/v1/hostedfields.js",
+    }
+
+
+@router.post("/payme/subscribe")
+def payme_subscribe_with_token(
+    body: PayMeSubscribeRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Charge saved-card token from PayMe Hosted Fields and upgrade the user's plan.
+    """
+    if not payme_is_ready_for_requests():
+        raise HTTPException(status_code=503, detail="PayMe is not configured")
+
+    plan = body.plan
+    if plan not in PLAN_LIMITS or plan == "basic":
+        raise HTTPException(status_code=400, detail="Invalid plan")
+
+    if user.current_plan == plan:
+        raise HTTPException(status_code=400, detail="Already subscribed to this plan")
+
+    if _payme_plan_rank(plan) < _payme_plan_rank(user.current_plan):
+        raise HTTPException(status_code=400, detail="Downgrades are not handled via PayMe checkout")
+
+    price = int(PLAN_LIMITS[plan]["price"])
+    if price <= 0:
+        raise HTTPException(status_code=400, detail="Plan has no price")
+
+    tid = f"jc-{user.id}-{uuid.uuid4().hex}"
+
+    intent = PayMeCheckoutIntent(
+        user_id=user.id,
+        plan=plan,
+        transaction_id=tid,
+    )
+    db.add(intent)
+    db.commit()
+
+    payer_email = (body.payer_email or user.email or "").strip()
+
+    try:
+        resp = payme_generate_sale(
+            buyer_token=body.buyer_token,
+            sale_price=price,
+            transaction_id=tid,
+            buyer_email=payer_email or None,
+        )
+    except PayMeAPIError as e:
+        intent.last_payme_json = json.dumps(e.body if isinstance(e.body, dict) else {"error": str(e.body)})[:8000]
+        db.commit()
+        raise HTTPException(status_code=502, detail=f"PayMe request failed: {e}") from e
+
+    intent.last_payme_json = json.dumps(resp)[:8000]
+    db.commit()
+
+    if payme_response_failed(resp):
+        detail = resp.get("status_error_details") or "Payment declined"
+        raise HTTPException(status_code=402, detail=str(detail))
+
+    intent.fulfilled_at = datetime.now(timezone.utc)
+    _apply_payme_paid_plan(db, user, plan, tid, resp)
+    db.commit()
+
+    return {
+        "success": True,
+        "plan": plan,
+        "transaction_id": tid,
+        "payme": _public_payme_snapshot(resp),
+    }
+
+
+@router.post("/payme/webhook")
+async def payme_webhook_handler(request: Request, db: Session = Depends(get_db)):
+    """
+    PayMe server callbacks — configure URL in PayMe dashboard.
+    Optional shared secret: set PAYME_WEBHOOK_SECRET and send the same value in header X-PayMe-Webhook-Token.
+    """
+    raw = await request.body()
+    secret = payme_webhook_secret()
+    if secret:
+        tok = (
+            request.headers.get("X-PayMe-Webhook-Token")
+            or request.headers.get("X-Payme-Webhook-Token")
+            or ""
+        ).strip()
+        ok_match = False
+        try:
+            ok_match = bool(tok and secrets.compare_digest(tok, secret))
+        except ValueError:
+            ok_match = False
+        if not ok_match:
+            raise HTTPException(status_code=401, detail="Invalid webhook token")
+
+    try:
+        payload = json.loads(raw.decode("utf-8", errors="replace"))
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON")
+
+    tid = deep_find_transaction_id(payload)
+    if not tid:
+        return {"received": True, "matched": False}
+
+    intent = (
+        db.query(PayMeCheckoutIntent)
+        .filter(
+            PayMeCheckoutIntent.transaction_id == tid,
+            PayMeCheckoutIntent.fulfilled_at.is_(None),
+        )
+        .first()
+    )
+    if not intent:
+        return {"received": True, "matched": False}
+
+    if not webhook_payload_suggests_success(payload):
+        return {"received": True, "matched": True, "fulfilled": False}
+
+    user = db.query(User).filter(User.id == intent.user_id).first()
+    if not user:
+        return {"received": True, "matched": False}
+
+    intent.fulfilled_at = datetime.now(timezone.utc)
+    intent.last_payme_json = json.dumps(payload)[:8000]
+    _apply_payme_paid_plan(db, user, intent.plan, tid, payload if isinstance(payload, dict) else None)
+    db.commit()
+    return {"received": True, "matched": True, "fulfilled": True}
 
 
 @router.get("/plans", response_model=List[PlanInfo])
