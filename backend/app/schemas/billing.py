@@ -29,6 +29,7 @@ PLAN_LIMITS = {
         "name_en": "Basic",
         "price": 0,
         "currency": "ILS",
+        # Total user-message quota (all-time); JSON key kept as messages_per_month for compatibility.
         "messages_per_month": 1000,
         # תמלול קולי: ללא הגבלה זמנית לכל התוכניות (עד להודעה חדשה)
         "speech_minutes_per_month": -1,
@@ -44,7 +45,7 @@ PLAN_LIMITS = {
         "name_en": "Premium",
         "price": 89,
         "currency": "ILS",
-        "messages_per_month": 100,
+        "messages_per_month": -1,  # Unlimited messages on Premium (catalog tier)
         "speech_minutes_per_month": -1,
         "features": {
             "coaching_phases": "all",  # All 9 phases
@@ -71,8 +72,11 @@ PLAN_LIMITS = {
     }
 }
 
+# Shown in billing catalog / PayMe upgrade UI only. "pro" stays in PLAN_LIMITS for legacy subscribers & coupons.
+BILLING_PLANS_IN_CATALOG: tuple[str, ...] = ("basic", "premium")
 
-# Per-account monthly message caps. Keys use quota_email_key() so Gmail variants match.
+
+# Per-account message quota overrides (same numeric semantics as plan caps). Keys use quota_email_key().
 MESSAGE_LIMIT_OVERRIDES_BY_EMAIL: dict[str, int] = {
     "mormay11@gmail.com": 10_000,  # mor.may11@gmail.com — Gmail ignores dots in local part
 }
@@ -99,7 +103,7 @@ def quota_email_key(email: Optional[str]) -> str:
 def effective_messages_per_month(
     *, email: Optional[str], plan_key: str, clerk_id: Optional[str] = None
 ) -> int:
-    """Resolved message cap for the billing period (plan unlimited wins, then clerk_id, then email override)."""
+    """Resolved total message quota (all-time user messages). Name kept for API/helpers compatibility."""
     plan_limits = PLAN_LIMITS.get(plan_key, PLAN_LIMITS["basic"])
     plan_cap = plan_limits["messages_per_month"]
     if plan_cap == -1:
@@ -119,7 +123,7 @@ def effective_messages_per_month(
 
 class PayMeSubscribeRequest(BaseModel):
     """Complete subscription payment after PayMe Hosted Fields tokenize()."""
-    plan: Literal["premium", "pro"]
+    plan: Literal["premium"]
     buyer_token: str = Field(..., min_length=6)
     payer_first_name: str = Field("", max_length=120)
     payer_last_name: str = Field("", max_length=120)

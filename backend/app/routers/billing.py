@@ -21,6 +21,7 @@ from ..schemas.billing import (
     BillingOverviewResponse,
     PayMeCheckoutClientConfig,
     PLAN_LIMITS,
+    BILLING_PLANS_IN_CATALOG,
     PayMeSubscribeRequest,
     effective_messages_per_month,
 )
@@ -46,32 +47,20 @@ router = APIRouter(prefix="/api/billing", tags=["billing"])
 # HELPER FUNCTIONS
 # ============================================================================
 
-def count_user_messages_in_billing_period(
-    db: Session,
-    user_id: int,
-    period_start: datetime,
-    period_end: datetime,
-) -> int:
-    """Count persisted user messages in [period_start, period_end) across all conversations."""
+def count_user_messages_quota_usage(db: Session, user_id: int) -> int:
+    """All-time count of user (quota) messages — used for plan limits (one-time / lifetime quota model)."""
     n = (
         db.query(func.count(Message.id))
         .join(Conversation, Message.conversation_id == Conversation.id)
-        .filter(
-            Conversation.user_id == user_id,
-            Message.role == "user",
-            Message.timestamp >= period_start,
-            Message.timestamp < period_end,
-        )
+        .filter(Conversation.user_id == user_id, Message.role == "user")
         .scalar()
     )
     return int(n or 0)
 
 
 def sync_usage_messages_used(db: Session, usage: UsageRecord) -> int:
-    """Align UsageRecord.messages_used with the Message table (source of truth)."""
-    n = count_user_messages_in_billing_period(
-        db, usage.user_id, usage.period_start, usage.period_end
-    )
+    """Mirror lifetime user message count onto the active Usage row (speech still uses monthly periods)."""
+    n = count_user_messages_quota_usage(db, usage.user_id)
     if usage.messages_used != n:
         usage.messages_used = n
         db.commit()
@@ -119,22 +108,23 @@ def get_or_create_current_usage(db: Session, user: User) -> UsageRecord:
 def check_usage_limit(db: Session, user: User, usage_type: str = "message") -> bool:
     """Check if user has quota available"""
     plan_limits = PLAN_LIMITS.get(user.current_plan, PLAN_LIMITS["basic"])
-    usage = get_or_create_current_usage(db, user)
-    
+
     if usage_type == "message":
         limit = effective_messages_per_month(
             email=user.email, plan_key=user.current_plan, clerk_id=user.clerk_id
         )
         if limit == -1:  # Unlimited
             return True
-        return usage.messages_used < limit
-    
+        used = count_user_messages_quota_usage(db, user.id)
+        return used < limit
+
     elif usage_type == "speech":
+        usage = get_or_create_current_usage(db, user)
         limit = plan_limits["speech_minutes_per_month"]
         if limit == -1:  # Unlimited
             return True
         return usage.speech_minutes_used < limit
-    
+
     return False
 
 
@@ -160,6 +150,7 @@ def get_active_coupon(db: Session, user: User) -> CouponRedemption | None:
 
 
 def _payme_plan_rank(plan_key: str) -> int:
+    """Higher = better tier (used to block downgrades via checkout)."""
     return {"basic": 0, "premium": 1, "pro": 2}.get(plan_key, 0)
 
 
@@ -170,7 +161,7 @@ def _apply_payme_paid_plan(
     transaction_id: str,
     payme_resp: dict | None,
 ) -> None:
-    """Grant recurring subscription after successful PayMe payment."""
+    """Grant paid plan after successful PayMe payment (one-time unlock)."""
     now = datetime.now(timezone.utc)
     period_end = now + timedelta(days=31)
     user.current_plan = plan
@@ -250,7 +241,7 @@ def payme_subscribe_with_token(
         raise HTTPException(status_code=503, detail="PayMe is not configured")
 
     plan = body.plan
-    if plan not in PLAN_LIMITS or plan == "basic":
+    if plan != "premium":
         raise HTTPException(status_code=400, detail="Invalid plan")
 
     if user.current_plan == plan:
@@ -364,14 +355,11 @@ async def payme_webhook_handler(request: Request, db: Session = Depends(get_db))
 
 @router.get("/plans", response_model=List[PlanInfo])
 def get_available_plans():
-    """Get all available subscription plans"""
-    plans = []
-    for plan_id, plan_data in PLAN_LIMITS.items():
-        plans.append(PlanInfo(
-            id=plan_id,
-            **plan_data
-        ))
-    return plans
+    """Get subscription plans offered in the product catalog (Basic + Premium)."""
+    return [
+        PlanInfo(id=plan_id, **PLAN_LIMITS[plan_id])
+        for plan_id in BILLING_PLANS_IN_CATALOG
+    ]
 
 
 @router.get("/overview", response_model=BillingOverviewResponse)
@@ -394,7 +382,7 @@ def get_billing_overview(
     usage = UsageResponse(
         period_start=usage_record.period_start,
         period_end=usage_record.period_end,
-        messages_used=usage_record.messages_used,
+        messages_used=count_user_messages_quota_usage(db, user.id),
         messages_limit=effective_messages_per_month(
             email=user.email, plan_key=user.current_plan, clerk_id=user.clerk_id
         ),
@@ -403,10 +391,10 @@ def get_billing_overview(
         plan=user.current_plan
     )
     
-    # Get available plans
-    available_plans = []
-    for plan_id, plan_data in PLAN_LIMITS.items():
-        available_plans.append(PlanInfo(id=plan_id, **plan_data))
+    available_plans = [
+        PlanInfo(id=plan_id, **PLAN_LIMITS[plan_id])
+        for plan_id in BILLING_PLANS_IN_CATALOG
+    ]
     
     # Check for active coupon
     active_coupon = get_active_coupon(db, user)
@@ -529,7 +517,7 @@ def get_current_usage(
     return UsageResponse(
         period_start=usage_record.period_start,
         period_end=usage_record.period_end,
-        messages_used=usage_record.messages_used,
+        messages_used=count_user_messages_quota_usage(db, user.id),
         messages_limit=effective_messages_per_month(
             email=user.email, plan_key=user.current_plan, clerk_id=user.clerk_id
         ),
@@ -554,9 +542,13 @@ def check_limit(
         
         return {
             "has_quota": False,
-            "message": f"You have reached your {usage_type} limit for this billing period",
+            "message": (
+                f"You have reached your {usage_type} limit for your plan"
+                if usage_type == "message"
+                else f"You have reached your {usage_type} limit for this billing period"
+            ),
             "current_plan": user.current_plan,
-            "upgrade_available": user.current_plan != "pro"
+            "upgrade_available": user.current_plan == "basic"
         }
     
     return {

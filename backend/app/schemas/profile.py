@@ -53,7 +53,10 @@ class DashboardStats(BaseModel):
     total_messages: int
     current_phase: Optional[str]
     days_active: int
-    messages_this_month: int
+    messages_this_month: int = Field(
+        ...,
+        description="User-role messages counted toward plan quota (all-time total; field name is legacy).",
+    )
     longest_conversation_messages: int
     favorite_coaching_phase: Optional[str]
     

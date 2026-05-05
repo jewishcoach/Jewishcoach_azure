@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { useTranslation } from 'react-i18next';
-import { Gift, Sparkles, Check, Crown, Zap } from 'lucide-react';
+import { Gift, Sparkles, Check, Zap } from 'lucide-react';
 import { BASIC_PLAN_MESSAGES_PER_MONTH, BASIC_PLAN_SPEECH_MINUTES_PER_MONTH } from '../config';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -62,7 +62,7 @@ export const BillingPageSimple = () => {
             {t('billing.couponTitle')}
           </h3>
           <p className="text-[#F5F5F0]/80 mb-4">
-            הזן את קוד הקופון <strong className="text-[#FCF6BA]">BSD100</strong> כדי לקבל גישה חינמית לצמיתות לחבילת PRO!
+            הזן את קוד הקופון <strong className="text-[#FCF6BA]">BSD100</strong> לפי ההצעה המוגדרת במערכת הקופונים.
           </p>
           <div className="flex gap-2">
             <input
@@ -96,7 +96,7 @@ export const BillingPageSimple = () => {
         </div>
 
         {/* Plans Grid */}
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
           {/* Basic Plan */}
           <div className="bg-white/[0.04] rounded-2xl p-6 border border-white/[0.08]">
             <div className="text-center mb-6">
@@ -111,7 +111,7 @@ export const BillingPageSimple = () => {
             <ul className="space-y-3 mb-6">
               <li className="flex items-start gap-2 text-[#F5F5F0]/90">
                 <Check className="w-5 h-5 text-[#FCF6BA] flex-shrink-0 mt-0.5" />
-                <span>{BASIC_PLAN_MESSAGES_PER_MONTH} הודעות/חודש</span>
+                <span>{BASIC_PLAN_MESSAGES_PER_MONTH} הודעות (סה&quot;כ)</span>
               </li>
               <li className="flex items-start gap-2 text-[#F5F5F0]/90">
                 <Check className="w-5 h-5 text-[#FCF6BA] flex-shrink-0 mt-0.5" />
@@ -137,13 +137,13 @@ export const BillingPageSimple = () => {
               <h3 className="text-2xl font-bold text-[#F5F5F0]">פרמיום</h3>
               <div className="mt-2">
                 <span className="text-4xl font-bold text-[#F5F5F0]">₪89</span>
-                <span className="text-[#F5F5F0]/70">/חודש</span>
+                <span className="text-[#F5F5F0]/70 text-sm mr-1"> חד-פעמי</span>
               </div>
             </div>
             <ul className="space-y-3 mb-6">
               <li className="flex items-start gap-2 text-[#F5F5F0]/90">
                 <Check className="w-5 h-5 text-[#FCF6BA] flex-shrink-0 mt-0.5" />
-                <span>100 הודעות/חודש</span>
+                <span>הודעות ללא הגבלה</span>
               </li>
               <li className="flex items-start gap-2 text-[#F5F5F0]/90">
                 <Check className="w-5 h-5 text-[#FCF6BA] flex-shrink-0 mt-0.5" />
@@ -160,49 +160,12 @@ export const BillingPageSimple = () => {
             </ul>
           </div>
 
-          {/* Pro Plan */}
-          <div className="rounded-2xl p-6 shadow-xl transform scale-105 text-white" style={{ background: 'linear-gradient(135deg, #0f172a, #1e293b, #BF953F)' }}>
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#FCF6BA] text-[#020617] px-4 py-1 rounded-full text-sm font-bold">
-              מומלץ ביותר
-            </div>
-            <div className="text-center mb-6">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white/20 mb-3">
-                <Crown className="w-8 h-8" />
-              </div>
-              <h3 className="text-2xl font-bold">PRO</h3>
-              <div className="mt-2">
-                <span className="text-4xl font-bold">₪249</span>
-                <span>/חודש</span>
-              </div>
-            </div>
-            <ul className="space-y-3 mb-6">
-              <li className="flex items-start gap-2">
-                <Check className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                <span>הודעות ללא הגבלה</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <Check className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                <span>דיבור ללא הגבלה</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <Check className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                <span>כל הפיצ'רים</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <Check className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                <span>תמיכה עדיפות</span>
-              </li>
-            </ul>
-            <div className="bg-white/20 rounded-lg p-3 text-center">
-              <p className="text-sm font-bold">🎁 חינם עם BSD100!</p>
-            </div>
-          </div>
         </div>
 
         {/* Info Box */}
         <div className="bg-[#FCF6BA]/10 rounded-xl p-6 text-center border border-[#FCF6BA]/20">
           <p className="text-lg text-[#F5F5F0]/90">
-            💡 <strong>טיפ:</strong> הזן את הקוד <code className="bg-white/10 px-3 py-1 rounded font-mono text-[#FCF6BA] font-bold">BSD100</code> למעלה כדי לקבל גישה חינמית לצמיתות לחבילת PRO!
+            💡 <strong>טיפ:</strong> הזן את הקוד <code className="bg-white/10 px-3 py-1 rounded font-mono text-[#FCF6BA] font-bold">BSD100</code> למעלה לפי ההצעה המוגדרת במערכת הקופונים.
           </p>
         </div>
       </div>

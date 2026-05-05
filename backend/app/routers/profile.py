@@ -10,7 +10,7 @@ import json
 
 from ..database import get_db
 from ..models import User, Conversation, Message
-from ..routers.billing import get_or_create_current_usage
+from ..routers.billing import count_user_messages_quota_usage
 from ..dependencies import get_current_user
 from ..schemas.profile import (
     ProfileUpdate,
@@ -107,8 +107,7 @@ def get_dashboard(
         unique_conv_days.add(ca.date())
     days_active = len(unique_conv_days)
 
-    # Message counts per conversation (single query). Must run BEFORE get_or_create_current_usage,
-    # which commits — after commit, lazy-loading conv.messages can fail against some DB pools.
+    # Message counts per conversation (single query).
     message_count_by_conv: dict[int, int] = {}
     if conversations:
         conv_ids = [c.id for c in conversations]
@@ -123,9 +122,8 @@ def get_dashboard(
         max(message_count_by_conv.values(), default=0) if message_count_by_conv else 0
     )
 
-    # User messages in current billing period (matches subscription / usage_records)
-    usage = get_or_create_current_usage(db, user)
-    messages_this_month = usage.messages_used
+    # User messages counted toward plan quota (all-time total in quota model)
+    messages_this_month = count_user_messages_quota_usage(db, user.id)
     
     # Favorite coaching phase (most common phase across conversations)
     phases = [conv.current_phase for conv in conversations if conv.current_phase]

@@ -151,7 +151,7 @@ class UsageRecord(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     period_start = Column(DateTime, nullable=False)  # Start of billing period
     period_end = Column(DateTime, nullable=False)  # End of billing period
-    messages_used = Column(Integer, default=0, nullable=False)
+    messages_used = Column(Integer, default=0, nullable=False)  # mirrored lifetime user-msg count on active row
     speech_minutes_used = Column(Integer, default=0, nullable=False)  # In minutes
     created_at = Column(DateTime, default=utc_now, nullable=False)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)

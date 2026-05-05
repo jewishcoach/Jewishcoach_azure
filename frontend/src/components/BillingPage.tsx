@@ -234,7 +234,7 @@ export const BillingPage = () => {
         {/* Plans */}
         <div className="mb-8">
           <h2 className="text-lg font-medium text-[#F5F5F0] mb-6">{t('billing.plansTitle')}</h2>
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid md:grid-cols-2 gap-4">
             {overview.available_plans.map((plan) => {
               const isCurrent = plan.id === overview.current_plan;
               return (
@@ -254,7 +254,9 @@ export const BillingPage = () => {
                     <span className="text-2xl font-semibold text-[#F5F5F0]">
                       {plan.price === 0 ? t('billing.free') : `₪${plan.price}`}
                     </span>
-                    {plan.price > 0 && <span className="text-[#94a3b8] text-sm mr-1">{t('billing.perMonth')}</span>}
+                    {plan.price > 0 && (
+                      <span className="text-[#94a3b8] text-sm mr-1">{t('billing.oneTime')}</span>
+                    )}
                   </div>
                   <ul className="space-y-2 mb-5">
                     <li className="flex items-center gap-2 text-[#94a3b8] text-sm">

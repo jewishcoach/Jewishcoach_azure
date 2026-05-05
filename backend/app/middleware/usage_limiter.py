@@ -18,12 +18,12 @@ async def check_message_limit(request: Request, user: User, db: Session) -> None
             status_code=429,  # Too Many Requests
             detail={
                 "error": "quota_exceeded",
-                "message": "You have reached your message limit for this billing period",
+                "message": "You have reached your message limit for your plan",
                 "current_plan": user.current_plan,
                 "upgrade_url": "/billing"
             }
         )
-    # Message usage is derived from persisted Message rows in billing.get_or_create_current_usage.
+    # Message quota is all-time user Message rows vs plan limit (billing.check_usage_limit).
 
 
 async def check_speech_limit(request: Request, user: User, db: Session, minutes: int = 1):

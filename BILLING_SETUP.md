@@ -264,6 +264,7 @@ curl -sS -H "Authorization: Bearer YOUR_CLERK_JWT" \
 ### זרימת תשלום (מומש בקוד)
 
 - בפרונט: דף המנוי טוען `hostedfields.js`, מבצע `tokenize()` כמו בתיעוד PayMe.
+- הגדרות לדפדפן מגיעות גם מתוך **`GET /api/billing/overview`** בשדה `payme_checkout` (כדי לא להסתמך על נתיב נפרד שעלול להיחסם או לחזור 404 אם הבקאנד לא עודכן).
 - בבקאנד: `POST /api/billing/payme/subscribe` קורא ל־PayMe `POST …/generate-sale` עם טוקן הקונה + `sale_price` מהחבילה.
 - `seller_payme_id` בבקשה: ברירת מחדל זהה ל־`PAYME_API_KEY` (ניתן להפריד עם `PAYME_SELLER_PAYME_ID` אם מופיע בקונסול הסוחר).
 - Webhook גיבוי: `POST /api/billing/payme/webhook` — אם מוגדר `PAYME_WEBHOOK_SECRET`, צריך לשלוח את אותו ערך בכותרת `X-PayMe-Webhook-Token`.

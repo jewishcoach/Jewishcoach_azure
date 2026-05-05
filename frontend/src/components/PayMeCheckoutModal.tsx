@@ -79,9 +79,11 @@ export function PayMeCheckoutModal({
   const phoneRef = useRef<HTMLInputElement>(null);
   const socialRef = useRef<HTMLInputElement>(null);
 
-  const mountCNRef = useRef<HTMLDivElement>(null);
-  const mountExpRef = useRef<HTMLDivElement>(null);
-  const mountCvvRef = useRef<HTMLDivElement>(null);
+  /** Hosted Fields `mount()` expects a CSS selector string, not a DOM node (passing a div becomes `[object HTMLDivElement]`). */
+  const [hfMountSuffix] = useState(() => Math.random().toString(36).slice(2, 11));
+  const idCn = `payme-hf-cn-${hfMountSuffix}`;
+  const idExp = `payme-hf-exp-${hfMountSuffix}`;
+  const idCvv = `payme-hf-cvv-${hfMountSuffix}`;
 
   const teardownPayMe = useCallback(() => {
     try {
@@ -152,9 +154,9 @@ export function PayMeCheckoutModal({
         const cvc = hf.create('cvc', { styles: { base: stylesBase } });
 
         await Promise.all([
-          cardNumber.mount(mountCNRef.current),
-          expiration.mount(mountExpRef.current),
-          cvc.mount(mountCvvRef.current),
+          cardNumber.mount(`#${idCn}`),
+          expiration.mount(`#${idExp}`),
+          cvc.mount(`#${idCvv}`),
         ]);
 
         if (cancelled) return;
@@ -183,7 +185,7 @@ export function PayMeCheckoutModal({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset when modal opens; overview may gain payme_checkout after refresh
-  }, [open, plan?.id, payMeCheckoutFromOverview?.merchant_public_key, payMeCheckoutFromOverview?.test_mode]);
+  }, [open, plan?.id, payMeCheckoutFromOverview?.merchant_public_key, payMeCheckoutFromOverview?.test_mode, idCn, idExp, idCvv]);
 
   const submitPay = async (ev: FormEvent) => {
     ev.preventDefault();
@@ -203,7 +205,7 @@ export function PayMeCheckoutModal({
         payerPhone: phoneRef.current?.value?.trim() || '',
         payerSocialId: socialRef.current?.value?.trim() || '',
         total: {
-          label: plan.id === 'premium' || plan.id === 'pro' ? (rtl ? plan.name_he : plan.name_en) : plan.name_en,
+          label: plan.id === 'premium' ? (rtl ? plan.name_he : plan.name_en) : plan.name_en,
           amount: {
             currency: plan.currency || 'ILS',
             value: Number(plan.price).toFixed(2),
@@ -345,15 +347,15 @@ export function PayMeCheckoutModal({
 
           <div className="space-y-2 pt-1">
             <label className="text-xs text-[#94a3b8]">{t('billing.cardNumber')}</label>
-            <div ref={mountCNRef} className="min-h-[44px] rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5" />
+            <div id={idCn} className="min-h-[44px] rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5" />
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-[#94a3b8]">{t('billing.cardExpiry')}</label>
-                <div ref={mountExpRef} className="min-h-[44px] rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 mt-1" />
+                <div id={idExp} className="min-h-[44px] rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 mt-1" />
               </div>
               <div>
                 <label className="text-xs text-[#94a3b8]">{t('billing.cardCvv')}</label>
-                <div ref={mountCvvRef} className="min-h-[44px] rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 mt-1" />
+                <div id={idCvv} className="min-h-[44px] rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 mt-1" />
               </div>
             </div>
           </div>
