@@ -187,7 +187,7 @@ export const BillingPage = () => {
             </div>
             <div className="w-full h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
               <div
-                className="h-full bg-[#64748b] rounded-full transition-all duration-500"
+                className="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-emerald-700 via-teal-500 to-emerald-400"
                 style={{ width: `${usage.messages_limit === -1 ? 0 : messagesPercent}%` }}
               />
             </div>
@@ -237,16 +237,27 @@ export const BillingPage = () => {
           <div className="grid md:grid-cols-2 gap-4">
             {overview.available_plans.map((plan) => {
               const isCurrent = plan.id === overview.current_plan;
+              const isPaidUpgrade = !isCurrent && plan.price > 0;
+              const premiumHighlight = isPaidUpgrade && plan.id === 'premium';
               return (
                 <div
                   key={plan.id}
-                  className={`rounded-lg p-5 border ${
-                    isCurrent ? 'bg-white/[0.06] border-[#64748b]/50' : 'bg-white/[0.02] border-white/[0.06]'
+                  className={`rounded-xl p-5 border transition-shadow ${
+                    isCurrent
+                      ? 'bg-white/[0.06] border-[#64748b]/50'
+                      : premiumHighlight
+                        ? 'border-[#FCF6BA]/35 bg-gradient-to-br from-[#1e293b]/95 via-[#0f172a] to-[#0f172a] shadow-[0_12px_40px_-12px_rgba(179,135,40,0.35)]'
+                        : 'bg-white/[0.02] border-white/[0.06]'
                   }`}
                 >
                   {isCurrent && (
                     <span className="text-[#64748b] text-xs font-medium">
                       {t('billing.currentBadge')}
+                    </span>
+                  )}
+                  {premiumHighlight && (
+                    <span className="inline-block mt-1 text-[11px] font-semibold uppercase tracking-wide text-[#FCF6BA]/90">
+                      {t('billing.recommendedPlan')}
                     </span>
                   )}
                   <h3 className="text-lg font-medium text-[#F5F5F0] mt-1">{i18n.language === 'he' ? plan.name_he : plan.name_en}</h3>
@@ -260,36 +271,47 @@ export const BillingPage = () => {
                   </div>
                   <ul className="space-y-2 mb-5">
                     <li className="flex items-center gap-2 text-[#94a3b8] text-sm">
-                      <Check className="w-4 h-4 text-[#64748b] flex-shrink-0" />
+                      <Check
+                        className={`w-4 h-4 flex-shrink-0 ${premiumHighlight ? 'text-[#B38728]' : 'text-[#64748b]'}`}
+                      />
                       {plan.messages_per_month === -1
                         ? `${t('billing.unlimited')} ${t('dashboard.messages')}`
                         : `${plan.messages_per_month} ${t('billing.messagesPerMonthShort')}`}
                     </li>
                     <li className="flex items-center gap-2 text-[#94a3b8] text-sm">
-                      <Check className="w-4 h-4 text-[#64748b] flex-shrink-0" />
+                      <Check
+                        className={`w-4 h-4 flex-shrink-0 ${premiumHighlight ? 'text-[#B38728]' : 'text-[#64748b]'}`}
+                      />
                       {getFeatureText(plan)}
                     </li>
                     {plan.features?.journal_access && (
                       <li className="flex items-center gap-2 text-[#94a3b8] text-sm">
-                        <Check className="w-4 h-4 text-[#64748b] flex-shrink-0" />
+                        <Check
+                          className={`w-4 h-4 flex-shrink-0 ${premiumHighlight ? 'text-[#B38728]' : 'text-[#64748b]'}`}
+                        />
                         {t('billing.personalJournal')}
                       </li>
                     )}
                     {(plan.features?.priority_support || plan.features?.advanced_tools) && (
                       <li className="flex items-center gap-2 text-[#94a3b8] text-sm">
-                        <Check className="w-4 h-4 text-[#64748b] flex-shrink-0" />
+                        <Check
+                          className={`w-4 h-4 flex-shrink-0 ${premiumHighlight ? 'text-[#B38728]' : 'text-[#64748b]'}`}
+                        />
                         {t('billing.deepInsights')}
                       </li>
                     )}
                   </ul>
-                  {!isCurrent && plan.price > 0 && (
+                  {isPaidUpgrade && (
                     <button
                       type="button"
                       onClick={() => {
                         setCheckoutPlan(plan);
                         setPayMeSession((s) => s + 1);
                       }}
-                      className="w-full py-2.5 rounded-lg bg-white/10 text-[#F5F5F0] text-sm font-medium hover:bg-white/15 transition-colors"
+                      className="group w-full py-3 rounded-xl text-sm font-semibold text-[#0f172a] shadow-lg shadow-amber-950/25 transition-all hover:brightness-105 hover:shadow-xl hover:shadow-amber-950/30 active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FCF6BA]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0f172a]"
+                      style={{
+                        background: 'linear-gradient(135deg, #BF953F 0%, #FCF6BA 42%, #B38728 100%)',
+                      }}
                     >
                       {t('billing.upgradeNow')}
                     </button>
