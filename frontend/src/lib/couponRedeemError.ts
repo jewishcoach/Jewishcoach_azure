@@ -1,28 +1,40 @@
 import type { TFunction } from 'i18next';
 
+function apiDetailErrorCode(detail: unknown): string | undefined {
+  if (!detail || typeof detail !== 'object' || Array.isArray(detail)) return undefined;
+  const err = (detail as { error?: unknown }).error;
+  return typeof err === 'string' ? err : undefined;
+}
+
 /**
- * FastAPI returns `detail` as a string (or validation array). Map known redeem-coupon
- * messages to i18n keys for Hebrew/English UX.
+ * Map redeem-coupon API errors to safe user-facing copy.
+ * Prefer opaque `{ error: string }` from API; never echo unknown raw bodies (enumeration).
  */
 export function formatCouponRedeemError(detail: unknown, t: TFunction): string {
-  let raw = '';
-  if (typeof detail === 'string') {
-    raw = detail;
-  } else if (Array.isArray(detail) && detail[0] && typeof (detail[0] as { msg?: string }).msg === 'string') {
-    raw = (detail[0] as { msg: string }).msg;
+  const code = apiDetailErrorCode(detail);
+  if (code === 'coupon_empty') {
+    return t('billing.couponErrEmpty');
+  }
+  if (code === 'coupon_already_redeemed') {
+    return t('billing.couponErrAlreadyRedeemed');
+  }
+  if (code === 'coupon_invalid') {
+    return t('billing.couponErrInvalid');
   }
 
-  const keyByDetail: Record<string, string> = {
-    'Coupon not found or inactive': 'billing.couponErrNotFound',
-    'Coupon code not found': 'billing.couponErrNotFound',
-    'Coupon is no longer active': 'billing.couponErrInactive',
-    'Enter a coupon code': 'billing.couponErrEmpty',
-    'Coupon has expired': 'billing.couponErrExpired',
-    'Coupon usage limit reached': 'billing.couponErrLimitReached',
-    'You have already redeemed this coupon': 'billing.couponErrAlreadyRedeemed',
-  };
+  let raw = '';
+  if (typeof detail === 'string') {
+    raw = detail.trim();
+  } else if (Array.isArray(detail) && detail[0] && typeof (detail[0] as { msg?: string }).msg === 'string') {
+    raw = String((detail[0] as { msg: string }).msg).trim();
+  }
 
-  const key = keyByDetail[raw];
-  if (key) return t(key);
-  return raw || t('billing.couponError');
+  if (raw === 'Enter a coupon code') {
+    return t('billing.couponErrEmpty');
+  }
+  if (raw === 'You have already redeemed this coupon') {
+    return t('billing.couponErrAlreadyRedeemed');
+  }
+
+  return t('billing.couponErrInvalid');
 }

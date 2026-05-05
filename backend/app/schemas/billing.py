@@ -134,7 +134,7 @@ class PayMeSubscribeRequest(BaseModel):
 
 class CouponRedeemRequest(BaseModel):
     """Request to redeem a coupon"""
-    code: str = Field(..., description="Coupon code (e.g., BSD100)")
+    code: str = Field(..., description="Promotional coupon code"),
 
 
 class CreateCheckoutSessionRequest(BaseModel):

@@ -62,9 +62,7 @@ export const BillingPageSimple = () => {
             <Gift className="w-6 h-6 text-[#FCF6BA]" />
             {t('billing.couponTitle')}
           </h3>
-          <p className="text-[#F5F5F0]/80 mb-4">
-            הזן את קוד הקופון <strong className="text-[#FCF6BA]">BSD100</strong> לפי ההצעה המוגדרת במערכת הקופונים.
-          </p>
+          <p className="text-[#F5F5F0]/80 mb-4">{t('billing.couponSimpleIntro')}</p>
           <div className="flex gap-2">
             <input
               type="text"
@@ -166,7 +164,7 @@ export const BillingPageSimple = () => {
         {/* Info Box */}
         <div className="bg-[#FCF6BA]/10 rounded-xl p-6 text-center border border-[#FCF6BA]/20">
           <p className="text-lg text-[#F5F5F0]/90">
-            💡 <strong>טיפ:</strong> הזן את הקוד <code className="bg-white/10 px-3 py-1 rounded font-mono text-[#FCF6BA] font-bold">BSD100</code> למעלה לפי ההצעה המוגדרת במערכת הקופונים.
+            💡 <strong>{t('billing.tipTitle')}</strong> {t('billing.couponSimpleTip')}
           </p>
         </div>
       </div>

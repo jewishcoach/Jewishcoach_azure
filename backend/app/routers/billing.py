@@ -433,23 +433,21 @@ def redeem_coupon(
 
     code_norm = (request.code or "").strip().upper()
     if not code_norm:
-        raise HTTPException(status_code=400, detail="Enter a coupon code")
+        raise HTTPException(status_code=400, detail={"error": "coupon_empty"})
 
     row = db.query(Coupon).filter(Coupon.code == code_norm).first()
-    if not row:
-        raise HTTPException(status_code=404, detail="Coupon code not found")
-    if not row.is_active:
-        raise HTTPException(status_code=404, detail="Coupon is no longer active")
+    if not row or not row.is_active:
+        raise HTTPException(status_code=400, detail={"error": "coupon_invalid"})
 
     coupon = row
     
     # Check if coupon is expired
     if coupon.expires_at and coupon.expires_at < datetime.now(timezone.utc):
-        raise HTTPException(status_code=400, detail="Coupon has expired")
+        raise HTTPException(status_code=400, detail={"error": "coupon_invalid"})
     
     # Check if max uses reached
     if coupon.max_uses and coupon.current_uses >= coupon.max_uses:
-        raise HTTPException(status_code=400, detail="Coupon usage limit reached")
+        raise HTTPException(status_code=400, detail={"error": "coupon_invalid"})
     
     # Check if user already redeemed this coupon
     existing = db.query(CouponRedemption).filter(
@@ -458,7 +456,7 @@ def redeem_coupon(
     ).first()
     
     if existing:
-        raise HTTPException(status_code=400, detail="You have already redeemed this coupon")
+        raise HTTPException(status_code=400, detail={"error": "coupon_already_redeemed"})
     
     # Calculate expiration
     expires_at = None
@@ -506,7 +504,7 @@ def redeem_coupon(
     
     return {
         "success": True,
-        "message": f"Coupon {coupon.code} redeemed successfully!",
+        "message": "Coupon redeemed successfully.",
         "plan_granted": coupon.plan_granted,
         "expires_at": expires_at
     }
