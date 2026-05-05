@@ -450,27 +450,28 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
         <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-8 overflow-x-hidden">
           {/* Hero Banner - desktop only; mobile has compact top bar */}
           <motion.div
-            className="relative rounded-2xl overflow-hidden mb-6 hidden md:block"
+            className="relative mb-6 hidden md:block pb-12"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            style={{ boxShadow: COLORS.shadowSm }}
           >
-            <div
-              className="h-36 w-full"
-              style={{
-                background: `linear-gradient(135deg, ${COLORS.primaryLight} 0%, ${COLORS.primary} 60%, ${COLORS.gold} 100%)`,
-              }}
-            />
-            <div className="absolute bottom-0 right-1/2 translate-x-1/2 translate-y-1/2">
+            <div className="rounded-2xl overflow-hidden" style={{ boxShadow: COLORS.shadowSm }}>
               <div
-                className="w-20 h-20 rounded-full flex items-center justify-center border-4 overflow-hidden shrink-0"
+                className="h-36 w-full"
+                style={{
+                  background: `linear-gradient(135deg, ${COLORS.primaryLight} 0%, ${COLORS.primary} 60%, ${COLORS.gold} 100%)`,
+                }}
+              />
+            </div>
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2">
+              <div
+                className="w-20 h-20 rounded-full flex items-center justify-center border-4 overflow-hidden shrink-0 aspect-square"
                 style={{ background: COLORS.card, borderColor: COLORS.card, boxShadow: COLORS.shadowSm }}
               >
                 {user?.imageUrl ? (
                   <img
                     src={user.imageUrl}
                     alt=""
-                    className="w-full h-full object-cover"
+                    className="h-full w-full object-cover object-center"
                     referrerPolicy="no-referrer"
                   />
                 ) : (

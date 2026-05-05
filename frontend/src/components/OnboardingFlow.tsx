@@ -92,16 +92,21 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 {currentScreen.image ? (
                   <div
                     className="
-                      inline-flex rounded-full p-[5px]
+                      inline-flex shrink-0 rounded-full p-[5px]
                       bg-gradient-to-br from-white/45 via-[#FCF6BA]/35 to-[#B38728]/45
                       shadow-[0_12px_40px_-6px_rgba(0,0,0,0.65),0_0_52px_-10px_rgba(252,246,186,0.24),inset_0_1px_0_rgba(255,255,255,0.2)]
                     "
                   >
-                    <img
-                      src={currentScreen.image}
-                      alt=""
-                      className="w-40 h-40 md:w-48 md:h-48 rounded-full object-cover block ring-[3px] ring-[#020617]/95"
-                    />
+                    <div
+                      className="relative w-40 h-40 md:w-48 md:h-48 aspect-square rounded-full overflow-hidden bg-[#0f172a] ring-[3px] ring-[#020617]/95"
+                      aria-hidden
+                    >
+                      <img
+                        src={currentScreen.image}
+                        alt=""
+                        className="absolute inset-0 h-full w-full rounded-full object-contain object-center"
+                      />
+                    </div>
                   </div>
                 ) : (
                   <Icon
