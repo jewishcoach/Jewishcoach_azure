@@ -19,6 +19,16 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
+def _v2_user_message_count(messages: list) -> int:
+    """Count user turns in v2_state.messages (keys may be role or sender)."""
+    return sum(
+        1
+        for msg in messages
+        if isinstance(msg, dict) and (msg.get("role") or msg.get("sender")) == "user"
+    )
+
+
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 bsd_engine = BsdEngine()
 
@@ -461,9 +471,10 @@ def get_conversations(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """List conversations with phase and message counts (no full message bodies)."""
+    """List conversations with phase and user message counts (no full message bodies)."""
     msg_counts = (
         db.query(Message.conversation_id, func.count(Message.id).label("cnt"))
+        .filter(Message.role == "user")
         .group_by(Message.conversation_id)
         .subquery()
     )
@@ -581,7 +592,7 @@ def get_conversation_insights_safe(
                 "saturation_score": saturation_score,
                 "cognitive_data": cognitive_data,
                 "metrics": {
-                    "message_count": len(messages),
+                    "message_count": _v2_user_message_count(messages),
                     "turns_in_current_stage": turns_in_current_stage
                 },
                 "updated_at": (conv_updated := getattr(conv, 'updated_at', None) or conv.created_at) and conv_updated.isoformat() or None
@@ -715,7 +726,7 @@ def get_conversation_insights(
                 "saturation_score": saturation_score,
                 "cognitive_data": cognitive_data,
                 "metrics": {
-                    "message_count": len(messages),
+                    "message_count": _v2_user_message_count(messages),
                     "turns_in_current_stage": turns_in_current_stage
                 },
                 "updated_at": (conv_updated := getattr(conv, 'updated_at', None) or conv.created_at) and conv_updated.isoformat() or None

@@ -50,14 +50,20 @@ class ProfileResponse(BaseModel):
 class DashboardStats(BaseModel):
     """Dashboard statistics for user"""
     total_conversations: int
-    total_messages: int
+    total_messages: int = Field(
+        ...,
+        description="All-time count of user-sent messages (matches plan quota accounting).",
+    )
     current_phase: Optional[str]
     days_active: int
     messages_this_month: int = Field(
         ...,
-        description="User-role messages counted toward plan quota (all-time total; field name is legacy).",
+        description="Same as total_messages (legacy field name; all-time user messages vs plan cap).",
     )
-    longest_conversation_messages: int
+    longest_conversation_messages: int = Field(
+        ...,
+        description="Largest number of user-sent messages in any single conversation.",
+    )
     favorite_coaching_phase: Optional[str]
     
     model_config = ConfigDict(json_schema_extra={

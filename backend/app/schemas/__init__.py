@@ -48,7 +48,10 @@ class ConversationListItemResponse(BaseModel):
     title: str
     created_at: datetime
     current_phase: str = "S0"
-    message_count: int = 0
+    message_count: int = Field(
+        default=0,
+        description="Count of user-sent messages stored on this conversation.",
+    )
 
     model_config = ConfigDict(from_attributes=True)
 

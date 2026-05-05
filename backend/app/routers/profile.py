@@ -72,7 +72,7 @@ def get_dashboard(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get dashboard statistics for current user"""
+    """Dashboard stats; message metrics count **user-sent** rows only (aligned with billing quota)."""
     
     # Get all user's conversations
     conversations = db.query(Conversation).filter(
@@ -80,12 +80,10 @@ def get_dashboard(
     ).all()
     
     total_conversations = len(conversations)
-    
-    # Get all messages
-    total_messages = db.query(Message).join(Conversation).filter(
-        Conversation.user_id == user.id
-    ).count()
-    
+
+    # User-sent messages only (same basis as plan quota and conversation list counts).
+    total_messages = count_user_messages_quota_usage(db, user.id)
+
     # Current phase (from most recent conversation)
     current_phase = None
     if conversations:
@@ -113,7 +111,7 @@ def get_dashboard(
         conv_ids = [c.id for c in conversations]
         rows = (
             db.query(Message.conversation_id, func.count(Message.id))
-            .filter(Message.conversation_id.in_(conv_ids))
+            .filter(Message.conversation_id.in_(conv_ids), Message.role == "user")
             .group_by(Message.conversation_id)
             .all()
         )
@@ -122,9 +120,9 @@ def get_dashboard(
         max(message_count_by_conv.values(), default=0) if message_count_by_conv else 0
     )
 
-    # User messages counted toward plan quota (all-time total in quota model)
-    messages_this_month = count_user_messages_quota_usage(db, user.id)
-    
+    # Legacy API field name — same numeric basis as total_messages (all-time user sends).
+    messages_this_month = total_messages
+
     # Favorite coaching phase (most common phase across conversations)
     phases = [conv.current_phase for conv in conversations if conv.current_phase]
     favorite_phase = None
@@ -304,7 +302,7 @@ async def get_profile_insights(
         conversations_data.append({
             "collected_data": cd,
             "user_messages": user_msgs,
-            "message_count": len(conv.messages),
+            "message_count": len(user_msgs),
         })
 
     if total_words < MIN_USER_WORDS:

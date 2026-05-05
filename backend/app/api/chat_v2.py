@@ -516,12 +516,17 @@ async def get_conversation_insights_v2(
             if msg.get("role") == "user" and msg.get("metadata", {}).get("step") == current_stage
         )
         
+        user_msg_total = sum(
+            1 for msg in messages 
+            if isinstance(msg, dict) and (msg.get("role") or msg.get("sender")) == "user"
+        )
+
         return {
             "current_stage": current_stage,
             "saturation_score": saturation_score,
             "cognitive_data": collected_data,
             "metrics": {
-                "message_count": len(messages),
+                "message_count": user_msg_total,
                 "turns_in_current_stage": turns_in_current_stage
             },
             "updated_at": (conv_updated := getattr(conv, 'updated_at', None) or conv.created_at) and conv_updated.isoformat() or None
