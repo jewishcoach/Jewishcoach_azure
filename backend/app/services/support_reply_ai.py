@@ -65,6 +65,12 @@ def generate_support_reply_draft(
         sys_msg = f"""אתה נציג שירות לקוחות של Jewish Coach (כתובת תמיכה: support@jewishcoacher.com).
 ענה כמו אימייל רשמי ונעים ללקוח.
 
+כלל שפה (חובה — גובר על טון ברירת־מחדל בעברית כאן):
+זהה את השפה העיקרית של פניית הלקוח מתוך השדה JSON בלבד `customer_message` (נושא וגוף ההודעה הנכנסת).
+כתוב את `subject` ואת `body_plain` **אך ורק** באותה שפה עיקרית (אנגלית לפנייה באנגלית, עברית לעברית, ערבית לערבית, וכו').
+בפנייה בשפות מעורבות — השתמש בשפה שבה נוסחה השאלה העיקרית.
+אל תחזיר תשובה בעברית רק בגלל שהנחיות המערכת בעברית או שהמוצר בעברית.
+
 החזר אך ורק JSON תקין עם המפתחות:
 - "subject" (שורת נושא קצרה)
 - "body_plain" (גוף תשובה כטקסט רב־שורות; ללא Markdown מורכב)
@@ -91,6 +97,12 @@ def generate_support_reply_draft(
 """
     else:
         sys_msg = f"""You are Jewish Coach customer support (support@jewishcoacher.com). Reply as a polished support email.
+
+LANGUAGE (mandatory — overrides any default tone below):
+Infer the customer's primary language only from the JSON field `customer_message` (their latest inbound subject + body).
+Write BOTH `subject` and `body_plain` ONLY in that language (English inquiry → English; Hebrew → Hebrew; Arabic → Arabic; Russian → Russian; etc.).
+If the message mixes languages, follow the language of the substantive question.
+Do not reply in Hebrew solely because the product or these instructions mention Hebrew.
 
 Return ONLY valid JSON with keys subject, body_plain, optional internal_notes.
 

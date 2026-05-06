@@ -8,7 +8,8 @@
 
 set -euo pipefail
 DOMAIN="${1:-jewishcoacher.com}"
-MERGED='v=spf1 include:_spf.mail.hostinger.com include:spf.protection.outlook.com ~all'
+# Must match az communication email domain show → verificationRecords.SPF.value for jewishcoacher.com
+MERGED='v=spf1 include:spf.protection.outlook.com -all'
 VER_PREFIX='ms-domain-verification='
 
 echo "Sampling TXT@${DOMAIN} via Google DNS (15 tries, ~8s)..."

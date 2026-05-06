@@ -374,7 +374,9 @@ def run_support_auto_reply_after_inbound(
 
     reply_plain_full = reply_plain
 
-    rtl = lang.startswith("he") or bool(re.search(r"[\u0590-\u05FF]", reply_plain_full))
+    rtl = lang.startswith(("he", "ar")) or bool(
+        re.search(r"[\u0590-\u05FF\u0600-\u06FF]", reply_plain_full)
+    )
     reply_html = plain_to_reply_html(reply_plain_full, rtl=rtl)
 
     ok, send_err = send_html_email_detailed(customer_email, reply_subj, reply_html, body_plain=reply_plain_full)
@@ -447,8 +449,14 @@ def plain_to_reply_html(body_plain: str, *, rtl: bool = True) -> str:
 
 
 def detect_language_hint(text: str) -> str:
-    if re.search(r"[\u0590-\u05FF]", text or ""):
+    """Rough hint for methodology/personality defaults; LLM prompt mirrors customer_message language."""
+    t = text or ""
+    if re.search(r"[\u0590-\u05FF]", t):
         return "he"
+    if re.search(r"[\u0600-\u06FF]", t):
+        return "ar"
+    if re.search(r"[\u0400-\u04FF]", t):
+        return "ru"
     return "en"
 
 

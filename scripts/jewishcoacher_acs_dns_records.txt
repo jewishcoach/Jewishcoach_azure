@@ -1,13 +1,14 @@
 # Azure Communication Services — Email domain "jewishcoacher.com"
 # Resource: jewishcoach-email-svc (RG: jewish-coach-rg)
 #
-# --- Proper fix when sends fail / Azure SPF "MultipleSPFRecordsFound" ---
-# Nameservers ns*.dns-parking.com are normal for Hostinger — the issue is inconsistent apex TXT.
-# In Hostinger DNS there must be exactly ONE TXT row on @ whose value starts with v=spf1 (merged SPF below).
-# If you edited SPF but Azure still fails: old SPF may still be served globally — delete the SPF TXT @ row,
-# wait until propagation clears it everywhere (use whatsmydns.net), then add again ONLY the merged line once.
+# --- Proper fix when ACS reports SPF VerificationFailed / DnsRecordsNotMatched ---
+# Nameservers ns*.dns-parking.com are normal for Hostinger — apex TXT must still match Azure exactly.
+# Hostinger DNS must have exactly ONE TXT row on @ whose value starts with v=spf1 — see exact line below.
+# If you edited SPF but Azure still fails: delete the SPF TXT @ row, wait for propagation (whatsmydns.net),
+# then add again ONLY the Azure-required line once.
 # Optionally set TTL on TXT @ to 300 while fixing, then raise after stable.
-# Validate stability from your machine:  bash scripts/check_jewishcoacher_email_dns.sh
+# Validate: bash scripts/check_jewishcoacher_email_dns.sh
+# Compare ACS vs public DNS: bash scripts/compare_acs_email_dns_vs_public.sh
 #
 # SPF = ONE TXT record at @ whose value starts with v=spf1 (never two different SPF lines on @).
 # If Hostinger shows "no SPF": ADD this as a new TXT @ anyway (same panel row type TXT, Host @).
@@ -15,9 +16,16 @@
 --- TXT @ (domain verification — keep if already added) ---
 ms-domain-verification=a73e1faf-b818-45ce-bf67-0d6b9c9b63c3
 
---- TXT @ (SPF — ADD if missing, or EDIT existing SPF to exactly this one line) ---
-# Use "-all" at the end (not "~all") — matches ACS verification template and improves SPF pass rate with Microsoft.
-v=spf1 include:_spf.mail.hostinger.com include:spf.protection.outlook.com -all
+--- TXT @ (SPF — MUST match Azure Email verification exactly or ACS shows VerificationFailed / DnsRecordsNotMatched) ---
+# Azure Communication Services (jewishcoach-email-svc → domain jewishcoacher.com) compares this string byte-for-byte.
+# Current public DNS often has a MERGED Hostinger line — that breaks verification even if mail still sends:
+#   BAD for ACS verify: v=spf1 include:_spf.mail.hostinger.com include:spf.protection.outlook.com ~all
+# Replace that single SPF TXT @ row with EXACTLY this line (keep verification TXT above as a separate row):
+v=spf1 include:spf.protection.outlook.com -all
+#
+# Trade-off: dropping include:_spf.mail.hostinger.com removes Hostinger’s SMTP servers from SPF for @jewishcoacher.com.
+# Only do this if you do NOT rely on Hostinger mailboxes/SMTP for this domain. If you need both, open a ticket with
+# Microsoft / revisit architecture (subdomain for ACS, etc.).
 
 --- CNAME (DKIM #1) ---
 Host/name: selector1-azurecomm-prod-net._domainkey
