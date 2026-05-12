@@ -123,12 +123,6 @@ function SignedInContent() {
           const userData = await apiClient.getCurrentUser();
           setIsAdmin(!!userData.isAdmin);
           setDisplayName(userData.display_name);
-          console.log('👤 [App] User data loaded:', {
-            display_name: userData.display_name,
-            email: userData.email,
-            isAdmin: userData.isAdmin,
-            isRetry,
-          });
           if (!userData.isAdmin && !isRetry) {
             window.setTimeout(() => {
               void checkAdminStatus(true);
@@ -136,7 +130,6 @@ function SignedInContent() {
           }
         } else {
           setIsAdmin(false);
-          console.warn('👤 [App] getToken() returned empty — admin check skipped');
         }
       } catch (error) {
         console.error('Failed to check admin status:', error);

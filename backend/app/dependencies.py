@@ -232,11 +232,13 @@ def warm_clerk_email_cache_for_users(users: list[Any]) -> None:
     Without this, /admin/users hits Clerk sequentially once per row (slow; looks like 'no emails').
     Safe to call repeatedly; uses per-process cache and skips users who already have public emails in DB.
     """
+    from .email_visibility import normalize_public_email
+
     need: list[str] = []
     seen: set[str] = set()
     for u in users:
         db = (getattr(u, "email", None) or "").strip()
-        if db and "@clerk.temp" not in db and "@" in db:
+        if normalize_public_email(db):
             continue
         cid = (getattr(u, "clerk_id", None) or "").strip()
         if not cid or cid in seen:
@@ -255,13 +257,26 @@ def _resolve_primary_email(
     clerk_id: str,
     existing_db_email: str | None,
 ) -> str | None:
-    """Prefer JWT email, then non-placeholder DB row, then Clerk Backend API."""
+    """
+    Prefer a real inbox: JWT only if public-safe, same for DB row, else Clerk Backend API.
+
+    Clerk synthetic addresses (@clerk.temp, @clerk.accounts.*) are ignored so OAuth users
+    still get a resolved Gmail/etc. from the Clerk API when the JWT carries a placeholder.
+    """
+    from .email_visibility import normalize_public_email
+
     je = jwt_email.strip() if isinstance(jwt_email, str) else None
     if je and "@" in je:
-        return je
+        pub_j = normalize_public_email(je)
+        if pub_j:
+            return pub_j
+
     db = (existing_db_email or "").strip()
-    if db and "@clerk.temp" not in db and "@" in db:
-        return db
+    if db and "@" in db:
+        pub_db = normalize_public_email(db)
+        if pub_db:
+            return pub_db
+
     return _fetch_clerk_primary_email(clerk_id)
 
 
@@ -409,8 +424,11 @@ async def get_current_user(
         should_be_admin = _should_grant_admin(clerk_id, resolved_email)
         
         if not user:
-            # Auto-register new user
-            row_email = resolved_email or jwt_email or f"{clerk_id}@clerk.temp"
+            # Auto-register new user — never persist Clerk synthetic JWT emails as the DB inbox row.
+            from .email_visibility import normalize_public_email
+
+            pub_jwt = normalize_public_email(jwt_email) if isinstance(jwt_email, str) else None
+            row_email = resolved_email or pub_jwt or f"{clerk_id}@clerk.temp"
             user = User(
                 clerk_id=clerk_id,
                 email=row_email,
