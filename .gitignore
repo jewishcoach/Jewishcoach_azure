@@ -1,19 +1,26 @@
 # Python
 __pycache__/
-antenv/
-.venv/
-venv/
-test_venv/
 *.py[cod]
 *$py.class
 *.so
 .Python
+*.egg-info/
+
+# Local virtual environments & Azure-style deploy folders (never commit site-packages)
+antenv/
+backend/antenv/
+.venv/
 venv/
 env/
 ENV/
-*.egg-info/
-dist/
-build/
+test_venv/
+
+# Python tooling caches
+.ruff_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pytype/
 
 # IDEs
 .vscode/
