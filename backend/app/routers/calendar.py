@@ -1,6 +1,7 @@
 """
 Calendar, Goals, and Reminders endpoints
 """
+import logging
 import os
 from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from fastapi.responses import Response, RedirectResponse
@@ -13,6 +14,7 @@ import json
 from ..database import get_db
 from ..models import User, CoachingGoal, CoachingReminder, Conversation
 from ..dependencies import get_current_user
+from ..client_safe import client_error_detail
 from ..schemas.calendar import (
     GoalCreate, GoalUpdate, GoalResponse,
     ReminderCreate, ReminderUpdate, ReminderResponse,
@@ -21,6 +23,7 @@ from ..schemas.calendar import (
 from ..services import google_calendar
 
 router = APIRouter(prefix="/api/calendar", tags=["calendar"])
+_cal_log = logging.getLogger(__name__)
 
 
 # ============================================================================
@@ -478,7 +481,10 @@ def get_google_auth_url(
         auth_url = google_calendar.create_oauth_url(user.id)
         return {"auth_url": auth_url}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create auth URL: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=client_error_detail("Could not start calendar connection", e),
+        )
 
 
 @router.get("/google/callback")
@@ -509,7 +515,7 @@ async def google_calendar_callback(
         return RedirectResponse(url=f"{os.getenv('FRONTEND_URL', 'http://localhost:5173')}/?google_calendar=connected")
         
     except Exception as e:
-        print(f"Google Calendar callback error: {e}")
+        _cal_log.warning("Google Calendar callback error: %s", type(e).__name__)
         return RedirectResponse(url=f"{os.getenv('FRONTEND_URL', 'http://localhost:5173')}/?google_calendar=error")
 
 
@@ -548,7 +554,10 @@ async def sync_google_calendar(
         return result
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Sync failed: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=client_error_detail("Calendar sync failed", e),
+        )
 
 
 @router.delete("/google/disconnect")

@@ -14,6 +14,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from ..dependencies import get_current_user, get_current_admin_user
+from ..client_safe import client_error_detail
 from ..security.chat_input import (
     MAX_CHAT_MESSAGE_CHARS,
     ChatMessageRejected,
@@ -384,7 +385,11 @@ async def get_recent_errors_debug(
         from ..bsd_v2.error_buffer import get_recent_errors
         return {"errors": get_recent_errors(), "count": len(get_recent_errors())}
     except Exception as e:
-        return {"errors": [], "count": 0, "error": str(e)}
+        return {
+            "errors": [],
+            "count": 0,
+            "error": client_error_detail("failed", e),
+        }
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -539,8 +544,9 @@ async def get_conversation_insights_v2(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"[BSD V2 API] Error getting insights: {e}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("[BSD V2 API] Error getting insights")
+        raise HTTPException(
+            status_code=500,
+            detail=client_error_detail("Unable to load insights", e),
+        )
 

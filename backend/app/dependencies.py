@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from .database import get_db, utc_now
 from .models import User
+from .client_safe import client_error_detail
 
 import json
 import logging
@@ -452,10 +453,10 @@ async def get_current_user(
         raise
     except OperationalError as e:
         logger.error("Database error during auth: %s", type(e).__name__)
-        raise HTTPException(status_code=503, detail=f"Database error: {str(e)}")
+        raise HTTPException(status_code=503, detail=client_error_detail("Service temporarily unavailable", e))
     except Exception as e:
         logger.warning("JWT validation failed: %s", type(e).__name__)
-        raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")
+        raise HTTPException(status_code=401, detail=client_error_detail("Invalid or expired session", e))
 
 
 async def get_current_admin_user(

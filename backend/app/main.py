@@ -1,10 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.requests import Request
 from contextlib import asynccontextmanager
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-from .database import engine
 from .limiter import limiter
 from .routers import chat, speech, feedback, users, journal, tools, admin, billing, profile, calendar, onboarding_email_cron
 from .routers.support_email_inbound import router as support_email_inbound_router
@@ -30,6 +30,7 @@ def _configure_app_logging() -> None:
 
 _configure_app_logging()
 
+from .client_safe import allow_public_error_details
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -56,14 +57,33 @@ async def lifespan(app: FastAPI):
 # With multiple Gunicorn workers this can race (especially on SQLite)
 # and fail the whole app boot. Schema init is handled in startup.sh once.
 
+_public_docs = allow_public_error_details()
+
 app = FastAPI(
     title="Jewish Coaching API",
     description="AI Coaching platform with RAG and Voice support",
     version="1.0.0",
     lifespan=lifespan,
+    docs_url="/docs" if _public_docs else None,
+    redoc_url="/redoc" if _public_docs else None,
+    openapi_url="/openapi.json" if _public_docs else None,
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    """Reduce browser-side abuse (clickjacking, MIME sniffing); voice keeps mic on same origin."""
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault(
+        "Permissions-Policy",
+        "accelerometer=(), camera=(), geolocation=(), microphone=(self), payment=(self)",
+    )
+    return response
 
 # CORS Configuration
 # Support for local development AND Ngrok tunneling.
@@ -137,76 +157,80 @@ app.include_router(calendar.router)
 
 @app.get("/")
 def root():
-    return {
-        "message": "Jewish Coaching API",
-        "status": "running",
-        "version": "2.0.1",
-        "bsd_version": "v2"
-    }
+    if allow_public_error_details():
+        return {
+            "message": "Jewish Coaching API",
+            "status": "running",
+            "version": "2.0.1",
+            "bsd_version": "v2",
+        }
+    return {"status": "running"}
 
 @app.get("/health")
 def health_check():
     """
     Health check endpoint for Azure App Service.
-    Returns detailed status of all critical services.
+    Default: minimal signal only. Full internals when ALLOW_PUBLIC_ERROR_DETAILS=true.
     """
-    import sys
     from datetime import datetime, timezone
-    
-    health_status = {
+
+    health_status: dict = {
         "status": "healthy",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "python_version": sys.version,
-        "checks": {}
+        "checks": {},
     }
-    
-    # Check database connection
+
+    if allow_public_error_details():
+        import sys
+
+        health_status["python_version"] = sys.version
+
     try:
         from .database import engine
         from sqlalchemy import text
+
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         health_status["checks"]["database"] = "ok"
     except Exception as e:
-        health_status["checks"]["database"] = f"error: {str(e)}"
+        health_status["checks"]["database"] = (
+            f"error: {str(e)}" if allow_public_error_details() else "error"
+        )
         health_status["status"] = "degraded"
-    
-    # Check Azure OpenAI configuration
-    azure_openai_configured = bool(
-        os.getenv("AZURE_OPENAI_API_KEY") and 
-        os.getenv("AZURE_OPENAI_ENDPOINT")
-    )
-    health_status["checks"]["azure_openai"] = "ok" if azure_openai_configured else "not_configured"
-    
-    # Check Azure Search configuration
-    azure_search_configured = bool(
-        os.getenv("AZURE_SEARCH_ENDPOINT") and 
-        os.getenv("AZURE_SEARCH_KEY")
-    )
-    health_status["checks"]["azure_search"] = "ok" if azure_search_configured else "not_configured"
-    
+
+    if allow_public_error_details():
+        azure_openai_configured = bool(
+            os.getenv("AZURE_OPENAI_API_KEY") and os.getenv("AZURE_OPENAI_ENDPOINT")
+        )
+        health_status["checks"]["azure_openai"] = "ok" if azure_openai_configured else "not_configured"
+
+        azure_search_configured = bool(
+            os.getenv("AZURE_SEARCH_ENDPOINT") and os.getenv("AZURE_SEARCH_KEY")
+        )
+        health_status["checks"]["azure_search"] = "ok" if azure_search_configured else "not_configured"
+
     return health_status
 
 @app.get("/api/status")
 def api_status():
-    """
-    Detailed API status endpoint.
-    """
-    return {
-        "api": "Jewish Coaching API",
-        "version": "2.0.0",
-        "bsd_version": "v2 (Single-Agent Conversational Coach)",
-        "features": {
-            "chat_v1": "available",
-            "chat_v2": "available (default)",
-            "speech": "available",
-            "rag": "available",
-            "calendar": "available"
-        },
-        "endpoints": {
-            "health": "/health",
-            "chat_v2": "/api/chat/v2/message",
-            "speech_token": "/api/speech/token"
+    """Minimal public probe unless ALLOW_PUBLIC_ERROR_DETAILS=true."""
+    if allow_public_error_details():
+        return {
+            "api": "Jewish Coaching API",
+            "version": "2.0.0",
+            "bsd_version": "v2 (Single-Agent Conversational Coach)",
+            "features": {
+                "chat_v1": "available",
+                "chat_v2": "available (default)",
+                "speech": "available",
+                "rag": "available",
+                "calendar": "available",
+            },
+            "endpoints": {
+                "health": "/health",
+                "chat_v2": "/api/chat/v2/message",
+                "speech_token": "/api/speech/token",
+            },
         }
-    }
+    return {"status": "ok"}
 

@@ -13,6 +13,7 @@ import uuid
 from ..database import get_db
 from ..models import User, Subscription, UsageRecord, Coupon, CouponRedemption, Message, Conversation, PayMeCheckoutIntent
 from ..dependencies import get_current_user
+from ..client_safe import allow_public_error_details, client_error_detail
 from ..schemas.billing import (
     CouponRedeemRequest,
     PlanInfo,
@@ -276,14 +277,19 @@ def payme_subscribe_with_token(
     except PayMeAPIError as e:
         intent.last_payme_json = json.dumps(e.body if isinstance(e.body, dict) else {"error": str(e.body)})[:8000]
         db.commit()
-        raise HTTPException(status_code=502, detail=f"PayMe request failed: {e}") from e
+        raise HTTPException(status_code=502, detail=client_error_detail("Payment service unavailable", e)) from e
 
     intent.last_payme_json = json.dumps(resp)[:8000]
     db.commit()
 
     if payme_response_failed(resp):
-        detail = resp.get("status_error_details") or "Payment declined"
-        raise HTTPException(status_code=402, detail=str(detail))
+        raw_detail = resp.get("status_error_details") or "Payment declined"
+        detail_out = (
+            str(raw_detail)
+            if allow_public_error_details()
+            else "Payment could not be completed"
+        )
+        raise HTTPException(status_code=402, detail=detail_out)
 
     intent.fulfilled_at = datetime.now(timezone.utc)
     _apply_payme_paid_plan(db, user, plan, tid, resp)

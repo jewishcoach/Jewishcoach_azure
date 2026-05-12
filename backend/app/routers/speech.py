@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Request, Depends
 from ..schemas import SpeechTokenResponse
 from ..services.speech_service import SpeechService
 from ..dependencies import get_current_user
+from ..client_safe import client_error_detail
 from ..models import User
 from ..limiter import limiter
 from ..middleware.usage_limiter import check_speech_limit
@@ -30,7 +31,10 @@ async def get_speech_token(
         token, region = speech_service.get_token()
         return SpeechTokenResponse(token=token, region=region)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get token: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=client_error_detail("Voice service temporarily unavailable", e),
+        )
 
 
 

@@ -2,6 +2,8 @@
 from fastapi import APIRouter
 import os
 
+from ..client_safe import allow_public_error_details
+
 router = APIRouter()
 
 # Deploy fingerprint: Azure-optimized prompts (minimal JSON, stage-specific gates)
@@ -10,7 +12,10 @@ DEPLOY_FINGERPRINT = "azure-optimized-v1"
 
 @router.get("/api/version")
 async def get_version():
-    """Check which code version is running"""
+    """Public fingerprint — minimal unless ALLOW_PUBLIC_ERROR_DETAILS=true (local diagnostics)."""
+    if not allow_public_error_details():
+        return {"version": "2.0.0"}
+
     prompt_mode = os.getenv("BSD_V2_PROMPT_MODE", "markdown")
     azure_optimized = False
     try:

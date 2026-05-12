@@ -39,5 +39,5 @@ async def prompts_health():
         return {
             "status": "❌ ERROR",
             "prompts_loaded": False,
-            "error": str(e)
+            "error": str(e),
         }
