@@ -256,17 +256,6 @@ class ApiClient {
     await this.client.patch('/profile/me', data);
   }
 
-  // User Preferences
-  async getUserPreferences() {
-    const response = await this.client.get('/users/me/preferences');
-    return response.data;
-  }
-
-  async updateUserPreferences(prefs: Record<string, unknown>) {
-    const response = await this.client.patch('/users/me/preferences', prefs);
-    return response.data;
-  }
-
   // Journal
   async getJournal(conversationId: number) {
     const cid = normalizeConversationId(conversationId);

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { SignedIn, SignedOut, UserButton, useUser, useClerk, useAuth } from '@clerk/clerk-react';
@@ -6,84 +6,12 @@ import { Shield, LayoutDashboard, MessageCircle, Archive, MessageSquarePlus } fr
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { BSDWorkspace } from './components/workspace/BSDWorkspace';
 import { LandingPage } from './components/LandingPage';
-import { AcquaintanceFlow, AcquaintanceModalShell } from './components/AcquaintanceFlow';
-import { IntroDraftSync } from './components/IntroDraftSync';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { BillingPage } from './components/BillingPage';
 import { apiClient } from './services/api';
 import './i18n';
 import { isClerkSyntheticEmail } from './lib/clerkEmail';
 import { isClerkUiAdminAllowlisted } from './config';
-import {
-  hasSeenOnboarding,
-  setOnboardingComplete,
-  clearOnboardingOnSignOut,
-  clearAllIntroGateKeys,
-} from './lib/onboardingStorage';
-import { clearIntroDraft } from './lib/introDraftStorage';
-
-function applyIntroHashResetFromUrl(): void {
-  if (typeof window === 'undefined') return;
-  const raw = window.location.hash.slice(1).trim();
-  if (raw !== 'jewishcoach-reset-intro') return;
-  clearAllIntroGateKeys();
-  clearIntroDraft();
-  window.history.replaceState(null, '', window.location.pathname + window.location.search);
-}
-
-applyIntroHashResetFromUrl();
-
-/** איפוס דגל מסכי הכניסה רק כשעוברים ממחובר → לא מחובר (לא בכל טעינה כאורח). */
-function ClearOnboardingWhenSigningOut() {
-  const { isSignedIn, isLoaded } = useAuth();
-  const prevSignedInRef = useRef<boolean | undefined>(undefined);
-
-  useEffect(() => {
-    if (!isLoaded) return;
-    const prev = prevSignedInRef.current;
-    if (prev === true && isSignedIn === false) {
-      clearOnboardingOnSignOut();
-    }
-    prevSignedInRef.current = isSignedIn;
-  }, [isLoaded, isSignedIn]);
-
-  return null;
-}
-
-/** מסכי onboarding לפני השארת דף הנחיתה והתחברות ל-Clerk */
-function SignedOutIntroGate({ openSignIn }: { openSignIn: () => void }) {
-  const { t } = useTranslation();
-  const [pastIntro, setPastIntro] = useState(() => hasSeenOnboarding());
-
-  if (!pastIntro) {
-    return (
-      <>
-        <div className="fixed inset-0 z-0 overflow-hidden" aria-hidden>
-          <div className="pointer-events-none h-full w-full origin-center scale-[1.03] blur-[10px] opacity-[0.88] saturate-[0.9] select-none">
-            <LandingPage onGetStarted={() => undefined} />
-          </div>
-        </div>
-        <AcquaintanceModalShell ariaLabel={t('acquaintance.modalAriaLabel')}>
-          <AcquaintanceFlow
-            layout="embedded"
-            onComplete={() => {
-              setPastIntro(true);
-            }}
-          />
-        </AcquaintanceModalShell>
-      </>
-    );
-  }
-
-  return (
-    <>
-      <div className="fixed top-4 end-4 z-50">
-        <LanguageSwitcher />
-      </div>
-      <LandingPage onGetStarted={openSignIn} />
-    </>
-  );
-}
 
 // Check if running on tunnel domain (Demo Mode)
 const isTunnelDomain = () => {
@@ -166,14 +94,14 @@ function ChatHeaderMobileControls({
 }
 
 // Separate component for signed-in content (so useUser is only called when signed in)
-function SignedInContent({ initialShowDashboard = false }: { initialShowDashboard?: boolean }) {
+function SignedInContent() {
   const { t } = useTranslation();
   const { user } = useUser();
   const { getToken, isLoaded, isSignedIn } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [showBilling, setShowBilling] = useState(false);
-  const [showDashboard, setShowDashboard] = useState(initialShowDashboard);
+  const [showDashboard, setShowDashboard] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
   /** Incremented from header "new chat" on mobile — BSDWorkspace runs startNewConversation */
@@ -333,33 +261,11 @@ function SignedInContent({ initialShowDashboard = false }: { initialShowDashboar
   );
 }
 
-// Wrapper: show onboarding for first-time users, then main app
-function SignedInWithOnboarding() {
-  const { t } = useTranslation();
-  const [showOnboarding, setShowOnboarding] = useState(!hasSeenOnboarding());
-
-  return (
-    <>
-      <SignedInContent initialShowDashboard={showOnboarding} />
-      {showOnboarding && (
-        <AcquaintanceModalShell ariaLabel={t('acquaintance.modalAriaLabel')}>
-          <AcquaintanceFlow
-            layout="embedded"
-            onComplete={() => setShowOnboarding(false)}
-          />
-        </AcquaintanceModalShell>
-      )}
-    </>
-  );
-}
-
 // Demo Mode Component (for tunnel testing without Clerk)
 function DemoModeContent() {
-  const { t } = useTranslation();
-  const [showDashboard, setShowDashboard] = useState(() => !hasSeenOnboarding());
+  const [showDashboard, setShowDashboard] = useState(false);
   const [showBilling, setShowBilling] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(!hasSeenOnboarding());
   const [workspaceNewChatTick, setWorkspaceNewChatTick] = useState(0);
   const isChatView = !showBilling && !showDashboard;
 
@@ -370,8 +276,7 @@ function DemoModeContent() {
   }, []);
 
   return (
-    <>
-      <div className="flex flex-col h-screen bg-[#0F172A]">
+    <div className="flex flex-col h-screen bg-[#0F172A]">
       <motion.header
         initial={{ y: -100 }}
         animate={{ y: 0 }}
@@ -426,17 +331,7 @@ function DemoModeContent() {
           />
         )}
       </main>
-      </div>
-      {showOnboarding && (
-        <AcquaintanceModalShell ariaLabel={t('acquaintance.modalAriaLabel')}>
-          <AcquaintanceFlow
-            layout="embedded"
-            persistDraft={false}
-            onComplete={() => setShowOnboarding(false)}
-          />
-        </AcquaintanceModalShell>
-      )}
-    </>
+    </div>
   );
 }
 
@@ -459,16 +354,17 @@ function App() {
 
   return (
     <>
-      <ClearOnboardingWhenSigningOut />
-      {/* לא מחובר: קודם מסכי כניסה (אם טרם סומנו), אחר כך דף הנחיתה והתחברות */}
       <SignedOut>
-        <SignedOutIntroGate openSignIn={handleGetStarted} />
+        <>
+          <div className="fixed top-4 end-4 z-50">
+            <LanguageSwitcher />
+          </div>
+          <LandingPage onGetStarted={handleGetStarted} />
+        </>
       </SignedOut>
 
-      {/* מחובר: onboarding רק אם עדיין לא סומן (מקרי קצה, למשל קישור ישיר ל-Clerk) */}
       <SignedIn>
-        <IntroDraftSync />
-        <SignedInWithOnboarding />
+        <SignedInContent />
       </SignedIn>
     </>
   );

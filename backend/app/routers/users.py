@@ -19,9 +19,6 @@ class UserPreferencesPatch(BaseModel):
 
     voice_gender: Optional[str] = None
     voice_language: Optional[str] = None
-    intro_age: Optional[int] = None
-    intro_intentions: Optional[list[str]] = None
-    intro_gender_choice: Optional[str] = None
 
     model_config = ConfigDict(extra="ignore")
 
@@ -100,11 +97,6 @@ def update_user_preferences(
     """Merge sent fields into user.preferences (does not replace the whole object)."""
     current_prefs = dict(user.preferences or {})
     patch = prefs.model_dump(exclude_unset=True)
-    if "intro_age" in patch and patch["intro_age"] is not None:
-        age = int(patch["intro_age"])
-        if age < 13 or age > 120:
-            raise HTTPException(status_code=400, detail="intro_age must be between 13 and 120")
-        patch["intro_age"] = age
     updated_prefs = {**current_prefs, **patch}
     user.preferences = updated_prefs
     db.commit()
