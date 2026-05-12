@@ -6,7 +6,7 @@ import { Shield, LayoutDashboard, MessageCircle, Archive, MessageSquarePlus } fr
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { BSDWorkspace } from './components/workspace/BSDWorkspace';
 import { LandingPage } from './components/LandingPage';
-import { AcquaintanceFlow } from './components/AcquaintanceFlow';
+import { AcquaintanceFlow, AcquaintanceModalShell } from './components/AcquaintanceFlow';
 import { IntroDraftSync } from './components/IntroDraftSync';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { BillingPage } from './components/BillingPage';
@@ -52,15 +52,26 @@ function ClearOnboardingWhenSigningOut() {
 
 /** מסכי onboarding לפני השארת דף הנחיתה והתחברות ל-Clerk */
 function SignedOutIntroGate({ openSignIn }: { openSignIn: () => void }) {
+  const { t } = useTranslation();
   const [pastIntro, setPastIntro] = useState(() => hasSeenOnboarding());
 
   if (!pastIntro) {
     return (
-      <AcquaintanceFlow
-        onComplete={() => {
-          setPastIntro(true);
-        }}
-      />
+      <>
+        <div className="fixed inset-0 z-0 overflow-hidden" aria-hidden>
+          <div className="pointer-events-none h-full w-full origin-center scale-[1.03] blur-[10px] opacity-[0.88] saturate-[0.9] select-none">
+            <LandingPage onGetStarted={() => undefined} />
+          </div>
+        </div>
+        <AcquaintanceModalShell ariaLabel={t('acquaintance.modalAriaLabel')}>
+          <AcquaintanceFlow
+            layout="embedded"
+            onComplete={() => {
+              setPastIntro(true);
+            }}
+          />
+        </AcquaintanceModalShell>
+      </>
     );
   }
 
@@ -155,14 +166,14 @@ function ChatHeaderMobileControls({
 }
 
 // Separate component for signed-in content (so useUser is only called when signed in)
-function SignedInContent() {
+function SignedInContent({ initialShowDashboard = false }: { initialShowDashboard?: boolean }) {
   const { t } = useTranslation();
   const { user } = useUser();
   const { getToken, isLoaded, isSignedIn } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [showBilling, setShowBilling] = useState(false);
-  const [showDashboard, setShowDashboard] = useState(false);
+  const [showDashboard, setShowDashboard] = useState(initialShowDashboard);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
   /** Incremented from header "new chat" on mobile — BSDWorkspace runs startNewConversation */
@@ -324,24 +335,28 @@ function SignedInContent() {
 
 // Wrapper: show onboarding for first-time users, then main app
 function SignedInWithOnboarding() {
+  const { t } = useTranslation();
   const [showOnboarding, setShowOnboarding] = useState(!hasSeenOnboarding());
 
-  if (showOnboarding) {
-    return (
-      <AcquaintanceFlow
-        onComplete={() => {
-          setShowOnboarding(false);
-        }}
-      />
-    );
-  }
-  return <SignedInContent />;
+  return (
+    <>
+      <SignedInContent initialShowDashboard={showOnboarding} />
+      {showOnboarding && (
+        <AcquaintanceModalShell ariaLabel={t('acquaintance.modalAriaLabel')}>
+          <AcquaintanceFlow
+            layout="embedded"
+            onComplete={() => setShowOnboarding(false)}
+          />
+        </AcquaintanceModalShell>
+      )}
+    </>
+  );
 }
 
 // Demo Mode Component (for tunnel testing without Clerk)
 function DemoModeContent() {
   const { t } = useTranslation();
-  const [showDashboard, setShowDashboard] = useState(false);
+  const [showDashboard, setShowDashboard] = useState(() => !hasSeenOnboarding());
   const [showBilling, setShowBilling] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(!hasSeenOnboarding());
@@ -354,19 +369,9 @@ function DemoModeContent() {
     console.log('🎭 [DEMO MODE] Running in tunnel demo mode - authentication bypassed');
   }, []);
 
-  if (showOnboarding) {
-    return (
-      <AcquaintanceFlow
-        persistDraft={false}
-        onComplete={() => {
-          setShowOnboarding(false);
-        }}
-      />
-    );
-  }
-
   return (
-    <div className="flex flex-col h-screen bg-[#0F172A]">
+    <>
+      <div className="flex flex-col h-screen bg-[#0F172A]">
       <motion.header
         initial={{ y: -100 }}
         animate={{ y: 0 }}
@@ -421,7 +426,17 @@ function DemoModeContent() {
           />
         )}
       </main>
-    </div>
+      </div>
+      {showOnboarding && (
+        <AcquaintanceModalShell ariaLabel={t('acquaintance.modalAriaLabel')}>
+          <AcquaintanceFlow
+            layout="embedded"
+            persistDraft={false}
+            onComplete={() => setShowOnboarding(false)}
+          />
+        </AcquaintanceModalShell>
+      )}
+    </>
   );
 }
 

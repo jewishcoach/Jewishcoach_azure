@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -83,9 +83,44 @@ export interface AcquaintanceFlowProps {
   onComplete: () => void;
   /** When false (e.g. tunnel demo), do not persist intro draft for post-login sync. */
   persistDraft?: boolean;
+  /**
+   * fullscreen — legacy whole viewport.
+   * embedded — fills parent height (use inside `AcquaintanceModalShell`).
+   */
+  layout?: 'fullscreen' | 'embedded';
 }
 
-export function AcquaintanceFlow({ onComplete, persistDraft = true }: AcquaintanceFlowProps) {
+/** Fixed overlay + blurred backdrop; children should be `AcquaintanceFlow` with layout="embedded". */
+export function AcquaintanceModalShell({
+  children,
+  ariaLabel,
+}: {
+  children: ReactNode;
+  ariaLabel: string;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-6"
+      role="presentation"
+    >
+      <div className="absolute inset-0 bg-slate-950/45 backdrop-blur-md" aria-hidden />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={ariaLabel}
+        className="relative flex h-[min(90dvh,820px)] w-full max-w-[440px] flex-col overflow-hidden rounded-[28px] shadow-[0_25px_80px_-12px_rgba(0,0,0,0.55)] ring-1 ring-black/15"
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+export function AcquaintanceFlow({
+  onComplete,
+  persistDraft = true,
+  layout = 'fullscreen',
+}: AcquaintanceFlowProps) {
   const { t, i18n } = useTranslation();
   const isHe = i18n.language.startsWith('he');
   const dir = isHe ? 'rtl' : 'ltr';
@@ -191,10 +226,13 @@ export function AcquaintanceFlow({ onComplete, persistDraft = true }: Acquaintan
     { id: 'prefer_not', labelKey: 'acquaintance.gender.preferNot' },
   ];
 
+  const rootScreen =
+    layout === 'embedded' ? 'relative flex h-full min-h-0 flex-col' : 'relative flex min-h-screen flex-col';
+
   if (step === 'welcome') {
     return (
       <div
-        className="relative flex min-h-screen flex-col items-center justify-center px-6 py-14"
+        className={`${rootScreen} items-center justify-center overflow-y-auto px-6 ${layout === 'embedded' ? 'py-8 sm:py-10' : 'py-14'}`}
         dir={dir}
         style={{ backgroundColor: BG_PAGE, fontFamily: '"Inter", system-ui, sans-serif' }}
       >
@@ -262,7 +300,7 @@ export function AcquaintanceFlow({ onComplete, persistDraft = true }: Acquaintan
 
     return (
       <div
-        className="flex min-h-screen flex-col"
+        className={layout === 'embedded' ? 'flex h-full min-h-0 flex-col' : 'flex min-h-screen flex-col'}
         dir={dir}
         style={{ backgroundColor: BG_CHAT, fontFamily: '"Inter", system-ui, sans-serif' }}
       >
@@ -376,7 +414,7 @@ export function AcquaintanceFlow({ onComplete, persistDraft = true }: Acquaintan
 
   return (
     <div
-      className="flex min-h-screen flex-col"
+      className={layout === 'embedded' ? 'flex h-full min-h-0 flex-col' : 'flex min-h-screen flex-col'}
       dir={dir}
       style={{ backgroundColor: BG_CHAT, fontFamily: '"Inter", system-ui, sans-serif' }}
     >
