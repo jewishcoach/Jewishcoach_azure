@@ -262,7 +262,7 @@ class ApiClient {
     return response.data;
   }
 
-  async updateUserPreferences(prefs: { voice_gender?: string; voice_language?: string }) {
+  async updateUserPreferences(prefs: Record<string, unknown>) {
     const response = await this.client.patch('/users/me/preferences', prefs);
     return response.data;
   }

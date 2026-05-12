@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { SignedIn, SignedOut, UserButton, useUser, useClerk, useAuth } from '@clerk/clerk-react';
@@ -6,21 +6,72 @@ import { Shield, LayoutDashboard, MessageCircle, Archive, MessageSquarePlus } fr
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { BSDWorkspace } from './components/workspace/BSDWorkspace';
 import { LandingPage } from './components/LandingPage';
-import { OnboardingFlow } from './components/OnboardingFlow';
-import { hasSeenOnboarding, setOnboardingComplete, clearOnboardingOnSignOut } from './lib/onboardingStorage';
+import { AcquaintanceFlow } from './components/AcquaintanceFlow';
+import { IntroDraftSync } from './components/IntroDraftSync';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { BillingPage } from './components/BillingPage';
 import { apiClient } from './services/api';
 import './i18n';
 import { isClerkSyntheticEmail } from './lib/clerkEmail';
 import { isClerkUiAdminAllowlisted } from './config';
+import {
+  hasSeenOnboarding,
+  setOnboardingComplete,
+  clearOnboardingOnSignOut,
+  clearAllIntroGateKeys,
+} from './lib/onboardingStorage';
+import { clearIntroDraft } from './lib/introDraftStorage';
 
-// Clear onboarding when user is signed out, so next login shows it again
-function SignedOutClearOnboarding() {
+function applyIntroHashResetFromUrl(): void {
+  if (typeof window === 'undefined') return;
+  const raw = window.location.hash.slice(1).trim();
+  if (raw !== 'jewishcoach-reset-intro') return;
+  clearAllIntroGateKeys();
+  clearIntroDraft();
+  window.history.replaceState(null, '', window.location.pathname + window.location.search);
+}
+
+applyIntroHashResetFromUrl();
+
+/** איפוס דגל מסכי הכניסה רק כשעוברים ממחובר → לא מחובר (לא בכל טעינה כאורח). */
+function ClearOnboardingWhenSigningOut() {
+  const { isSignedIn, isLoaded } = useAuth();
+  const prevSignedInRef = useRef<boolean | undefined>(undefined);
+
   useEffect(() => {
-    clearOnboardingOnSignOut();
-  }, []);
+    if (!isLoaded) return;
+    const prev = prevSignedInRef.current;
+    if (prev === true && isSignedIn === false) {
+      clearOnboardingOnSignOut();
+    }
+    prevSignedInRef.current = isSignedIn;
+  }, [isLoaded, isSignedIn]);
+
   return null;
+}
+
+/** מסכי onboarding לפני השארת דף הנחיתה והתחברות ל-Clerk */
+function SignedOutIntroGate({ openSignIn }: { openSignIn: () => void }) {
+  const [pastIntro, setPastIntro] = useState(() => hasSeenOnboarding());
+
+  if (!pastIntro) {
+    return (
+      <AcquaintanceFlow
+        onComplete={() => {
+          setPastIntro(true);
+        }}
+      />
+    );
+  }
+
+  return (
+    <>
+      <div className="fixed top-4 end-4 z-50">
+        <LanguageSwitcher />
+      </div>
+      <LandingPage onGetStarted={openSignIn} />
+    </>
+  );
 }
 
 // Check if running on tunnel domain (Demo Mode)
@@ -277,9 +328,8 @@ function SignedInWithOnboarding() {
 
   if (showOnboarding) {
     return (
-      <OnboardingFlow
+      <AcquaintanceFlow
         onComplete={() => {
-          setOnboardingComplete();
           setShowOnboarding(false);
         }}
       />
@@ -306,9 +356,9 @@ function DemoModeContent() {
 
   if (showOnboarding) {
     return (
-      <OnboardingFlow
+      <AcquaintanceFlow
+        persistDraft={false}
         onComplete={() => {
-          setOnboardingComplete();
           setShowOnboarding(false);
         }}
       />
@@ -394,17 +444,15 @@ function App() {
 
   return (
     <>
-      {/* Not Signed In - Landing Page. Clear onboarding so next login shows it again. */}
+      <ClearOnboardingWhenSigningOut />
+      {/* לא מחובר: קודם מסכי כניסה (אם טרם סומנו), אחר כך דף הנחיתה והתחברות */}
       <SignedOut>
-        <SignedOutClearOnboarding />
-        <div className="fixed top-4 end-4 z-50">
-          <LanguageSwitcher />
-        </div>
-        <LandingPage onGetStarted={handleGetStarted} />
+        <SignedOutIntroGate openSignIn={handleGetStarted} />
       </SignedOut>
 
-      {/* Signed In - Onboarding (first time) or Chat Interface */}
+      {/* מחובר: onboarding רק אם עדיין לא סומן (מקרי קצה, למשל קישור ישיר ל-Clerk) */}
       <SignedIn>
+        <IntroDraftSync />
         <SignedInWithOnboarding />
       </SignedIn>
     </>
