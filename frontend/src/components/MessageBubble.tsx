@@ -11,6 +11,8 @@ interface Props {
 export const MessageBubble = ({ message }: Props) => {
   const isUser = message.role === 'user';
   const { i18n } = useTranslation();
+  const rtlUi = i18n.dir() === 'rtl';
+  const rowJustify = rtlUi === isUser ? 'justify-start' : 'justify-end';
   const mdSource =
     !isUser && message.content
       ? emphasizeBsdCoachTerms(message.content, i18n.language)
@@ -18,8 +20,8 @@ export const MessageBubble = ({ message }: Props) => {
 
   return (
     <motion.div 
-      className={`flex ${isUser ? 'justify-start' : 'justify-end'}`}
-      initial={{ opacity: 0, x: isUser ? -20 : 20 }}
+      className={`flex ${rowJustify}`}
+      initial={{ opacity: 0, x: rtlUi ? (isUser ? -20 : 20) : (isUser ? 20 : -20) }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.3 }}
     >

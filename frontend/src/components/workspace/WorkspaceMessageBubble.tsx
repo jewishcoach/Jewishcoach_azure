@@ -18,6 +18,9 @@ interface Props {
 export const WorkspaceMessageBubble = ({ message, animateTyping = false, dir = 'rtl' }: Props) => {
   const { i18n } = useTranslation();
   const isUser = message.role === 'user';
+  /** Parent scroll region is dir=ltr; Hebrew chat keeps coach on the right, English mirrors typical LTR messengers (coach left). */
+  const isHebrewChat = i18n.language.startsWith('he');
+  const rowJustify = isHebrewChat === isUser ? 'justify-start' : 'justify-end';
   const fullContent = stripUndefined(message.content ?? '');
   const [displayedContent, setDisplayedContent] = useState(
     animateTyping ? '' : fullContent
@@ -64,7 +67,7 @@ export const WorkspaceMessageBubble = ({ message, animateTyping = false, dir = '
 
   return (
     <motion.div
-      className={`flex ${isUser ? 'justify-start' : 'justify-end'}`}
+      className={`flex ${rowJustify}`}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}

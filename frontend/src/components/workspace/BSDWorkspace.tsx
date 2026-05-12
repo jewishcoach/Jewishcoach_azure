@@ -77,6 +77,8 @@ export const BSDWorkspace = ({
   const { messagesEndRef, lastMessageRef } = useChatScrollIntoLatest(messages, loading || historyLoading);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isSendingRef = useRef(false);
+  /** Matches WorkspaceMessageBubble: coach-aligned widgets on the same side as assistant bubbles. */
+  const coachBubbleRowJustify = i18n.language.startsWith('he') ? 'justify-end' : 'justify-start';
 
   const handlePhaseClick = useCallback((phaseIndex: number) => {
     const stages = PHASE_TO_STAGES[phaseIndex];
@@ -384,7 +386,7 @@ export const BSDWorkspace = ({
             </div>
             <div className="flex min-w-0 min-h-0 flex-1 flex-col relative overflow-hidden bg-[#F5F5F0]">
               <ShehiyaProgress loading={loading && !historyLoading} />
-              {/* dir=ltr כאן קובע יישור פיזי: מאמן מימין, משתמש משמאל (גם בעברית). כיוון טקסט בבועות — ב-WorkspaceMessageBubble */}
+              {/* dir=ltr — ציר פיזי קבוע; יישור צד בועות לפי שפת הצ'אט ב-WorkspaceMessageBubble (עברית: מאמן מימין; אנגלית: מאמן משמאל). */}
               <div
                 ref={messagesScrollRef}
                 className="min-h-0 flex-1 overflow-y-auto px-3 py-4 md:px-10 md:py-10 custom-scrollbar bg-[#F5F5F0] relative"
@@ -442,7 +444,7 @@ export const BSDWorkspace = ({
                 })}
               </AnimatePresence>
               {activeTool && (
-                <div ref={chatToolRef} className="flex justify-end">
+                <div ref={chatToolRef} className={`flex ${coachBubbleRowJustify}`}>
                   <div
                     className="w-full max-w-[90%] md:max-w-[85%] rounded-xl px-5 py-4 md:px-9 md:py-6 shadow-sm bg-white border border-[#E2E4E8]"
                     dir={i18n.dir()}
@@ -456,7 +458,7 @@ export const BSDWorkspace = ({
                 </div>
               )}
               {loading && (
-                <div className="flex justify-end">
+                <div className={`flex ${coachBubbleRowJustify}`}>
                   <div
                     className="rounded-xl px-6 py-4 flex items-center gap-3 bg-white shadow-md border border-[#E2E4E8]"
                   >
