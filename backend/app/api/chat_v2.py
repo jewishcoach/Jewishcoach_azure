@@ -94,11 +94,11 @@ def load_v2_state(conversation_id: int, db: Session) -> Dict[str, Any]:
     
     # Try to load state from v2_state
     if conv.v2_state and isinstance(conv.v2_state, dict):
-        logger.info(f"[BSD V2 API] Loaded existing state with {len(conv.v2_state.get('messages', []))} messages")
+        logger.debug(f"[BSD V2 API] Loaded existing state with {len(conv.v2_state.get('messages', []))} messages")
         return conv.v2_state
     
     # Create new state if not found
-    logger.info(f"[BSD V2 API] Creating new state for conversation {conversation_id}")
+    logger.debug(f"[BSD V2 API] Creating new state for conversation {conversation_id}")
     return create_initial_state(
         conversation_id=str(conversation_id),
         user_id=str(conv.user_id),
@@ -121,7 +121,7 @@ def save_v2_state(conversation_id: int, state: Dict[str, Any], db: Session) -> N
     conv.current_phase = state.get("current_step", "S0")
     
     db.commit()
-    logger.info(f"[BSD V2 API] Saved state with {len(state.get('messages', []))} messages")
+    logger.debug(f"[BSD V2 API] Saved state with {len(state.get('messages', []))} messages")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -201,14 +201,14 @@ async def send_message_v2(
         safe_message = sanitize_chat_message(body.message)
         api_start = time.time()
 
-        print(f"\n{'='*80}")
-        print(f"[BSD V2 API] ✅ REQUEST RECEIVED")
-        print(f"[BSD V2 API] User: {current_user.id}")
-        print(f"[BSD V2 API] Conversation: {body.conversation_id}")
-        print(f"[BSD V2 API] Message: {body.message[:50]}...")
-        print(f"{'='*80}\n", flush=True)
-        
-        logger.info(f"[BSD V2 API] User {current_user.id} sent message to conv {body.conversation_id}")
+        logger.debug(
+            "[BSD V2 API] request user=%s conv=%s msg_len=%s",
+            current_user.id,
+            body.conversation_id,
+            len(body.message or ""),
+        )
+
+        logger.debug("[BSD V2 API] User %s sent message to conv %s", current_user.id, body.conversation_id)
         
         # Verify conversation ownership before any load/save
         _get_conversation_or_404(body.conversation_id, current_user.id, db)
@@ -218,8 +218,12 @@ async def send_message_v2(
         state = load_v2_state(body.conversation_id, db)
         ensure_training_started_at(state)
         t2 = time.time()
-        logger.info(f"[PERF API] Load state from DB: {(t2-t1)*1000:.0f}ms")
-        logger.info(f"[BSD V2 API] Loaded state: step={state['current_step']}, messages={len(state.get('messages', []))}")
+        logger.debug("[PERF API] Load state from DB: %.0fms", (t2 - t1) * 1000)
+        logger.debug(
+            "[BSD V2 API] Loaded state: step=%s, messages=%s",
+            state["current_step"],
+            len(state.get("messages", [])),
+        )
         
         # Snapshot previous step BEFORE handle_conversation mutates state in-place.
         # This is required for reliable "stage entry" detection and tool activation.
@@ -236,17 +240,21 @@ async def send_message_v2(
             conversation_id=body.conversation_id,
         )
         t4 = time.time()
-        logger.info(f"[PERF API] handle_conversation: {(t4-t3)*1000:.0f}ms")
+        logger.debug("[PERF API] handle_conversation: %.0fms", (t4 - t3) * 1000)
 
         station_checkpoint = updated_state.pop("last_station_checkpoint_api", None)
 
         # Save state
         t5 = time.time()
-        logger.info(f"[BSD V2 API] Saving state: step={updated_state['current_step']}, messages={len(updated_state.get('messages', []))}")
+        logger.debug(
+            "[BSD V2 API] Saving state: step=%s, messages=%s",
+            updated_state["current_step"],
+            len(updated_state.get("messages", [])),
+        )
         save_v2_state(body.conversation_id, updated_state, db)
         t6 = time.time()
-        logger.info(f"[PERF API] Save state to DB: {(t6-t5)*1000:.0f}ms")
-        logger.info(f"[BSD V2 API] State saved successfully")
+        logger.debug("[PERF API] Save state to DB: %.0fms", (t6 - t5) * 1000)
+        logger.debug("[BSD V2 API] State saved successfully")
         
         # Also save messages to DB (for compatibility with UI)
         t7 = time.time()
@@ -276,7 +284,7 @@ async def send_message_v2(
         
         db.commit()
         t8 = time.time()
-        logger.info(f"[PERF API] Save messages to DB: {(t8-t7)*1000:.0f}ms")
+        logger.debug("[PERF API] Save messages to DB: %.0fms", (t8 - t7) * 1000)
 
         # Same as V1: smart title after 4th user message (was missing on V2-only traffic)
         try_autotitle_conversation(db, body.conversation_id, body.language or "he")
@@ -287,9 +295,11 @@ async def send_message_v2(
             mark_trait_picker_sent(updated_state)
             save_v2_state(body.conversation_id, updated_state, db)
         if tool_call:
-            logger.info(
-                f"[BSD V2 API] tool_call: {tool_call['tool_type']} "
-                f"(step {prev_step}→{updated_state.get('current_step')})"
+            logger.debug(
+                "[BSD V2 API] tool_call: %s (step %s→%s)",
+                tool_call["tool_type"],
+                prev_step,
+                updated_state.get("current_step"),
             )
 
         response = ChatResponse(
@@ -303,19 +313,15 @@ async def send_message_v2(
         
         api_end = time.time()
         api_total_ms = (api_end - api_start) * 1000
-        
-        print(f"\n{'='*80}")
-        print(f"[BSD V2 API] ✅ RETURNING RESPONSE")
-        print(f"[BSD V2 API] Message length: {len(coach_message)} chars")
-        print(f"[BSD V2 API] Message preview: {coach_message[:100]}...")
-        print(f"[BSD V2 API] Step: {updated_state['current_step']}")
-        print(f"[BSD V2 API] Saturation: {updated_state['saturation_score']:.2f}")
-        print(f"[PERF API] 🏁 TOTAL API TIME: {api_total_ms:.0f}ms ({api_total_ms/1000:.1f}s)")
-        print(f"{'='*80}\n", flush=True)
-        
-        logger.info(f"[BSD V2 API] Returning response: coach_message length={len(coach_message)}")
-        logger.info(f"[PERF API] 🏁 TOTAL API TIME: {api_total_ms:.0f}ms ({api_total_ms/1000:.1f}s)")
-        
+
+        logger.debug(
+            "[BSD V2 API] response coach_len=%s step=%s total_ms=%.0f",
+            len(coach_message),
+            updated_state["current_step"],
+            api_total_ms,
+        )
+        logger.debug("[PERF API] TOTAL API TIME: %.0fms (%.1fs)", api_total_ms, api_total_ms / 1000)
+
         return response
 
     except HTTPException:
@@ -327,9 +333,7 @@ async def send_message_v2(
             detail={"error": e.reason, "message": "Invalid message content"},
         )
     except Exception as e:
-        logger.error(f"[BSD V2 API] Error: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.exception("[BSD V2 API] Error")
         try:
             from ..bsd_v2.error_buffer import capture_error
             capture_error("chat_v2_api", e, {"conv_id": body.conversation_id})
@@ -496,7 +500,7 @@ async def get_conversation_insights_v2(
         }
     """
     try:
-        logger.info(f"[BSD V2 API] Getting insights for conversation {conversation_id}")
+        logger.debug("[BSD V2 API] Getting insights for conversation %s", conversation_id)
         
         # Verify conversation ownership
         conv = _get_conversation_or_404(conversation_id, current_user.id, db)

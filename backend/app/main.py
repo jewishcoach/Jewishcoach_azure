@@ -15,6 +15,21 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+import logging
+
+_main_log = logging.getLogger(__name__)
+
+
+def _configure_app_logging() -> None:
+    """Quiet app modules by default; set VERBOSE_HTTP_LOGS=true for auth/chat tracing."""
+    verbose = os.getenv("VERBOSE_HTTP_LOGS", "").lower() == "true"
+    level = logging.DEBUG if verbose else logging.WARNING
+    for name in ("app.dependencies", "app.api.chat_v2", "app.routers.chat"):
+        logging.getLogger(name).setLevel(level)
+
+
+_configure_app_logging()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -89,7 +104,7 @@ if allow_tunnels:
         allow_headers=["*"],
         expose_headers=["*"],
     )
-    print("✅ CORS: Remote tunneling enabled (ngrok, localhost.run, azurestaticapps.net)")
+    _main_log.info("CORS: Remote tunneling enabled (ngrok, localhost.run, azurestaticapps.net)")
 else:
     # Standard CORS for specific origins only
     app.add_middleware(
@@ -99,7 +114,7 @@ else:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    print(f"✅ CORS: Configured for origins: {origins_list}")
+    _main_log.info("CORS: Configured for %d origins", len(origins_list))
 
 # Include routers
 app.include_router(chat.router)  # V1 - Multi-layer architecture

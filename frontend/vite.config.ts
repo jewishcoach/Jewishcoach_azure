@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     VitePWA({
@@ -43,5 +43,13 @@ export default defineConfig({
     strictPort: true,
     // Allow any *.lhr.life domain (localhost.run tunnels)
     allowedHosts: ['.lhr.life', '.localhost.run', '.ngrok-free.app']
-  }
-})
+  },
+  build:
+    mode === 'production'
+      ? {
+          esbuild: {
+            drop: ['console', 'debugger'],
+          },
+        }
+      : {},
+}))

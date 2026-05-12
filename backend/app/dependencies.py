@@ -12,10 +12,18 @@ from .database import get_db, utc_now
 from .models import User
 
 import json
+import logging
 import os
 import urllib.error
 import urllib.parse
 import urllib.request
+
+logger = logging.getLogger(__name__)
+
+
+def _verbose_http_logs() -> bool:
+    """Opt-in noisy auth tracing (headers, JWT prefixes, Clerk ids). Default off in production."""
+    return os.getenv("VERBOSE_HTTP_LOGS", "").lower() == "true"
 
 # Optional: JWT verification with Clerk JWKS (set CLERK_JWKS_URL for production)
 _jwks_client = None
@@ -193,17 +201,25 @@ def _fetch_clerk_primary_email(clerk_id: str) -> str | None:
             detail = e.read().decode(errors="replace")[:400]
         except Exception:
             pass
-        print(f"⚠️ [AUTH] Clerk user lookup HTTP {e.code} for {clerk_id}: {detail or e.reason}")
+        if _verbose_http_logs():
+            logger.warning(
+                "Clerk user lookup HTTP %s for clerk user: %s",
+                e.code,
+                detail or e.reason,
+            )
+        else:
+            logger.warning("Clerk user lookup failed with HTTP %s", e.code)
         return None
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, ValueError) as e:
-        print(f"⚠️ [AUTH] Clerk user lookup failed for {clerk_id}: {type(e).__name__}: {e}")
+        logger.warning("Clerk user lookup failed: %s", type(e).__name__)
         return None
     if not isinstance(body, dict):
         return None
     chosen = _pick_email_from_clerk_user_body(body)
     if chosen:
         _CLERK_PRIMARY_EMAIL_CACHE[clerk_id] = chosen
-        print(f"✅ [AUTH] Resolved primary email from Clerk API for {clerk_id}")
+        if _verbose_http_logs():
+            logger.info("Resolved primary email from Clerk API (clerk user)")
         return chosen
     return None
 
@@ -311,19 +327,27 @@ async def get_current_user(
     DEMO MODE: If request comes from tunnel domain (*.lhr.life, *.ngrok-free.app)
     and ALLOW_DEMO_MODE=true, create/return a demo user for testing.
     """
-    # Log every request
-    print(f"🔍 [AUTH] Request received - Origin: {origin if origin else 'NOT SET'}, Auth: {authorization[:30] if authorization else 'NOT SET'}...")
-    
+    # Verbose per-request tracing is opt-in — logs JWT prefixes and origins otherwise.
+    if _verbose_http_logs():
+        auth_hint = (authorization[:30] + "…") if authorization and len(authorization) > 30 else (authorization or "NOT SET")
+        logger.info(
+            "Auth request: Origin=%s, Auth_prefix=%s",
+            origin if origin else "NOT SET",
+            auth_hint,
+        )
+
     # Demo mode for tunnel testing (TEMPORARY) - only for dev tunnels, NOT production
     # azurestaticapps.net is production frontend - users there must use real Clerk auth
     # Default false: production-safe. Set ALLOW_DEMO_MODE=true for local tunnel testing only.
     allow_demo = os.getenv("ALLOW_DEMO_MODE", "false").lower() == "true"
     is_tunnel_domain = origin and any(domain in origin for domain in ['.lhr.life', '.ngrok-free.app', '.localhost.run'])
-    
-    print(f"🔍 [AUTH] allow_demo={allow_demo}, is_tunnel_domain={is_tunnel_domain}")
-    
+
+    if _verbose_http_logs():
+        logger.info("allow_demo=%s, is_tunnel_domain=%s", allow_demo, is_tunnel_domain)
+
     if allow_demo and is_tunnel_domain:
-        print(f"🎭 [DEMO MODE] Request from tunnel domain: {origin}")
+        if _verbose_http_logs():
+            logger.info("Demo mode request from tunnel domain")
         
         # Get or create demo user
         demo_clerk_id = "demo_user_tunnel"
@@ -340,20 +364,24 @@ async def get_current_user(
             db.add(user)
             db.commit()
             db.refresh(user)
-            print(f"✅ [DEMO MODE] Created demo user for tunnel testing")
-        
+            if _verbose_http_logs():
+                logger.info("Demo mode: created tunnel demo user")
+
         return user
-    
+
     # Normal Clerk authentication
-    print(f"🔑 [AUTH DEBUG] Authorization header: {authorization[:50] if authorization else 'MISSING'}...")
-    
+    if _verbose_http_logs():
+        ah = (authorization[:50] + "…") if authorization and len(authorization) > 50 else authorization
+        logger.info("Authorization header prefix: %s", ah or "MISSING")
+
     if not authorization or not authorization.startswith("Bearer "):
-        print(f"❌ [AUTH DEBUG] No valid Bearer token in header")
+        logger.warning("Missing Bearer authorization header")
         raise HTTPException(status_code=401, detail="Missing authorization token")
     
     token = authorization.replace("Bearer ", "")
-    print(f"🎫 [AUTH DEBUG] JWT token (first 30 chars): {token[:30]}...")
-    
+    if _verbose_http_logs():
+        logger.info("JWT prefix: %s…", token[:12])
+
     try:
         # Verify with JWKS if CLERK_JWKS_URL is set; otherwise unverified (MVP/dev)
         payload = None
@@ -362,12 +390,13 @@ async def get_current_user(
         if payload is None:
             payload = jose_jwt.get_unverified_claims(token)
         clerk_id = payload.get("sub")
-        print(f"✅ [AUTH DEBUG] Decoded JWT, clerk_id: {clerk_id}")
+        if _verbose_http_logs():
+            logger.info("Decoded JWT clerk subject present=%s", bool(clerk_id))
         jwt_email = _extract_email(payload)
-        if jwt_email:
-            print(f"✅ [AUTH DEBUG] Email from JWT: {jwt_email[:3]}***")
-        else:
-            print("⚠️ [AUTH DEBUG] No email claim in JWT — will use DB or Clerk API if configured")
+        if jwt_email and _verbose_http_logs():
+            logger.info("Email claim present in JWT (redacted)")
+        elif _verbose_http_logs():
+            logger.info("No email claim in JWT — may use DB or Clerk API")
 
         if not clerk_id:
             raise HTTPException(status_code=401, detail="Invalid token: missing sub claim")
@@ -396,10 +425,10 @@ async def get_current_user(
 
                 maybe_enqueue_default_sequence(db, user)
             except Exception as oe:
-                print(f"⚠️ [OnboardingEmail] enqueue after signup failed: {type(oe).__name__}: {oe}")
-            
-            if should_be_admin:
-                print(f"✅ Admin user created: clerk_id={clerk_id} email={resolved_email or jwt_email}")
+                logger.warning("Onboarding email enqueue after signup failed: %s", type(oe).__name__)
+
+            if should_be_admin and _verbose_http_logs():
+                logger.info("Admin user created (new signup)")
         else:
             updated = False
 
@@ -411,7 +440,8 @@ async def get_current_user(
             if should_be_admin and not user.is_admin:
                 user.is_admin = True
                 updated = True
-                print(f"✅ Admin user promoted: clerk_id={clerk_id} email={resolved_email}")
+                if _verbose_http_logs():
+                    logger.info("Admin user promoted")
 
             if updated:
                 db.commit()
@@ -421,10 +451,10 @@ async def get_current_user(
     except HTTPException:
         raise
     except OperationalError as e:
-        print(f"❌ [AUTH DEBUG] Database error (not a JWT issue): {e}")
+        logger.error("Database error during auth: %s", type(e).__name__)
         raise HTTPException(status_code=503, detail=f"Database error: {str(e)}")
     except Exception as e:
-        print(f"❌ [AUTH DEBUG] JWT decode failed: {type(e).__name__}: {str(e)}")
+        logger.warning("JWT validation failed: %s", type(e).__name__)
         raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")
 
 

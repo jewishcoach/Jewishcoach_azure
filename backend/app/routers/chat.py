@@ -345,7 +345,7 @@ Reply ONLY with the title, nothing else. No quotes."""
         
         return title
     except Exception as e:
-        print(f"Error generating title: {e}")
+        logger.warning("Title generation failed: %s", type(e).__name__)
         # Fallback to simple truncation
         return (content[:40] + "...") if len(content) > 40 else content
 
@@ -395,7 +395,7 @@ def try_autotitle_conversation(
 
     conv.title = generate_smart_title(context, language or "he")
     db.commit()
-    print(f"✨ Auto-generated title: {conv.title}")
+    logger.debug("Auto-generated conversation title after 4th user message")
 
 
 # Background task for quality checking
@@ -435,13 +435,15 @@ async def run_quality_check(
             )
             db_session.add(flag)
             db_session.commit()
-            print(f"🚨 Quality Flag Created: {flag_data['issue_type']} (Severity: {flag_data['severity']}) in {current_stage}")
-        
+            logger.warning(
+                "Quality flag created: issue=%s severity=%s stage=%s",
+                flag_data.get("issue_type"),
+                flag_data.get("severity"),
+                current_stage,
+            )
+
     except Exception as e:
-        print(f"❌ Background quality check failed: {e}")
-        import traceback
-        traceback.print_exc()
-        # Don't crash on judge errors - just log
+        logger.warning("Background quality check failed: %s", type(e).__name__)
 
 @router.post("/conversations", response_model=ConversationResponse)
 def create_conversation(
@@ -932,10 +934,8 @@ async def send_message(
             
         except Exception as e:
             # Handle any unexpected errors during streaming
-            print(f"❌ ERROR in response_generator: {e}")
-            import traceback
-            traceback.print_exc()
-            
+            logger.exception("Error in response_generator")
+
             # Send error message to frontend
             error_msg = "מצטער, היתה שגיאה. אנא נסה שוב." if (message.language or "he") == "he" else "Sorry, there was an error. Please try again."
             yield f"data: {json.dumps({'content': error_msg})}\n\n"
