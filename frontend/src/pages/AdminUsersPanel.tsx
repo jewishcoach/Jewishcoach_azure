@@ -256,8 +256,14 @@ export const AdminUsersPanel: React.FC = () => {
                       <td className="px-3 py-2 font-mono text-xs">{u.id}</td>
                       <td className="px-3 py-2 max-w-[220px]">
                         <div className="font-medium text-gray-900 truncate">{u.display_name || '—'}</div>
-                        <div className="text-xs text-gray-500 truncate" title={`Clerk: ${u.clerk_id}`}>
+                        <div className="text-xs text-gray-600 truncate" title={u.email ?? undefined}>
                           {u.email ?? '—'}
+                        </div>
+                        <div
+                          className="text-[10px] text-gray-400 font-mono truncate cursor-help"
+                          title="Clerk user id"
+                        >
+                          {u.clerk_id}
                         </div>
                       </td>
                       <td className="px-3 py-2">

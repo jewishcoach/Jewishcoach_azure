@@ -29,20 +29,17 @@ router = APIRouter(
 
 def _admin_directory_display_email(u: User, resolved: Optional[str]) -> Optional[str]:
     """
-    Email string for admin grids — prefer real inbox; never hide rows behind empty cells.
-
-    Public APIs still use normalize_public_email alone; operators need to see Clerk placeholders
-    (@clerk.temp) when Backend API cannot resolve a primary address (missing CLERK_SECRET_KEY, etc.).
+    Email column for admin grids — real inbox only (must contain '@').
+    Never show Clerk placeholders (...@clerk.temp), OAuth-derived opaque IDs,
+    or non-email garbage pulled into ``User.email`` by mistake.
     """
-    pub = normalize_public_email(resolved)
-    if pub:
-        return pub
-    if resolved and isinstance(resolved, str):
-        r = resolved.strip()
-        if r:
-            return r
-    raw_db = (u.email or "").strip()
-    return raw_db if raw_db else None
+    for cand in (resolved, getattr(u, "email", None)):
+        if not cand or not isinstance(cand, str):
+            continue
+        pub = normalize_public_email(cand.strip())
+        if pub and "@" in pub:
+            return pub
+    return None
 
 
 def _admin_email_for_persist(resolved: Optional[str]) -> Optional[str]:
