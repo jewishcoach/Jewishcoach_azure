@@ -258,10 +258,7 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
     <div className="w-full md:w-72 flex flex-col h-full bg-[#1e293b] min-h-0">
       {/* שיחות קודמות + שיחה חדשה — דסקטופ בלבד; במובייל הארכיון בהדר */}
       {(onArchiveClick || onNewChat) && (
-        <div className="hidden md:flex md:flex-col gap-3 border-b border-white/[0.07] p-4">
-          <p className="px-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#4ecdc4]">
-            {t('workspace.navSection')}
-          </p>
+        <div className="hidden md:flex md:flex-col gap-2 border-b border-white/[0.07] p-4">
           {onArchiveClick && (
             <button
               type="button"
