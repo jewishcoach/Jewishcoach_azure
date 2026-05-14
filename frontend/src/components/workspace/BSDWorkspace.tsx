@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { PHASE_TO_STAGES } from './phaseMapping';
 import { useTranslation } from 'react-i18next';
 import { Loader2, Send, Mic, Square } from 'lucide-react';
@@ -245,6 +245,25 @@ export const BSDWorkspace = ({
   const isRTL = i18n.dir() === 'rtl';
   const onArchiveClick = useCallback(() => setArchiveOpen(true), []);
 
+  const sessionPillLabel = useMemo(() => {
+    if (conversationId == null || messages.length === 0) return null;
+    const conv = conversations.find((c) => c.id === conversationId);
+    if (!conv) return null;
+    const sorted = [...conversations].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+    );
+    const n = sorted.findIndex((c) => c.id === conversationId) + 1;
+    if (n < 1) return null;
+    const d = new Date(conv.created_at);
+    const sod = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+    const isToday = sod(d) === sod(new Date());
+    const locale = i18n.language.startsWith('he') ? 'he-IL' : 'en-US';
+    const day = isToday
+      ? t('chat.today')
+      : d.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
+    return t('chat.sessionPill', { day, n });
+  }, [conversationId, conversations, messages.length, t, i18n.language]);
+
   const inputArea = (
     <>
       {conversationId != null && stationCheckpoint ? (
@@ -256,7 +275,10 @@ export const BSDWorkspace = ({
           onIntentSent={() => {}}
         />
       ) : null}
-      <form onSubmit={handleSubmit} className="flex items-end gap-3 md:gap-5">
+      <form
+        onSubmit={handleSubmit}
+        className="flex min-h-[48px] items-center gap-2 rounded-[11px] border border-[#e8e0cc] bg-white px-3 py-2 md:gap-3 md:px-4 md:py-2.5"
+      >
         <textarea
           ref={inputRef}
           value={displayValue}
@@ -266,15 +288,12 @@ export const BSDWorkspace = ({
           onKeyDown={handleKeyDown}
           placeholder={chatLockedByForm ? t('chat.formBlocksTyping') : t('chat.placeholder')}
           disabled={loading || historyLoading || isRecording || chatLockedByForm}
-          className="flex-1 min-w-0 resize-none rounded-xl px-4 md:px-6 py-3 md:py-5 text-[14px] md:text-[16px] max-h-28 placeholder-[#5A6B8A]/60 placeholder:text-[12px] md:placeholder:text-[16px] focus:border-[#B38728]/50 focus:ring-2 focus:ring-[#B38728]/20 focus:outline-none"
+          className="min-h-[24px] max-h-28 flex-1 min-w-0 resize-none border-0 bg-transparent text-[14px] md:text-[16px] placeholder-[#4c5a70]/80 placeholder:text-[14px] focus:outline-none focus:ring-0 disabled:opacity-60"
           style={{
             fontFamily: WORKSPACE_CHAT_FONT,
             fontWeight: 400,
             lineHeight: 1.6,
-            minHeight: '48px',
-            background: '#FFFFFF',
-            border: '1px solid #E2E4E8',
-            color: '#2E3A56',
+            color: '#1a1510',
           }}
           rows={1}
         />
@@ -289,20 +308,21 @@ export const BSDWorkspace = ({
                 ? t('chat.stopRecording')
                 : t('chat.recordVoice')
           }
-          className={`p-3 md:p-4 rounded-xl border transition-colors shadow-sm min-h-[44px] min-w-[44px] flex items-center justify-center ${
+          className={`flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[7px] border border-[rgba(255,255,255,0.11)] transition-colors ${
             isRecording
-              ? 'bg-[#2E3A56]/15 border-[#2E3A56]/40 text-[#2E3A56] hover:bg-[#2E3A56]/25'
-              : 'bg-white border-[#E2E4E8] hover:bg-[#F0F1F3] text-[#2E3A56]/80'
-          }`}
+              ? 'bg-[#c8953a]/25 text-[#1e293b] border-[#c8953a]/35'
+              : 'bg-[#e8e0cc] text-[#2E3A56]/85 hover:bg-[#ded6c4]'
+          } disabled:opacity-50`}
         >
-          {isRecording ? <Square size={18} strokeWidth={2} fill="currentColor" /> : <Mic size={18} strokeWidth={1.5} />}
+          {isRecording ? <Square size={13} strokeWidth={2} fill="currentColor" /> : <Mic size={13} strokeWidth={1.5} />}
         </button>
         <button
           type="submit"
           disabled={chatLockedByForm || !displayValue.trim() || loading || historyLoading || isRecording}
-          className="premium-cta-btn p-3 md:p-4 rounded-xl text-[#2E3A56] font-semibold disabled:opacity-50 min-h-[44px] min-w-[44px] flex items-center justify-center flex-shrink-0"
+          className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[7px] bg-[#1e293b] text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+          aria-label={t('chat.send')}
         >
-          <Send size={18} strokeWidth={1.5} />
+          <Send size={13} strokeWidth={1.5} className="text-white" />
         </button>
       </form>
     </>
@@ -384,17 +404,17 @@ export const BSDWorkspace = ({
                 <VisionLadder currentStep={currentPhase} onPhaseClick={handlePhaseClick} compact conversationId={conversationId} />
               </div>
             </div>
-            <div className="flex min-w-0 min-h-0 flex-1 flex-col relative overflow-hidden bg-[#F5F5F0]">
+            <div className="flex min-w-0 min-h-0 flex-1 flex-col relative overflow-hidden bg-[#faf8f3]">
               <ShehiyaProgress loading={loading && !historyLoading} />
               {/* dir=ltr — ציר פיזי קבוע; יישור צד בועות לפי שפת הצ'אט ב-WorkspaceMessageBubble (עברית: מאמן מימין; אנגלית: מאמן משמאל). */}
               <div
                 ref={messagesScrollRef}
-                className="min-h-0 flex-1 overflow-y-auto px-3 py-4 md:px-10 md:py-10 custom-scrollbar bg-[#F5F5F0] relative"
+                className="min-h-0 flex-1 overflow-y-auto px-3 py-4 md:px-10 md:py-10 custom-scrollbar bg-[#faf8f3] relative"
                 dir="ltr"
               >
           {historyLoading && (
             <div
-              className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#F5F5F0]/90 backdrop-blur-[2px] px-6"
+              className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#faf8f3]/90 backdrop-blur-[2px] px-6"
               aria-busy="true"
               aria-live="polite"
             >
@@ -421,6 +441,17 @@ export const BSDWorkspace = ({
             </motion.div>
           ) : (
             <div className="space-y-5 md:space-y-9">
+              {sessionPillLabel ? (
+                <div className="flex justify-center pb-0 pt-1">
+                  <div
+                    className="rounded-full border border-[#e8e0cc] bg-[#f2ede2] px-3.5 py-1 text-[10px] font-normal uppercase tracking-[1.2px] text-[#8a7f6e]"
+                    style={{ fontFamily: WORKSPACE_CHAT_FONT }}
+                    dir={i18n.dir()}
+                  >
+                    {sessionPillLabel}
+                  </div>
+                </div>
+              ) : null}
               <AnimatePresence>
                 {messages.map((message, idx) => {
                   const phase = message.role === 'assistant' && message.meta?.phase
@@ -446,7 +477,7 @@ export const BSDWorkspace = ({
               {activeTool && (
                 <div ref={chatToolRef} className={`flex ${coachBubbleRowJustify}`}>
                   <div
-                    className="w-full max-w-[90%] md:max-w-[85%] rounded-xl px-5 py-4 md:px-9 md:py-6 shadow-sm bg-white border border-[#E2E4E8]"
+                    className="w-full max-w-[90%] md:max-w-[600px] rounded-[18px] border border-[#e8e0cc] bg-white px-5 py-4 md:px-6 md:py-5 shadow-[0px_1px_4px_rgba(10,10,10,0.06)]"
                     dir={i18n.dir()}
                   >
                     <ActiveToolRenderer
@@ -460,7 +491,7 @@ export const BSDWorkspace = ({
               {loading && (
                 <div className={`flex ${coachBubbleRowJustify}`}>
                   <div
-                    className="rounded-xl px-6 py-4 flex items-center gap-3 bg-white shadow-md border border-[#E2E4E8]"
+                    className="flex items-center gap-3 rounded-[18px] border border-[#e8e0cc] bg-white px-5 py-4 shadow-[0px_1px_4px_rgba(10,10,10,0.06)]"
                   >
                     <div className="flex gap-1">
                       <span className="w-2.5 h-2.5 rounded-full bg-[#AA771C] animate-bounce shadow-sm" style={{ animationDelay: '0ms' }} />
@@ -468,7 +499,7 @@ export const BSDWorkspace = ({
                       <span className="w-2.5 h-2.5 rounded-full bg-[#AA771C] animate-bounce shadow-sm" style={{ animationDelay: '300ms' }} />
                     </div>
                     <span
-                      className="text-[14px] font-medium text-[#2E3A56]/80"
+                      className="text-[14px] font-medium text-[#4c5a70]"
                       style={{ fontFamily: WORKSPACE_CHAT_FONT }}
                       dir={i18n.dir()}
                     >
@@ -482,14 +513,14 @@ export const BSDWorkspace = ({
           )}
               </div>
               {/* Mobile: input only under chat, not under the blue strip */}
-              <div className="md:hidden flex-shrink-0 border-t border-[#E2E4E8] bg-[#F5F5F0] p-4">
+              <div className="md:hidden flex-shrink-0 border-t border-[#e8e0cc] bg-[#faf8f3] p-4">
                 {inputArea}
               </div>
             </div>
           </div>
 
           {/* Desktop: input full width of chat column */}
-          <div className="hidden md:block border-t border-[#E2E4E8] bg-[#F5F5F0] p-4 md:p-9 flex-shrink-0">
+          <div className="hidden md:block border-t border-[#e8e0cc] bg-[#faf8f3] p-4 md:p-9 flex-shrink-0">
             {inputArea}
           </div>
         </div>
