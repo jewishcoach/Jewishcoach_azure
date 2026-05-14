@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { SignedIn, SignedOut, UserButton, useUser, useClerk, useAuth } from '@clerk/clerk-react';
+import { SignedIn, SignedOut, useUser, useClerk, useAuth } from '@clerk/clerk-react';
 import { Shield, LayoutDashboard, MessageCircle, MessageSquarePlus } from 'lucide-react';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { BSDWorkspace } from './components/workspace/BSDWorkspace';
 import { LandingPage } from './components/LandingPage';
 import { BsdOnboardingFlow } from './components/BsdOnboardingFlow';
+import { AppUserButton } from './components/AppUserButton';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { BillingPage } from './components/BillingPage';
 import { apiClient } from './services/api';
@@ -313,7 +314,7 @@ function SignedInContent() {
             </button>
           )}
           <LanguageSwitcher variant="dark" />
-          <UserButton afterSignOutUrl="/" />
+          <AppUserButton />
         </div>
       </motion.header>
       <main
