@@ -58,20 +58,16 @@ const InsightSubsectionsCard = ({
   sections: { heading: string; body: string }[];
 }) => (
   <div
-    className="px-3 py-2.5 rounded-xl border min-h-[2.5rem]"
-    style={{
-      background: 'rgba(255, 255, 255, 0.04)',
-      borderColor: 'rgba(252, 246, 186, 0.2)',
-      fontFamily: WORKSPACE_CHAT_FONT,
-    }}
+    className="min-h-[2.5rem] rounded-xl border border-white/[0.07] bg-[#1c2636] px-3 py-2.5"
+    style={{ fontFamily: WORKSPACE_CHAT_FONT }}
   >
-    <span className="text-[11px] uppercase tracking-wider text-[#FCF6BA]/80">{title}</span>
+    <span className="text-[11px] font-semibold uppercase tracking-wider text-[#4ecdc4]">{title}</span>
     <div className="mt-2 space-y-3">
       {sections.map((s, i) => (
         <div key={i}>
-          <div className="text-[11px] font-semibold text-[#FCF6BA]/95 tracking-wide">{s.heading}</div>
+          <div className="text-[11px] font-semibold tracking-wide text-[#d4a017]/95">{s.heading}</div>
           <p
-            className="text-[13px] font-light text-[#F5F5F0]/95 mt-0.5 break-words whitespace-pre-wrap"
+            className="mt-0.5 break-words whitespace-pre-wrap text-[13px] font-light text-[#e8e4dc]/95"
             style={{ lineHeight: 1.45 }}
           >
             {s.body}
@@ -84,16 +80,12 @@ const InsightSubsectionsCard = ({
 
 const InsightTag = ({ label, value }: { label: string; value: string }) => (
   <div
-    className="px-3 py-2 rounded-xl border min-h-[2.5rem]"
-    style={{
-      background: 'rgba(255, 255, 255, 0.04)',
-      borderColor: 'rgba(252, 246, 186, 0.2)',
-      fontFamily: WORKSPACE_CHAT_FONT,
-    }}
+    className="min-h-[2.5rem] rounded-xl border border-white/[0.07] bg-[#1c2636] px-3 py-2"
+    style={{ fontFamily: WORKSPACE_CHAT_FONT }}
   >
-    <span className="text-[11px] uppercase tracking-wider text-[#FCF6BA]/70">{label}</span>
+    <span className="text-[11px] font-semibold uppercase tracking-wider text-[#4ecdc4]">{label}</span>
     <p
-      className="text-[13px] font-light text-[#F5F5F0]/95 mt-0.5 break-words whitespace-pre-wrap"
+      className="mt-0.5 border-s-2 border-[#d4a017] ps-2 break-words whitespace-pre-wrap text-[13px] font-light text-[#e8e4dc]/95"
       style={{ lineHeight: 1.45 }}
     >
       {value}
@@ -266,16 +258,19 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
     <div className="w-full md:w-72 flex flex-col h-full bg-[#1e293b] min-h-0">
       {/* שיחות קודמות + שיחה חדשה — דסקטופ בלבד; במובייל הארכיון בהדר */}
       {(onArchiveClick || onNewChat) && (
-        <div className="hidden md:flex md:flex-col p-4 border-b border-white/[0.06] gap-2">
+        <div className="hidden md:flex md:flex-col gap-3 border-b border-white/[0.07] p-4">
+          <p className="px-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#4ecdc4]">
+            {t('workspace.navSection')}
+          </p>
           {onArchiveClick && (
             <button
               type="button"
               onClick={onArchiveClick}
               title={t('chat.previousConversationsHint')}
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] text-sm font-medium shadow-sm transition-all duration-150 ease-out hover:-translate-y-0.5 hover:bg-slate-300 hover:border-slate-500 hover:shadow-[0_6px_20px_-4px_rgba(51,65,85,0.45)] hover:ring-2 hover:ring-slate-400/55 active:translate-y-0 active:bg-slate-400/90"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.07] bg-[#1c2636] px-3 py-2.5 text-sm font-medium text-[#e8e4dc] transition-colors hover:bg-[#243044]"
               style={{ fontFamily: WORKSPACE_CHAT_FONT }}
             >
-              <Archive size={18} strokeWidth={2} className="flex-shrink-0 text-[#2E3A56]" />
+              <Archive size={18} strokeWidth={2} className="flex-shrink-0 text-[#e8e4dc]" />
               <span>{t('chat.previousConversations')}</span>
             </button>
           )}
@@ -285,10 +280,10 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
               onClick={onNewChat}
               disabled={loading}
               title={t('chat.newConversation')}
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-sm font-semibold shadow-sm transition-all duration-150 ease-out border border-[#FCF6BA]/45 bg-gradient-to-br from-[#BF953F] via-[#FCF6BA] to-[#B38728] text-[#0f172a] hover:brightness-105 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_-4px_rgba(179,135,40,0.35)] active:translate-y-0 disabled:opacity-45 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:brightness-100"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#c8953a]/40 bg-[rgba(200,149,58,0.1)] px-3 py-2.5 text-sm font-semibold text-[#f0e6d2] transition-colors hover:bg-[rgba(200,149,58,0.16)] disabled:cursor-not-allowed disabled:opacity-45"
               style={{ fontFamily: WORKSPACE_CHAT_FONT }}
             >
-              <MessageSquarePlus size={18} strokeWidth={2} className="flex-shrink-0 text-[#0f172a]" />
+              <MessageSquarePlus size={18} strokeWidth={2} className="flex-shrink-0 text-[#e8d4a8]" />
               <span>{t('chat.newConversation')}</span>
             </button>
           )}
@@ -297,20 +292,20 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
       <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col min-h-0">
         {/* תובנות - תגיות למעלה */}
         {insightPieces.length > 0 ? (
-          <section className="p-5 border-b border-white/[0.06] flex-shrink-0">
-            <div className="flex items-center gap-2 mb-3">
-              <Sparkles size={16} className="text-[#FCF6BA]/80" />
-              <h4 className="text-[12px] font-light uppercase tracking-[0.15em]" style={{ color: 'rgba(245,245,240,0.8)' }}>{t('chat.insightsTitle')}</h4>
+          <section className="flex-shrink-0 border-b border-white/[0.07] p-5">
+            <div className="mb-3 flex items-center gap-2">
+              <Sparkles size={16} className="text-[#4ecdc4]" />
+              <h4 className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[#4ecdc4]">{t('chat.insightsTitle')}</h4>
             </div>
             <div className="space-y-2">
               {insightPieces.map((piece, i) => renderInsightPiece(piece, i))}
             </div>
           </section>
         ) : conversationId && (
-          <section className="p-5 border-b border-white/[0.06] flex-shrink-0">
-            <div className="flex items-center gap-2 mb-2">
-              <Sparkles size={16} className="text-[#FCF6BA]/50" />
-              <h4 className="text-[12px] font-light uppercase tracking-[0.15em]" style={{ color: 'rgba(245,245,240,0.5)' }}>{t('chat.insightsTitle')}</h4>
+          <section className="flex-shrink-0 border-b border-white/[0.07] p-5">
+            <div className="mb-2 flex items-center gap-2">
+              <Sparkles size={16} className="text-[#4ecdc4]/55" />
+              <h4 className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[#4ecdc4]/70">{t('chat.insightsTitle')}</h4>
             </div>
             <p className="text-[11px] text-[#F5F5F0]/50" style={{ fontFamily: WORKSPACE_CHAT_FONT }}>
               {t('chat.insightsPlaceholder')}

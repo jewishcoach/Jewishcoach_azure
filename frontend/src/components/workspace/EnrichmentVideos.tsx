@@ -19,15 +19,15 @@ export const EnrichmentVideos = ({ currentPhase }: EnrichmentVideosProps) => {
   if (videos.length === 0) return null;
 
   return (
-    <section className="mt-4 pt-4 border-t border-white/[0.08]">
+    <section className="mt-4 border-t border-white/[0.07] pt-4">
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between gap-2 py-2 text-right hover:text-[#FCF6BA]/95 transition-colors"
-        style={{ fontFamily: "'Cormorant Garamond', 'Heebo', serif", color: 'rgba(245,245,240,0.9)' }}
+        className="flex w-full items-center justify-between gap-2 py-2 text-right transition-colors hover:text-[#4ecdc4]"
+        style={{ fontFamily: "'Cormorant Garamond', 'Heebo', serif", color: 'rgba(245,245,240,0.88)' }}
       >
         <span className="flex items-center gap-2">
-          <Play size={14} strokeWidth={1.5} className="text-[#FCF6BA]/80" />
+          <Play size={14} strokeWidth={1.5} className="text-[#4ecdc4]" />
           <span className="text-[13px] font-light tracking-[0.06em]">{title}</span>
         </span>
         {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}

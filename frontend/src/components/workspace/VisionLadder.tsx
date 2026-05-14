@@ -8,6 +8,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@clerk/clerk-react';
+import { Check } from 'lucide-react';
 import { apiClient } from '../../services/api';
 import { buildInsightsByPhase, type InsightItem } from '../../utils/insightsByPhase';
 import { WORKSPACE_CHAT_FONT } from '../../constants/workspaceFonts';
@@ -28,10 +29,6 @@ const STEP_TO_PHASE: Record<string, number> = {
 // 11 שלבים לפי החוברת (מקור-טבע-שכל וכמ"ז – אותו שלב) – תרגום ב-i18n
 const PHASE_IDS = ['p0', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p10'];
 
-const CREAM_WHITE = '#F5F5F0';
-/** רקע מלא לשלב הפעיל — מעט בהיר מ־#1e293b כדי שיבלוט מיד */
-const LADDER_ACTIVE_FILL = '#3d5266';
-
 interface VisionLadderProps {
   currentStep: string;
   onPhaseClick?: (phaseIndex: number) => void;
@@ -39,9 +36,46 @@ interface VisionLadderProps {
   compact?: boolean;
   /** For compact: fetch insights and show popover on tap */
   conversationId?: number | null;
+  /** Shown in journey subtitle (desktop). */
+  displayName?: string | null;
 }
 
-export const VisionLadder = ({ currentStep, onPhaseClick, compact = false, conversationId }: VisionLadderProps) => {
+function JourneyProgressRing({ pct, stageFraction, pctCaption }: { pct: number; stageFraction: string; pctCaption: string }) {
+  const r = 38;
+  const c = 2 * Math.PI * r;
+  const clamped = Math.min(100, Math.max(0, pct));
+  const offset = c - (clamped / 100) * c;
+  return (
+    <div className="relative h-[92px] w-[92px] shrink-0" aria-hidden>
+      <svg className="h-full w-full -rotate-90" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r={r} fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="7" />
+        <circle
+          cx="50"
+          cy="50"
+          r={r}
+          fill="none"
+          stroke="#c8953a"
+          strokeWidth="7"
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={offset}
+        />
+      </svg>
+      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-0.5 px-2 text-center">
+        <span className="text-[13px] font-semibold leading-tight text-[#f5f5f0]">{stageFraction}</span>
+        <span className="text-[10px] font-normal leading-tight text-[#8b97ae]">{pctCaption}</span>
+      </div>
+    </div>
+  );
+}
+
+export const VisionLadder = ({
+  currentStep,
+  onPhaseClick,
+  compact = false,
+  conversationId,
+  displayName,
+}: VisionLadderProps) => {
   const { t, i18n } = useTranslation();
   const { getToken, isLoaded, isSignedIn } = useAuth();
   const activePhaseIndex = STEP_TO_PHASE[currentStep] ?? 0;
@@ -94,7 +128,7 @@ export const VisionLadder = ({ currentStep, onPhaseClick, compact = false, conve
   if (compact) {
     return (
       <div
-        className="box-border w-[78px] flex-shrink-0 flex h-full min-h-0 flex-col justify-between py-2 bg-[#1e293b] border-l border-white/[0.08] relative"
+        className="box-border w-[78px] flex-shrink-0 flex h-full min-h-0 flex-col justify-between py-2 bg-[#1e293b] border-l border-white/[0.07] relative"
         dir={isRTL ? 'rtl' : 'ltr'}
       >
         {PHASE_IDS.map((phaseId, i) => {
@@ -180,78 +214,131 @@ export const VisionLadder = ({ currentStep, onPhaseClick, compact = false, conve
     );
   }
 
+  const sessionLabelName = (displayName?.trim() || t('chat.coach')) as string;
+  const totalStages = PHASE_IDS.length;
+  const stageOrdinal = activePhaseIndex + 1;
+  const progressPct = Math.min(
+    100,
+    Math.round((activePhaseIndex / Math.max(1, totalStages - 1)) * 100),
+  );
+  const activePhaseKey = PHASE_IDS[activePhaseIndex] ?? 'p0';
+
   return (
-    <div className="w-full min-w-[240px] flex flex-col h-full bg-[#1e293b] py-8 px-5 workspace-ladder" dir={isRTL ? 'rtl' : 'ltr'}>
-      <div className="flex-1 overflow-y-auto overflow-x-visible custom-scrollbar flex flex-col gap-0">
+    <div
+      className="workspace-ladder flex h-full min-w-[240px] w-full flex-col bg-[#1e293b]"
+      dir={isRTL ? 'rtl' : 'ltr'}
+    >
+      <div className="flex-shrink-0 border-b border-white/[0.07] px-5 pb-5 pt-6">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#4ecdc4]">{t('ladder.journeyStages')}</p>
+        <h2 className="mt-1 text-[18px] font-light tracking-[0.02em] text-[#f5f5f0]" style={{ fontFamily: WORKSPACE_CHAT_FONT }}>
+          {t('ladder.journeyTitle')}
+        </h2>
+        <p className="mt-1 text-[12px] text-[#8b97ae]" style={{ fontFamily: WORKSPACE_CHAT_FONT }}>
+          {t('ladder.sessionWith', { name: sessionLabelName })}
+        </p>
+        <p className="mt-2 text-[11px] text-[#8b97ae]/90">{t('ladder.journeyProgress', { total: totalStages, active: stageOrdinal })}</p>
+        <div className="mt-4 flex items-center gap-4">
+          <JourneyProgressRing
+            pct={progressPct}
+            stageFraction={`${stageOrdinal}/${totalStages}`}
+            pctCaption={t('ladder.progressPct', { pct: progressPct })}
+          />
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-medium text-[#f5f5f0]" style={{ fontFamily: WORKSPACE_CHAT_FONT }}>
+              {t(`ladder.${activePhaseKey}`)}
+            </p>
+            <p className="mt-1 border-s-2 border-[#d4a017] ps-2 text-[11px] leading-snug text-[#c9d4e8]/90" style={{ fontFamily: WORKSPACE_CHAT_FONT }}>
+              {t(`ladder.${activePhaseKey}.tagline`)}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="custom-scrollbar flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overflow-x-visible px-4 py-4">
         {PHASE_IDS.map((phaseId, i) => {
           const title = t(`ladder.${phaseId}`);
+          const tagline = t(`ladder.${phaseId}.tagline`);
           const tooltip = t(`ladder.${phaseId}.tooltip`);
           const isActive = i === activePhaseIndex;
           const isPast = i < activePhaseIndex;
-          const isLast = i === PHASE_IDS.length - 1;
           const isClickable = !!onPhaseClick;
           const scrollHint = t('ladder.scrollHint');
           const isStepPulsing = isActive && pulsePhaseIndex === i;
+
           return (
-            <div key={phaseId} className="flex flex-col items-stretch">
+            <div key={phaseId} className="group relative">
               <div
                 role={isClickable ? 'button' : undefined}
                 tabIndex={isClickable ? 0 : undefined}
                 aria-label={isClickable ? `${title} - ${scrollHint}` : undefined}
                 onClick={isClickable ? () => onPhaseClick(i) : undefined}
-                onKeyDown={isClickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPhaseClick(i); } } : undefined}
-                className={`group relative rounded-xl px-4 py-3 border ${
-                  isStepPulsing ? 'transition-none' : 'transition-all duration-300'
+                onKeyDown={
+                  isClickable
+                    ? (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onPhaseClick(i);
+                        }
+                      }
+                    : undefined
+                }
+                className={`flex w-full items-start gap-3 rounded-xl border px-3 py-2.5 text-start transition-colors ${
+                  isStepPulsing ? 'vision-ladder-desktop--step-pulse transition-none' : 'transition-all duration-200'
                 } ${
-                  isClickable ? `cursor-pointer ${isActive ? 'hover:brightness-[1.03]' : 'hover:bg-white/[0.06]'}` : 'cursor-default'
-                } ${isStepPulsing ? 'vision-ladder-desktop--step-pulse' : ''}`}
-                style={{
-                  background: isActive ? LADDER_ACTIVE_FILL : 'rgba(255, 255, 255, 0.03)',
-                  ...(isStepPulsing
-                    ? {}
-                    : {
-                        borderColor: isActive ? 'rgba(212, 175, 55, 0.5)' : 'rgba(255, 255, 255, 0.08)',
-                        boxShadow: isActive
-                          ? '0 0 18px rgba(212, 175, 55, 0.18), inset 0 1px 0 rgba(255,255,255,0.1)'
-                          : 'none',
-                      }),
-                }}
+                  isClickable ? 'cursor-pointer hover:bg-white/[0.04]' : 'cursor-default'
+                } ${
+                  isActive
+                    ? 'border-[#c8953a]/55 bg-[rgba(200,149,58,0.12)] shadow-[0_0_14px_rgba(200,149,58,0.12)]'
+                    : 'border-white/[0.06] bg-transparent'
+                }`}
               >
-                <div
-                  className="text-center font-light text-[15px] tracking-[0.06em] leading-snug w-full"
-                  style={{
-                    color: isActive
-                      ? CREAM_WHITE
-                      : isPast
-                        ? 'rgba(245,245,240,0.74)'
-                        : 'rgba(245,245,240,0.48)',
-                  }}
-                >
-                  {title}
+                <div className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center">
+                  {isPast ? (
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#2e646a] text-white shadow-sm">
+                      <Check className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+                    </span>
+                  ) : (
+                    <span
+                      className={`flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-semibold ${
+                        isActive
+                          ? 'border-2 border-[#c8953a] bg-[rgba(200,149,58,0.18)] text-[#f5f5f0]'
+                          : 'border border-white/[0.08] bg-[#213744] text-[#8b97ae]'
+                      }`}
+                    >
+                      {i + 1}
+                    </span>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div
+                    className={`text-[13px] font-medium leading-snug ${
+                      isActive ? 'text-[#f5f5f0]' : isPast ? 'text-[#f5f5f0]/88' : 'text-[#f5f5f0]/45'
+                    }`}
+                    style={{ fontFamily: WORKSPACE_CHAT_FONT }}
+                  >
+                    {title}
+                  </div>
+                  <div
+                    className={`mt-0.5 text-[11px] leading-snug ${isActive ? 'text-[#c9d4e8]/90' : 'text-[#8b97ae]/80'}`}
+                    style={{ fontFamily: WORKSPACE_CHAT_FONT }}
+                  >
+                    {tagline}
+                  </div>
                 </div>
                 <div
-                  className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 z-[100] opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none p-3 rounded text-[12px] shadow-xl w-[220px] ${isRTL ? 'text-right' : 'text-left'}`}
+                  className={`pointer-events-none absolute left-1/2 top-full z-[100] mt-2 w-[220px] -translate-x-1/2 rounded border border-white/[0.12] p-3 text-[12px] opacity-0 shadow-xl transition-opacity duration-200 group-hover:opacity-100 ${
+                    isRTL ? 'text-right' : 'text-left'
+                  }`}
                   style={{
                     fontFamily: WORKSPACE_CHAT_FONT,
-                    lineHeight: 1.6,
+                    lineHeight: 1.55,
                     background: 'rgba(2,6,23,0.98)',
-                    border: '0.5px solid rgba(255,255,255,0.12)',
                     color: 'rgba(245,245,240,0.95)',
                   }}
                 >
                   {tooltip}
                 </div>
               </div>
-              {!isLast && (
-                <div
-                  key={`connector-${phaseId}`}
-                  className="w-[1px] flex-shrink-0 mx-auto"
-                  style={{
-                    height: 6,
-                    background: 'linear-gradient(to bottom, rgba(212, 175, 55, 0.5), rgba(212, 175, 55, 0.2))',
-                  }}
-                />
-              )}
             </div>
           );
         })}

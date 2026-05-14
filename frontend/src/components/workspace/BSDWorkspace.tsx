@@ -364,13 +364,13 @@ export const BSDWorkspace = ({
         }}
       />
     <div
-      className="flex flex-col md:flex-row h-full w-full bg-[#020617] overflow-hidden"
+      className="flex flex-col md:flex-row h-full w-full bg-[#faf8f3] overflow-hidden"
       dir={i18n.dir()}
     >
       {/* Mobile: [Stages strip | Chat] row, then HUD below. Desktop: HUD | Chat | Ladder */}
       <div className="flex flex-1 min-h-0 flex-col md:flex-row w-full">
         {/* HUD - desktop only; mobile uses stages strip insights */}
-        <div className="hidden md:flex order-3 md:order-1 w-64 lg:w-72 flex-shrink-0 border-r border-white/[0.08] bg-[#1e293b] overflow-hidden min-h-0 flex flex-col">
+        <div className="hidden md:flex order-3 md:order-1 w-64 lg:w-72 flex-shrink-0 border-r border-white/[0.07] bg-[#1e293b] overflow-hidden min-h-0 flex flex-col">
           <HudPanel
             conversationId={conversationId}
             currentPhase={currentPhase}
@@ -526,8 +526,8 @@ export const BSDWorkspace = ({
         </div>
 
         {/* Desktop: Vision Ladder full */}
-        <div className="hidden md:flex order-3 w-[280px] min-w-[280px] flex-shrink-0 h-full min-h-[400px] border-l border-white/[0.08] bg-[#1e293b] overflow-hidden">
-          <VisionLadder currentStep={currentPhase} onPhaseClick={handlePhaseClick} />
+        <div className="hidden md:flex order-3 w-[280px] min-w-[280px] flex-shrink-0 h-full min-h-[400px] border-l border-white/[0.07] bg-[#1e293b] overflow-hidden">
+          <VisionLadder currentStep={currentPhase} onPhaseClick={handlePhaseClick} displayName={displayName} />
         </div>
       </div>
     </div>

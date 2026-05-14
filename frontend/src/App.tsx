@@ -27,6 +27,8 @@ type ChatHeaderMobileControlsProps = {
   onArchiveOpen: () => void;
   onNewConversation: () => void;
   onToggleDashboard: () => void;
+  /** Workspace TOPBAR (Figma BSD frame): slate pills instead of white tiles */
+  headerTheme?: 'light' | 'dark';
 };
 
 /** Icon + tiny label under each action — md+ unchanged text beside dashboard only */
@@ -36,10 +38,17 @@ function ChatHeaderMobileControls({
   onArchiveOpen,
   onNewConversation,
   onToggleDashboard,
+  headerTheme = 'light',
 }: ChatHeaderMobileControlsProps) {
   const { t } = useTranslation();
   const tile =
     'flex flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 min-h-[52px] min-w-[58px] max-w-[76px]';
+  const darkTile =
+    'flex flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 min-h-[52px] min-w-[58px] max-w-[76px] border border-white/[0.11] bg-[#1c2333] text-[#e8e4dc] shadow-none hover:bg-[#252d42] transition-colors';
+  const dashCls =
+    headerTheme === 'dark'
+      ? 'inline-flex flex-col md:flex-row items-center justify-center gap-0.5 md:gap-2 px-1 md:px-4 py-1 md:py-2 rounded-xl border border-white/[0.11] bg-[#1c2333] text-[#e8e4dc] min-h-[52px] min-w-[58px] max-w-[76px] md:max-w-none md:min-h-[44px] md:min-w-0 text-xs md:text-sm font-light hover:bg-[#252d42] transition-colors'
+      : 'inline-flex flex-col md:flex-row items-center justify-center gap-0.5 md:gap-2 px-1 md:px-4 py-1 md:py-2 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors min-h-[52px] min-w-[58px] max-w-[76px] md:max-w-none md:min-h-[44px] md:min-w-0 text-xs md:text-sm font-medium';
 
   return (
     <>
@@ -50,10 +59,19 @@ function ChatHeaderMobileControls({
             onClick={onArchiveOpen}
             title={t('chat.previousConversationsHint')}
             aria-label={t('chat.previousConversations')}
-            className={`${tile} md:hidden bg-white border border-[#E2E4E8] text-[#2E3A56] shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors`}
+            className={
+              headerTheme === 'dark'
+                ? `${darkTile}`
+                : `${tile} md:hidden bg-white border border-[#E2E4E8] text-[#2E3A56] shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors`
+            }
           >
-            <Archive className="w-[18px] h-[18px] flex-shrink-0 text-[#2E3A56]" strokeWidth={2} />
-            <span className="text-[8px] font-semibold leading-[1.15] text-center text-[#2E3A56] px-0.5">
+            <Archive
+              className={`w-[18px] h-[18px] flex-shrink-0 ${headerTheme === 'dark' ? 'text-[#e8e4dc]' : 'text-[#2E3A56]'}`}
+              strokeWidth={2}
+            />
+            <span
+              className={`text-[8px] font-semibold leading-[1.15] text-center px-0.5 ${headerTheme === 'dark' ? 'text-[#e8e4dc]' : 'text-[#2E3A56]'}`}
+            >
               {t('chat.mobileHeader.sessions')}
             </span>
           </button>
@@ -76,18 +94,28 @@ function ChatHeaderMobileControls({
         onClick={onToggleDashboard}
         title={showDashboard ? t('chat.button') : t('dashboard.button')}
         aria-label={showDashboard ? t('chat.button') : t('dashboard.button')}
-        className="inline-flex flex-col md:flex-row items-center justify-center gap-0.5 md:gap-2 px-1 md:px-4 py-1 md:py-2 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors min-h-[52px] min-w-[58px] max-w-[76px] md:max-w-none md:min-h-[44px] md:min-w-0 text-xs md:text-sm font-medium"
+        className={dashCls}
         style={{ fontFamily: 'Inter, sans-serif' }}
       >
         {showDashboard ? (
-          <MessageCircle className="w-[18px] h-[18px] md:w-4 md:h-4 flex-shrink-0 text-[#2E3A56]" strokeWidth={2} />
+          <MessageCircle
+            className={`w-[18px] h-[18px] md:w-4 md:h-4 flex-shrink-0 ${headerTheme === 'dark' ? 'text-[#e8e4dc]' : 'text-[#2E3A56]'}`}
+            strokeWidth={2}
+          />
         ) : (
-          <LayoutDashboard className="w-[18px] h-[18px] md:w-4 md:h-4 flex-shrink-0 text-[#2E3A56]" strokeWidth={2} />
+          <LayoutDashboard
+            className={`w-[18px] h-[18px] md:w-4 md:h-4 flex-shrink-0 ${headerTheme === 'dark' ? 'text-[#e8e4dc]' : 'text-[#2E3A56]'}`}
+            strokeWidth={2}
+          />
         )}
-        <span className="md:hidden text-[8px] font-semibold leading-[1.15] text-center px-0.5">
+        <span
+          className={`md:hidden text-[8px] font-semibold leading-[1.15] text-center px-0.5 ${headerTheme === 'dark' ? 'text-[#e8e4dc]' : ''}`}
+        >
           {showDashboard ? t('chat.mobileHeader.backToChat') : t('chat.mobileHeader.personal')}
         </span>
-        <span className="hidden md:inline">{showDashboard ? t('chat.button') : t('dashboard.button')}</span>
+        <span className={`hidden md:inline ${headerTheme === 'dark' ? 'font-light' : ''}`}>
+          {showDashboard ? t('chat.button') : t('dashboard.button')}
+        </span>
       </button>
     </>
   );
@@ -166,17 +194,17 @@ function SignedInContent() {
   }, [showDashboard, showBilling, showAdmin, getToken, user, isLoaded, isSignedIn]);
 
   return (
-    <div className="h-screen flex flex-col bg-[#020617] workspace-root overflow-x-hidden">
+    <div className="h-screen flex flex-col bg-[#faf8f3] workspace-root overflow-x-hidden">
       <motion.header
         initial={{ opacity: 0, y: -50 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 120, damping: 14 }}
-        className="relative z-20 flex justify-between items-center p-4 md:p-6 bg-[#0f172a] backdrop-blur-[25px] border-b border-white/[0.14] shadow-[0_4px_18px_-2px_rgba(0,0,0,0.45),0_1px_0_0_rgba(255,255,255,0.06)_inset]"
+        className="relative z-20 flex min-h-[66px] justify-between items-center p-4 md:p-6 bg-[#1e293b] backdrop-blur-[25px] border-b border-white/[0.07] shadow-[0_4px_18px_-2px_rgba(0,0,0,0.35)]"
       >
         <div className="flex items-center gap-2 md:gap-[1.2em] flex-shrink-0 min-w-0">
           <img src="/bsd-logo.png" alt="BSD אימון יהודי" className="h-12 md:h-[69px] object-contain flex-shrink-0" />
           <p
-            className="text-white font-bold text-base sm:text-lg md:text-[1.8rem] tracking-wide truncate hidden sm:block"
+            className="text-[#f0f4fa] font-bold text-base sm:text-lg md:text-[1.8rem] tracking-wide truncate hidden sm:block"
             style={{ fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.4 }}
           >
             אִם יֵשׁ לְךָ שָׁמַיִם, נִתֵּן לְךָ כְּנָפַיִם
@@ -185,7 +213,10 @@ function SignedInContent() {
         <div className="flex-1 min-w-2" />
         <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
           {user && (
-            <span className="text-white text-sm md:text-base font-light tracking-[0.02em] hidden sm:inline" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <span
+              className="hidden sm:inline text-sm md:text-base font-light tracking-[0.02em]"
+              style={{ fontFamily: 'Inter, sans-serif' }}
+            >
               {(() => {
                 const clerkPrimary = user?.emailAddresses?.[0]?.emailAddress;
                 const raw =
@@ -193,13 +224,22 @@ function SignedInContent() {
                   user?.firstName ??
                   (clerkPrimary && !isClerkSyntheticEmail(clerkPrimary) ? clerkPrimary : '');
                 const name = (typeof raw === 'string' ? raw : '').replace(/^undefined$/i, '').trim();
-                return name ? `${t('app.welcome')}, ${name}!` : `${t('app.welcome')}!`;
+                return name ? (
+                  <>
+                    <span className="text-[#8b97ae]">{t('app.welcome')}, </span>
+                    <span className="text-[#c8953a]">{name}</span>
+                    <span className="text-[#8b97ae]">!</span>
+                  </>
+                ) : (
+                  <span className="text-[#8b97ae]">{t('app.welcome')}!</span>
+                );
               })()}
             </span>
           )}
           <ChatHeaderMobileControls
             isChatView={isChatView}
             showDashboard={showDashboard}
+            headerTheme="dark"
             onArchiveOpen={() => setArchiveOpen(true)}
             onNewConversation={() => setWorkspaceNewChatTick((n) => n + 1)}
             onToggleDashboard={() => {
@@ -217,14 +257,14 @@ function SignedInContent() {
                 setShowDashboard(false);
               }}
               title={showAdmin ? t('chat.button') : t('admin.button')}
-              className="inline-flex items-center justify-center gap-1.5 md:gap-2 px-2 md:px-4 py-2 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] text-xs md:text-sm font-medium shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors min-h-[40px] min-w-[40px] md:min-h-[44px] md:min-w-0"
+              className="inline-flex items-center justify-center gap-1.5 md:gap-2 px-2 md:px-4 py-2 rounded-xl border border-white/[0.11] bg-[#1c2333] text-[#e8e4dc] text-xs md:text-sm font-light hover:bg-[#252d42] transition-colors min-h-[40px] min-w-[40px] md:min-h-[44px] md:min-w-0"
               style={{ fontFamily: 'Inter, sans-serif' }}
             >
-              <Shield className="w-[18px] h-[18px] md:w-4 md:h-4 flex-shrink-0 text-[#2E3A56]" strokeWidth={2} />
+              <Shield className="w-[18px] h-[18px] md:w-4 md:h-4 flex-shrink-0 text-[#e8e4dc]" strokeWidth={2} />
               <span className="hidden md:inline">{showAdmin ? t('chat.button') : t('admin.button')}</span>
             </button>
           )}
-          <LanguageSwitcher />
+          <LanguageSwitcher variant="dark" />
           <UserButton afterSignOutUrl="/" />
         </div>
       </motion.header>
@@ -269,16 +309,16 @@ function DemoModeContent() {
   }, []);
 
   return (
-    <div className="flex flex-col h-screen bg-[#0F172A]">
+    <div className="flex flex-col h-screen bg-[#faf8f3]">
       <motion.header
         initial={{ y: -100 }}
         animate={{ y: 0 }}
-        className="sticky top-0 z-50 flex items-center justify-between p-4 md:p-6 bg-[#0F172A]/95 backdrop-blur-sm border-b border-white/[0.14] shadow-[0_4px_18px_-2px_rgba(0,0,0,0.45),0_1px_0_0_rgba(255,255,255,0.06)_inset]"
+        className="sticky top-0 z-50 flex min-h-[66px] items-center justify-between p-4 md:p-6 bg-[#1e293b] backdrop-blur-sm border-b border-white/[0.07] shadow-[0_4px_18px_-2px_rgba(0,0,0,0.35)]"
       >
         <div className="flex items-center gap-2 md:gap-[1.2em] flex-shrink-0 min-w-0">
           <img src="/bsd-logo.png" alt="BSD אימון יהודי" className="h-12 md:h-[69px] object-contain flex-shrink-0" />
           <p
-            className="text-white font-bold text-base sm:text-lg md:text-[1.8rem] tracking-wide truncate hidden sm:block"
+            className="text-[#f0f4fa] font-bold text-base sm:text-lg md:text-[1.8rem] tracking-wide truncate hidden sm:block"
             style={{ fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.4 }}
           >
             אִם יֵשׁ לְךָ שָׁמַיִם, נִתֵּן לְךָ כְּנָפַיִם
@@ -292,6 +332,7 @@ function DemoModeContent() {
           <ChatHeaderMobileControls
             isChatView={isChatView}
             showDashboard={showDashboard}
+            headerTheme="dark"
             onArchiveOpen={() => setArchiveOpen(true)}
             onNewConversation={() => setWorkspaceNewChatTick((n) => n + 1)}
             onToggleDashboard={() => {
@@ -299,7 +340,7 @@ function DemoModeContent() {
               setShowBilling(false);
             }}
           />
-          <LanguageSwitcher />
+          <LanguageSwitcher variant="dark" />
         </div>
       </motion.header>
       <main
