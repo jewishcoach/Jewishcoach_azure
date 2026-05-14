@@ -140,7 +140,7 @@ export const VisionLadder = ({
   if (compact) {
     return (
       <div
-        className="box-border w-[84px] flex-shrink-0 flex h-full min-h-0 flex-col justify-between py-2 bg-[#1e293b] border-l border-white/[0.07] relative"
+        className="box-border w-[84px] flex-shrink-0 flex h-full min-h-0 flex-col justify-between py-2 bg-[#1e293b] border-r border-white/[0.07] rtl:border-r-0 rtl:border-l rtl:border-l-white/[0.07] relative"
         dir={isRTL ? 'rtl' : 'ltr'}
       >
         {PHASE_IDS.map((phaseId, i) => {
@@ -239,7 +239,7 @@ export const VisionLadder = ({
       className="workspace-ladder flex h-full min-w-0 w-full max-w-full flex-col overflow-x-hidden bg-[#1e293b]"
       dir={isRTL ? 'rtl' : 'ltr'}
     >
-      {/* כותרת + שלבי האימון + כרטיס התקדמות קומפקטי */}
+      {/* כותרת — שלבי האימון שלך + כרטיס התקדמות */}
       <header className="flex-shrink-0 overflow-x-hidden border-b border-white/[0.06] px-5 pb-4 pt-6">
         <h2
           className="text-[1.5rem] font-semibold leading-tight tracking-[0.02em] text-white sm:text-[1.65rem]"
@@ -247,12 +247,6 @@ export const VisionLadder = ({
         >
           {t('ladder.journeyTitle')}
         </h2>
-        <p
-          className="mt-3 text-[11px] font-bold uppercase tracking-[0.16em] text-[#e8c066]"
-          style={{ fontFamily: WORKSPACE_CHAT_FONT }}
-        >
-          {t('ladder.journeyStages')}
-        </p>
 
         <div className="mt-3 rounded-xl border border-white/[0.07] bg-[#252f3f] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
           <div className={`flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>

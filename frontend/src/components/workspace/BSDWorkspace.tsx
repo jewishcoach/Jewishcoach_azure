@@ -23,6 +23,8 @@ import { isChatBlockedByActiveTool } from '../../utils/activeFormTools';
 
 interface BSDWorkspaceProps {
   displayName?: string | null;
+  /** False until App finishes first /users/me — avoids welcome using Clerk before profile display_name loads */
+  chatProfileReady?: boolean;
   showDashboard?: boolean;
   onCloseDashboard?: () => void;
   onShowBilling?: () => void;
@@ -34,6 +36,7 @@ interface BSDWorkspaceProps {
 
 export const BSDWorkspace = ({
   displayName,
+  chatProfileReady = true,
   showDashboard = false,
   onCloseDashboard,
   onShowBilling,
@@ -64,7 +67,7 @@ export const BSDWorkspace = ({
     loadConversation,
     startNewConversation,
     applyToolResponse,
-  } = useChat(displayName);
+  } = useChat(displayName, chatProfileReady);
   const { isRecording, livePreview, startRecording, stopRecording } = useVoiceRecord(i18n.language, getToken);
   const [recordingInputBase, setRecordingInputBase] = useState<string | null>(null);
   const chatLockedByForm = isChatBlockedByActiveTool(activeTool);
@@ -367,17 +370,11 @@ export const BSDWorkspace = ({
       className="flex flex-col md:flex-row h-full w-full bg-[#faf8f3] overflow-hidden"
       dir={i18n.dir()}
     >
-      {/* Mobile: [Stages strip | Chat] row, then HUD below. Desktop: HUD | Chat | Ladder */}
+      {/* Mobile: [Stages strip | Chat] row; Desktop: Vision Ladder | Chat | HUD */}
       <div className="flex flex-1 min-h-0 flex-col md:flex-row w-full">
-        {/* HUD - desktop only; mobile uses stages strip insights */}
-        <div className="hidden md:flex order-3 md:order-1 w-64 min-w-0 lg:w-72 flex-shrink-0 border-r border-white/[0.07] bg-[#1e293b] overflow-hidden min-h-0 flex flex-col">
-          <HudPanel
-            conversationId={conversationId}
-            currentPhase={currentPhase}
-            loading={loading && !historyLoading}
-            onArchiveClick={() => setArchiveOpen(true)}
-            onNewChat={() => void handleNewChat()}
-          />
+        {/* Desktop: Vision Ladder — inline-start side (left in LTR, right in RTL) */}
+        <div className="hidden md:flex w-[280px] min-w-0 max-w-[280px] flex-shrink-0 h-full min-h-[400px] border-e border-white/[0.07] bg-[#1e293b] overflow-hidden">
+          <VisionLadder currentStep={currentPhase} onPhaseClick={handlePhaseClick} />
         </div>
 
         {/* Archive Drawer */}
@@ -394,17 +391,15 @@ export const BSDWorkspace = ({
           isRTL={isRTL}
         />
 
-        {/* Chat area: mobile [ strip | messages+input column ]; desktop messages row then full-width input */}
-        <div className="order-1 md:order-2 flex flex-1 min-w-0 min-h-0 flex-col">
-          {/* One row: full-height strip (mobile) + chat column. Desktop: strip hidden, chat is full width. */}
+        {/* Chat area: mobile [ stages strip | chat ]; RTL places strip on outer physical right */}
+        <div className="flex flex-1 min-w-0 min-h-0 flex-col">
           <div className="flex flex-1 min-w-0 min-h-0 flex-row items-stretch min-h-0">
-            {/* Mobile: stages strip — same height as messages+input (full workspace column) */}
-            <div className="md:hidden flex h-full min-h-0 w-[84px] flex-shrink-0 self-stretch flex flex-col">
+            <div className="flex h-full min-h-0 w-[84px] flex-shrink-0 self-stretch flex-col md:hidden">
               <div className="flex-1 min-h-0 h-full max-h-full">
                 <VisionLadder currentStep={currentPhase} onPhaseClick={handlePhaseClick} compact conversationId={conversationId} />
               </div>
             </div>
-            <div className="flex min-w-0 min-h-0 flex-1 flex-col relative overflow-hidden bg-[#faf8f3]">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col relative overflow-hidden bg-[#faf8f3]">
               <ShehiyaProgress loading={loading && !historyLoading} />
               {/* dir=ltr — ציר פיזי קבוע; יישור צד בועות לפי שפת הצ'אט ב-WorkspaceMessageBubble (עברית: מאמן מימין; אנגלית: מאמן משמאל). */}
               <div
@@ -525,9 +520,15 @@ export const BSDWorkspace = ({
           </div>
         </div>
 
-        {/* Desktop: Vision Ladder full */}
-        <div className="hidden md:flex order-3 w-[280px] min-w-0 max-w-[280px] flex-shrink-0 h-full min-h-[400px] border-l border-white/[0.07] bg-[#1e293b] overflow-hidden">
-          <VisionLadder currentStep={currentPhase} onPhaseClick={handlePhaseClick} />
+        {/* HUD — desktop inline-end side; mobile full-width below chat */}
+        <div className="hidden md:flex w-64 min-w-0 lg:w-72 flex-shrink-0 border-s border-white/[0.07] bg-[#1e293b] overflow-hidden min-h-0 flex flex-col">
+          <HudPanel
+            conversationId={conversationId}
+            currentPhase={currentPhase}
+            loading={loading && !historyLoading}
+            onArchiveClick={() => setArchiveOpen(true)}
+            onNewChat={() => void handleNewChat()}
+          />
         </div>
       </div>
     </div>

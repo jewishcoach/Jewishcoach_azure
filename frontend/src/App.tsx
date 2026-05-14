@@ -107,6 +107,8 @@ function SignedInContent() {
   const [showDashboard, setShowDashboard] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
+  /** After first /users/me attempt — delays chat welcome until profile display_name can override Clerk */
+  const [chatProfileReady, setChatProfileReady] = useState(false);
   /** Incremented from header "new chat" on mobile — BSDWorkspace runs startNewConversation */
   const [workspaceNewChatTick, setWorkspaceNewChatTick] = useState(0);
 
@@ -133,6 +135,7 @@ function SignedInContent() {
           }
         } else {
           setIsAdmin(false);
+          setDisplayName(null);
         }
       } catch (error) {
         console.error('Failed to check admin status:', error);
@@ -141,6 +144,8 @@ function SignedInContent() {
             void checkAdminStatus(true);
           }, 2000);
         }
+      } finally {
+        setChatProfileReady(true);
       }
     };
 
@@ -259,6 +264,7 @@ function SignedInContent() {
         {showBilling ? <BillingPage /> : showAdmin ? <AdminDashboard /> : (
           <BSDWorkspace
             displayName={displayName}
+            chatProfileReady={chatProfileReady}
             showDashboard={showDashboard}
             onCloseDashboard={() => setShowDashboard(false)}
             onShowBilling={() => {

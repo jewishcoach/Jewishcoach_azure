@@ -16,13 +16,16 @@ function normalizeGreetingName(s: string): string {
     .trim();
 }
 
-/** Safe name for greeting - never undefined, never literal "undefined" */
+/** Prefer saved profile display name; empty profile → Clerk first name; then locale fallback */
 function getNameForGreeting(displayName?: string | null, clerkFirstName?: string | null, lang: string = 'he'): string {
-  const raw = displayName ?? clerkFirstName ?? '';
-  const cleaned = normalizeGreetingName(
-    (typeof raw === 'string' ? raw : '').replace(/^undefined$/i, '').trim()
+  const fromProfile = normalizeGreetingName(
+    displayName != null && typeof displayName === 'string' ? displayName : '',
   );
-  if (cleaned) return cleaned;
+  if (fromProfile) return fromProfile;
+  const fromClerk = normalizeGreetingName(
+    clerkFirstName != null && typeof clerkFirstName === 'string' ? clerkFirstName : '',
+  );
+  if (fromClerk) return fromClerk;
   return lang === 'he' ? 'רב' : 'there';
 }
 
@@ -41,12 +44,10 @@ function buildWelcomeMessage(
   return stripUndefined(greeting);
 }
 
-export const useChat = (displayName?: string | null) => {
+export const useChat = (displayName?: string | null, chatProfileReady = true) => {
   const { t, i18n } = useTranslation();
   const { user: clerkUser } = useUser();
-  
-  // In demo mode, displayName is passed directly; otherwise use displayName from API or Clerk
-  const user = displayName ? { firstName: displayName } : null;
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   /** Fetching past messages when opening a conversation from archive (separate from assistant "thinking"). */
@@ -60,8 +61,9 @@ export const useChat = (displayName?: string | null) => {
   const [stationCheckpoint, setStationCheckpoint] = useState<StationCheckpointPayload | null>(null);
   const streamingMessageIdRef = useRef<number | null>(null); // Track current streaming message
 
-  // Auto-send welcome message on mount (only on first load)
+  // Auto-send welcome message once profile is ready (avoid Clerk name before /users/me returns)
   useEffect(() => {
+    if (!chatProfileReady) return;
     if (!hasInitialized && messages.length === 0 && conversationId === null) {
       setHasInitialized(true);
       setLoading(false); // Clear loading state on initial load
@@ -84,7 +86,18 @@ export const useChat = (displayName?: string | null) => {
         setLoading(false); // Ensure loading is off after welcome message
       }, 500); // Small delay for animation
     }
-  }, [hasInitialized, messages.length, conversationId, t, i18n.language, user, displayName, clerkUser?.firstName]);
+  }, [hasInitialized, messages.length, conversationId, t, i18n.language, displayName, clerkUser?.firstName, chatProfileReady]);
+
+  /** When display_name loads or changes (e.g. after Dashboard save), refresh lone welcome bubble */
+  useEffect(() => {
+    if (!chatProfileReady || conversationId !== null) return;
+    setMessages((prev) => {
+      if (prev.length !== 1 || prev[0].role !== 'assistant') return prev;
+      const next = buildWelcomeMessage(displayName, clerkUser?.firstName, i18n.language, t);
+      if (prev[0].content === next) return prev;
+      return [{ ...prev[0], content: next }];
+    });
+  }, [displayName, clerkUser?.firstName, chatProfileReady, conversationId, i18n.language, t]);
 
   useEffect(() => {
     activeToolRef.current = activeTool;

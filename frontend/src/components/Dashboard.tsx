@@ -455,13 +455,13 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
         </div>
       </aside>
 
-      {/* Mobile: Bottom tab bar */}
+      {/* Mobile: bottom tab bar — slate nav (same tone as desktop sidebar) */}
       <nav
         className="md:hidden fixed bottom-0 left-0 right-0 z-10 flex items-center justify-around py-2 px-2"
         style={{
-          background: COLORS.card,
-          borderTop: `1px solid ${COLORS.border}`,
-          boxShadow: '0 -2px 10px rgba(0,0,0,0.06)',
+          background: COLORS.accent,
+          borderTop: '1px solid rgba(255,255,255,0.07)',
+          boxShadow: '0 -4px 24px rgba(15, 23, 42, 0.35)',
           paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
         }}
       >
@@ -473,7 +473,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
             className="flex flex-col items-center justify-center gap-1 px-4 py-2 rounded-xl min-w-[64px] transition-all"
             style={{
               background: activeTab === item.id ? COLORS.goldTintBg : 'transparent',
-              color: activeTab === item.id ? COLORS.gold : COLORS.textMuted,
+              color: activeTab === item.id ? COLORS.goldSoft : COLORS.textOnDarkMuted,
               border: activeTab === item.id ? `1px solid ${COLORS.goldTintBorder}` : '1px solid transparent',
             }}
           >
