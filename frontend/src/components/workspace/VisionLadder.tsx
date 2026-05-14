@@ -36,8 +36,6 @@ interface VisionLadderProps {
   compact?: boolean;
   /** For compact: fetch insights and show popover on tap */
   conversationId?: number | null;
-  /** Shown in journey subtitle (desktop). */
-  displayName?: string | null;
 }
 
 /** Serif title per journey panel design */
@@ -84,7 +82,6 @@ export const VisionLadder = ({
   onPhaseClick,
   compact = false,
   conversationId,
-  displayName,
 }: VisionLadderProps) => {
   const { t, i18n } = useTranslation();
   const { getToken, isLoaded, isSignedIn } = useAuth();
@@ -224,7 +221,6 @@ export const VisionLadder = ({
     );
   }
 
-  const sessionLabelName = displayName?.trim() || t('chat.coach');
   const totalStages = PHASE_IDS.length;
   const stageOrdinal = activePhaseIndex + 1;
   const progressPct = Math.min(
@@ -238,7 +234,7 @@ export const VisionLadder = ({
       className="workspace-ladder flex h-full min-w-[240px] w-full flex-col bg-[#1e293b]"
       dir={isRTL ? 'rtl' : 'ltr'}
     >
-      {/* כותרת עליונה — כמו בעיצוב (serif + מטא־דאטה) */}
+      {/* כותרת עליונה */}
       <header className="flex-shrink-0 border-b border-white/[0.06] px-5 pb-5 pt-7">
         <h2
           className="text-[1.35rem] font-medium leading-tight tracking-[0.02em] text-white sm:text-[1.5rem]"
@@ -246,12 +242,6 @@ export const VisionLadder = ({
         >
           {t('ladder.journeyTitle')}
         </h2>
-        <p className="mt-2 text-[12px] leading-snug text-[#94a3b8]" style={{ fontFamily: WORKSPACE_CHAT_FONT }}>
-          {t('ladder.journeyProgress', { total: totalStages, active: stageOrdinal })}
-        </p>
-        <p className="mt-1 text-[12px] leading-snug text-[#94a3b8]" style={{ fontFamily: WORKSPACE_CHAT_FONT }}>
-          {t('ladder.sessionWith', { name: sessionLabelName })}
-        </p>
 
         {/* כרטיס פיזית ההתקדמות */}
         <div className="mt-5 rounded-2xl border border-white/[0.07] bg-[#252f3f] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">

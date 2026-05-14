@@ -527,7 +527,7 @@ export const BSDWorkspace = ({
 
         {/* Desktop: Vision Ladder full */}
         <div className="hidden md:flex order-3 w-[280px] min-w-[280px] flex-shrink-0 h-full min-h-[400px] border-l border-white/[0.07] bg-[#1e293b] overflow-hidden">
-          <VisionLadder currentStep={currentPhase} onPhaseClick={handlePhaseClick} displayName={displayName} />
+          <VisionLadder currentStep={currentPhase} onPhaseClick={handlePhaseClick} />
         </div>
       </div>
     </div>
