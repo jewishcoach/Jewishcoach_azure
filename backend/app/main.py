@@ -109,6 +109,9 @@ for azure_origin in (
     if azure_origin not in origins_list:
         origins_list.append(azure_origin)
 
+# Apex + any subdomain over HTTPS (www., previews, etc.) beyond explicit allow_origins entries.
+_JEWISHCOACHER_HTTPS_ORIGIN_REGEX = r"https://([\w-]+\.)*jewishcoacher\.com"
+
 # Default false: allow only CORS_ORIGINS + localhost dev ports. Set ALLOW_TUNNELS=true for ngrok etc.
 allow_tunnels = os.getenv("ALLOW_TUNNELS", "false").lower() == "true"
 
@@ -118,7 +121,10 @@ if allow_tunnels:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins_list,
-        allow_origin_regex=r"https://[^/]+\.(ngrok-free\.app|lhr\.life|localhost\.run|azurestaticapps\.net)",
+        allow_origin_regex=(
+            _JEWISHCOACHER_HTTPS_ORIGIN_REGEX
+            + r"|https://[^/]+\.(ngrok-free\.app|lhr\.life|localhost\.run|azurestaticapps\.net)"
+        ),
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -130,6 +136,7 @@ else:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins_list,
+        allow_origin_regex=_JEWISHCOACHER_HTTPS_ORIGIN_REGEX,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
