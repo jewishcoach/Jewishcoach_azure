@@ -4,6 +4,13 @@ set -e
 echo "🚀 Starting Jewish Coach Backend..."
 cd /home/site/wwwroot
 
+# Prefer python3 (Azure Linux image); fall back to python. Fail fast if missing.
+PYTHON_BOOT="$(command -v python3 2>/dev/null || command -v python 2>/dev/null || true)"
+if [ -z "$PYTHON_BOOT" ]; then
+  echo "❌ Neither python3 nor python found on PATH"
+  exit 1
+fi
+
 # Use a real venv under /home (survives restarts). pip install --target breaks Azure SDK
 # namespace packages (e.g. azure.communication.email missing while azure.core exists).
 VENV="/home/site/jc_backend_venv"
@@ -26,7 +33,14 @@ fi
 
 if [ "$CURRENT_HASH" != "$PREV_HASH" ] || [ ! -x "$VENV/bin/python" ]; then
   echo "📦 requirements changed or venv missing — installing into $VENV ..."
-  python -m venv "$VENV"
+  rm -rf "$VENV"
+  # --copies: avoids broken symlinks to host Python on Azure /home mounts (seen as ENOENT on .../bin/python)
+  "$PYTHON_BOOT" -m venv --copies "$VENV"
+  if [ ! -x "$VENV/bin/python" ]; then
+    echo "❌ venv creation failed: missing $VENV/bin/python"
+    ls -la "${VENV}/bin" 2>/dev/null || true
+    exit 1
+  fi
   "$VENV/bin/pip" install --upgrade pip --no-cache-dir
   "$VENV/bin/pip" install -r "$REQ_FILE" --no-cache-dir
   echo "$CURRENT_HASH" > "$REQ_HASH_FILE"
