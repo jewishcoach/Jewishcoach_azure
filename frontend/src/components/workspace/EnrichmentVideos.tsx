@@ -19,15 +19,15 @@ export const EnrichmentVideos = ({ currentPhase }: EnrichmentVideosProps) => {
   if (videos.length === 0) return null;
 
   return (
-    <section className="mt-4 pt-4 border-t border-[#e8e0cc]">
+    <section className="mt-4 pt-4 border-t border-white/[0.08]">
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between gap-2 py-2 text-right transition-colors hover:text-[#AA771C]"
-        style={{ fontFamily: "'Cormorant Garamond', 'Heebo', serif", color: '#2E3A56' }}
+        className="w-full flex items-center justify-between gap-2 py-2 text-right hover:text-[#FCF6BA]/95 transition-colors"
+        style={{ fontFamily: "'Cormorant Garamond', 'Heebo', serif", color: 'rgba(245,245,240,0.9)' }}
       >
         <span className="flex items-center gap-2">
-          <Play size={14} strokeWidth={1.5} className="text-[#AA771C]" />
+          <Play size={14} strokeWidth={1.5} className="text-[#FCF6BA]/80" />
           <span className="text-[13px] font-light tracking-[0.06em]">{title}</span>
         </span>
         {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -46,9 +46,13 @@ export const EnrichmentVideos = ({ currentPhase }: EnrichmentVideosProps) => {
               {videos.map((v, i) => (
                 <div
                   key={`${v.videoId}-${i}`}
-                  className="rounded-xl overflow-hidden border border-[#e8e0cc] bg-white shadow-[0px_1px_3px_rgba(10,10,10,0.05)]"
+                  className="rounded-xl overflow-hidden"
+                  style={{
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '0.5px solid rgba(255,255,255,0.1)',
+                  }}
                 >
-                  <p className="text-[11px] px-2 py-1 text-[#5c6270]" style={{ fontFamily: WORKSPACE_CHAT_FONT }}>
+                  <p className="text-[11px] px-2 py-1 text-[#F5F5F0]/70" style={{ fontFamily: WORKSPACE_CHAT_FONT }}>
                     {isHe ? v.titleHe : v.titleEn}
                   </p>
                   <div className="relative w-full aspect-video max-h-[140px] sm:max-h-[180px]">
@@ -65,7 +69,7 @@ export const EnrichmentVideos = ({ currentPhase }: EnrichmentVideosProps) => {
                     href={`https://www.youtube.com/watch?v=${v.videoId}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block py-2 px-2 text-[11px] text-[#AA771C] hover:text-[#8a6218] transition-colors"
+                    className="block py-2 px-2 text-[11px] text-[#FCF6BA]/80 hover:text-[#FCF6BA] transition-colors"
                   >
                     {isHe ? 'צפה ביוטיוב' : 'Watch on YouTube'}
                   </a>

@@ -28,9 +28,9 @@ const STEP_TO_PHASE: Record<string, number> = {
 // 11 שלבים לפי החוברת (מקור-טבע-שכל וכמ"ז – אותו שלב) – תרגום ב-i18n
 const PHASE_IDS = ['p0', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p10'];
 
-const TEXT_ON_RAIL = '#2E3A56';
-/** שלב פעיל על רקע Rails בהיר */
-const LADDER_ACTIVE_FILL = '#ffffff';
+const CREAM_WHITE = '#F5F5F0';
+/** רקע מלא לשלב הפעיל — מעט בהיר מ־#1e293b כדי שיבלוט מיד */
+const LADDER_ACTIVE_FILL = '#3d5266';
 
 interface VisionLadderProps {
   currentStep: string;
@@ -94,7 +94,7 @@ export const VisionLadder = ({ currentStep, onPhaseClick, compact = false, conve
   if (compact) {
     return (
       <div
-        className="box-border w-[78px] flex-shrink-0 flex h-full min-h-0 flex-col justify-between py-2 bg-[#f2ede2] relative"
+        className="box-border w-[78px] flex-shrink-0 flex h-full min-h-0 flex-col justify-between py-2 bg-[#1e293b] border-l border-white/[0.08] relative"
         dir={isRTL ? 'rtl' : 'ltr'}
       >
         {PHASE_IDS.map((phaseId, i) => {
@@ -123,23 +123,23 @@ export const VisionLadder = ({ currentStep, onPhaseClick, compact = false, conve
                 <span
                   className={`relative w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium flex-shrink-0 ${
                     isActive
-                      ? 'bg-[#FCF6BA]/95 text-[#1e293b] ring-2 ring-[#B38728]/65'
+                      ? 'bg-[#FCF6BA]/90 text-[#020617] ring-2 ring-[#B38728]/65'
                       : isPast
-                        ? 'bg-[#d4cfc3] text-[#2E3A56] ring-1 ring-[#c9c2b6]'
-                        : 'bg-white text-[#8a7f6e] ring-1 ring-[#e8e0cc]'
+                        ? 'bg-white/35 text-white/[0.88] ring-1 ring-white/40'
+                        : 'bg-white/20 text-white/60 ring-1 ring-white/22'
                   } ${isCirclePulsing ? 'vision-ladder-compact-circle-blink' : ''}`}
                 >
                   {i + 1}
                   {hasInsight && (
                     <span
-                      className="absolute -top-0.5 -end-0.5 w-2 h-2 rounded-full bg-[#AA771C] ring-1 ring-[#f2ede2]"
+                      className="absolute -top-0.5 -end-0.5 w-2 h-2 rounded-full bg-[#FCF6BA]/90 ring-1 ring-[#1e293b]"
                       aria-hidden
                     />
                   )}
                 </span>
                 <span
                   className={`text-[9px] leading-tight text-center truncate max-w-full px-0.5 ${
-                    isActive ? 'text-[#1e293b] font-medium' : isPast ? 'text-[#4c5568]' : 'text-[#8a7f6e]'
+                    isActive ? 'text-[#FCF6BA]/95' : isPast ? 'text-white/[0.82]' : 'text-white/[0.58]'
                   }`}
                 >
                   {title}
@@ -153,17 +153,18 @@ export const VisionLadder = ({ currentStep, onPhaseClick, compact = false, conve
                     aria-hidden
                   />
                   <div
-                    className="fixed z-[70] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 min-w-[220px] max-w-[min(300px,90vw)] rounded-xl p-4 shadow-xl border border-[#e8e0cc] bg-white"
+                    className="fixed z-[70] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 min-w-[220px] max-w-[min(300px,90vw)] rounded-xl p-4 shadow-xl border"
                     style={{
+                      background: 'rgba(2,6,23,0.98)',
+                      borderColor: 'rgba(252,246,186,0.3)',
                       fontFamily: WORKSPACE_CHAT_FONT,
-                      boxShadow: '0 12px 40px rgba(10,10,10,0.12)',
                     }}
                   >
                     <div className="space-y-2">
                       {insights.map((item, idx) => (
                         <div key={idx}>
-                          <span className="text-[10px] uppercase tracking-wider text-[#8a7f6e]">{item.label}</span>
-                          <p className="text-[12px] text-[#2E3A56]/95 mt-0.5 break-words whitespace-pre-wrap" style={{ lineHeight: 1.45 }}>
+                          <span className="text-[10px] uppercase tracking-wider text-[#FCF6BA]/80">{item.label}</span>
+                          <p className="text-[12px] text-[#F5F5F0]/95 mt-0.5 break-words whitespace-pre-wrap" style={{ lineHeight: 1.45 }}>
                             {item.value}
                           </p>
                         </div>
@@ -180,7 +181,7 @@ export const VisionLadder = ({ currentStep, onPhaseClick, compact = false, conve
   }
 
   return (
-    <div className="w-full min-w-[240px] flex flex-col h-full bg-[#f2ede2] py-8 px-5 workspace-ladder" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="w-full min-w-[240px] flex flex-col h-full bg-[#1e293b] py-8 px-5 workspace-ladder" dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="flex-1 overflow-y-auto overflow-x-visible custom-scrollbar flex flex-col gap-0">
         {PHASE_IDS.map((phaseId, i) => {
           const title = t(`ladder.${phaseId}`);
@@ -202,17 +203,17 @@ export const VisionLadder = ({ currentStep, onPhaseClick, compact = false, conve
                 className={`group relative rounded-xl px-4 py-3 border ${
                   isStepPulsing ? 'transition-none' : 'transition-all duration-300'
                 } ${
-                  isClickable ? `cursor-pointer ${isActive ? 'hover:brightness-[1.02]' : 'hover:bg-white hover:shadow-sm'}` : 'cursor-default'
+                  isClickable ? `cursor-pointer ${isActive ? 'hover:brightness-[1.03]' : 'hover:bg-white/[0.06]'}` : 'cursor-default'
                 } ${isStepPulsing ? 'vision-ladder-desktop--step-pulse' : ''}`}
                 style={{
-                  background: isActive ? LADDER_ACTIVE_FILL : 'rgba(255, 255, 255, 0.9)',
+                  background: isActive ? LADDER_ACTIVE_FILL : 'rgba(255, 255, 255, 0.03)',
                   ...(isStepPulsing
                     ? {}
                     : {
-                        borderColor: isActive ? 'rgba(212, 175, 55, 0.55)' : '#e8e0cc',
+                        borderColor: isActive ? 'rgba(212, 175, 55, 0.5)' : 'rgba(255, 255, 255, 0.08)',
                         boxShadow: isActive
-                          ? '0 0 18px rgba(212, 175, 55, 0.18), inset 0 1px 0 rgba(255,255,255,0.85)'
-                          : '0 1px 2px rgba(10,10,10,0.04)',
+                          ? '0 0 18px rgba(212, 175, 55, 0.18), inset 0 1px 0 rgba(255,255,255,0.1)'
+                          : 'none',
                       }),
                 }}
               >
@@ -220,23 +221,22 @@ export const VisionLadder = ({ currentStep, onPhaseClick, compact = false, conve
                   className="text-center font-light text-[15px] tracking-[0.06em] leading-snug w-full"
                   style={{
                     color: isActive
-                      ? TEXT_ON_RAIL
+                      ? CREAM_WHITE
                       : isPast
-                        ? 'rgba(46, 58, 86, 0.82)'
-                        : 'rgba(46, 58, 86, 0.48)',
+                        ? 'rgba(245,245,240,0.74)'
+                        : 'rgba(245,245,240,0.48)',
                   }}
                 >
                   {title}
                 </div>
                 <div
-                  className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 z-[100] opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none p-3 rounded-lg text-[12px] shadow-xl w-[220px] ${isRTL ? 'text-right' : 'text-left'}`}
+                  className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 z-[100] opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none p-3 rounded text-[12px] shadow-xl w-[220px] ${isRTL ? 'text-right' : 'text-left'}`}
                   style={{
                     fontFamily: WORKSPACE_CHAT_FONT,
                     lineHeight: 1.6,
-                    background: '#ffffff',
-                    border: '1px solid #e8e0cc',
-                    color: '#2E3A56',
-                    boxShadow: '0 10px 36px rgba(10,10,10,0.12)',
+                    background: 'rgba(2,6,23,0.98)',
+                    border: '0.5px solid rgba(255,255,255,0.12)',
+                    color: 'rgba(245,245,240,0.95)',
                   }}
                 >
                   {tooltip}

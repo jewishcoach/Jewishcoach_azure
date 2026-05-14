@@ -58,18 +58,20 @@ const InsightSubsectionsCard = ({
   sections: { heading: string; body: string }[];
 }) => (
   <div
-    className="px-3 py-2.5 rounded-xl border border-[#e8e0cc] bg-white min-h-[2.5rem] shadow-[0px_1px_3px_rgba(10,10,10,0.04)]"
+    className="px-3 py-2.5 rounded-xl border min-h-[2.5rem]"
     style={{
+      background: 'rgba(255, 255, 255, 0.04)',
+      borderColor: 'rgba(252, 246, 186, 0.2)',
       fontFamily: WORKSPACE_CHAT_FONT,
     }}
   >
-    <span className="text-[11px] uppercase tracking-wider text-[#8a7f6e]">{title}</span>
+    <span className="text-[11px] uppercase tracking-wider text-[#FCF6BA]/80">{title}</span>
     <div className="mt-2 space-y-3">
       {sections.map((s, i) => (
         <div key={i}>
-          <div className="text-[11px] font-semibold text-[#AA771C] tracking-wide">{s.heading}</div>
+          <div className="text-[11px] font-semibold text-[#FCF6BA]/95 tracking-wide">{s.heading}</div>
           <p
-            className="text-[13px] font-light text-[#2E3A56]/95 mt-0.5 break-words whitespace-pre-wrap"
+            className="text-[13px] font-light text-[#F5F5F0]/95 mt-0.5 break-words whitespace-pre-wrap"
             style={{ lineHeight: 1.45 }}
           >
             {s.body}
@@ -82,14 +84,16 @@ const InsightSubsectionsCard = ({
 
 const InsightTag = ({ label, value }: { label: string; value: string }) => (
   <div
-    className="px-3 py-2 rounded-xl border border-[#e8e0cc] bg-white min-h-[2.5rem] shadow-[0px_1px_3px_rgba(10,10,10,0.04)]"
+    className="px-3 py-2 rounded-xl border min-h-[2.5rem]"
     style={{
+      background: 'rgba(255, 255, 255, 0.04)',
+      borderColor: 'rgba(252, 246, 186, 0.2)',
       fontFamily: WORKSPACE_CHAT_FONT,
     }}
   >
-    <span className="text-[11px] uppercase tracking-wider text-[#8a7f6e]">{label}</span>
+    <span className="text-[11px] uppercase tracking-wider text-[#FCF6BA]/70">{label}</span>
     <p
-      className="text-[13px] font-light text-[#2E3A56]/95 mt-0.5 break-words whitespace-pre-wrap"
+      className="text-[13px] font-light text-[#F5F5F0]/95 mt-0.5 break-words whitespace-pre-wrap"
       style={{ lineHeight: 1.45 }}
     >
       {value}
@@ -259,10 +263,10 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
   };
 
   return (
-    <div className="w-full md:w-72 flex flex-col h-full min-h-0 bg-[#f2ede2]">
+    <div className="w-full md:w-72 flex flex-col h-full bg-[#1e293b] min-h-0">
       {/* שיחות קודמות + שיחה חדשה — דסקטופ בלבד; במובייל הארכיון בהדר */}
       {(onArchiveClick || onNewChat) && (
-        <div className="hidden md:flex md:flex-col p-4 border-b border-[#e8e0cc] gap-2">
+        <div className="hidden md:flex md:flex-col p-4 border-b border-white/[0.06] gap-2">
           {onArchiveClick && (
             <button
               type="button"
@@ -293,22 +297,22 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
       <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col min-h-0">
         {/* תובנות - תגיות למעלה */}
         {insightPieces.length > 0 ? (
-          <section className="p-5 border-b border-[#e8e0cc] flex-shrink-0">
+          <section className="p-5 border-b border-white/[0.06] flex-shrink-0">
             <div className="flex items-center gap-2 mb-3">
-              <Sparkles size={16} className="text-[#AA771C]" />
-              <h4 className="text-[12px] font-light uppercase tracking-[0.15em] text-[#5c6270]">{t('chat.insightsTitle')}</h4>
+              <Sparkles size={16} className="text-[#FCF6BA]/80" />
+              <h4 className="text-[12px] font-light uppercase tracking-[0.15em]" style={{ color: 'rgba(245,245,240,0.8)' }}>{t('chat.insightsTitle')}</h4>
             </div>
             <div className="space-y-2">
               {insightPieces.map((piece, i) => renderInsightPiece(piece, i))}
             </div>
           </section>
         ) : conversationId && (
-          <section className="p-5 border-b border-[#e8e0cc] flex-shrink-0">
+          <section className="p-5 border-b border-white/[0.06] flex-shrink-0">
             <div className="flex items-center gap-2 mb-2">
-              <Sparkles size={16} className="text-[#AA771C]/70" />
-              <h4 className="text-[12px] font-light uppercase tracking-[0.15em] text-[#8a7f6e]">{t('chat.insightsTitle')}</h4>
+              <Sparkles size={16} className="text-[#FCF6BA]/50" />
+              <h4 className="text-[12px] font-light uppercase tracking-[0.15em]" style={{ color: 'rgba(245,245,240,0.5)' }}>{t('chat.insightsTitle')}</h4>
             </div>
-            <p className="text-[11px] text-[#5c6270]" style={{ fontFamily: WORKSPACE_CHAT_FONT }}>
+            <p className="text-[11px] text-[#F5F5F0]/50" style={{ fontFamily: WORKSPACE_CHAT_FONT }}>
               {t('chat.insightsPlaceholder')}
             </p>
           </section>
