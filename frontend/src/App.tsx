@@ -110,8 +110,10 @@ function SignedInContent() {
   const [displayName, setDisplayName] = useState<string | null>(null);
   /** After first /users/me attempt — delays chat welcome until profile display_name can override Clerk */
   const [chatProfileReady, setChatProfileReady] = useState(false);
-  /** First-session intro carousel (BSD Figma entry screens) until preferences flag is set */
+  /** First-session onboarding until preferences flag is set */
   const [showIntroScreens, setShowIntroScreens] = useState(false);
+  /** False until /users/me/preferences resolved — avoids flashing workspace chat before onboarding */
+  const [introPrefsResolved, setIntroPrefsResolved] = useState(false);
   /** Incremented from header "new chat" on mobile — BSDWorkspace runs startNewConversation */
   const [workspaceNewChatTick, setWorkspaceNewChatTick] = useState(0);
 
@@ -137,6 +139,7 @@ function SignedInContent() {
           } catch {
             setShowIntroScreens(false);
           }
+          setIntroPrefsResolved(true);
           if (!userData.isAdmin && !isRetry) {
             window.setTimeout(() => {
               void checkAdminStatus(true);
@@ -146,10 +149,12 @@ function SignedInContent() {
           setIsAdmin(false);
           setDisplayName(null);
           setShowIntroScreens(false);
+          setIntroPrefsResolved(true);
         }
       } catch (error) {
         console.error('Failed to check admin status:', error);
         setShowIntroScreens(false);
+        setIntroPrefsResolved(true);
         if (!isRetry) {
           window.setTimeout(() => {
             void checkAdminStatus(true);
@@ -197,15 +202,41 @@ function SignedInContent() {
     setShowIntroScreens(false);
   }, [getToken]);
 
-  return (
-    <div className="h-screen flex flex-col bg-[#faf8f3] workspace-root overflow-x-hidden">
-      {showIntroScreens ? (
+  if (!isLoaded || !introPrefsResolved) {
+    return (
+      <div
+        className="h-screen flex flex-col items-center justify-center bg-[#faf8f3] workspace-root overflow-x-hidden"
+        role="status"
+        aria-busy="true"
+        aria-live="polite"
+      >
+        <div className="flex flex-col items-center gap-3">
+          <div
+            className="h-9 w-9 animate-spin rounded-full border-2 border-[#C9A96E] border-t-transparent"
+            aria-hidden
+          />
+          <p className="text-sm text-[#4c5a70]" style={{ fontFamily: 'Inter, sans-serif' }}>
+            {t('chat.loading')}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (showIntroScreens) {
+    return (
+      <div className="h-screen flex flex-col bg-[#faf8f3] workspace-root overflow-x-hidden">
         <BsdOnboardingFlow
           onComplete={handleIntroComplete}
           initialDisplayName={displayName ?? user?.firstName ?? null}
           onDisplayNameUpdated={(name) => setDisplayName(name)}
         />
-      ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-screen flex flex-col bg-[#faf8f3] workspace-root overflow-x-hidden">
       <motion.header
         initial={{ opacity: 0, y: -50 }}
         animate={{ opacity: 1, y: 0 }}
