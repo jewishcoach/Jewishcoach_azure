@@ -22,12 +22,12 @@ interface CoachingCalendarProps {
 }
 
 const LIGHT = {
-  card: 'bg-white rounded-2xl p-6 border border-gray-200 shadow-sm',
-  title: 'text-[#2E3A56]',
-  muted: 'text-[#5A6B8A]',
-  accent: 'text-[#2E3A56]',
-  accentBg: 'bg-[rgba(46,58,86,0.08)]',
-  item: 'bg-gray-50 border border-gray-200',
+  card: 'bg-white rounded-2xl p-6 border border-[#e8e0cc] shadow-[0_2px_16px_rgba(0,0,0,0.06)]',
+  title: 'text-[#393939]',
+  muted: 'text-[#8a96a8]',
+  accent: 'text-[#1e293b]',
+  accentBg: 'bg-[rgba(30,41,59,0.06)] border border-[#e8e0cc]',
+  item: 'bg-[#fafaf8] border border-[#e8e0cc]',
 };
 const DARK = {
   card: 'bg-white/[0.04] rounded-2xl p-6 border border-white/[0.08]',
@@ -70,7 +70,7 @@ export const CoachingCalendar = ({ conversations, variant = 'dark', stats }: Coa
     if (view === 'month' && hasConversations(date)) {
       return (
         <div className="flex justify-center mt-1">
-          <div className="w-1.5 h-1.5 rounded-full bg-[#B38728]"></div>
+          <div className={`w-1.5 h-1.5 rounded-full ${variant === 'light' ? 'bg-[#c8953a]' : 'bg-[#B38728]'}`}></div>
         </div>
       );
     }
@@ -91,7 +91,7 @@ export const CoachingCalendar = ({ conversations, variant = 'dark', stats }: Coa
     <div className="space-y-4">
       {/* Stats Summary — above calendar */}
       <motion.div
-        className={`${theme.accentBg} rounded-2xl p-6 border ${variant === 'light' ? 'border-[#2E3A56]/30' : 'border-[#FCF6BA]/20'}`}
+        className={`${theme.accentBg} rounded-2xl p-6 ${variant === 'light' ? '' : 'border border-[#FCF6BA]/20'}`}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
@@ -141,7 +141,7 @@ export const CoachingCalendar = ({ conversations, variant = 'dark', stats }: Coa
 
         {/* Legend */}
         <div className={`flex items-center gap-2 mt-4 text-sm ${theme.muted}`}>
-          <div className="w-2 h-2 rounded-full bg-[#B38728]"></div>
+          <div className={`w-2 h-2 rounded-full ${variant === 'light' ? 'bg-[#c8953a]' : 'bg-[#B38728]'}`}></div>
           <span>{t('calendar.daysWithCoaching')}</span>
         </div>
       </motion.div>

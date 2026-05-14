@@ -20,20 +20,26 @@ import { apiClient } from '../services/api';
 import type { I18nT } from '../i18nT';
 import { friendlyEmailPrefix, isClerkSyntheticEmail } from '../lib/clerkEmail';
 
-// BSD palette: navy primary, minimal red - gold for soft accents
+// BSD dashboard (Figma Page 2): cream canvas, slate sidebar, gold accents
 const COLORS = {
-  bg: '#F0F1F3',
+  bg: '#faf8f3',
   card: '#FFFFFF',
-  text: '#2E3A56',
-  textMuted: '#5A6B8A',
-  accent: '#2E3A56',
-  accentLight: 'rgba(46, 58, 86, 0.12)',
+  text: '#393939',
+  textMuted: '#8a96a8',
+  textOnDarkMuted: 'rgba(255,255,255,0.55)',
+  accent: '#1e293b',
+  accentLight: 'rgba(30, 41, 59, 0.08)',
   primary: '#2E3A56',
   primaryLight: 'rgba(46, 58, 86, 0.08)',
-  gold: '#B38728',
-  border: '#E2E4E8',
-  shadow: '0 1px 2px rgba(46, 58, 86, 0.06)',
-  shadowSm: '0 2px 8px rgba(46, 58, 86, 0.08)',
+  gold: '#c8953a',
+  goldSoft: '#e4b870',
+  goldTintBg: 'rgba(200, 149, 58, 0.1)',
+  goldTintBorder: 'rgba(200, 149, 58, 0.22)',
+  inputBg: '#fafaf8',
+  inputBorder: '#d8d3ca',
+  border: '#e8e0cc',
+  shadow: '0 2px 16px rgba(0, 0, 0, 0.06)',
+  shadowSm: '0 2px 8px rgba(0, 0, 0, 0.06)',
 };
 
 interface Profile {
@@ -52,6 +58,11 @@ function profileHeadingName(profile: Profile, defaultLabel: string): string {
   const fromEmail = friendlyEmailPrefix(profile.email);
   if (fromEmail) return fromEmail;
   return defaultLabel;
+}
+
+/** Plan slug → spaced words for UI (CSS may uppercase). */
+function formatPlanWords(plan: string): string {
+  return plan.replace(/_/g, ' ').trim();
 }
 
 interface DashboardStats {
@@ -297,63 +308,81 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
     </div>
   );
 
-  /** Desktop: vertical links at bottom of sidebar (original placement) */
+  const SubscriptionMeter = () => {
+    if (!billingUsage || billingUsage.messages_limit <= 0 || billingUsage.messages_limit === -1) return null;
+    const pct = Math.min(
+      100,
+      Math.round((billingUsage.messages_used / billingUsage.messages_limit) * 100),
+    );
+    return (
+      <div className="mb-1 px-0.5">
+        <div className="flex justify-between items-center gap-2 text-[10px] mb-2 font-normal">
+          <span style={{ color: COLORS.textOnDarkMuted }}>{t('billing.button')}</span>
+          <span className="tabular-nums font-medium" style={{ color: COLORS.gold }} dir="ltr">
+            {billingUsage.messages_used} / {billingUsage.messages_limit}
+          </span>
+        </div>
+        <div className="h-1 rounded bg-white/[0.08] overflow-hidden">
+          <div
+            className="h-full rounded bg-[#c8953a] shadow-[0_0_6px_rgba(212,175,95,0.5)] transition-all"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      </div>
+    );
+  };
+
+  /** Desktop: vertical links — Figma aside footer */
   const SidebarLinks = () => (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-6">
       {onShowBilling && (
         <button
+          type="button"
           onClick={() => onShowBilling()}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full transition-colors hover:bg-gray-50 text-start"
-          style={{ color: COLORS.textMuted }}
+          className="flex items-center gap-3.5 text-start transition-colors hover:text-white/80"
+          style={{ color: COLORS.textOnDarkMuted }}
         >
-          <CreditCard className="w-4 h-4 flex-shrink-0" />
-          <span className="flex flex-col items-start leading-tight">
-            <span>{t('billing.button')}</span>
-            {billingUsage && billingUsage.messages_limit !== -1 ? (
-              <span className="text-xs font-normal opacity-80 mt-0.5" dir="ltr">
-                {billingUsage.messages_used}/{billingUsage.messages_limit}
-              </span>
-            ) : null}
-          </span>
+          <CreditCard className="w-4 h-4 shrink-0 opacity-90" strokeWidth={1.75} />
+          <span className="text-sm font-normal">{t('billing.button')}</span>
         </button>
       )}
       <button
         type="button"
         onClick={() => setLegalPanel('privacy')}
-        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full transition-colors hover:bg-gray-50 text-start"
-        style={{ color: COLORS.textMuted }}
+        className="flex items-center gap-3.5 text-start transition-colors hover:text-white/80"
+        style={{ color: COLORS.textOnDarkMuted }}
       >
-        <FileText className="w-4 h-4 flex-shrink-0" />
-        {t('sidebar.policy')}
+        <FileText className="w-4 h-4 shrink-0 opacity-90" strokeWidth={1.75} />
+        <span className="text-sm font-normal">{t('sidebar.policy')}</span>
       </button>
       <a
         href={BSD_BOOKS_URL}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full transition-colors hover:bg-gray-50"
+        className="flex items-start gap-3.5 transition-colors hover:text-white/80"
         style={{ color: COLORS.textMuted }}
       >
-        <BookOpen className="w-4 h-4 flex-shrink-0" />
-        {t('sidebar.book')}
+        <BookOpen className="w-4 h-4 shrink-0 mt-0.5 opacity-90" strokeWidth={1.75} />
+        <span className="text-sm font-normal leading-snug">{t('sidebar.book')}</span>
       </a>
       <button
         type="button"
         onClick={() => setLegalPanel('terms')}
-        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full transition-colors hover:bg-gray-50 text-start"
-        style={{ color: COLORS.textMuted }}
+        className="flex items-center gap-3.5 text-start transition-colors hover:text-white/80"
+        style={{ color: COLORS.textOnDarkMuted }}
       >
-        <Scale className="w-4 h-4 flex-shrink-0" />
-        {t('sidebar.terms')}
+        <Scale className="w-4 h-4 shrink-0 opacity-90" strokeWidth={1.75} />
+        <span className="text-sm font-normal">{t('sidebar.terms')}</span>
       </button>
       <a
         href={BSD_WEBSITE_URL}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full transition-colors hover:bg-gray-50"
+        className="flex items-center gap-4 transition-colors hover:text-white/80"
         style={{ color: COLORS.textMuted }}
       >
-        <ExternalLink className="w-4 h-4 flex-shrink-0" />
-        {t('sidebar.website')}
+        <ExternalLink className="w-3.5 h-3.5 shrink-0 opacity-90" strokeWidth={2} />
+        <span className="text-[12.5px] font-normal">bsdcoach.com</span>
       </a>
     </div>
   );
@@ -377,43 +406,51 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
               </span>
             )}
             <span className="text-[9px] px-1.5 py-0.5 rounded-full font-medium" style={{ background: COLORS.accentLight, color: COLORS.accent }}>
-              {profile.current_plan.toUpperCase()}
+              {formatPlanWords(profile.current_plan).toUpperCase()}
             </span>
           </div>
         </div>
         <HeaderLinks />
       </div>
 
-      {/* Desktop: Left Sidebar */}
-      <aside className="hidden md:flex w-56 flex-shrink-0 flex-col py-6 px-3" style={{ background: COLORS.card, boxShadow: COLORS.shadow }}>
-        {onBack && (
-          <button
-            onClick={onBack}
-            className="flex items-center gap-2 px-3 py-2 mb-4 rounded-xl text-sm transition-colors hover:bg-gray-50"
-            style={{ color: COLORS.textMuted }}
-          >
-            <MessageCircle className="w-4 h-4 flex-shrink-0" />
-            {t('chat.button')}
-          </button>
-        )}
-        <nav className="flex flex-col gap-1 flex-1">
+      {/* Desktop: slate sidebar — Figma Aside */}
+      <aside className="hidden md:flex w-[232px] shrink-0 flex-col overflow-y-auto border-e border-white/[0.07] bg-[#1e293b] custom-scrollbar">
+        <nav className="flex flex-1 flex-col gap-0 px-4 pb-4 pt-8">
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="mb-5 flex items-center gap-3 rounded-md px-2 py-2 text-sm transition-colors hover:bg-white/[0.06]"
+              style={{ color: COLORS.textOnDarkMuted }}
+            >
+              <MessageCircle className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+              {t('chat.button')}
+            </button>
+          )}
           {NAV_ITEMS.map((item) => (
             <button
               type="button"
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-start w-full"
-              style={{
-                background: activeTab === item.id ? COLORS.accent : 'transparent',
-                color: activeTab === item.id ? '#FFFFFF' : COLORS.textMuted,
-              }}
+              className={`mb-1 flex w-full items-center gap-3 rounded-[7px] border px-3 py-2.5 text-start text-sm font-normal transition-colors ${
+                activeTab === item.id
+                  ? 'border-[rgba(200,149,58,0.22)] bg-[rgba(200,149,58,0.1)] text-[#e4b870]'
+                  : 'border-transparent text-white/55 hover:bg-white/[0.04]'
+              }`}
             >
-              {item.icon}
-              {t(item.labelKey)}
+              <span className="shrink-0 [&_svg]:stroke-[1.75]">{item.icon}</span>
+              <span>{t(item.labelKey)}</span>
             </button>
           ))}
         </nav>
-        <div className="mt-auto pt-4 border-t" style={{ borderColor: COLORS.border }}>
+
+        <div className="mt-auto border-t border-white/[0.07] px-4 pb-8 pt-6">
+          {billingUsage && billingUsage.messages_limit > 0 && billingUsage.messages_limit !== -1 ? (
+            <div className="mb-6 space-y-5">
+              <SubscriptionMeter />
+              <div className="border-t border-white/[0.07]" aria-hidden />
+            </div>
+          ) : null}
           <SidebarLinks />
         </div>
       </aside>
@@ -435,8 +472,9 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
             onClick={() => setActiveTab(item.id)}
             className="flex flex-col items-center justify-center gap-1 px-4 py-2 rounded-xl min-w-[64px] transition-all"
             style={{
-              background: activeTab === item.id ? COLORS.accentLight : 'transparent',
-              color: activeTab === item.id ? COLORS.accent : COLORS.textMuted,
+              background: activeTab === item.id ? COLORS.goldTintBg : 'transparent',
+              color: activeTab === item.id ? COLORS.gold : COLORS.textMuted,
+              border: activeTab === item.id ? `1px solid ${COLORS.goldTintBorder}` : '1px solid transparent',
             }}
           >
             {item.icon}
@@ -448,28 +486,22 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
       {/* Main Content - pb for mobile bottom nav */}
       <main className="flex-1 overflow-y-auto custom-scrollbar pb-24 md:pb-0">
         <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-8 overflow-x-hidden">
-          {/* Hero Banner - desktop only; avatar centered on bottom edge (half on banner, half below). */}
+          {/* Profile banner — Figma gradient strip */}
           <motion.div
-            className="mb-6 hidden md:block pb-12"
+            className="mb-6 hidden md:block"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <div className="relative h-36 w-full">
-              <div
-                className="h-full w-full rounded-2xl overflow-hidden"
-                style={{ boxShadow: COLORS.shadowSm }}
-              >
+            <div
+              className="flex min-h-[122px] items-center gap-6 overflow-hidden rounded-[17px] px-9 py-6 shadow-[0px_2px_16px_rgba(0,0,0,0.06)]"
+              style={{
+                background: 'linear-gradient(111deg, #2e3a56 0%, #3d5a80 50%, #c9963a 100%)',
+              }}
+            >
+              <div className="relative shrink-0">
                 <div
-                  className="h-full w-full"
-                  style={{
-                    background: `linear-gradient(135deg, ${COLORS.primaryLight} 0%, ${COLORS.primary} 60%, ${COLORS.gold} 100%)`,
-                  }}
-                />
-              </div>
-              <div className="absolute bottom-0 left-1/2 z-10 -translate-x-1/2 translate-y-1/2">
-                <div
-                  className="w-20 h-20 rounded-full flex items-center justify-center border-4 overflow-hidden shrink-0 aspect-square"
-                  style={{ background: COLORS.card, borderColor: COLORS.card, boxShadow: COLORS.shadowSm }}
+                  className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-[3px] border-[rgba(212,175,95,0.6)] bg-[#2a4a8c] shadow-[0px_8px_32px_rgba(0,0,0,0.3)]"
+                  style={{ boxShadow: '0 0 0 6px rgba(212, 175, 95, 0.1), 0 8px 32px rgba(0,0,0,0.3)' }}
                 >
                   {user?.imageUrl ? (
                     <img
@@ -479,101 +511,99 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
                       referrerPolicy="no-referrer"
                     />
                   ) : (
-                    <User className="w-10 h-10" style={{ color: COLORS.gold }} aria-hidden />
+                    <span
+                      className="text-[32px] font-bold leading-none text-white"
+                      style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                      aria-hidden
+                    >
+                      {(profileHeadingName(profile, t('dashboard.userDefault')).trim().charAt(0) || '?').toUpperCase()}
+                    </span>
                   )}
+                </div>
+              </div>
+              <div className="min-w-0">
+                <p
+                  className="text-2xl font-bold leading-tight text-white"
+                  style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}
+                >
+                  {profileHeadingName(profile, t('dashboard.userDefault'))}
+                </p>
+                <div
+                  className="mt-3 inline-flex items-center gap-2 rounded-[20px] border border-[rgba(212,175,95,0.3)] bg-[rgba(212,175,95,0.15)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.11em] text-[#e8c97a]"
+                >
+                  <span className="text-[8px] opacity-90" aria-hidden>
+                    ✦
+                  </span>
+                  <span>{formatPlanWords(profile.current_plan)}</span>
                 </div>
               </div>
             </div>
           </motion.div>
 
-          {/* Profile + Stats row - desktop only */}
-          <motion.div
-            className="text-center mb-8 hidden md:block"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.05 }}
-          >
-            <h1
-              className={`text-xl font-semibold ${profile.email && !isClerkSyntheticEmail(profile.email) ? 'mb-0.5' : 'mb-5'}`}
-              style={{ color: COLORS.text }}
-            >
-              {profileHeadingName(profile, t('dashboard.userDefault'))}
-            </h1>
-            {profile.email && !isClerkSyntheticEmail(profile.email) && (
-              <p className="text-sm mb-5" style={{ color: COLORS.textMuted }}>
-                {profile.email}
-              </p>
-            )}
-
-            {/* Badges */}
-            <div className="flex flex-wrap justify-center gap-2">
-              {profile.gender && (
-                <span className="text-xs px-2.5 py-1 rounded-full" style={{ background: COLORS.accentLight, color: COLORS.accent }}>
-                  {profile.gender === 'male' ? t('dashboard.male') : t('dashboard.female')}
-                </span>
-              )}
-              <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ background: COLORS.accentLight, color: COLORS.accent }}>
-                {profile.current_plan.toUpperCase()}
-              </span>
-            </div>
-          </motion.div>
-
-          {/* Tab: Settings — personal profile only (open card) */}
+          {/* Tab: Settings — Figma personal settings card */}
           {activeTab === 'settings' && (
-            <div className="max-w-xl w-full mx-auto space-y-5">
+            <div className="mx-auto w-full max-w-[632px] space-y-5">
               <motion.div
-                className="rounded-xl p-5 md:p-6"
-                style={{ background: COLORS.card, boxShadow: COLORS.shadow }}
+                className="rounded-2xl bg-white p-6 shadow-[0px_2px_16px_rgba(0,0,0,0.06)] md:p-7"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
               >
-                <h3 className="text-base font-semibold mb-1" style={{ color: COLORS.text }}>{t('dashboard.title')}</h3>
-                <p className="text-xs leading-snug mb-5" style={{ color: COLORS.textMuted }}>{t('dashboard.subtitle')}</p>
-                <div className="space-y-4">
+                <h3
+                  className="mb-1 text-[22px] font-semibold leading-tight text-[#1e293b]"
+                  style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                >
+                  {t('dashboard.title')}
+                </h3>
+                <p className="mb-6 text-[15px] leading-snug text-[#393939]">{t('dashboard.subtitle')}</p>
+                <div className="space-y-5">
                   <div>
-                    <label className="block text-xs font-medium mb-1.5" style={{ color: COLORS.textMuted }}>{t('dashboard.displayName')}</label>
+                    <label className="mb-2 block text-[14px] font-semibold uppercase tracking-[0.05em] text-[#393939]">
+                      {t('dashboard.displayName')}
+                    </label>
                     <input
                       type="text"
                       value={editForm.display_name}
                       onChange={(e) => setEditForm({ ...editForm, display_name: e.target.value })}
-                      className="w-full px-3 py-2.5 text-sm rounded-lg border focus:ring-2 focus:ring-blue-200 focus:outline-none"
-                      style={{ borderColor: COLORS.border, color: COLORS.text }}
+                      placeholder={t('dashboard.displayNamePlaceholder')}
+                      className="h-[42px] w-full rounded-[10px] border border-[#d8d3ca] bg-[#fafaf8] px-3.5 text-[14px] text-[#393939] placeholder:text-[#757575] focus:border-[#c8953a]/40 focus:outline-none focus:ring-2 focus:ring-[#c8953a]/15"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium mb-1.5" style={{ color: COLORS.textMuted }}>{t('dashboard.gender')}</label>
+                    <label className="mb-2 block text-[14px] font-semibold uppercase tracking-[0.05em] text-[#393939]">
+                      {t('dashboard.gender')}
+                    </label>
                     <select
                       value={editForm.gender}
                       onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}
-                      className="w-full px-3 py-2 text-[13px] leading-snug rounded-lg border focus:ring-2 focus:ring-blue-200 focus:outline-none"
-                      style={{ borderColor: COLORS.border, color: COLORS.text }}
+                      className="h-[42px] w-full rounded-[10px] border border-[#d8d3ca] bg-[#fafaf8] px-3.5 text-[14px] text-[#757575] focus:border-[#c8953a]/40 focus:outline-none focus:ring-2 focus:ring-[#c8953a]/15"
                     >
                       <option value="">{t('dashboard.notSpecified')}</option>
                       <option value="male">{t('dashboard.male')}</option>
                       <option value="female">{t('dashboard.female')}</option>
                     </select>
                   </div>
-                  <div className="flex flex-wrap gap-2 justify-end pt-1">
-                    <button
-                      type="button"
-                      onClick={handleSaveProfile}
-                      disabled={saving}
-                      className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg text-white disabled:opacity-50"
-                      style={{ background: COLORS.accent }}
-                    >
-                      <Save className="w-4 h-4" />
-                      {saving ? t('dashboard.saving') : t('dashboard.save')}
-                    </button>
+                  <p className="flex gap-2 text-[12px] leading-snug text-[#393939]">
+                    <User className="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
+                    <span>{t('dashboard.genderHelp')}</span>
+                  </p>
+                  <div className="flex flex-wrap justify-end gap-3 pt-1">
                     <button
                       type="button"
                       onClick={revertProfileForm}
-                      className="px-4 py-2.5 text-sm rounded-lg"
-                      style={{ background: COLORS.border, color: COLORS.text }}
+                      className="h-[39px] min-w-[96px] rounded-[10px] border border-[#d8d3ca] px-5 text-[14px] text-[#8a96a8] transition-colors hover:bg-[#fafaf8]"
                     >
                       {t('dashboard.cancel')}
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleSaveProfile()}
+                      disabled={saving}
+                      className="flex h-[39px] min-w-[140px] items-center justify-center gap-2 rounded-[10px] bg-[#1e293b] px-5 text-[13.5px] font-semibold text-[#e8e4dc] transition-opacity disabled:opacity-50"
+                    >
+                      <Save className="h-3.5 w-3.5" strokeWidth={2} />
+                      {saving ? t('dashboard.saving') : t('dashboard.save')}
+                    </button>
                   </div>
-                  <p className="text-xs pt-1" style={{ color: COLORS.textMuted }}>{t('dashboard.genderHelp')}</p>
                 </div>
               </motion.div>
               <PwaInstallCard colors={COLORS} />
@@ -584,16 +614,16 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
           {activeTab === 'goals' && (
             <div className="grid md:grid-cols-2 gap-5">
               <motion.div
-                className="rounded-xl p-5"
-                style={{ background: COLORS.card, boxShadow: COLORS.shadow }}
+                className="rounded-2xl border p-5 md:p-6"
+                style={{ background: COLORS.card, borderColor: COLORS.border, boxShadow: COLORS.shadow }}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
               >
                 <GoalsManager variant="light" />
               </motion.div>
               <motion.div
-                className="rounded-xl p-5"
-                style={{ background: COLORS.card, boxShadow: COLORS.shadow }}
+                className="rounded-2xl border p-5 md:p-6"
+                style={{ background: COLORS.card, borderColor: COLORS.border, boxShadow: COLORS.shadow }}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.05 }}
@@ -619,8 +649,8 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
               </motion.div>
               <div className="space-y-6">
                 <motion.div
-                  className="rounded-xl p-5"
-                  style={{ background: COLORS.card, boxShadow: COLORS.shadow }}
+                  className="rounded-2xl border p-5 md:p-6"
+                  style={{ background: COLORS.card, borderColor: COLORS.border, boxShadow: COLORS.shadow }}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                 >
@@ -637,8 +667,8 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
                   )}
                 </motion.div>
                 <motion.div
-                  className="rounded-xl p-5"
-                  style={{ background: COLORS.card, boxShadow: COLORS.shadow }}
+                  className="rounded-2xl border p-5 md:p-6"
+                  style={{ background: COLORS.card, borderColor: COLORS.border, boxShadow: COLORS.shadow }}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                 >
@@ -650,7 +680,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
                       {recent_conversations.slice(0, 10).map((conv) => (
                         <div
                           key={conv.id}
-                          className="flex justify-between items-center py-2.5 px-3 rounded-lg hover:bg-gray-50 transition-colors"
+                          className="flex justify-between items-center py-2.5 px-3 rounded-lg transition-colors hover:bg-[#fafaf8]"
                         >
                           <div>
                             <div className="text-sm font-medium" style={{ color: COLORS.text }}>{conv.title}</div>

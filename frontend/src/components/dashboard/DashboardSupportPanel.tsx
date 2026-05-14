@@ -264,7 +264,7 @@ export function DashboardSupportPanel({ colors, profileEmail, refreshAuthToken }
   return (
     <div className="max-w-2xl w-full mx-auto space-y-6">
       <motion.div
-        className="rounded-xl p-5 md:p-6 border"
+        className="rounded-2xl p-5 md:p-6 border"
         style={{ background: colors.card, borderColor: colors.border, boxShadow: colors.shadow }}
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}

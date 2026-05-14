@@ -36,17 +36,17 @@ import {
 } from 'lucide-react';
 
 const C = {
-  bg: '#F0F1F3',
+  bg: '#faf8f3',
   card: '#FFFFFF',
-  text: '#2E3A56',
-  muted: '#5A6B8A',
-  accent: '#2E3A56',
-  accentLight: 'rgba(46,58,86,0.10)',
-  gold: '#B38728',
-  goldLight: 'rgba(179,135,40,0.12)',
-  border: '#E2E4E8',
-  shadow: '0 1px 3px rgba(46,58,86,0.08)',
-  shadowMd: '0 4px 16px rgba(46,58,86,0.10)',
+  text: '#393939',
+  muted: '#8a96a8',
+  accent: '#1e293b',
+  accentLight: 'rgba(30,41,59,0.08)',
+  gold: '#c8953a',
+  goldLight: 'rgba(200,149,58,0.12)',
+  border: '#e8e0cc',
+  shadow: '0 2px 16px rgba(0, 0, 0, 0.06)',
+  shadowMd: '0 4px 16px rgba(0, 0, 0, 0.08)',
   green: '#2D7A4F',
   greenLight: 'rgba(45,122,79,0.10)',
   red: '#C0392B',
@@ -540,7 +540,7 @@ export function InsightsTab() {
       <motion.div
         className="rounded-2xl p-6"
         style={{
-          background: `linear-gradient(135deg, ${C.accent} 0%, #1a2540 100%)`,
+          background: `linear-gradient(135deg, ${C.accent} 0%, #152032 100%)`,
           boxShadow: C.shadowMd,
         }}
         initial={{ opacity: 0, y: 12 }}

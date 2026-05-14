@@ -79,9 +79,18 @@ export function PwaInstallCard({ colors }: PwaInstallCardProps) {
   if (installed) {
     return (
       <PwaCardShell colors={colors}>
-        <p className="text-sm" style={{ color: colors.textMuted }}>
-          {t('pwa.installedHint')}
-        </p>
+        <div className="flex items-center gap-3 min-w-0">
+          <div
+            className="p-2.5 rounded-xl shrink-0"
+            style={{ background: `${colors.accent}14` }}
+            aria-hidden
+          >
+            <Smartphone className="w-5 h-5" style={{ color: colors.accent }} />
+          </div>
+          <p className="text-sm leading-snug min-w-0" style={{ color: colors.textMuted }}>
+            {t('pwa.installedHint')}
+          </p>
+        </div>
       </PwaCardShell>
     );
   }
@@ -90,74 +99,76 @@ export function PwaInstallCard({ colors }: PwaInstallCardProps) {
 
   return (
     <PwaCardShell colors={colors}>
-      <div className="flex items-start gap-3 mb-3">
-        <div
-          className="p-2 rounded-lg flex-shrink-0"
-          style={{ background: `${colors.accent}14` }}
-          aria-hidden
-        >
-          <Smartphone className="w-5 h-5" style={{ color: colors.accent }} />
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+        <div className="flex items-start gap-3 min-w-0 flex-1 lg:items-center">
+          <div
+            className="p-2.5 rounded-xl shrink-0"
+            style={{ background: `${colors.accent}14` }}
+            aria-hidden
+          >
+            <Smartphone className="w-[22px] h-[22px]" style={{ color: colors.accent }} />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-[15px] font-semibold leading-tight mb-1" style={{ color: colors.text }}>
+              {t('pwa.title')}
+            </h3>
+            <p className="text-[13px] leading-snug" style={{ color: colors.textMuted }}>
+              {t('pwa.subtitle')}
+            </p>
+          </div>
         </div>
-        <div>
-          <h3 className="text-base font-semibold mb-1" style={{ color: colors.text }}>
-            {t('pwa.title')}
-          </h3>
-          <p className="text-xs leading-snug" style={{ color: colors.textMuted }}>
-            {t('pwa.subtitle')}
-          </p>
-        </div>
+
+        {!ios && hasDeferred ? (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void promptInstall()}
+            className="inline-flex items-center justify-center gap-2 h-10 px-6 rounded-[10px] text-[13.5px] font-semibold text-[#e8e4dc] shrink-0 w-full lg:w-auto disabled:opacity-50 transition-opacity"
+            style={{ background: colors.accent }}
+          >
+            <Download className="w-4 h-4 shrink-0" />
+            {busy ? t('pwa.installing') : t('pwa.installButton')}
+          </button>
+        ) : null}
       </div>
 
       {ios ? (
-        <div className="space-y-2 text-sm" style={{ color: colors.text }}>
-          <p className="font-medium text-xs" style={{ color: colors.textMuted }}>
+        <div className="mt-4 pt-4 border-t" style={{ borderColor: colors.border }}>
+          <p className="font-medium text-xs mb-2" style={{ color: colors.textMuted }}>
             {t('pwa.iosTitle')}
           </p>
-          <ol className="list-decimal list-inside space-y-1.5 text-[13px] leading-relaxed ps-1">
+          <ol className="list-decimal list-inside space-y-1.5 text-[13px] leading-relaxed ps-1" style={{ color: colors.text }}>
             <li>{t('pwa.iosStep1')}</li>
             <li>{t('pwa.iosStep2')}</li>
           </ol>
         </div>
-      ) : (
-        <div className="space-y-3">
-          {hasDeferred ? (
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void promptInstall()}
-              className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg text-white disabled:opacity-50 transition-opacity"
-              style={{ background: colors.accent }}
-            >
-              <Download className="w-4 h-4" />
-              {busy ? t('pwa.installing') : t('pwa.installButton')}
-            </button>
-          ) : (
-            <div className="space-y-3">
-              <div
-                className="flex items-start gap-3 rounded-xl p-3.5 text-[13px] leading-relaxed"
-                style={{
-                  background: `${colors.accent}08`,
-                  borderWidth: 1,
-                  borderStyle: 'solid',
-                  borderColor: colors.border,
-                  color: colors.text,
-                }}
-              >
-                <MonitorDown className="w-5 h-5 shrink-0 mt-0.5" style={{ color: colors.accent }} aria-hidden />
-                <div>
-                  <p className="font-semibold text-[13px] mb-1" style={{ color: colors.text }}>
-                    {t('pwa.omniboxTitle')}
-                  </p>
-                  <p style={{ color: colors.textMuted }}>{t('pwa.omniboxBody')}</p>
-                </div>
-              </div>
-              <p className="text-[12px] leading-relaxed" style={{ color: colors.textMuted }}>
-                {t('pwa.chromeManualHint')}
+      ) : null}
+
+      {!ios && !hasDeferred ? (
+        <div className="mt-4 pt-4 border-t space-y-3" style={{ borderColor: colors.border }}>
+          <div
+            className="flex items-start gap-3 rounded-xl p-3.5 text-[13px] leading-relaxed"
+            style={{
+              background: `${colors.accent}08`,
+              borderWidth: 1,
+              borderStyle: 'solid',
+              borderColor: colors.border,
+              color: colors.text,
+            }}
+          >
+            <MonitorDown className="w-5 h-5 shrink-0 mt-0.5" style={{ color: colors.accent }} aria-hidden />
+            <div>
+              <p className="font-semibold text-[13px] mb-1" style={{ color: colors.text }}>
+                {t('pwa.omniboxTitle')}
               </p>
+              <p style={{ color: colors.textMuted }}>{t('pwa.omniboxBody')}</p>
             </div>
-          )}
+          </div>
+          <p className="text-[12px] leading-relaxed" style={{ color: colors.textMuted }}>
+            {t('pwa.chromeManualHint')}
+          </p>
         </div>
-      )}
+      ) : null}
     </PwaCardShell>
   );
 }
@@ -171,7 +182,7 @@ function PwaCardShell({
 }) {
   return (
     <div
-      className="rounded-xl p-5 md:p-6"
+      className="rounded-2xl px-5 py-4 md:px-6 md:py-5"
       style={{
         background: colors.card,
         boxShadow: colors.shadow,
