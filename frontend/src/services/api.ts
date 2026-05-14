@@ -267,6 +267,139 @@ class ApiClient {
     await this.client.patch('/profile/me', data);
   }
 
+  /** Ephemeral LLM onboarding intake (no coaching conversation). */
+  async onboardingIntakeTurn(body: {
+    language: string;
+    messages: Array<{ role: 'user' | 'assistant'; content: string }>;
+    seed_display_name?: string | null;
+  }) {
+    const response = await this.client.post<{
+      assistant_message: string;
+      display_name?: string | null;
+      gender?: 'male' | 'female' | null;
+      goal?: string | null;
+      experience?: string | null;
+      pace?: string | null;
+      intake_complete: boolean;
+    }>('/onboarding/intake/turn', {
+      language: body.language,
+      messages: body.messages,
+      seed_display_name: body.seed_display_name?.trim() || undefined,
+    });
+    return response.data;
+  }
+
+  /** SSE intake: token deltas via onToken, then resolved payload with slots. */
+  async onboardingIntakeStream(
+    body: {
+      language: string;
+      messages: Array<{ role: 'user' | 'assistant'; content: string }>;
+      seed_display_name?: string | null;
+    },
+    handlers: {
+      onToken: (delta: string) => void;
+      signal?: AbortSignal;
+    },
+  ): Promise<{
+    assistant_message: string;
+    display_name?: string | null;
+    gender?: 'male' | 'female' | null;
+    goal?: string | null;
+    experience?: string | null;
+    pace?: string | null;
+    intake_complete: boolean;
+  }> {
+    const token = this.getToken();
+    const rawBase = this.client.defaults.baseURL || getApiBase();
+    const base = String(rawBase).replace(/\/+$/, '');
+    const url = `${base}/onboarding/intake/stream`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        language: body.language,
+        messages: body.messages,
+        seed_display_name: body.seed_display_name?.trim() || undefined,
+      }),
+      signal: handlers.signal,
+    });
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '');
+      throw new Error(errText || `HTTP ${response.status}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error('No response body');
+
+    const decoder = new TextDecoder();
+    let carry = '';
+    let final: {
+      assistant_message: string;
+      display_name?: string | null;
+      gender?: 'male' | 'female' | null;
+      goal?: string | null;
+      experience?: string | null;
+      pace?: string | null;
+      intake_complete: boolean;
+    } | null = null;
+
+    const flushBlock = (block: string) => {
+      for (const line of block.split('\n')) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('data:')) continue;
+        const rawJson = trimmed.slice(5).trim();
+        if (!rawJson) continue;
+        let data: Record<string, unknown>;
+        try {
+          data = JSON.parse(rawJson) as Record<string, unknown>;
+        } catch {
+          continue;
+        }
+        if (typeof data.content === 'string' && data.content) {
+          handlers.onToken(data.content);
+        }
+        if (data.error) {
+          throw new Error(typeof data.error === 'string' ? data.error : 'stream_error');
+        }
+        if (data.done === true) {
+          final = {
+            assistant_message: String(data.assistant_message ?? ''),
+            display_name: (data.display_name as string | null | undefined) ?? null,
+            gender: (data.gender as 'male' | 'female' | null | undefined) ?? null,
+            goal: (data.goal as string | null | undefined) ?? null,
+            experience: (data.experience as string | null | undefined) ?? null,
+            pace: (data.pace as string | null | undefined) ?? null,
+            intake_complete: Boolean(data.intake_complete),
+          };
+        }
+      }
+    };
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      carry += decoder.decode(value, { stream: true });
+      const parts = carry.split('\n\n');
+      carry = parts.pop() ?? '';
+      for (const block of parts) {
+        flushBlock(block);
+      }
+    }
+    if (carry.trim()) {
+      flushBlock(carry);
+    }
+
+    if (!final) throw new Error('stream_incomplete');
+    return final;
+  }
+
   // Journal
   async getJournal(conversationId: number) {
     const cid = normalizeConversationId(conversationId);

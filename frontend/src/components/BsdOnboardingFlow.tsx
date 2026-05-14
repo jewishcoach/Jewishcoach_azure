@@ -20,7 +20,6 @@ import {
   Mic,
   Send,
   Shield,
-  TrendingUp,
   UserRound,
   Users,
 } from 'lucide-react';
@@ -35,48 +34,12 @@ type Props = {
   onDisplayNameUpdated?: (name: string) => void;
 };
 
-type Phase = 'name' | 'goal' | 'experience' | 'pace' | 'summary';
-
 type ChatMsg = {
   id: string;
   role: 'coach' | 'user';
   text: string;
-  /** Figma: first coach bubble has no “COACH” meta row */
   showCoachMeta?: boolean;
 };
-
-const STEPS = 4;
-
-function cx(...parts: (string | false | undefined | null)[]) {
-  return parts.filter(Boolean).join(' ');
-}
-
-function uid() {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
-
-function extractPreferredName(text: string): string {
-  const s = text.trim();
-  if (!s) return '';
-  const en =
-    /\b(?:i'?m|i am|call me|my name is|name(?:'s| is)?)\s+([^\s,!?.]+)/i.exec(s);
-  if (en?.[1]) return en[1].slice(0, 48);
-  const he = /(?:אני|קוראים לי|שמי)\s+([^\s,!?.]+)/u.exec(s);
-  if (he?.[1]) return he[1].slice(0, 48);
-  const parts = s.split(/[\s,]+/).filter(Boolean);
-  return parts[0]?.slice(0, 48) ?? '';
-}
-
-function phaseStep(p: Phase): number {
-  if (p === 'summary') return STEPS;
-  const map: Record<Exclude<Phase, 'summary'>, number> = {
-    name: 1,
-    goal: 2,
-    experience: 3,
-    pace: 4,
-  };
-  return map[p];
-}
 
 const GOAL_IDS = ['peace', 'confidence', 'knowSelf', 'pattern'] as const;
 type GoalId = (typeof GOAL_IDS)[number];
@@ -86,6 +49,38 @@ type ExpId = (typeof EXP_IDS)[number];
 
 const PACE_IDS = ['gentle', 'weekly', 'immersive', 'focused'] as const;
 type PaceId = (typeof PACE_IDS)[number];
+
+const GENDER_IDS = ['male', 'female'] as const;
+type GenderId = (typeof GENDER_IDS)[number];
+
+const STEPS = 5;
+
+function cx(...parts: (string | false | undefined | null)[]) {
+  return parts.filter(Boolean).join(' ');
+}
+
+function uid() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function isGoalId(s: string): s is GoalId {
+  return (GOAL_IDS as readonly string[]).includes(s);
+}
+
+function isExpId(s: string): s is ExpId {
+  return (EXP_IDS as readonly string[]).includes(s);
+}
+
+function isPaceId(s: string): s is PaceId {
+  return (PACE_IDS as readonly string[]).includes(s);
+}
+
+function transcriptForApi(messages: ChatMsg[]) {
+  return messages.map((m) => ({
+    role: m.role === 'coach' ? ('assistant' as const) : ('user' as const),
+    content: m.text,
+  }));
+}
 
 const GOAL_ICONS: Record<GoalId, LucideIcon> = {
   peace: Bird,
@@ -108,22 +103,15 @@ const PACE_ICONS: Record<PaceId, LucideIcon> = {
   focused: Crosshair,
 };
 
-function CoachAvatarBadge({
-  variant = 'thread',
-  letter = 'C',
-}: {
-  variant?: 'thread' | 'header';
-  letter?: string;
-}) {
-  const header = variant === 'header';
+const GENDER_ICONS: Record<GenderId, LucideIcon> = {
+  male: UserRound,
+  female: Heart,
+};
+
+function CoachAvatarBadge({ letter = 'C' }: { letter?: string }) {
   return (
     <div
-      className={cx(
-        'flex flex-shrink-0 items-center justify-center rounded-full font-medium',
-        header
-          ? 'h-[35px] w-[35px] bg-[#C8953A] text-[14.375px] text-white'
-          : 'h-[22px] w-[22px] bg-[#FFB022] text-[10px] text-[#0e1117]',
-      )}
+      className="flex h-[22px] w-[22px] flex-shrink-0 items-center justify-center rounded-full bg-[#FFB022] text-[10px] font-medium text-[#0e1117]"
       aria-hidden
     >
       {letter}
@@ -134,7 +122,7 @@ function CoachAvatarBadge({
 function CoachRow({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-2">
-      <CoachAvatarBadge variant="thread" />
+      <CoachAvatarBadge />
       <span
         className="text-[12px] font-medium uppercase tracking-[1px] text-[#C9A96E]"
         style={{ fontFamily: 'Inter, sans-serif' }}
@@ -182,73 +170,27 @@ function ChoiceCard({
 }
 
 function LeftDecorPanel({
-  tagline,
   headlineBefore,
   headlineAccent,
   subtitle,
 }: {
-  tagline: string;
   headlineBefore: string;
   headlineAccent: string;
   subtitle: string;
 }) {
   return (
     <div className="relative hidden min-h-0 w-full flex-shrink-0 flex-col overflow-hidden bg-[#1C2636] md:flex md:w-[min(520px,36.1vw)] md:min-w-[300px] md:max-w-[520px]">
-      <div className="pointer-events-none absolute inset-0">
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              'radial-gradient(60% 60% at 50% 42%, rgba(201, 169, 110, 0.22) 0%, rgba(12, 16, 24, 0) 72%), radial-gradient(55% 55% at 18% 78%, rgba(74, 111, 165, 0.12) 0%, rgba(12, 16, 24, 0) 65%), radial-gradient(40% 40% at 88% 22%, rgba(201, 169, 110, 0.08) 0%, transparent 70%)',
-          }}
-        />
-        {/* Figma-style geometry: circles + diamond + hexagram + ornaments */}
-        <svg
-          className="absolute left-1/2 top-[14%] h-[62%] w-[94%] max-w-[460px] -translate-x-1/2"
-          viewBox="0 0 100 100"
-          fill="none"
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <img
+          src="/bsd-onboarding-left-panel.svg"
+          alt=""
+          className="absolute left-1/2 top-[10%] h-[72%] w-[min(104%,520px)] max-w-none -translate-x-1/2 object-contain select-none"
+          draggable={false}
           aria-hidden
-        >
-          <circle cx="50" cy="50" r="38" stroke="rgba(201,169,110,0.14)" strokeWidth="0.35" />
-          <circle cx="50" cy="50" r="30" stroke="rgba(201,169,110,0.12)" strokeWidth="0.35" />
-          <circle cx="50" cy="50" r="22" stroke="rgba(201,169,110,0.1)" strokeWidth="0.35" />
-          <path
-            d="M50 18 L82 50 L50 82 L18 50 Z"
-            stroke="rgba(201,169,110,0.11)"
-            strokeWidth="0.45"
-            strokeDasharray="2 3"
-          />
-          <polygon points="50,14 87,80 13,80" stroke="rgba(201,169,110,0.16)" strokeWidth="0.55" />
-          <polygon points="50,86 13,20 87,20" stroke="rgba(201,169,110,0.16)" strokeWidth="0.55" />
-          <circle cx="50" cy="50" r="2.8" fill="#C9A96E" fillOpacity={0.5} />
-          <circle cx="50" cy="24" r="2" fill="#C9A96E" fillOpacity={0.45} />
-          <circle cx="50" cy="76" r="2" fill="#C9A96E" fillOpacity={0.45} />
-          <circle cx="26" cy="68" r="2" fill="#C9A96E" fillOpacity={0.4} />
-          <circle cx="74" cy="68" r="2" fill="#C9A96E" fillOpacity={0.4} />
-          <circle cx="26" cy="32" r="2" fill="#C9A96E" fillOpacity={0.4} />
-          <circle cx="74" cy="32" r="2" fill="#C9A96E" fillOpacity={0.4} />
-          {/* faint corner stars */}
-          <path d="M12 22 L13 25 L16 25 L13.8 27 L14.6 30 L12 28 L9.4 30 L10.2 27 L8 25 L11 25 Z" fill="#C9A96E" fillOpacity={0.14} />
-          <path d="M88 78 L89 81 L92 81 L89.8 83 L90.6 86 L88 84 L85.4 86 L86.2 83 L84 81 L87 81 Z" fill="#C9A96E" fillOpacity={0.12} />
-          <path d="M88 18 L89 21 L92 21 L89.8 23 L90.6 26 L88 24 L85.4 26 L86.2 23 L84 21 L87 21 Z" fill="#C9A96E" fillOpacity={0.1} />
-        </svg>
+        />
       </div>
 
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col px-10 pb-10 pt-[max(1.75rem,env(safe-area-inset-top))]">
-        <div className="flex w-full items-start justify-between gap-4">
-          <img src="/bsd-logo.png" alt="" className="h-8 w-[34px] flex-shrink-0 object-contain opacity-95" />
-          <p
-            className="max-w-[min(280px,48%)] text-end font-medium leading-[1.25] text-[#f0f4fa]"
-            dir="rtl"
-            style={{
-              fontFamily: '"Cormorant Garamond", Georgia, serif',
-              fontSize: 16,
-            }}
-          >
-            {tagline}
-          </p>
-        </div>
-
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col px-10 pb-10 pt-10">
         <div className="mt-auto flex flex-col items-center gap-3 px-2 pb-4 text-center md:pb-10">
           <h2
             className="max-w-[320px] font-semibold leading-[1.05] text-[#ede9e0]"
@@ -293,6 +235,26 @@ function ChatBubble({
   );
 }
 
+function TypingIndicator({ label }: { label: string }) {
+  return (
+    <div className="flex w-full flex-col items-start gap-2">
+      <CoachRow label={label} />
+      <div
+        className="rounded-[4px_18px_18px_18px] border border-[#E8E0CC] bg-white px-5 py-3 shadow-[0px_1px_8px_rgba(10,10,10,0.06)]"
+        aria-live="polite"
+        aria-busy
+      >
+        <span className="flex gap-1" aria-hidden>
+          <span className="h-2 w-2 animate-pulse rounded-full bg-[#C9A96E]/80" />
+          <span className="h-2 w-2 animate-pulse rounded-full bg-[#C9A96E]/60 [animation-delay:150ms]" />
+          <span className="h-2 w-2 animate-pulse rounded-full bg-[#C9A96E]/40 [animation-delay:300ms]" />
+        </span>
+        <span className="sr-only">{label}</span>
+      </div>
+    </div>
+  );
+}
+
 export function BsdOnboardingFlow({
   onComplete,
   initialDisplayName = null,
@@ -303,111 +265,204 @@ export function BsdOnboardingFlow({
   const isHe = i18n.language.startsWith('he');
   const dir: 'rtl' | 'ltr' = isHe ? 'rtl' : 'ltr';
 
-  const [phase, setPhase] = useState<Phase>('name');
   const [input, setInput] = useState('');
   const [preferredName, setPreferredName] = useState('');
+  const [gender, setGender] = useState<'male' | 'female' | null>(null);
   const [goalId, setGoalId] = useState<GoalId | null>(null);
   const [expId, setExpId] = useState<ExpId | null>(null);
   const [paceId, setPaceId] = useState<PaceId | null>(null);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
-  const [seeded, setSeeded] = useState(false);
+  const [bootLoading, setBootLoading] = useState(true);
+  const [turnLoading, setTurnLoading] = useState(false);
+  const [streamHasContent, setStreamHasContent] = useState(false);
+  const [intakeComplete, setIntakeComplete] = useState(false);
+  const [intakeError, setIntakeError] = useState<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
-  const step = phaseStep(phase);
+  const [bootKey, setBootKey] = useState(0);
 
+  const filledStep = [
+    preferredName.trim(),
+    gender,
+    goalId,
+    expId,
+    paceId,
+  ].filter(Boolean).length;
+
+  const applyExtracted = useCallback(
+    async (res: {
+      display_name?: string | null;
+      gender?: 'male' | 'female' | null;
+      goal?: string | null;
+      experience?: string | null;
+      pace?: string | null;
+      intake_complete: boolean;
+    }) => {
+      const name = res.display_name?.trim();
+      if (name) {
+        const short = name.slice(0, 80);
+        setPreferredName(short);
+        try {
+          await apiClient.updateProfile({ display_name: short });
+          onDisplayNameUpdated?.(short);
+        } catch {
+          /* best-effort */
+        }
+      }
+      if (res.gender === 'male' || res.gender === 'female') {
+        setGender(res.gender);
+        try {
+          await apiClient.updateProfile({ gender: res.gender });
+        } catch {
+          /* best-effort */
+        }
+      }
+      if (res.goal && isGoalId(res.goal)) setGoalId(res.goal);
+      if (res.experience && isExpId(res.experience)) setExpId(res.experience);
+      if (res.pace && isPaceId(res.pace)) setPaceId(res.pace);
+      setIntakeComplete(res.intake_complete);
+    },
+    [onDisplayNameUpdated],
+  );
+
+  const applyExtractedRef = useRef(applyExtracted);
+  applyExtractedRef.current = applyExtracted;
+
+  /** Opening line via SSE — deps omit i18n.language/t so locale toggle mid-chat does not reset. */
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional narrow deps
   useEffect(() => {
-    if (seeded) return;
-    setMessages([
-      {
-        id: uid(),
-        role: 'coach',
-        text: t('bsdOnboarding.coachOpening'),
-        showCoachMeta: false,
-      },
-    ]);
-    setSeeded(true);
-  }, [seeded, t]);
+    let cancelled = false;
+    (async () => {
+      setBootLoading(true);
+      setStreamHasContent(false);
+      setIntakeError(null);
+      try {
+        let coachId: string | null = null;
+        let buf = '';
+        const res = await apiClient.onboardingIntakeStream(
+          {
+            language: i18n.language,
+            messages: [],
+            seed_display_name: initialDisplayName,
+          },
+          {
+            onToken: (d) => {
+              if (cancelled) return;
+              buf += d;
+              setStreamHasContent(true);
+              if (!coachId) {
+                coachId = uid();
+                setMessages([
+                  {
+                    id: coachId,
+                    role: 'coach',
+                    text: buf,
+                    showCoachMeta: false,
+                  },
+                ]);
+              } else {
+                setMessages((prev) =>
+                  prev.map((m) => (m.id === coachId ? { ...m, text: buf } : m)),
+                );
+              }
+            },
+          },
+        );
+        if (cancelled) return;
+        if (coachId && res.assistant_message && buf !== res.assistant_message) {
+          setMessages((prev) =>
+            prev.map((m) => (m.id === coachId ? { ...m, text: res.assistant_message } : m)),
+          );
+        }
+        await applyExtractedRef.current(res);
+      } catch {
+        if (!cancelled) {
+          setMessages([]);
+          setIntakeError(t('bsdOnboarding.intakeError'));
+        }
+      } finally {
+        if (!cancelled) setBootLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [bootKey, initialDisplayName]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages, phase]);
+  }, [messages, bootLoading, turnLoading, intakeComplete, streamHasContent]);
 
   const coachLabel = t('bsdOnboarding.coachLabel');
-  const headerCoachTitle = t('bsdOnboarding.headerCoachTitle');
 
-  const submitName = useCallback(async () => {
-    let name = extractPreferredName(input).trim();
-    if (!name) name = input.trim().slice(0, 48);
-    if (!name && initialDisplayName?.trim()) name = initialDisplayName.trim().slice(0, 48);
-    if (!name) return;
+  const sendUserTurn = useCallback(
+    async (textOverride?: string) => {
+      const raw = (textOverride ?? input).trim();
+      if (!raw || bootLoading || turnLoading || intakeComplete) return;
 
-    setInput('');
-    setPreferredName(name);
+      if (!textOverride) setInput('');
+      setTurnLoading(true);
+      setStreamHasContent(false);
+      setIntakeError(null);
 
-    try {
-      await apiClient.updateProfile({ display_name: name });
-      onDisplayNameUpdated?.(name);
-    } catch {
-      /* best-effort */
-    }
+      let historySnapshot: ChatMsg[] = [];
+      setMessages((prev) => {
+        const userMsg: ChatMsg = { id: uid(), role: 'user', text: raw };
+        historySnapshot = [...prev, userMsg];
+        return historySnapshot;
+      });
 
-    setMessages((m) => [
-      ...m,
-      { id: uid(), role: 'user', text: name },
-      { id: uid(), role: 'coach', text: t('bsdOnboarding.coachAskGoal', { name }) },
-    ]);
-    setPhase('goal');
-  }, [initialDisplayName, input, onDisplayNameUpdated, t]);
+      let coachId: string | null = null;
+      let buf = '';
 
-  const pickGoal = useCallback(
-    (id: GoalId) => {
-      if (phase !== 'goal' || goalId) return;
-      setGoalId(id);
-      const label = t(`bsdOnboarding.goal.${id}`);
-      setMessages((m) => [
-        ...m,
-        { id: uid(), role: 'user', text: label },
-        { id: uid(), role: 'coach', text: t('bsdOnboarding.coachAskExp') },
-      ]);
-      setPhase('experience');
+      try {
+        const res = await apiClient.onboardingIntakeStream(
+          {
+            language: i18n.language,
+            messages: transcriptForApi(historySnapshot),
+            seed_display_name: initialDisplayName,
+          },
+          {
+            onToken: (d) => {
+              buf += d;
+              setStreamHasContent(true);
+              if (!coachId) {
+                coachId = uid();
+                setMessages((prev) => [
+                  ...prev,
+                  {
+                    id: coachId!,
+                    role: 'coach',
+                    text: buf,
+                    showCoachMeta: true,
+                  },
+                ]);
+              } else {
+                setMessages((prev) =>
+                  prev.map((m) => (m.id === coachId ? { ...m, text: buf } : m)),
+                );
+              }
+            },
+          },
+        );
+
+        if (coachId && res.assistant_message && buf !== res.assistant_message) {
+          setMessages((prev) =>
+            prev.map((m) => (m.id === coachId ? { ...m, text: res.assistant_message } : m)),
+          );
+        }
+        await applyExtracted(res);
+      } catch {
+        setIntakeError(t('bsdOnboarding.intakeError'));
+        if (!textOverride) setInput(raw);
+        setMessages((prev) =>
+          prev.length && prev[prev.length - 1]?.role === 'user' ? prev.slice(0, -1) : prev,
+        );
+      } finally {
+        setTurnLoading(false);
+      }
     },
-    [goalId, phase, t],
-  );
-
-  const pickExp = useCallback(
-    (id: ExpId) => {
-      if (phase !== 'experience' || expId) return;
-      setExpId(id);
-      const label = t(`bsdOnboarding.exp.${id}`);
-      setMessages((m) => [
-        ...m,
-        { id: uid(), role: 'user', text: label },
-        { id: uid(), role: 'coach', text: t('bsdOnboarding.coachAskPace') },
-      ]);
-      setPhase('pace');
-    },
-    [expId, phase, t],
-  );
-
-  const pickPace = useCallback(
-    (id: PaceId) => {
-      if (phase !== 'pace' || paceId) return;
-      setPaceId(id);
-      const label = t(`bsdOnboarding.pace.${id}`);
-      setMessages((m) => [
-        ...m,
-        { id: uid(), role: 'user', text: label },
-        {
-          id: uid(),
-          role: 'coach',
-          text: t('bsdOnboarding.summaryCoach', {
-            name: preferredName || t('bsdOnboarding.fallbackName'),
-          }),
-        },
-      ]);
-      setPhase('summary');
-    },
-    [paceId, phase, preferredName, t],
+    [applyExtracted, bootLoading, initialDisplayName, input, intakeComplete, i18n.language, t, turnLoading],
   );
 
   const enterWorkspace = useCallback(async () => {
@@ -424,7 +479,12 @@ export function BsdOnboardingFlow({
     onComplete();
   }, [expId, goalId, onComplete, paceId]);
 
-  const showComposer = phase !== 'summary';
+  const showComposer = !intakeComplete;
+  const composerBusy = bootLoading || turnLoading;
+  const summaryReady =
+    intakeComplete && preferredName.trim() && gender && goalId && expId && paceId;
+  const showTyping = composerBusy && !streamHasContent;
+  const showQuickCards = !intakeComplete && !composerBusy;
 
   return (
     <div
@@ -439,25 +499,64 @@ export function BsdOnboardingFlow({
         {t('bsdOnboarding.a11yTitle')}
       </span>
 
-      <div className="flex justify-end px-4 pt-[max(0.5rem,env(safe-area-inset-top))] md:hidden">
-        <LanguageSwitcher />
-      </div>
-
-      {/* Mobile strip */}
-      <div className="flex shrink-0 items-center gap-2 border-b border-white/[0.06] bg-[#1C2636] px-4 py-3 md:hidden">
-        <img src="/bsd-logo.png" alt="" className="h-7 w-8 object-contain opacity-90" />
-        <p
-          className="flex-1 truncate text-center text-[13px] font-medium text-[#ede9e0]"
-          dir="rtl"
-          style={{ fontFamily: '"Cormorant Garamond", Georgia, serif' }}
-        >
-          {t('bsdOnboarding.tagline')}
-        </p>
-      </div>
+      <header
+        className="relative z-[101] flex min-h-[66px] shrink-0 items-center justify-between border-b border-white/[0.07] bg-[#1e293b] p-4 shadow-[0_4px_18px_-2px_rgba(0,0,0,0.35)] backdrop-blur-[25px] md:p-6"
+        dir="ltr"
+      >
+        <div className="flex min-w-0 flex-shrink-0 items-center gap-2 md:gap-[1.2em]">
+          <img
+            src="/bsd-logo.png"
+            alt="BSD אימון יהודי"
+            className="h-12 flex-shrink-0 object-contain md:h-[69px]"
+          />
+          <p
+            className="hidden truncate font-semibold tracking-[0.02em] text-[#f0f4fa] sm:block sm:text-lg md:text-[1.75rem]"
+            dir={isHe ? 'rtl' : 'ltr'}
+            style={{
+              fontFamily: isHe
+                ? '"Frank Ruhl Libre", "Heebo", serif'
+                : '"Cormorant Garamond", Georgia, "Times New Roman", serif',
+              lineHeight: 1.35,
+              fontWeight: 600,
+            }}
+          >
+            {t('app.headerTagline')}
+          </p>
+        </div>
+        <div className="min-w-2 flex-1" />
+        <div className="flex flex-shrink-0 items-center gap-3 md:gap-4">
+          <div className="flex flex-col items-end gap-[7px]">
+            <span
+              className="text-[12px] text-white/[0.55] md:text-[14px]"
+              style={{ fontFamily: 'Inter, sans-serif' }}
+            >
+              {t('bsdOnboarding.step', { current: Math.max(1, filledStep), total: STEPS })}
+            </span>
+            <div
+              className="flex gap-[6px]"
+              role="progressbar"
+              aria-valuenow={filledStep}
+              aria-valuemin={0}
+              aria-valuemax={STEPS}
+              aria-label={t('bsdOnboarding.step', { current: Math.max(1, filledStep), total: STEPS })}
+            >
+              {Array.from({ length: STEPS }, (_, i) => (
+                <span
+                  key={i}
+                  className={cx(
+                    'h-[3px] w-4 rounded-[50px] md:w-5',
+                    i < filledStep ? 'bg-[#C8953A]' : 'bg-[#424345]',
+                  )}
+                />
+              ))}
+            </div>
+          </div>
+          <LanguageSwitcher variant="dark" />
+        </div>
+      </header>
 
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         <LeftDecorPanel
-          tagline={t('bsdOnboarding.tagline')}
           headlineBefore={t('bsdOnboarding.headlineBefore')}
           headlineAccent={t('bsdOnboarding.headlineAccent')}
           subtitle={t('bsdOnboarding.leftSubtitle')}
@@ -467,59 +566,28 @@ export function BsdOnboardingFlow({
           className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#FAF8F3]"
           aria-label={t('bsdOnboarding.chatSection')}
         >
-          {/* TOPBAR */}
-          <header className="flex h-[66px] shrink-0 items-center justify-between gap-6 bg-[#1E293B] px-4 md:gap-10 md:px-[70px]">
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              <CoachAvatarBadge variant="header" />
-              <div className="flex min-w-0 flex-col gap-[7px]">
-                <span
-                  className="truncate text-[16px] font-medium leading-none text-[#EDE9E0]"
-                  style={{ fontFamily: 'Inter, sans-serif' }}
-                >
-                  {headerCoachTitle}
-                </span>
-                <div className="flex items-center gap-1">
-                  <span className="h-[5px] w-[5px] shrink-0 rounded-full bg-[#34D399]" aria-hidden />
-                  <span className="text-[10px] font-normal leading-none text-[#EDE9E0]/90">
-                    {t('bsdOnboarding.availableNow')}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div className="flex shrink-0 items-center gap-5 md:gap-8">
-              <div className="flex flex-col items-end gap-[7px]">
-                <span className="text-[14px] text-white/[0.55]" style={{ fontFamily: 'Inter, sans-serif' }}>
-                  {t('bsdOnboarding.step', { current: step, total: STEPS })}
-                </span>
-                <div
-                  className="flex gap-[6px]"
-                  role="progressbar"
-                  aria-valuenow={step}
-                  aria-valuemin={1}
-                  aria-valuemax={STEPS}
-                  aria-label={t('bsdOnboarding.step', { current: step, total: STEPS })}
-                >
-                  {Array.from({ length: STEPS }, (_, i) => (
-                    <span
-                      key={i}
-                      className={cx(
-                        'h-[3px] w-5 rounded-[50px]',
-                        i < step ? 'bg-[#C8953A]' : 'bg-[#424345]',
-                      )}
-                    />
-                  ))}
-                </div>
-              </div>
-              <div className="hidden md:block">
-                <LanguageSwitcher variant="dark" />
-              </div>
-            </div>
-          </header>
-
           <div
             ref={scrollRef}
             className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-4 md:px-12 md:py-6"
           >
+            {intakeError && messages.length === 0 && !bootLoading ? (
+              <div className="flex flex-col items-center gap-3 py-6 md:items-start">
+                <p className="text-center text-[14px] text-red-700 md:text-start">{intakeError}</p>
+                <button
+                  type="button"
+                  onClick={() => setBootKey((k) => k + 1)}
+                  className="rounded-[11px] bg-[#1E293B] px-4 py-2 text-[14px] font-medium text-white"
+                  style={{ fontFamily: 'Inter, sans-serif' }}
+                >
+                  {t('bsdOnboarding.retry')}
+                </button>
+              </div>
+            ) : null}
+
+            {intakeError && messages.length > 0 ? (
+              <p className="text-center text-[14px] text-red-700 md:text-start">{intakeError}</p>
+            ) : null}
+
             {messages.map((msg) => (
               <div
                 key={msg.id}
@@ -539,58 +607,88 @@ export function BsdOnboardingFlow({
               </div>
             ))}
 
-            {phase === 'goal' && (
-              <div className="flex w-full justify-center md:justify-start">
-                <div className="grid w-full max-w-[432px] grid-cols-2 gap-3">
-                  {GOAL_IDS.map((id) => (
-                    <ChoiceCard
-                      key={id}
-                      icon={GOAL_ICONS[id]}
-                      label={t(`bsdOnboarding.goal.${id}`)}
-                      selected={goalId === id}
-                      disabled={!!goalId && goalId !== id}
-                      onClick={() => pickGoal(id)}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
+            {showTyping ? <TypingIndicator label={t('bsdOnboarding.thinking')} /> : null}
 
-            {phase === 'experience' && (
-              <div className="flex w-full justify-center md:justify-start">
-                <div className="grid w-full max-w-[432px] grid-cols-2 gap-3">
-                  {EXP_IDS.map((id) => (
-                    <ChoiceCard
-                      key={id}
-                      icon={EXP_ICONS[id]}
-                      label={t(`bsdOnboarding.exp.${id}`)}
-                      selected={expId === id}
-                      disabled={!!expId && expId !== id}
-                      onClick={() => pickExp(id)}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
+            {showQuickCards ? (
+              <div className="flex w-full flex-col gap-4 pb-2">
+                <p
+                  className="text-center text-[13px] text-[#4c5a70]/90 md:text-start"
+                  style={{ fontFamily: 'Inter, sans-serif' }}
+                >
+                  {t('bsdOnboarding.quickPickHint')}
+                </p>
 
-            {phase === 'pace' && (
-              <div className="flex w-full justify-center md:justify-start">
-                <div className="grid w-full max-w-[432px] grid-cols-2 gap-3">
-                  {PACE_IDS.map((id) => (
-                    <ChoiceCard
-                      key={id}
-                      icon={PACE_ICONS[id]}
-                      label={t(`bsdOnboarding.pace.${id}`)}
-                      selected={paceId === id}
-                      disabled={!!paceId && paceId !== id}
-                      onClick={() => pickPace(id)}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
+                {!gender ? (
+                  <div className="flex w-full justify-center md:justify-start">
+                    <div className="grid w-full max-w-[432px] grid-cols-2 gap-3">
+                      {GENDER_IDS.map((id) => (
+                        <ChoiceCard
+                          key={id}
+                          icon={GENDER_ICONS[id]}
+                          label={t(`bsdOnboarding.gender.${id}`)}
+                          selected={false}
+                          disabled={false}
+                          onClick={() => void sendUserTurn(t(`bsdOnboarding.gender.${id}`))}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
 
-            {phase === 'summary' && goalId && expId && paceId && (
+                {gender && !goalId ? (
+                  <div className="flex w-full justify-center md:justify-start">
+                    <div className="grid w-full max-w-[432px] grid-cols-2 gap-3">
+                      {GOAL_IDS.map((id) => (
+                        <ChoiceCard
+                          key={id}
+                          icon={GOAL_ICONS[id]}
+                          label={t(`bsdOnboarding.goal.${id}`)}
+                          selected={false}
+                          disabled={false}
+                          onClick={() => void sendUserTurn(t(`bsdOnboarding.goal.${id}`))}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {gender && goalId && !expId ? (
+                  <div className="flex w-full justify-center md:justify-start">
+                    <div className="grid w-full max-w-[432px] grid-cols-2 gap-3">
+                      {EXP_IDS.map((id) => (
+                        <ChoiceCard
+                          key={id}
+                          icon={EXP_ICONS[id]}
+                          label={t(`bsdOnboarding.exp.${id}`)}
+                          selected={false}
+                          disabled={false}
+                          onClick={() => void sendUserTurn(t(`bsdOnboarding.exp.${id}`))}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {gender && goalId && expId && !paceId ? (
+                  <div className="flex w-full justify-center md:justify-start">
+                    <div className="grid w-full max-w-[432px] grid-cols-2 gap-3">
+                      {PACE_IDS.map((id) => (
+                        <ChoiceCard
+                          key={id}
+                          icon={PACE_ICONS[id]}
+                          label={t(`bsdOnboarding.pace.${id}`)}
+                          selected={false}
+                          disabled={false}
+                          onClick={() => void sendUserTurn(t(`bsdOnboarding.pace.${id}`))}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            {summaryReady ? (
               <div className="flex w-full flex-col items-center gap-5 pb-6 md:items-start">
                 <div className="w-full max-w-[432px] rounded-2xl border border-[#E8E0CC] bg-white p-6 shadow-[0px_1px_8px_rgba(10,10,10,0.06)]">
                   <h3
@@ -599,11 +697,21 @@ export function BsdOnboardingFlow({
                   >
                     {t('bsdOnboarding.summaryTitle')}
                   </h3>
-                  <p className="mt-1 text-[14px] text-[#393939]/80">{t('bsdOnboarding.summarySubtitle')}</p>
+                  <p className="mt-1 text-[14px] text-[#393939]/80">
+                    {t('bsdOnboarding.summarySubtitle', {
+                      name: preferredName || t('bsdOnboarding.fallbackName'),
+                    })}
+                  </p>
                   <dl className="mt-4 space-y-3 text-[14px]">
                     <div className="flex justify-between gap-4 border-b border-[#E8E0CC]/80 pb-2">
                       <dt className="text-[#4c5a70]">{t('bsdOnboarding.summary.name')}</dt>
                       <dd className="text-end font-medium text-[#1a1510]">{preferredName}</dd>
+                    </div>
+                    <div className="flex justify-between gap-4 border-b border-[#E8E0CC]/80 pb-2">
+                      <dt className="text-[#4c5a70]">{t('bsdOnboarding.summary.gender')}</dt>
+                      <dd className="text-end font-medium text-[#1a1510]">
+                        {gender ? t(`bsdOnboarding.gender.${gender}`) : '—'}
+                      </dd>
                     </div>
                     <div className="flex justify-between gap-4 border-b border-[#E8E0CC]/80 pb-2">
                       <dt className="text-[#4c5a70]">{t('bsdOnboarding.summary.goal')}</dt>
@@ -628,7 +736,7 @@ export function BsdOnboardingFlow({
                   {t('bsdOnboarding.enterSpace')}
                 </button>
               </div>
-            )}
+            ) : null}
           </div>
 
           <div className="h-0.5 w-full shrink-0 bg-[#E8E0CC]" aria-hidden />
@@ -641,12 +749,12 @@ export function BsdOnboardingFlow({
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && phase === 'name') {
+                    if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
-                      void submitName();
+                      void sendUserTurn();
                     }
                   }}
-                  disabled={phase !== 'name'}
+                  disabled={composerBusy}
                   placeholder={t('bsdOnboarding.inputPlaceholder')}
                   className="min-w-0 flex-1 bg-transparent text-[14px] font-light text-[#4c5a70] outline-none placeholder:text-[#4c5a70]/70 disabled:opacity-50"
                   style={{ fontFamily: 'Inter, sans-serif' }}
@@ -662,8 +770,8 @@ export function BsdOnboardingFlow({
                 </button>
                 <button
                   type="button"
-                  onClick={() => void submitName()}
-                  disabled={phase !== 'name'}
+                  onClick={() => void sendUserTurn()}
+                  disabled={composerBusy || !input.trim()}
                   className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[7px] bg-[#1E293B] disabled:opacity-40"
                   aria-label={t('bsdOnboarding.sendAria')}
                 >

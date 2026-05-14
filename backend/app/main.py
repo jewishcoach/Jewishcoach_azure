@@ -6,7 +6,20 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from .limiter import limiter
-from .routers import chat, speech, feedback, users, journal, tools, admin, billing, profile, calendar, onboarding_email_cron
+from .routers import (
+    chat,
+    speech,
+    feedback,
+    users,
+    journal,
+    tools,
+    admin,
+    billing,
+    profile,
+    calendar,
+    onboarding_email_cron,
+    onboarding_intake,
+)
 from .routers.support_email_inbound import router as support_email_inbound_router
 from .routers.support_user_contact import router as support_user_contact_router
 from .api import chat_v2, debug_health, version, debug_logs  # BSD V2 + Debug + Version + Logs
@@ -161,6 +174,7 @@ app.include_router(support_user_contact_router)
 app.include_router(billing.router)
 app.include_router(profile.router)
 app.include_router(calendar.router)
+app.include_router(onboarding_intake.router)
 
 @app.get("/")
 def root():
