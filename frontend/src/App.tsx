@@ -98,7 +98,7 @@ function ChatHeaderMobileControls({
 
 // Separate component for signed-in content (so useUser is only called when signed in)
 function SignedInContent() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useUser();
   const { getToken, isLoaded, isSignedIn } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
@@ -179,10 +179,17 @@ function SignedInContent() {
         <div className="flex items-center gap-2 md:gap-[1.2em] flex-shrink-0 min-w-0">
           <img src="/bsd-logo.png" alt="BSD אימון יהודי" className="h-12 md:h-[69px] object-contain flex-shrink-0" />
           <p
-            className="text-[#f0f4fa] font-bold text-base sm:text-lg md:text-[1.8rem] tracking-wide truncate hidden sm:block"
-            style={{ fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.4 }}
+            className="text-[#f0f4fa] font-semibold text-base sm:text-lg md:text-[1.75rem] tracking-[0.02em] truncate hidden sm:block"
+            dir={i18n.language.startsWith('he') ? 'rtl' : 'ltr'}
+            style={{
+              fontFamily: i18n.language.startsWith('he')
+                ? '"Frank Ruhl Libre", "Heebo", serif'
+                : '"Cormorant Garamond", Georgia, "Times New Roman", serif',
+              lineHeight: 1.35,
+              fontWeight: 600,
+            }}
           >
-            אִם יֵשׁ לְךָ שָׁמַיִם, נִתֵּן לְךָ כְּנָפַיִם
+            {t('app.headerTagline')}
           </p>
         </div>
         <div className="flex-1 min-w-2" />
@@ -270,6 +277,7 @@ function SignedInContent() {
 
 // Demo Mode Component (for tunnel testing without Clerk)
 function DemoModeContent() {
+  const { t, i18n } = useTranslation();
   const [showDashboard, setShowDashboard] = useState(false);
   const [showBilling, setShowBilling] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
@@ -292,10 +300,17 @@ function DemoModeContent() {
         <div className="flex items-center gap-2 md:gap-[1.2em] flex-shrink-0 min-w-0">
           <img src="/bsd-logo.png" alt="BSD אימון יהודי" className="h-12 md:h-[69px] object-contain flex-shrink-0" />
           <p
-            className="text-[#f0f4fa] font-bold text-base sm:text-lg md:text-[1.8rem] tracking-wide truncate hidden sm:block"
-            style={{ fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.4 }}
+            className="text-[#f0f4fa] font-semibold text-base sm:text-lg md:text-[1.75rem] tracking-[0.02em] truncate hidden sm:block"
+            dir={i18n.language.startsWith('he') ? 'rtl' : 'ltr'}
+            style={{
+              fontFamily: i18n.language.startsWith('he')
+                ? '"Frank Ruhl Libre", "Heebo", serif'
+                : '"Cormorant Garamond", Georgia, "Times New Roman", serif',
+              lineHeight: 1.35,
+              fontWeight: 600,
+            }}
           >
-            אִם יֵשׁ לְךָ שָׁמַיִם, נִתֵּן לְךָ כְּנָפַיִם
+            {t('app.headerTagline')}
           </p>
           <span className="px-2 py-1 bg-yellow-500/20 text-yellow-300 text-xs rounded-full border border-yellow-500/30 flex-shrink-0">
             DEMO MODE

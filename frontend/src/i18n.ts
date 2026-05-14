@@ -7,6 +7,7 @@ const resources = {
     translation: {
       "app.title": "Jewish Coach AI",
       "app.welcome": "Hello",
+      "app.headerTagline": "If heaven is within you, we give you wings.",
       "chat.placeholder": "Type your message...",
       "chat.formBlocksTyping": "Complete the form above — chat is paused until you send it.",
       "chat.send": "Send",
@@ -429,6 +430,7 @@ const resources = {
     translation: {
       "app.title": "מאמן יהודי AI",
       "app.welcome": "שלום",
+      "app.headerTagline": "אִם יֵשׁ לְךָ שָׁמַיִם, נִתֵּן לְךָ כְּנָפַיִם",
       "chat.placeholder": "הקלד את ההודעה שלך...",
       "chat.formBlocksTyping": "השלם את הטופס למעלה — הצ'אט מושהה עד השליחה.",
       "chat.send": "שלח",
