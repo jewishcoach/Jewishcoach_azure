@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { SignedIn, SignedOut, UserButton, useUser, useClerk, useAuth } from '@clerk/clerk-react';
-import { Shield, LayoutDashboard, MessageCircle, Archive, MessageSquarePlus } from 'lucide-react';
+import { Shield, LayoutDashboard, MessageCircle, MessageSquarePlus } from 'lucide-react';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { BSDWorkspace } from './components/workspace/BSDWorkspace';
 import { LandingPage } from './components/LandingPage';
@@ -24,7 +24,6 @@ const isTunnelDomain = () => {
 type ChatHeaderMobileControlsProps = {
   isChatView: boolean;
   showDashboard: boolean;
-  onArchiveOpen: () => void;
   onNewConversation: () => void;
   onToggleDashboard: () => void;
   /** Workspace TOPBAR (Figma BSD frame): slate pills instead of white tiles */
@@ -35,7 +34,6 @@ type ChatHeaderMobileControlsProps = {
 function ChatHeaderMobileControls({
   isChatView,
   showDashboard,
-  onArchiveOpen,
   onNewConversation,
   onToggleDashboard,
   headerTheme = 'light',
@@ -43,8 +41,6 @@ function ChatHeaderMobileControls({
   const { t } = useTranslation();
   const tile =
     'flex flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 min-h-[52px] min-w-[58px] max-w-[76px]';
-  const darkTile =
-    'flex flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 min-h-[52px] min-w-[58px] max-w-[76px] border border-white/[0.11] bg-[#1c2333] text-[#e8e4dc] shadow-none hover:bg-[#252d42] transition-colors';
   const dashCls =
     headerTheme === 'dark'
       ? 'inline-flex flex-col md:flex-row items-center justify-center gap-0.5 md:gap-2 px-1 md:px-4 py-1 md:py-2 rounded-xl border border-white/[0.11] bg-[#1c2333] text-[#e8e4dc] min-h-[52px] min-w-[58px] max-w-[76px] md:max-w-none md:min-h-[44px] md:min-w-0 text-xs md:text-sm font-light hover:bg-[#252d42] transition-colors'
@@ -54,27 +50,6 @@ function ChatHeaderMobileControls({
     <>
       {isChatView && (
         <>
-          <button
-            type="button"
-            onClick={onArchiveOpen}
-            title={t('chat.previousConversationsHint')}
-            aria-label={t('chat.previousConversations')}
-            className={
-              headerTheme === 'dark'
-                ? `${darkTile}`
-                : `${tile} md:hidden bg-white border border-[#E2E4E8] text-[#2E3A56] shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors`
-            }
-          >
-            <Archive
-              className={`w-[18px] h-[18px] flex-shrink-0 ${headerTheme === 'dark' ? 'text-[#e8e4dc]' : 'text-[#2E3A56]'}`}
-              strokeWidth={2}
-            />
-            <span
-              className={`text-[8px] font-semibold leading-[1.15] text-center px-0.5 ${headerTheme === 'dark' ? 'text-[#e8e4dc]' : 'text-[#2E3A56]'}`}
-            >
-              {t('chat.mobileHeader.sessions')}
-            </span>
-          </button>
           <button
             type="button"
             onClick={onNewConversation}
@@ -240,7 +215,6 @@ function SignedInContent() {
             isChatView={isChatView}
             showDashboard={showDashboard}
             headerTheme="dark"
-            onArchiveOpen={() => setArchiveOpen(true)}
             onNewConversation={() => setWorkspaceNewChatTick((n) => n + 1)}
             onToggleDashboard={() => {
               setShowDashboard(!showDashboard);
@@ -333,7 +307,6 @@ function DemoModeContent() {
             isChatView={isChatView}
             showDashboard={showDashboard}
             headerTheme="dark"
-            onArchiveOpen={() => setArchiveOpen(true)}
             onNewConversation={() => setWorkspaceNewChatTick((n) => n + 1)}
             onToggleDashboard={() => {
               setShowDashboard(!showDashboard);
