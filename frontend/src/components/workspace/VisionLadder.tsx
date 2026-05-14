@@ -48,7 +48,7 @@ function JourneyProgressRing({ pct, fraction }: { pct: number; fraction: string 
   const clamped = Math.min(100, Math.max(0, pct));
   const offset = c - (clamped / 100) * c;
   return (
-    <div className="relative h-[104px] w-[104px] shrink-0" aria-hidden>
+    <div className="relative h-[112px] w-[112px] shrink-0" aria-hidden>
       <svg className="h-full w-full -rotate-90" viewBox="0 0 100 100">
         <circle cx="50" cy="50" r={r} fill="none" stroke="rgba(45,55,72,0.95)" strokeWidth="6" />
         <circle
@@ -71,7 +71,12 @@ function JourneyProgressRing({ pct, fraction }: { pct: number; fraction: string 
         </defs>
       </svg>
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <span className="text-[17px] font-semibold tracking-tight text-white tabular-nums">{fraction}</span>
+        <span
+          className="text-[19px] font-semibold tracking-tight text-white tabular-nums"
+          style={{ fontFamily: JOURNEY_TITLE_SERIF }}
+        >
+          {fraction}
+        </span>
       </div>
     </div>
   );
@@ -135,7 +140,7 @@ export const VisionLadder = ({
   if (compact) {
     return (
       <div
-        className="box-border w-[78px] flex-shrink-0 flex h-full min-h-0 flex-col justify-between py-2 bg-[#1e293b] border-l border-white/[0.07] relative"
+        className="box-border w-[84px] flex-shrink-0 flex h-full min-h-0 flex-col justify-between py-2 bg-[#1e293b] border-l border-white/[0.07] relative"
         dir={isRTL ? 'rtl' : 'ltr'}
       >
         {PHASE_IDS.map((phaseId, i) => {
@@ -162,7 +167,7 @@ export const VisionLadder = ({
                 aria-label={`${title} - ${scrollHint}`}
               >
                 <span
-                  className={`relative w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium flex-shrink-0 ${
+                  className={`relative w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 ${
                     isActive
                       ? 'bg-[#FCF6BA]/90 text-[#020617] ring-2 ring-[#B38728]/65'
                       : isPast
@@ -179,7 +184,7 @@ export const VisionLadder = ({
                   )}
                 </span>
                 <span
-                  className={`text-[9px] leading-tight text-center truncate max-w-full px-0.5 ${
+                  className={`text-[10px] leading-tight text-center truncate max-w-full px-0.5 font-semibold ${
                     isActive ? 'text-[#FCF6BA]/95' : isPast ? 'text-white/[0.82]' : 'text-white/[0.58]'
                   }`}
                 >
@@ -237,24 +242,30 @@ export const VisionLadder = ({
       {/* כותרת עליונה */}
       <header className="flex-shrink-0 border-b border-white/[0.06] px-5 pb-5 pt-7">
         <h2
-          className="text-[1.35rem] font-medium leading-tight tracking-[0.02em] text-white sm:text-[1.5rem]"
-          style={{ fontFamily: JOURNEY_TITLE_SERIF }}
+          className="text-[1.5rem] font-semibold leading-tight tracking-[0.02em] text-white sm:text-[1.65rem]"
+          style={{ fontFamily: isRTL ? WORKSPACE_CHAT_FONT : JOURNEY_TITLE_SERIF }}
         >
           {t('ladder.journeyTitle')}
         </h2>
 
         {/* כרטיס פיזית ההתקדמות */}
-        <div className="mt-5 rounded-2xl border border-white/[0.07] bg-[#252f3f] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+        <div className="mt-5 rounded-2xl border border-white/[0.07] bg-[#252f3f] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
           <div className={`flex items-start gap-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
             <JourneyProgressRing pct={progressPct} fraction={`${stageOrdinal}/${totalStages}`} />
-            <div className="min-w-0 flex-1 pt-0.5">
-              <p className="text-[14px] font-semibold leading-snug text-white" style={{ fontFamily: WORKSPACE_CHAT_FONT }}>
+            <div className="min-w-0 flex-1 pt-1">
+              <p
+                className="text-[17px] font-bold leading-snug text-[#fcefb6]"
+                style={{ fontFamily: WORKSPACE_CHAT_FONT }}
+              >
                 {t(`ladder.${activePhaseKey}`)}
               </p>
-              <div className="mt-2 space-y-1 text-[11px] leading-snug text-[#94a3b8]" style={{ fontFamily: WORKSPACE_CHAT_FONT }}>
+              <div
+                className="mt-3 space-y-1.5 text-[13px] font-medium leading-snug text-[#cbd5e1]"
+                style={{ fontFamily: WORKSPACE_CHAT_FONT }}
+              >
                 <p>{t('ladder.progressStageOfTotal', { current: stageOrdinal, total: totalStages })}</p>
                 <p>{t('ladder.activeSession')}</p>
-                <p className="text-[#aab8c9]">{t('ladder.progressPct', { pct: progressPct })}</p>
+                <p className="font-semibold text-[#e2e8f0]">{t('ladder.progressPct', { pct: progressPct })}</p>
               </div>
             </div>
           </div>
@@ -264,19 +275,19 @@ export const VisionLadder = ({
       {/* סולם שלבים מחובר בקו אנכי */}
       <div className="relative flex min-h-0 flex-1 flex-col px-5 pb-6 pt-5">
         <p
-          className="mb-4 flex-shrink-0 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#94a3b8]"
+          className="mb-4 flex-shrink-0 text-[11px] font-bold uppercase tracking-[0.16em] text-[#e8c066]"
           style={{ fontFamily: WORKSPACE_CHAT_FONT }}
         >
           {t('ladder.journeyStages')}
         </p>
 
         <div
-          className="pointer-events-none absolute bottom-6 top-[3.15rem] w-px bg-gradient-to-b from-white/8 via-white/16 to-white/6"
-          style={{ insetInlineStart: '2.5rem' }}
+          className="pointer-events-none absolute bottom-6 top-[3.35rem] w-px bg-gradient-to-b from-white/12 via-white/18 to-white/10"
+          style={{ insetInlineStart: '2.625rem' }}
           aria-hidden
         />
 
-        <div className="custom-scrollbar flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-visible pe-0.5">
+        <div className="custom-scrollbar flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overflow-x-visible pe-0.5">
           {PHASE_IDS.map((phaseId, i) => {
             const title = t(`ladder.${phaseId}`);
             const tagline = t(`ladder.${phaseId}.tagline`);
@@ -304,7 +315,7 @@ export const VisionLadder = ({
                         }
                       : undefined
                   }
-                  className={`relative flex w-full items-start gap-3 rounded-xl py-2.5 ps-1 pe-2 transition-colors duration-200 ${
+                  className={`relative flex w-full items-start gap-3 rounded-xl py-3 ps-1 pe-2 transition-colors duration-200 ${
                     isStepPulsing ? 'vision-ladder-desktop--step-pulse transition-none' : ''
                   } ${isClickable ? 'cursor-pointer hover:bg-white/[0.03]' : 'cursor-default'} ${
                     isActive
@@ -313,36 +324,36 @@ export const VisionLadder = ({
                   }`}
                 >
                   {/* עמודת ציר — מרכוז האייקון על הקו */}
-                  <div className="relative z-[2] flex w-8 flex-shrink-0 justify-center pt-0.5">
+                  <div className="relative z-[2] flex w-9 flex-shrink-0 justify-center pt-0.5">
                     {isPast ? (
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-[#e8c066] bg-[#1e293b] shadow-[0_0_0_1px_rgba(212,175,55,0.15)]">
-                        <Check className="h-4 w-4 text-[#f4e4a8]" strokeWidth={2.75} aria-hidden />
+                      <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#e8c066] bg-[#1e293b] shadow-[0_0_0_1px_rgba(212,175,55,0.15)]">
+                        <Check className="h-[18px] w-[18px] text-[#f4e4a8]" strokeWidth={2.75} aria-hidden />
                       </span>
                     ) : isActive ? (
                       <span
-                        className="vision-ladder-active-node flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#fcefb6] via-[#e8c066] to-[#b8892a] text-[12px] font-bold tabular-nums text-[#1a2332] ring-2 ring-[#fcefb6]/35"
+                        className="vision-ladder-active-node flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#fcefb6] via-[#e8c066] to-[#b8892a] text-[13px] font-bold tabular-nums text-[#1a2332] ring-2 ring-[#fcefb6]/35"
                       >
                         {i + 1}
                       </span>
                     ) : (
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/22 bg-[#1e293b]/80 text-[11px] font-semibold tabular-nums text-[#64748b]">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/28 bg-[#1e293b]/80 text-[12px] font-bold tabular-nums text-[#94a3b8]">
                         {i + 1}
                       </span>
                     )}
                   </div>
 
-                  <div className="min-w-0 flex-1 pt-0.5">
+                  <div className="min-w-0 flex-1 pt-1">
                     <div
-                      className={`text-[13px] font-semibold leading-snug ${
-                        isActive ? 'text-white' : isPast ? 'text-white/92' : 'text-[#64748b]'
+                      className={`text-[15px] font-bold leading-snug ${
+                        isActive ? 'text-white' : isPast ? 'text-white' : 'text-[#94a3b8]'
                       }`}
                       style={{ fontFamily: WORKSPACE_CHAT_FONT }}
                     >
                       {title}
                     </div>
                     <div
-                      className={`mt-0.5 text-[11px] leading-snug ${
-                        isActive ? 'text-[#94a3b8]' : isPast ? 'text-[#8899ae]' : 'text-[#5c6b7e]'
+                      className={`mt-1 text-[13px] font-medium leading-snug ${
+                        isActive ? 'text-[#cbd5e1]' : isPast ? 'text-[#b8c9dc]' : 'text-[#8b9cb3]'
                       }`}
                       style={{ fontFamily: WORKSPACE_CHAT_FONT }}
                     >
@@ -350,19 +361,19 @@ export const VisionLadder = ({
                     </div>
                   </div>
 
-                  <div className="flex w-7 flex-shrink-0 items-center justify-center pt-1">
+                  <div className="flex w-8 flex-shrink-0 items-center justify-center pt-1">
                     {isPast ? (
-                      <Check className="h-4 w-4 text-[#e8c066]" strokeWidth={2.5} aria-hidden />
+                      <Check className="h-[18px] w-[18px] text-[#e8c066]" strokeWidth={2.75} aria-hidden />
                     ) : isActive ? (
                       <span
-                        className="h-2 w-2 rounded-full bg-[#e8c066] shadow-[0_0_10px_rgba(232,192,102,0.85)]"
+                        className="h-2.5 w-2.5 rounded-full bg-[#e8c066] shadow-[0_0_10px_rgba(232,192,102,0.85)]"
                         aria-hidden
                       />
                     ) : null}
                   </div>
 
                   <div
-                    className={`pointer-events-none absolute left-1/2 top-full z-[100] mt-2 w-[220px] -translate-x-1/2 rounded border border-white/[0.12] p-3 text-[12px] opacity-0 shadow-xl transition-opacity duration-200 group-hover:opacity-100 ${
+                    className={`pointer-events-none absolute left-1/2 top-full z-[100] mt-2 w-[240px] -translate-x-1/2 rounded border border-white/[0.12] p-3.5 text-[13px] font-medium opacity-0 shadow-xl transition-opacity duration-200 group-hover:opacity-100 ${
                       isRTL ? 'text-right' : 'text-left'
                     }`}
                     style={{

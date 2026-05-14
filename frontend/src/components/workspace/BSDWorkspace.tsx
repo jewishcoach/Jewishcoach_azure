@@ -399,7 +399,7 @@ export const BSDWorkspace = ({
           {/* One row: full-height strip (mobile) + chat column. Desktop: strip hidden, chat is full width. */}
           <div className="flex flex-1 min-w-0 min-h-0 flex-row items-stretch min-h-0">
             {/* Mobile: stages strip — same height as messages+input (full workspace column) */}
-            <div className="md:hidden flex h-full min-h-0 w-[78px] flex-shrink-0 self-stretch flex flex-col">
+            <div className="md:hidden flex h-full min-h-0 w-[84px] flex-shrink-0 self-stretch flex flex-col">
               <div className="flex-1 min-h-0 h-full max-h-full">
                 <VisionLadder currentStep={currentPhase} onPhaseClick={handlePhaseClick} compact conversationId={conversationId} />
               </div>
