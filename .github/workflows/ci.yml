@@ -37,8 +37,9 @@ jobs:
           python3 test_prompt_pipeline_local.py
           python3 test_prompts_simple.py
 
+      # Exclude @pytest.mark.llm — non-deterministic vs exact assertions (breaks CI randomly).
       - name: Run pytest
-        run: python3 -m pytest tests/ -v
+        run: python3 -m pytest tests/ -v -m "not llm"
         env:
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
