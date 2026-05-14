@@ -236,11 +236,11 @@ export const VisionLadder = ({
 
   return (
     <div
-      className="workspace-ladder flex h-full min-w-[240px] w-full flex-col bg-[#1e293b]"
+      className="workspace-ladder flex h-full min-w-0 w-full max-w-full flex-col overflow-x-hidden bg-[#1e293b]"
       dir={isRTL ? 'rtl' : 'ltr'}
     >
       {/* כותרת עליונה */}
-      <header className="flex-shrink-0 border-b border-white/[0.06] px-5 pb-5 pt-7">
+      <header className="flex-shrink-0 overflow-x-hidden border-b border-white/[0.06] px-5 pb-5 pt-7">
         <h2
           className="text-[1.5rem] font-semibold leading-tight tracking-[0.02em] text-white sm:text-[1.65rem]"
           style={{ fontFamily: isRTL ? WORKSPACE_CHAT_FONT : JOURNEY_TITLE_SERIF }}
@@ -259,21 +259,16 @@ export const VisionLadder = ({
               >
                 {t(`ladder.${activePhaseKey}`)}
               </p>
-              <div
-                className="mt-3 space-y-1.5 text-[13px] font-medium leading-snug text-[#cbd5e1]"
-                style={{ fontFamily: WORKSPACE_CHAT_FONT }}
-              >
-                <p>{t('ladder.progressStageOfTotal', { current: stageOrdinal, total: totalStages })}</p>
-                <p>{t('ladder.activeSession')}</p>
-                <p className="font-semibold text-[#e2e8f0]">{t('ladder.progressPct', { pct: progressPct })}</p>
-              </div>
+              <p className="mt-3 font-semibold text-[#e2e8f0] text-[13px] leading-snug" style={{ fontFamily: WORKSPACE_CHAT_FONT }}>
+                {t('ladder.progressPct', { pct: progressPct })}
+              </p>
             </div>
           </div>
         </div>
       </header>
 
       {/* סולם שלבים מחובר בקו אנכי */}
-      <div className="relative flex min-h-0 flex-1 flex-col px-5 pb-6 pt-5">
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden px-5 pb-6 pt-5">
         <p
           className="mb-4 flex-shrink-0 text-[11px] font-bold uppercase tracking-[0.16em] text-[#e8c066]"
           style={{ fontFamily: WORKSPACE_CHAT_FONT }}
@@ -287,7 +282,7 @@ export const VisionLadder = ({
           aria-hidden
         />
 
-        <div className="custom-scrollbar flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overflow-x-visible pe-0.5">
+        <div className="custom-scrollbar flex min-h-0 min-w-0 flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden pe-0.5">
           {PHASE_IDS.map((phaseId, i) => {
             const title = t(`ladder.${phaseId}`);
             const tagline = t(`ladder.${phaseId}.tagline`);
@@ -373,7 +368,7 @@ export const VisionLadder = ({
                   </div>
 
                   <div
-                    className={`pointer-events-none absolute left-1/2 top-full z-[100] mt-2 w-[240px] -translate-x-1/2 rounded border border-white/[0.12] p-3.5 text-[13px] font-medium opacity-0 shadow-xl transition-opacity duration-200 group-hover:opacity-100 ${
+                    className={`pointer-events-none absolute bottom-full left-1/2 z-[200] mb-2 w-[min(240px,calc(100vw-2rem))] max-w-[calc(100%+1rem)] -translate-x-1/2 rounded border border-white/[0.12] p-3.5 text-[13px] font-medium opacity-0 shadow-xl transition-opacity duration-200 group-hover:opacity-100 ${
                       isRTL ? 'text-right' : 'text-left'
                     }`}
                     style={{

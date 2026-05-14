@@ -255,10 +255,10 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
   };
 
   return (
-    <div className="w-full md:w-72 flex flex-col h-full bg-[#1e293b] min-h-0">
+    <div className="w-full md:w-72 flex flex-col h-full bg-[#1e293b] min-h-0 min-w-0 overflow-x-hidden">
       {/* שיחות קודמות + שיחה חדשה — דסקטופ בלבד; במובייל הארכיון בהדר */}
       {(onArchiveClick || onNewChat) && (
-        <div className="hidden md:flex md:flex-col gap-2 border-b border-white/[0.07] p-4">
+        <div className="hidden md:flex md:flex-col gap-2 border-b border-white/[0.07] p-4 overflow-x-hidden">
           {onArchiveClick && (
             <button
               type="button"
@@ -286,7 +286,7 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
           )}
         </div>
       )}
-      <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col min-h-0">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar flex flex-col min-h-0 min-w-0">
         {/* תובנות - תגיות למעלה */}
         {insightPieces.length > 0 ? (
           <section className="flex-shrink-0 border-b border-white/[0.07] p-5">
