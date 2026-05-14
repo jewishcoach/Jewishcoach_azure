@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { SignedIn, SignedOut, UserButton, useUser, useClerk, useAuth } from '@clerk/clerk-react';
@@ -6,6 +6,7 @@ import { Shield, LayoutDashboard, MessageCircle, MessageSquarePlus } from 'lucid
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { BSDWorkspace } from './components/workspace/BSDWorkspace';
 import { LandingPage } from './components/LandingPage';
+import { BsdOnboardingFlow } from './components/BsdOnboardingFlow';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { BillingPage } from './components/BillingPage';
 import { apiClient } from './services/api';
@@ -109,6 +110,8 @@ function SignedInContent() {
   const [displayName, setDisplayName] = useState<string | null>(null);
   /** After first /users/me attempt — delays chat welcome until profile display_name can override Clerk */
   const [chatProfileReady, setChatProfileReady] = useState(false);
+  /** First-session intro carousel (BSD Figma entry screens) until preferences flag is set */
+  const [showIntroScreens, setShowIntroScreens] = useState(false);
   /** Incremented from header "new chat" on mobile — BSDWorkspace runs startNewConversation */
   const [workspaceNewChatTick, setWorkspaceNewChatTick] = useState(0);
 
@@ -128,6 +131,12 @@ function SignedInContent() {
           const userData = await apiClient.getCurrentUser();
           setIsAdmin(!!userData.isAdmin);
           setDisplayName(userData.display_name);
+          try {
+            const prefs = await apiClient.getUserPreferences();
+            setShowIntroScreens(!prefs?.bsd_intro_screens_completed);
+          } catch {
+            setShowIntroScreens(false);
+          }
           if (!userData.isAdmin && !isRetry) {
             window.setTimeout(() => {
               void checkAdminStatus(true);
@@ -136,9 +145,11 @@ function SignedInContent() {
         } else {
           setIsAdmin(false);
           setDisplayName(null);
+          setShowIntroScreens(false);
         }
       } catch (error) {
         console.error('Failed to check admin status:', error);
+        setShowIntroScreens(false);
         if (!isRetry) {
           window.setTimeout(() => {
             void checkAdminStatus(true);
@@ -173,8 +184,28 @@ function SignedInContent() {
     }
   }, [showDashboard, showBilling, showAdmin, getToken, user, isLoaded, isSignedIn]);
 
+  const handleIntroComplete = useCallback(async () => {
+    try {
+      const token = await getToken();
+      if (token) {
+        apiClient.setToken(token);
+        await apiClient.patchUserPreferences({ bsd_intro_screens_completed: true });
+      }
+    } catch (e) {
+      console.warn('[BsdOnboardingFlow] Failed to persist completion:', e);
+    }
+    setShowIntroScreens(false);
+  }, [getToken]);
+
   return (
     <div className="h-screen flex flex-col bg-[#faf8f3] workspace-root overflow-x-hidden">
+      {showIntroScreens ? (
+        <BsdOnboardingFlow
+          onComplete={handleIntroComplete}
+          initialDisplayName={displayName ?? user?.firstName ?? null}
+          onDisplayNameUpdated={(name) => setDisplayName(name)}
+        />
+      ) : null}
       <motion.header
         initial={{ opacity: 0, y: -50 }}
         animate={{ opacity: 1, y: 0 }}

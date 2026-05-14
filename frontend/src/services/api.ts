@@ -226,6 +226,17 @@ class ApiClient {
     return response.data;
   }
 
+  /** Merged JSON preferences (voice, intro flags, …). */
+  async getUserPreferences(): Promise<Record<string, unknown>> {
+    const response = await this.client.get('/users/me/preferences');
+    return response.data ?? {};
+  }
+
+  async patchUserPreferences(patch: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const response = await this.client.patch('/users/me/preferences', patch);
+    return response.data ?? {};
+  }
+
   /** Debug: why admin button is missing (authenticated). */
   async getAdminDiagnosis() {
     const response = await this.client.get('/users/me/admin-diagnosis', {
