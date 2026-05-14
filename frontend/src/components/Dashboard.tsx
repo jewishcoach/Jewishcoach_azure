@@ -19,21 +19,28 @@ import { PwaInstallCard } from './PwaInstallCard';
 import { apiClient } from '../services/api';
 import type { I18nT } from '../i18nT';
 import { friendlyEmailPrefix, isClerkSyntheticEmail } from '../lib/clerkEmail';
+import {
+  WORKSPACE_BORDER_WARM,
+  WORKSPACE_FRAME_BG,
+  WORKSPACE_SIDE_RAIL_BG,
+  WORKSPACE_TEXT_NAVY,
+} from '../constants/workspaceChrome';
 
-// BSD palette: navy primary, minimal red - gold for soft accents
+// BSD palette — warm shell aligned with workspace chat (Figma chrome)
 const COLORS = {
-  bg: '#F0F1F3',
+  bg: WORKSPACE_FRAME_BG,
+  rail: WORKSPACE_SIDE_RAIL_BG,
   card: '#FFFFFF',
-  text: '#2E3A56',
-  textMuted: '#5A6B8A',
-  accent: '#2E3A56',
-  accentLight: 'rgba(46, 58, 86, 0.12)',
-  primary: '#2E3A56',
-  primaryLight: 'rgba(46, 58, 86, 0.08)',
+  text: WORKSPACE_TEXT_NAVY,
+  textMuted: '#5c6270',
+  accent: WORKSPACE_TEXT_NAVY,
+  accentLight: 'rgba(46, 58, 86, 0.08)',
+  primary: WORKSPACE_TEXT_NAVY,
+  primaryLight: 'rgba(232, 224, 204, 0.45)',
   gold: '#B38728',
-  border: '#E2E4E8',
-  shadow: '0 1px 2px rgba(46, 58, 86, 0.06)',
-  shadowSm: '0 2px 8px rgba(46, 58, 86, 0.08)',
+  border: WORKSPACE_BORDER_WARM,
+  shadow: '0 1px 4px rgba(10, 10, 10, 0.06)',
+  shadowSm: '0 1px 4px rgba(10, 10, 10, 0.06)',
 };
 
 interface Profile {
@@ -385,11 +392,11 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
       </div>
 
       {/* Desktop: Left Sidebar */}
-      <aside className="hidden md:flex w-56 flex-shrink-0 flex-col py-6 px-3" style={{ background: COLORS.card, boxShadow: COLORS.shadow }}>
+      <aside className="hidden md:flex w-56 flex-shrink-0 flex-col py-6 px-3 border-e" style={{ background: COLORS.rail, borderColor: COLORS.border, boxShadow: COLORS.shadow }}>
         {onBack && (
           <button
             onClick={onBack}
-            className="flex items-center gap-2 px-3 py-2 mb-4 rounded-xl text-sm transition-colors hover:bg-gray-50"
+            className="flex items-center gap-2 px-3 py-2 mb-4 rounded-xl text-sm transition-colors hover:bg-black/[0.04]"
             style={{ color: COLORS.textMuted }}
           >
             <MessageCircle className="w-4 h-4 flex-shrink-0" />
@@ -402,7 +409,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
               type="button"
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-start w-full"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-start w-full hover:bg-black/[0.04]"
               style={{
                 background: activeTab === item.id ? COLORS.accent : 'transparent',
                 color: activeTab === item.id ? '#FFFFFF' : COLORS.textMuted,
@@ -422,7 +429,7 @@ export const Dashboard = ({ onBack, onShowBilling }: DashboardProps) => {
       <nav
         className="md:hidden fixed bottom-0 left-0 right-0 z-10 flex items-center justify-around py-2 px-2"
         style={{
-          background: COLORS.card,
+          background: COLORS.rail,
           borderTop: `1px solid ${COLORS.border}`,
           boxShadow: '0 -2px 10px rgba(0,0,0,0.06)',
           paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',

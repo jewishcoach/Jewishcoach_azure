@@ -18,6 +18,7 @@ import { Dashboard } from '../Dashboard';
 import { QuotaExceededModal } from '../QuotaExceededModal';
 import { apiClient } from '../../services/api';
 import type { Conversation } from '../../types';
+import { WORKSPACE_BORDER_WARM, WORKSPACE_FRAME_BG, WORKSPACE_SIDE_RAIL_BG } from '../../constants/workspaceChrome';
 import { WORKSPACE_CHAT_FONT } from '../../constants/workspaceFonts';
 import { isChatBlockedByActiveTool } from '../../utils/activeFormTools';
 
@@ -332,7 +333,7 @@ export const BSDWorkspace = ({
   if (showDashboard) {
     return (
       <>
-        <div className="flex-1 flex overflow-hidden bg-[#F0F1F3] min-h-0">
+        <div className="flex-1 flex overflow-hidden min-h-0" style={{ backgroundColor: WORKSPACE_FRAME_BG }}>
           <div className="flex-1 min-w-0 min-h-0 overflow-hidden flex flex-col">
             <Dashboard onBack={onCloseDashboard} onShowBilling={onShowBilling} />
           </div>
@@ -364,13 +365,17 @@ export const BSDWorkspace = ({
         }}
       />
     <div
-      className="flex flex-col md:flex-row h-full w-full bg-[#020617] overflow-hidden"
+      className="flex flex-col md:flex-row h-full w-full overflow-hidden"
+      style={{ backgroundColor: WORKSPACE_FRAME_BG }}
       dir={i18n.dir()}
     >
       {/* Mobile: [Stages strip | Chat] row, then HUD below. Desktop: HUD | Chat | Ladder */}
       <div className="flex flex-1 min-h-0 flex-col md:flex-row w-full">
         {/* HUD - desktop only; mobile uses stages strip insights */}
-        <div className="hidden md:flex order-3 md:order-1 w-64 lg:w-72 flex-shrink-0 border-r border-white/[0.08] bg-[#1e293b] overflow-hidden min-h-0 flex flex-col">
+        <div
+          className="hidden md:flex order-3 md:order-1 w-64 lg:w-72 flex-shrink-0 overflow-hidden min-h-0 flex flex-col border-r"
+          style={{ backgroundColor: WORKSPACE_SIDE_RAIL_BG, borderColor: WORKSPACE_BORDER_WARM }}
+        >
           <HudPanel
             conversationId={conversationId}
             currentPhase={currentPhase}
@@ -399,7 +404,10 @@ export const BSDWorkspace = ({
           {/* One row: full-height strip (mobile) + chat column. Desktop: strip hidden, chat is full width. */}
           <div className="flex flex-1 min-w-0 min-h-0 flex-row items-stretch min-h-0">
             {/* Mobile: stages strip — same height as messages+input (full workspace column) */}
-            <div className="md:hidden flex h-full min-h-0 w-[78px] flex-shrink-0 self-stretch flex flex-col">
+            <div
+              className="md:hidden flex h-full min-h-0 w-[78px] flex-shrink-0 self-stretch flex flex-col border-r"
+              style={{ backgroundColor: WORKSPACE_SIDE_RAIL_BG, borderColor: WORKSPACE_BORDER_WARM }}
+            >
               <div className="flex-1 min-h-0 h-full max-h-full">
                 <VisionLadder currentStep={currentPhase} onPhaseClick={handlePhaseClick} compact conversationId={conversationId} />
               </div>
@@ -526,7 +534,10 @@ export const BSDWorkspace = ({
         </div>
 
         {/* Desktop: Vision Ladder full */}
-        <div className="hidden md:flex order-3 w-[280px] min-w-[280px] flex-shrink-0 h-full min-h-[400px] border-l border-white/[0.08] bg-[#1e293b] overflow-hidden">
+        <div
+          className="hidden md:flex order-3 w-[280px] min-w-[280px] flex-shrink-0 h-full min-h-[400px] overflow-hidden border-l"
+          style={{ backgroundColor: WORKSPACE_SIDE_RAIL_BG, borderColor: WORKSPACE_BORDER_WARM }}
+        >
           <VisionLadder currentStep={currentPhase} onPhaseClick={handlePhaseClick} />
         </div>
       </div>

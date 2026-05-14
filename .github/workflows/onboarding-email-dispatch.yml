@@ -26,9 +26,25 @@ jobs:
           URL: ${{ secrets.ONBOARDING_EMAIL_CRON_POST_URL }}
           SECRET: ${{ secrets.ONBOARDING_EMAIL_CRON_SECRET }}
         run: |
+          # curl -f exit 22 = HTTP 4xx/5xx — we capture status + body for Actions logs.
           if [ -z "$URL" ] || [ -z "$SECRET" ]; then
             echo "::notice::Skipped — add secrets ONBOARDING_EMAIL_CRON_POST_URL and ONBOARDING_EMAIL_CRON_SECRET (see workflow header comments)."
             exit 0
           fi
-          curl -fsS -X POST "${URL}?limit=50" \
-            -H "X-Onboarding-Email-Cron-Secret: ${SECRET}"
+          URL="$(printf '%s' "$URL" | tr -d '\r\n' | sed 's/[[:space:]]*$//')"
+          SECRET="$(printf '%s' "$SECRET" | tr -d '\r\n')"
+          RESP_FILE="$(mktemp)"
+          trap 'rm -f "$RESP_FILE"' EXIT
+          HTTP_CODE="$(curl -sS -o "$RESP_FILE" -w '%{http_code}' -X POST "${URL}?limit=50" \
+            -H "X-Onboarding-Email-Cron-Secret: ${SECRET}")"
+          BODY="$(cat "$RESP_FILE")"
+          echo "HTTP ${HTTP_CODE}"
+          echo "${BODY}"
+          case "$HTTP_CODE" in
+            2??) exit 0 ;;
+          esac
+          echo "::error::POST failed (curl used to exit 22 with -f). Decode errors:"
+          echo "::error::403 Invalid cron secret → GitHub secret ONBOARDING_EMAIL_CRON_SECRET must equal Azure App Service ONBOARDING_EMAIL_CRON_SECRET (exact)."
+          echo "::error::503 ONBOARDING_EMAIL_CRON_SECRET not set on server → add Application Setting on jewishcoach-api."
+          echo "::error::404 → fix ONBOARDING_EMAIL_CRON_POST_URL (must end with .../api/internal/onboarding-email/process-due)."
+          exit 1

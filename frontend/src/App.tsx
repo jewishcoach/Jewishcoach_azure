@@ -12,6 +12,7 @@ import { apiClient } from './services/api';
 import './i18n';
 import { isClerkSyntheticEmail } from './lib/clerkEmail';
 import { isClerkUiAdminAllowlisted } from './config';
+import { WORKSPACE_BORDER_WARM, WORKSPACE_FRAME_BG, WORKSPACE_TEXT_NAVY } from './constants/workspaceChrome';
 
 // Check if running on tunnel domain (Demo Mode)
 const isTunnelDomain = () => {
@@ -166,18 +167,19 @@ function SignedInContent() {
   }, [showDashboard, showBilling, showAdmin, getToken, user, isLoaded, isSignedIn]);
 
   return (
-    <div className="h-screen flex flex-col bg-[#020617] workspace-root overflow-x-hidden">
+    <div className="h-screen flex flex-col workspace-root overflow-x-hidden" style={{ backgroundColor: WORKSPACE_FRAME_BG }}>
       <motion.header
         initial={{ opacity: 0, y: -50 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 120, damping: 14 }}
-        className="relative z-20 flex justify-between items-center p-4 md:p-6 bg-[#0f172a] backdrop-blur-[25px] border-b border-white/[0.14] shadow-[0_4px_18px_-2px_rgba(0,0,0,0.45),0_1px_0_0_rgba(255,255,255,0.06)_inset]"
+        className="relative z-20 flex justify-between items-center p-4 md:p-6 backdrop-blur-[25px] border-b shadow-[0px_1px_4px_rgba(10,10,10,0.06)]"
+        style={{ backgroundColor: WORKSPACE_FRAME_BG, borderColor: WORKSPACE_BORDER_WARM }}
       >
         <div className="flex items-center gap-2 md:gap-[1.2em] flex-shrink-0 min-w-0">
           <img src="/bsd-logo.png" alt="BSD אימון יהודי" className="h-12 md:h-[69px] object-contain flex-shrink-0" />
           <p
-            className="text-white font-bold text-base sm:text-lg md:text-[1.8rem] tracking-wide truncate hidden sm:block"
-            style={{ fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.4 }}
+            className="font-bold text-base sm:text-lg md:text-[1.8rem] tracking-wide truncate hidden sm:block"
+            style={{ fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.4, color: WORKSPACE_TEXT_NAVY }}
           >
             אִם יֵשׁ לְךָ שָׁמַיִם, נִתֵּן לְךָ כְּנָפַיִם
           </p>
@@ -185,7 +187,7 @@ function SignedInContent() {
         <div className="flex-1 min-w-2" />
         <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
           {user && (
-            <span className="text-white text-sm md:text-base font-light tracking-[0.02em] hidden sm:inline" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <span className="text-sm md:text-base font-light tracking-[0.02em] hidden sm:inline opacity-90" style={{ fontFamily: 'Inter, sans-serif', color: WORKSPACE_TEXT_NAVY }}>
               {(() => {
                 const clerkPrimary = user?.emailAddresses?.[0]?.emailAddress;
                 const raw =
@@ -269,21 +271,22 @@ function DemoModeContent() {
   }, []);
 
   return (
-    <div className="flex flex-col h-screen bg-[#0F172A]">
+    <div className="flex flex-col h-screen" style={{ backgroundColor: WORKSPACE_FRAME_BG }}>
       <motion.header
         initial={{ y: -100 }}
         animate={{ y: 0 }}
-        className="sticky top-0 z-50 flex items-center justify-between p-4 md:p-6 bg-[#0F172A]/95 backdrop-blur-sm border-b border-white/[0.14] shadow-[0_4px_18px_-2px_rgba(0,0,0,0.45),0_1px_0_0_rgba(255,255,255,0.06)_inset]"
+        className="sticky top-0 z-50 flex items-center justify-between p-4 md:p-6 backdrop-blur-sm border-b shadow-[0px_1px_4px_rgba(10,10,10,0.06)]"
+        style={{ backgroundColor: WORKSPACE_FRAME_BG, borderColor: WORKSPACE_BORDER_WARM }}
       >
         <div className="flex items-center gap-2 md:gap-[1.2em] flex-shrink-0 min-w-0">
           <img src="/bsd-logo.png" alt="BSD אימון יהודי" className="h-12 md:h-[69px] object-contain flex-shrink-0" />
           <p
-            className="text-white font-bold text-base sm:text-lg md:text-[1.8rem] tracking-wide truncate hidden sm:block"
-            style={{ fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.4 }}
+            className="font-bold text-base sm:text-lg md:text-[1.8rem] tracking-wide truncate hidden sm:block"
+            style={{ fontFamily: 'Georgia, "Times New Roman", serif', lineHeight: 1.4, color: WORKSPACE_TEXT_NAVY }}
           >
             אִם יֵשׁ לְךָ שָׁמַיִם, נִתֵּן לְךָ כְּנָפַיִם
           </p>
-          <span className="px-2 py-1 bg-yellow-500/20 text-yellow-300 text-xs rounded-full border border-yellow-500/30 flex-shrink-0">
+          <span className="px-2 py-1 bg-amber-100 text-amber-900 text-xs rounded-full border border-amber-300/80 flex-shrink-0">
             DEMO MODE
           </span>
         </div>
