@@ -251,17 +251,16 @@ const resources = {
       "bsdOnboarding.chatSection": "Coach conversation",
       "bsdOnboarding.tagline": "אם יש לך שמיים, נתן לך כנפיים",
       "bsdOnboarding.headlineBefore": "Find your",
-      "bsdOnboarding.headlineAccent": "true source",
+      "bsdOnboarding.headlineAccent": "True source",
       "bsdOnboarding.leftSubtitle":
         "Inner reflection rooted in timeless wisdom, revealing the strengths and potential already within you.",
       "bsdOnboarding.coachLabel": "Coach",
-      "bsdOnboarding.brandTitle": "Find your true source",
+      "bsdOnboarding.headerCoachTitle": "Your Coach",
       "bsdOnboarding.availableNow": "Available now",
       "bsdOnboarding.step": "Step {{current}} of {{total}}",
-      "bsdOnboarding.coachPing": "Hi — I'm Coach. Nice to meet you!",
-      "bsdOnboarding.coachAskName":
-        "Hi there, it's great to have you here. Before we begin, what should I call you?",
-      "bsdOnboarding.coachAskGoal": "Wonderful, {{name}}. What brings you here today?",
+      "bsdOnboarding.coachOpening":
+        "Hi there, 👋 it's great to have you here. Before we begin, I'd love to know — what should I call you?",
+      "bsdOnboarding.coachAskGoal": "Wonderful, {{name}}. ✨ What brings you here today?",
       "bsdOnboarding.coachAskExp": "Thanks for sharing that. What feels closest to your experience so far?",
       "bsdOnboarding.coachAskPace": "Beautiful. How would you like us to move together?",
       "bsdOnboarding.summaryCoach":
@@ -721,12 +720,12 @@ const resources = {
       "bsdOnboarding.leftSubtitle":
         "התבוננות פנימית ששורשיה בחוכמה נצחית — ומגלה את החוזקות והפוטנציאל שכבר בך.",
       "bsdOnboarding.coachLabel": "מאמן",
-      "bsdOnboarding.brandTitle": "מצא את מקורך האמיתי",
+      "bsdOnboarding.headerCoachTitle": "המאמן שלך",
       "bsdOnboarding.availableNow": "זמין עכשיו",
       "bsdOnboarding.step": "שלב {{current}} מתוך {{total}}",
-      "bsdOnboarding.coachPing": "היי — אני המאמן. נעים להכיר!",
-      "bsdOnboarding.coachAskName": "שמח שבאת. לפני שנתחיל — איך לקרוא לך?",
-      "bsdOnboarding.coachAskGoal": "מצוין, {{name}}. מה מביא אותך לכאן היום?",
+      "bsdOnboarding.coachOpening":
+        "היי, 👋 שמח מאוד שהגעת. לפני שנתחיל — איך נוח לך שאקרא לך?",
+      "bsdOnboarding.coachAskGoal": "מצוין, {{name}}. ✨ מה מביא אותך לכאן היום?",
       "bsdOnboarding.coachAskExp": "תודה על השיתוף. מה הכי קרוב לניסיון שלך עד עכשיו?",
       "bsdOnboarding.coachAskPace": "יפה. באיזה קצב נוח לך שנזוז יחד?",
       "bsdOnboarding.summaryCoach":

@@ -8,20 +8,21 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ArrowRight,
+  Bird,
   CalendarDays,
   CircleHelp,
   Compass,
   Crosshair,
   Flame,
+  Flower2,
   Heart,
   Lightbulb,
   Mic,
-  Sparkles,
+  Send,
+  Shield,
   TrendingUp,
   UserRound,
   Users,
-  Waypoints,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { LanguageSwitcher } from './LanguageSwitcher';
@@ -40,6 +41,8 @@ type ChatMsg = {
   id: string;
   role: 'coach' | 'user';
   text: string;
+  /** Figma: first coach bubble has no “COACH” meta row */
+  showCoachMeta?: boolean;
 };
 
 const STEPS = 4;
@@ -85,10 +88,10 @@ const PACE_IDS = ['gentle', 'weekly', 'immersive', 'focused'] as const;
 type PaceId = (typeof PACE_IDS)[number];
 
 const GOAL_ICONS: Record<GoalId, LucideIcon> = {
-  peace: Sparkles,
-  confidence: TrendingUp,
+  peace: Bird,
+  confidence: Shield,
   knowSelf: UserRound,
-  pattern: Waypoints,
+  pattern: Flower2,
 };
 
 const EXP_ICONS: Record<ExpId, LucideIcon> = {
@@ -116,8 +119,10 @@ function CoachAvatarBadge({
   return (
     <div
       className={cx(
-        'flex flex-shrink-0 items-center justify-center rounded-full font-medium text-[#0e1117]',
-        header ? 'h-[35px] w-[35px] bg-[#C8953A] text-[14.375px]' : 'h-[22px] w-[22px] bg-[#FFB022] text-[10px]',
+        'flex flex-shrink-0 items-center justify-center rounded-full font-medium',
+        header
+          ? 'h-[35px] w-[35px] bg-[#C8953A] text-[14.375px] text-white'
+          : 'h-[22px] w-[22px] bg-[#FFB022] text-[10px] text-[#0e1117]',
       )}
       aria-hidden
     >
@@ -126,18 +131,12 @@ function CoachAvatarBadge({
   );
 }
 
-function CoachRow({
-  variant = 'thread',
-  label,
-}: {
-  variant?: 'thread' | 'header';
-  label: string;
-}) {
+function CoachRow({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-2">
-      <CoachAvatarBadge variant={variant === 'header' ? 'header' : 'thread'} />
+      <CoachAvatarBadge variant="thread" />
       <span
-        className="text-[12px] uppercase tracking-[1px] text-[#4c5a70]"
+        className="text-[12px] font-medium uppercase tracking-[1px] text-[#C9A96E]"
         style={{ fontFamily: 'Inter, sans-serif' }}
       >
         {label}
@@ -194,39 +193,52 @@ function LeftDecorPanel({
   subtitle: string;
 }) {
   return (
-    <div className="relative hidden min-h-0 w-full flex-shrink-0 flex-col overflow-hidden bg-[#1C2636] md:flex md:w-[min(520px,38vw)] md:min-w-[300px] md:max-w-[520px]">
+    <div className="relative hidden min-h-0 w-full flex-shrink-0 flex-col overflow-hidden bg-[#1C2636] md:flex md:w-[min(520px,36.1vw)] md:min-w-[300px] md:max-w-[520px]">
       <div className="pointer-events-none absolute inset-0">
         <div
           className="absolute inset-0"
           style={{
             background:
-              'radial-gradient(60% 60% at 50% 45%, rgba(201, 169, 110, 0.18) 0%, rgba(12, 16, 24, 0) 100%), radial-gradient(50% 50% at 30% 70%, rgba(74, 111, 165, 0.1) 0%, rgba(12, 16, 24, 0) 100%)',
+              'radial-gradient(60% 60% at 50% 42%, rgba(201, 169, 110, 0.22) 0%, rgba(12, 16, 24, 0) 72%), radial-gradient(55% 55% at 18% 78%, rgba(74, 111, 165, 0.12) 0%, rgba(12, 16, 24, 0) 65%), radial-gradient(40% 40% at 88% 22%, rgba(201, 169, 110, 0.08) 0%, transparent 70%)',
           }}
         />
+        {/* Figma-style geometry: circles + diamond + hexagram + ornaments */}
         <svg
-          className="absolute left-1/2 top-[18%] h-[58%] w-[90%] max-w-[420px] -translate-x-1/2 text-[rgba(201,169,110,0.12)]"
+          className="absolute left-1/2 top-[14%] h-[62%] w-[94%] max-w-[460px] -translate-x-1/2"
           viewBox="0 0 100 100"
           fill="none"
           aria-hidden
         >
-          <polygon points="50,12 88,82 12,82" stroke="currentColor" strokeWidth="0.8" />
-          <polygon points="50,88 12,18 88,18" stroke="currentColor" strokeWidth="0.8" />
-          <circle cx="50" cy="50" r="3.2" fill="#C9A96E" fillOpacity={0.55} />
-          <circle cx="50" cy="26" r="2.4" fill="#C9A96E" fillOpacity={0.45} />
-          <circle cx="50" cy="74" r="2.4" fill="#C9A96E" fillOpacity={0.45} />
-          <circle cx="29" cy="68" r="2.4" fill="#C9A96E" fillOpacity={0.45} />
-          <circle cx="71" cy="68" r="2.4" fill="#C9A96E" fillOpacity={0.45} />
-          <circle cx="29" cy="32" r="2.4" fill="#C9A96E" fillOpacity={0.45} />
-          <circle cx="71" cy="32" r="2.4" fill="#C9A96E" fillOpacity={0.45} />
+          <circle cx="50" cy="50" r="38" stroke="rgba(201,169,110,0.14)" strokeWidth="0.35" />
+          <circle cx="50" cy="50" r="30" stroke="rgba(201,169,110,0.12)" strokeWidth="0.35" />
+          <circle cx="50" cy="50" r="22" stroke="rgba(201,169,110,0.1)" strokeWidth="0.35" />
+          <path
+            d="M50 18 L82 50 L50 82 L18 50 Z"
+            stroke="rgba(201,169,110,0.11)"
+            strokeWidth="0.45"
+            strokeDasharray="2 3"
+          />
+          <polygon points="50,14 87,80 13,80" stroke="rgba(201,169,110,0.16)" strokeWidth="0.55" />
+          <polygon points="50,86 13,20 87,20" stroke="rgba(201,169,110,0.16)" strokeWidth="0.55" />
+          <circle cx="50" cy="50" r="2.8" fill="#C9A96E" fillOpacity={0.5} />
+          <circle cx="50" cy="24" r="2" fill="#C9A96E" fillOpacity={0.45} />
+          <circle cx="50" cy="76" r="2" fill="#C9A96E" fillOpacity={0.45} />
+          <circle cx="26" cy="68" r="2" fill="#C9A96E" fillOpacity={0.4} />
+          <circle cx="74" cy="68" r="2" fill="#C9A96E" fillOpacity={0.4} />
+          <circle cx="26" cy="32" r="2" fill="#C9A96E" fillOpacity={0.4} />
+          <circle cx="74" cy="32" r="2" fill="#C9A96E" fillOpacity={0.4} />
+          {/* faint corner stars */}
+          <path d="M12 22 L13 25 L16 25 L13.8 27 L14.6 30 L12 28 L9.4 30 L10.2 27 L8 25 L11 25 Z" fill="#C9A96E" fillOpacity={0.14} />
+          <path d="M88 78 L89 81 L92 81 L89.8 83 L90.6 86 L88 84 L85.4 86 L86.2 83 L84 81 L87 81 Z" fill="#C9A96E" fillOpacity={0.12} />
+          <path d="M88 18 L89 21 L92 21 L89.8 23 L90.6 26 L88 24 L85.4 26 L86.2 23 L84 21 L87 21 Z" fill="#C9A96E" fillOpacity={0.1} />
         </svg>
       </div>
 
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col px-10 pb-10 pt-[max(1.5rem,env(safe-area-inset-top))]">
-        <div className="flex items-center gap-[9px]">
-          <img src="/bsd-logo.png" alt="" className="h-8 w-[34px] object-contain opacity-90" />
-          <div className="h-[18px] w-px bg-white/[0.11]" aria-hidden />
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col px-10 pb-10 pt-[max(1.75rem,env(safe-area-inset-top))]">
+        <div className="flex w-full items-start justify-between gap-4">
+          <img src="/bsd-logo.png" alt="" className="h-8 w-[34px] flex-shrink-0 object-contain opacity-95" />
           <p
-            className="font-medium leading-4 text-[#f0f4fa]"
+            className="max-w-[min(280px,48%)] text-end font-medium leading-[1.25] text-[#f0f4fa]"
             dir="rtl"
             style={{
               fontFamily: '"Cormorant Garamond", Georgia, serif',
@@ -237,9 +249,9 @@ function LeftDecorPanel({
           </p>
         </div>
 
-        <div className="mt-auto flex flex-col items-center gap-2 px-2 pb-4 text-center md:pb-8">
+        <div className="mt-auto flex flex-col items-center gap-3 px-2 pb-4 text-center md:pb-10">
           <h2
-            className="max-w-[320px] font-semibold leading-[46px] text-[#ede9e0]"
+            className="max-w-[320px] font-semibold leading-[1.05] text-[#ede9e0]"
             style={{
               fontFamily: '"Cormorant Garamond", Georgia, serif',
               fontSize: 44,
@@ -306,8 +318,12 @@ export function BsdOnboardingFlow({
   useEffect(() => {
     if (seeded) return;
     setMessages([
-      { id: uid(), role: 'coach', text: t('bsdOnboarding.coachPing') },
-      { id: uid(), role: 'coach', text: t('bsdOnboarding.coachAskName') },
+      {
+        id: uid(),
+        role: 'coach',
+        text: t('bsdOnboarding.coachOpening'),
+        showCoachMeta: false,
+      },
     ]);
     setSeeded(true);
   }, [seeded, t]);
@@ -317,7 +333,7 @@ export function BsdOnboardingFlow({
   }, [messages, phase]);
 
   const coachLabel = t('bsdOnboarding.coachLabel');
-  const brandTitle = t('bsdOnboarding.brandTitle');
+  const headerCoachTitle = t('bsdOnboarding.headerCoachTitle');
 
   const submitName = useCallback(async () => {
     let name = extractPreferredName(input).trim();
@@ -423,7 +439,7 @@ export function BsdOnboardingFlow({
         {t('bsdOnboarding.a11yTitle')}
       </span>
 
-      <div className="flex justify-end px-4 pt-[max(0.5rem,env(safe-area-inset-top))] md:absolute md:right-4 md:top-3 md:z-30">
+      <div className="flex justify-end px-4 pt-[max(0.5rem,env(safe-area-inset-top))] md:hidden">
         <LanguageSwitcher />
       </div>
 
@@ -452,38 +468,50 @@ export function BsdOnboardingFlow({
           aria-label={t('bsdOnboarding.chatSection')}
         >
           {/* TOPBAR */}
-          <header className="flex h-[66px] shrink-0 items-center justify-between gap-4 bg-[#1E293B] px-4 md:px-[70px]">
-            <div className="flex min-w-0 items-center gap-3">
+          <header className="flex h-[66px] shrink-0 items-center justify-between gap-6 bg-[#1E293B] px-4 md:gap-10 md:px-[70px]">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
               <CoachAvatarBadge variant="header" />
-              <div className="flex min-w-0 flex-col gap-1">
+              <div className="flex min-w-0 flex-col gap-[7px]">
                 <span
                   className="truncate text-[16px] font-medium leading-none text-[#EDE9E0]"
                   style={{ fontFamily: 'Inter, sans-serif' }}
                 >
-                  {brandTitle}
+                  {headerCoachTitle}
                 </span>
                 <div className="flex items-center gap-1">
-                  <span className="h-[5px] w-[5px] shrink-0 rounded-full bg-[#C8953A]" aria-hidden />
-                  <span className="text-[10px] font-normal leading-none text-[#C8953A]">
+                  <span className="h-[5px] w-[5px] shrink-0 rounded-full bg-[#34D399]" aria-hidden />
+                  <span className="text-[10px] font-normal leading-none text-[#EDE9E0]/90">
                     {t('bsdOnboarding.availableNow')}
                   </span>
                 </div>
               </div>
             </div>
-            <div className="flex flex-col items-end gap-[7px]">
-              <span className="text-[14px] text-white/[0.55]" style={{ fontFamily: 'Inter, sans-serif' }}>
-                {t('bsdOnboarding.step', { current: step, total: STEPS })}
-              </span>
-              <div className="flex gap-[6px]" role="progressbar" aria-valuenow={step} aria-valuemin={1} aria-valuemax={STEPS}>
-                {Array.from({ length: STEPS }, (_, i) => (
-                  <span
-                    key={i}
-                    className={cx(
-                      'h-[3px] w-5 rounded-[50px]',
-                      i < step ? 'bg-[#C8953A]' : 'bg-[#424345]',
-                    )}
-                  />
-                ))}
+            <div className="flex shrink-0 items-center gap-5 md:gap-8">
+              <div className="flex flex-col items-end gap-[7px]">
+                <span className="text-[14px] text-white/[0.55]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  {t('bsdOnboarding.step', { current: step, total: STEPS })}
+                </span>
+                <div
+                  className="flex gap-[6px]"
+                  role="progressbar"
+                  aria-valuenow={step}
+                  aria-valuemin={1}
+                  aria-valuemax={STEPS}
+                  aria-label={t('bsdOnboarding.step', { current: step, total: STEPS })}
+                >
+                  {Array.from({ length: STEPS }, (_, i) => (
+                    <span
+                      key={i}
+                      className={cx(
+                        'h-[3px] w-5 rounded-[50px]',
+                        i < step ? 'bg-[#C8953A]' : 'bg-[#424345]',
+                      )}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div className="hidden md:block">
+                <LanguageSwitcher variant="dark" />
               </div>
             </div>
           </header>
@@ -502,7 +530,7 @@ export function BsdOnboardingFlow({
               >
                 {msg.role === 'coach' ? (
                   <>
-                    <CoachRow label={coachLabel} />
+                    {msg.showCoachMeta !== false ? <CoachRow label={coachLabel} /> : null}
                     <ChatBubble role="coach">{msg.text}</ChatBubble>
                   </>
                 ) : (
@@ -639,7 +667,7 @@ export function BsdOnboardingFlow({
                   className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[7px] bg-[#1E293B] disabled:opacity-40"
                   aria-label={t('bsdOnboarding.sendAria')}
                 >
-                  <ArrowRight className="h-[13px] w-[13px] text-white" strokeWidth={2} />
+                  <Send className="h-[13px] w-[13px] text-white" strokeWidth={2} />
                 </button>
               </div>
             </footer>
