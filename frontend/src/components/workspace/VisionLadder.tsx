@@ -43,21 +43,21 @@ const JOURNEY_TITLE_SERIF = "'Playfair Display', Georgia, 'Times New Roman', ser
 
 function JourneyProgressRing({ pct, fraction }: { pct: number; fraction: string }) {
   const gradId = useId().replace(/:/g, '');
-  const r = 42;
+  const r = 31;
   const c = 2 * Math.PI * r;
   const clamped = Math.min(100, Math.max(0, pct));
   const offset = c - (clamped / 100) * c;
   return (
-    <div className="relative h-[112px] w-[112px] shrink-0" aria-hidden>
+    <div className="relative h-[76px] w-[76px] shrink-0" aria-hidden>
       <svg className="h-full w-full -rotate-90" viewBox="0 0 100 100">
-        <circle cx="50" cy="50" r={r} fill="none" stroke="rgba(45,55,72,0.95)" strokeWidth="6" />
+        <circle cx="50" cy="50" r={r} fill="none" stroke="rgba(45,55,72,0.95)" strokeWidth="5" />
         <circle
           cx="50"
           cy="50"
           r={r}
           fill="none"
           stroke={`url(#vision-ladder-ring-gold-${gradId})`}
-          strokeWidth="6"
+          strokeWidth="5"
           strokeLinecap="round"
           strokeDasharray={c}
           strokeDashoffset={offset}
@@ -72,7 +72,7 @@ function JourneyProgressRing({ pct, fraction }: { pct: number; fraction: string 
       </svg>
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
         <span
-          className="text-[19px] font-semibold tracking-tight text-white tabular-nums"
+          className="text-[14px] font-semibold tracking-tight text-white tabular-nums"
           style={{ fontFamily: JOURNEY_TITLE_SERIF }}
         >
           {fraction}
@@ -239,27 +239,32 @@ export const VisionLadder = ({
       className="workspace-ladder flex h-full min-w-0 w-full max-w-full flex-col overflow-x-hidden bg-[#1e293b]"
       dir={isRTL ? 'rtl' : 'ltr'}
     >
-      {/* כותרת עליונה */}
-      <header className="flex-shrink-0 overflow-x-hidden border-b border-white/[0.06] px-5 pb-5 pt-7">
+      {/* כותרת + שלבי האימון + כרטיס התקדמות קומפקטי */}
+      <header className="flex-shrink-0 overflow-x-hidden border-b border-white/[0.06] px-5 pb-4 pt-6">
         <h2
           className="text-[1.5rem] font-semibold leading-tight tracking-[0.02em] text-white sm:text-[1.65rem]"
           style={{ fontFamily: isRTL ? WORKSPACE_CHAT_FONT : JOURNEY_TITLE_SERIF }}
         >
           {t('ladder.journeyTitle')}
         </h2>
+        <p
+          className="mt-3 text-[11px] font-bold uppercase tracking-[0.16em] text-[#e8c066]"
+          style={{ fontFamily: WORKSPACE_CHAT_FONT }}
+        >
+          {t('ladder.journeyStages')}
+        </p>
 
-        {/* כרטיס פיזית ההתקדמות */}
-        <div className="mt-5 rounded-2xl border border-white/[0.07] bg-[#252f3f] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
-          <div className={`flex items-start gap-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
+        <div className="mt-3 rounded-xl border border-white/[0.07] bg-[#252f3f] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+          <div className={`flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
             <JourneyProgressRing pct={progressPct} fraction={`${stageOrdinal}/${totalStages}`} />
-            <div className="min-w-0 flex-1 pt-1">
+            <div className="min-w-0 flex-1">
               <p
-                className="text-[17px] font-bold leading-snug text-[#fcefb6]"
+                className="text-[15px] font-bold leading-snug text-[#fcefb6]"
                 style={{ fontFamily: WORKSPACE_CHAT_FONT }}
               >
                 {t(`ladder.${activePhaseKey}`)}
               </p>
-              <p className="mt-3 font-semibold text-[#e2e8f0] text-[13px] leading-snug" style={{ fontFamily: WORKSPACE_CHAT_FONT }}>
+              <p className="mt-1.5 font-semibold text-[#e2e8f0] text-[12px] leading-snug" style={{ fontFamily: WORKSPACE_CHAT_FONT }}>
                 {t('ladder.progressPct', { pct: progressPct })}
               </p>
             </div>
@@ -267,17 +272,10 @@ export const VisionLadder = ({
         </div>
       </header>
 
-      {/* סולם שלבים מחובר בקו אנכי */}
-      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden px-5 pb-6 pt-5">
-        <p
-          className="mb-4 flex-shrink-0 text-[11px] font-bold uppercase tracking-[0.16em] text-[#e8c066]"
-          style={{ fontFamily: WORKSPACE_CHAT_FONT }}
-        >
-          {t('ladder.journeyStages')}
-        </p>
-
+      {/* סולם שלבים */}
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden px-5 pb-6 pt-3">
         <div
-          className="pointer-events-none absolute bottom-6 top-[3.35rem] w-px bg-gradient-to-b from-white/12 via-white/18 to-white/10"
+          className="pointer-events-none absolute bottom-6 top-4 w-px bg-gradient-to-b from-white/12 via-white/18 to-white/10"
           style={{ insetInlineStart: '2.625rem' }}
           aria-hidden
         />
