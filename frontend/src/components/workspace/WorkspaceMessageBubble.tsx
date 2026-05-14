@@ -66,14 +66,23 @@ export const WorkspaceMessageBubble = ({ message, animateTyping = false, dir = '
   const contentToRender =
     !isUser && !showPlainTyping ? emphasizeBsdCoachTerms(fullContent, i18n.language) : rawContent;
 
+  /**
+   * Physical placement in the LTR scroll column: Hebrew keeps user left / coach right;
+   * English mirrors typical messengers (user right / coach left).
+   * Sharp corner faces that outer edge (small radius on top-left or top-right).
+   */
+  const sharpCornerOnRight = (!isUser && isHebrewChat) || (isUser && !isHebrewChat);
+  const ROUND = 18;
+  const SHARP = 4;
+
   const bubbleChrome: CSSProperties = {
     background: '#FFFFFF',
     border: '1px solid #e8e0cc',
     boxShadow: '0px 1px 4px rgba(10, 10, 10, 0.06)',
-    borderTopLeftRadius: 4,
-    borderTopRightRadius: 18,
-    borderBottomRightRadius: 18,
-    borderBottomLeftRadius: 18,
+    borderTopLeftRadius: sharpCornerOnRight ? ROUND : SHARP,
+    borderTopRightRadius: sharpCornerOnRight ? SHARP : ROUND,
+    borderBottomRightRadius: ROUND,
+    borderBottomLeftRadius: ROUND,
   };
 
   const bubbleInner = (
