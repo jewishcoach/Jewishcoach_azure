@@ -180,7 +180,15 @@ function LeftDecorPanel({
 }) {
   return (
     <div className="relative flex min-h-[min(280px,38vh)] w-full shrink-0 flex-col overflow-hidden bg-[#1C2636] md:min-h-0 md:w-[min(520px,36.1vw)] md:min-w-[300px] md:max-w-[520px]">
-      {/* Decorative SVG omitted here — exported asset embedded duplicate EN/HE marketing text. */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <img
+          src="/bsd-onboarding-left-decor.svg"
+          alt=""
+          className="absolute left-1/2 top-[10%] h-[72%] w-[min(104%,520px)] max-w-none -translate-x-1/2 select-none object-contain"
+          draggable={false}
+          aria-hidden
+        />
+      </div>
       <div className="relative z-10 flex min-h-0 flex-1 flex-col px-6 pb-8 pt-8 md:px-10 md:pb-10 md:pt-10">
         <div className="mt-auto flex flex-col items-center gap-3 px-2 pb-2 text-center md:pb-10">
           <h2

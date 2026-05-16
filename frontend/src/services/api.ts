@@ -30,6 +30,35 @@ export function normalizeIntakeLanguage(lang: string | undefined): string {
   return primary.slice(0, 16);
 }
 
+/** Stable JSON body for /onboarding/intake/* — avoids null/odd shapes that trigger FastAPI 422. */
+export function buildOnboardingIntakeBody(body: {
+  language: string;
+  messages: Array<{ role: 'user' | 'assistant'; content?: string | null }>;
+  seed_display_name?: string | null;
+}) {
+  const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+  if (Array.isArray(body.messages)) {
+    for (const m of body.messages) {
+      if (!m || typeof m !== 'object') continue;
+      const role: 'user' | 'assistant' = m.role === 'assistant' ? 'assistant' : 'user';
+      const content =
+        typeof m.content === 'string' ? m.content : String(m.content ?? '');
+      messages.push({ role, content });
+    }
+  }
+  const payload: {
+    language: string;
+    messages: Array<{ role: 'user' | 'assistant'; content: string }>;
+    seed_display_name?: string;
+  } = {
+    language: normalizeIntakeLanguage(body.language),
+    messages,
+  };
+  const seed = body.seed_display_name?.trim();
+  if (seed) payload.seed_display_name = seed;
+  return payload;
+}
+
 /**
  * Starlette/FastAPI return 400 for path params that are not valid integers
  * (e.g. /chat/conversations/undefined/insights/safe). Normalize before any request.
@@ -290,11 +319,7 @@ class ApiClient {
       experience?: string | null;
       pace?: string | null;
       intake_complete: boolean;
-    }>('/onboarding/intake/turn', {
-      language: normalizeIntakeLanguage(body.language),
-      messages: body.messages,
-      seed_display_name: body.seed_display_name?.trim() || undefined,
-    });
+    }>('/onboarding/intake/turn', buildOnboardingIntakeBody(body));
     return response.data;
   }
 
@@ -323,6 +348,8 @@ class ApiClient {
     const base = String(rawBase).replace(/\/+$/, '');
     const url = `${base}/onboarding/intake/stream`;
 
+    const payload = buildOnboardingIntakeBody(body);
+
     const response = await fetch(url, {
       method: 'POST',
       credentials: 'include',
@@ -331,16 +358,32 @@ class ApiClient {
         Accept: 'text/event-stream',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({
-        language: normalizeIntakeLanguage(body.language),
-        messages: body.messages,
-        seed_display_name: body.seed_display_name?.trim() || undefined,
-      }),
+      body: JSON.stringify(payload),
       signal: handlers.signal,
     });
 
     if (!response.ok) {
-      const errText = await response.text().catch(() => '');
+      let errText = '';
+      try {
+        errText = await response.text();
+      } catch {
+        errText = '';
+      }
+      if (response.status === 422 && errText) {
+        try {
+          const parsed = JSON.parse(errText) as { detail?: unknown };
+          const detail = parsed.detail;
+          const msg =
+            Array.isArray(detail) && detail[0] && typeof detail[0] === 'object'
+              ? JSON.stringify(detail[0])
+              : typeof detail === 'string'
+                ? detail
+                : errText;
+          throw new Error(`intake_validation: ${msg}`);
+        } catch (e) {
+          if (e instanceof Error && e.message.startsWith('intake_validation:')) throw e;
+        }
+      }
       throw new Error(errText || `HTTP ${response.status}`);
     }
 

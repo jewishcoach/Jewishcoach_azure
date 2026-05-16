@@ -14,7 +14,7 @@ from typing import Any, AsyncIterator, Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from ..bsd.llm import get_azure_chat_llm_4o_mini
 from ..dependencies import get_current_user
@@ -36,12 +36,17 @@ _PACES = frozenset({"gentle", "weekly", "immersive", "focused"})
 
 
 class OnboardingChatMessage(BaseModel):
+    """One transcript line; permissive defaults avoid 422 when clients omit empty strings."""
+
+    model_config = ConfigDict(extra="ignore")
+
     role: Literal["user", "assistant"]
-    content: str = Field(..., max_length=MAX_CHAT_MESSAGE_CHARS)
+    content: str = Field(default="", max_length=MAX_CHAT_MESSAGE_CHARS)
 
 
 class OnboardingIntakeRequest(BaseModel):
-    language: str = Field(default="he", max_length=16)
+    # Wide cap pre-coercion — model_validator truncates for the LLM (primary tag ≤16 chars).
+    language: str = Field(default="he", max_length=256)
     messages: list[OnboardingChatMessage] = Field(default_factory=list, max_length=48)
     seed_display_name: Optional[str] = Field(default=None, max_length=120)
 
