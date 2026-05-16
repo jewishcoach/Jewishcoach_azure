@@ -14,7 +14,7 @@ from typing import Any, AsyncIterator, Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, model_validator
 
 from ..bsd.llm import get_azure_chat_llm_4o_mini
 from ..dependencies import get_current_user
@@ -45,29 +45,63 @@ class OnboardingIntakeRequest(BaseModel):
     messages: list[OnboardingChatMessage] = Field(default_factory=list, max_length=48)
     seed_display_name: Optional[str] = Field(default=None, max_length=120)
 
-    @field_validator("language", mode="before")
+    @model_validator(mode="before")
     @classmethod
-    def normalize_language(cls, v: object) -> str:
-        """Primary subtag only — full BCP-47 strings often exceed max_length and caused 422."""
-        if v is None:
-            return "he"
-        s = str(v).strip()
-        if not s:
-            return "he"
-        primary = s.replace("_", "-").split("-")[0].lower()
-        if not primary:
-            return "he"
-        if primary == "iw":
-            return "he"
-        return primary[:16]
+    def coerce_raw_body(cls, data: Any) -> Any:
+        """Avoid 422 from minor client/schema drift (null content, wrong role casing, odd language types)."""
+        if not isinstance(data, dict):
+            return {"language": "he", "messages": [], "seed_display_name": None}
 
-    @field_validator("seed_display_name", mode="before")
-    @classmethod
-    def truncate_seed_display_name(cls, v: object) -> Optional[str]:
-        if v is None:
-            return None
-        s = str(v).strip()
-        return s[:120] if s else None
+        out = dict(data)
+
+        lang_raw = out.get("language", "he")
+        if lang_raw is None:
+            primary = "he"
+        else:
+            s = str(lang_raw).strip()
+            if not s:
+                primary = "he"
+            else:
+                primary = s.replace("_", "-").split("-")[0].lower()
+                if not primary:
+                    primary = "he"
+                elif primary == "iw":
+                    primary = "he"
+        out["language"] = primary[:16]
+
+        seed = out.get("seed_display_name")
+        if seed is None:
+            out["seed_display_name"] = None
+        else:
+            st = str(seed).strip()
+            out["seed_display_name"] = st[:120] if st else None
+
+        raw_msgs = out.get("messages")
+        if raw_msgs is None:
+            raw_msgs = []
+        if not isinstance(raw_msgs, list):
+            raw_msgs = []
+
+        fixed: list[dict[str, Any]] = []
+        for item in raw_msgs[:48]:
+            if not isinstance(item, dict):
+                continue
+            role = item.get("role")
+            if isinstance(role, str):
+                role = role.strip().lower()
+            if role not in ("user", "assistant"):
+                continue
+            content = item.get("content")
+            if content is None:
+                content = ""
+            elif not isinstance(content, str):
+                content = str(content)
+            if len(content) > MAX_CHAT_MESSAGE_CHARS:
+                content = content[:MAX_CHAT_MESSAGE_CHARS]
+            fixed.append({"role": role, "content": content})
+        out["messages"] = fixed
+
+        return out
 
 
 class OnboardingIntakeResponse(BaseModel):

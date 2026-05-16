@@ -78,7 +78,7 @@ function isPaceId(s: string): s is PaceId {
 function transcriptForApi(messages: ChatMsg[]) {
   return messages.map((m) => ({
     role: m.role === 'coach' ? ('assistant' as const) : ('user' as const),
-    content: m.text,
+    content: typeof m.text === 'string' ? m.text : '',
   }));
 }
 
