@@ -26,7 +26,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { WORKSPACE_CHAT_FONT } from '../constants/workspaceFonts';
-import { apiClient } from '../services/api';
+import { apiClient, type OnboardingKnownSlots } from '../services/api';
 
 type Props = {
   onComplete: () => void;
@@ -327,6 +327,33 @@ export function BsdOnboardingFlow({
   const applyExtractedRef = useRef(applyExtracted);
   applyExtractedRef.current = applyExtracted;
 
+  const buildKnownSlotsPayload = useCallback(
+    (
+      hint?: Partial<{
+        gender: GenderId;
+        goal: GoalId;
+        experience: ExpId;
+        pace: PaceId;
+      }>,
+    ): OnboardingKnownSlots | undefined => {
+      const name =
+        preferredName.trim() ||
+        (typeof initialDisplayName === 'string' ? initialDisplayName.trim() : '');
+      const g = hint?.gender ?? gender ?? undefined;
+      const goal = hint?.goal ?? goalId ?? undefined;
+      const exp = hint?.experience ?? expId ?? undefined;
+      const pace = hint?.pace ?? paceId ?? undefined;
+      const out: OnboardingKnownSlots = {};
+      if (name) out.display_name = name.slice(0, 80);
+      if (g) out.gender = g;
+      if (goal) out.goal = goal;
+      if (exp) out.experience = exp;
+      if (pace) out.pace = pace;
+      return Object.keys(out).length ? out : undefined;
+    },
+    [preferredName, initialDisplayName, gender, goalId, expId, paceId],
+  );
+
   /** Opening line via SSE — deps omit i18n.language/t so locale toggle mid-chat does not reset. */
   // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional narrow deps
   useEffect(() => {
@@ -343,6 +370,10 @@ export function BsdOnboardingFlow({
             language: i18n.language,
             messages: [],
             seed_display_name: initialDisplayName,
+            known_slots:
+              typeof initialDisplayName === 'string' && initialDisplayName.trim()
+                ? { display_name: initialDisplayName.trim().slice(0, 80) }
+                : undefined,
           },
           {
             onToken: (d) => {
@@ -395,7 +426,15 @@ export function BsdOnboardingFlow({
   const coachLabel = t('bsdOnboarding.coachLabel');
 
   const sendUserTurn = useCallback(
-    async (textOverride?: string) => {
+    async (
+      textOverride?: string,
+      slotHint?: Partial<{
+        gender: GenderId;
+        goal: GoalId;
+        experience: ExpId;
+        pace: PaceId;
+      }>,
+    ) => {
       const raw = (textOverride ?? input).trim();
       if (!raw || bootLoading || turnLoading || intakeComplete) return;
 
@@ -420,6 +459,7 @@ export function BsdOnboardingFlow({
             language: i18n.language,
             messages: transcriptForApi(historySnapshot),
             seed_display_name: initialDisplayName,
+            known_slots: buildKnownSlotsPayload(slotHint),
           },
           {
             onToken: (d) => {
@@ -461,7 +501,17 @@ export function BsdOnboardingFlow({
         setTurnLoading(false);
       }
     },
-    [applyExtracted, bootLoading, initialDisplayName, input, intakeComplete, i18n.language, t, turnLoading],
+    [
+      applyExtracted,
+      bootLoading,
+      buildKnownSlotsPayload,
+      initialDisplayName,
+      input,
+      intakeComplete,
+      i18n.language,
+      t,
+      turnLoading,
+    ],
   );
 
   const enterWorkspace = useCallback(async () => {
@@ -607,7 +657,7 @@ export function BsdOnboardingFlow({
                           label={t(`bsdOnboarding.gender.${id}`)}
                           selected={false}
                           disabled={false}
-                          onClick={() => void sendUserTurn(t(`bsdOnboarding.gender.${id}`))}
+                          onClick={() => void sendUserTurn(t(`bsdOnboarding.gender.${id}`), { gender: id })}
                         />
                       ))}
                     </div>
@@ -624,7 +674,7 @@ export function BsdOnboardingFlow({
                           label={t(`bsdOnboarding.goal.${id}`)}
                           selected={false}
                           disabled={false}
-                          onClick={() => void sendUserTurn(t(`bsdOnboarding.goal.${id}`))}
+                          onClick={() => void sendUserTurn(t(`bsdOnboarding.goal.${id}`), { goal: id })}
                         />
                       ))}
                     </div>
@@ -641,7 +691,7 @@ export function BsdOnboardingFlow({
                           label={t(`bsdOnboarding.exp.${id}`)}
                           selected={false}
                           disabled={false}
-                          onClick={() => void sendUserTurn(t(`bsdOnboarding.exp.${id}`))}
+                          onClick={() => void sendUserTurn(t(`bsdOnboarding.exp.${id}`), { experience: id })}
                         />
                       ))}
                     </div>
@@ -658,7 +708,7 @@ export function BsdOnboardingFlow({
                           label={t(`bsdOnboarding.pace.${id}`)}
                           selected={false}
                           disabled={false}
-                          onClick={() => void sendUserTurn(t(`bsdOnboarding.pace.${id}`))}
+                          onClick={() => void sendUserTurn(t(`bsdOnboarding.pace.${id}`), { pace: id })}
                         />
                       ))}
                     </div>

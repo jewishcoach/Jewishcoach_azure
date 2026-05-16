@@ -44,18 +44,31 @@ class OnboardingChatMessage(BaseModel):
     content: str = Field(default="", max_length=MAX_CHAT_MESSAGE_CHARS)
 
 
+class KnownOnboardingSlots(BaseModel):
+    """Selections already captured in the client UI — authoritative for merge + coach prompt."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    display_name: Optional[str] = Field(default=None, max_length=80)
+    gender: Optional[Literal["male", "female"]] = None
+    goal: Optional[str] = None
+    experience: Optional[str] = None
+    pace: Optional[str] = None
+
+
 class OnboardingIntakeRequest(BaseModel):
     # Wide cap pre-coercion — model_validator truncates for the LLM (primary tag ≤16 chars).
     language: str = Field(default="he", max_length=256)
     messages: list[OnboardingChatMessage] = Field(default_factory=list, max_length=48)
     seed_display_name: Optional[str] = Field(default=None, max_length=120)
+    known_slots: Optional[KnownOnboardingSlots] = Field(default=None)
 
     @model_validator(mode="before")
     @classmethod
     def coerce_raw_body(cls, data: Any) -> Any:
         """Avoid 422 from minor client/schema drift (null content, wrong role casing, odd language types)."""
         if not isinstance(data, dict):
-            return {"language": "he", "messages": [], "seed_display_name": None}
+            return {"language": "he", "messages": [], "seed_display_name": None, "known_slots": None}
 
         out = dict(data)
 
@@ -105,6 +118,22 @@ class OnboardingIntakeRequest(BaseModel):
                 content = content[:MAX_CHAT_MESSAGE_CHARS]
             fixed.append({"role": role, "content": content})
         out["messages"] = fixed
+
+        raw_known = out.get("known_slots")
+        if raw_known is None or raw_known == {}:
+            out["known_slots"] = None
+        elif isinstance(raw_known, dict):
+            nk = _normalize_slots(
+                raw_known.get("display_name"),
+                raw_known.get("gender"),
+                raw_known.get("goal"),
+                raw_known.get("experience"),
+                raw_known.get("pace"),
+            )
+            compact = {k: v for k, v in nk.items() if v is not None}
+            out["known_slots"] = compact if compact else None
+        else:
+            out["known_slots"] = None
 
         return out
 
@@ -194,7 +223,52 @@ def _slots_complete(slots: dict[str, Any]) -> bool:
     )
 
 
-def _build_reply_system_prompt(language: str, seed_display_name: Optional[str]) -> str:
+def _merge_known_into_slots(
+    extracted: dict[str, Any],
+    known: Optional[KnownOnboardingSlots],
+) -> dict[str, Any]:
+    """Client/UI selections win over model extraction when provided."""
+    if known is None:
+        return extracted
+    kn = _normalize_slots(known.display_name, known.gender, known.goal, known.experience, known.pace)
+    out = dict(extracted)
+    for key in ("display_name", "gender", "goal", "experience", "pace"):
+        if kn.get(key) is not None:
+            out[key] = kn[key]
+    return out
+
+
+def _known_slots_prompt_fragment(known: Optional[KnownOnboardingSlots]) -> str:
+    if known is None:
+        return ""
+    kn = _normalize_slots(known.display_name, known.gender, known.goal, known.experience, known.pace)
+    lines: list[str] = []
+    if kn["display_name"]:
+        lines.append(f"- Name to use: {kn['display_name']}")
+    if kn["gender"] in ("male", "female"):
+        lines.append(f"- Gender: {kn['gender']}")
+    if kn["goal"]:
+        lines.append(f"- Goal (internal): {kn['goal']}")
+    if kn["experience"]:
+        lines.append(f"- Experience (internal): {kn['experience']}")
+    if kn["pace"]:
+        lines.append(f"- Pace (internal): {kn['pace']}")
+    if not lines:
+        return ""
+    return (
+        "\nThe product UI already recorded the items below (internal codes shown for you only). "
+        "Do not ask those questions again unless the user clearly contradicts them. "
+        "Speak naturally — never read codes aloud. Continue only with topics still missing.\n"
+        + "\n".join(lines)
+        + "\n"
+    )
+
+
+def _build_reply_system_prompt(
+    language: str,
+    seed_display_name: Optional[str],
+    known_slots: Optional[KnownOnboardingSlots] = None,
+) -> str:
     lang = (language or "he").lower()
     primary = "Hebrew" if lang.startswith("he") else "English"
     hint = ""
@@ -203,9 +277,10 @@ def _build_reply_system_prompt(language: str, seed_display_name: Optional[str]) 
             f"\nA signup hint suggests this name (confirm naturally, user may correct): "
             f"{seed_display_name.strip()[:80]}\n"
         )
+    known_frag = _known_slots_prompt_fragment(known_slots)
     return f"""You are the BSD Jewish Coach intake assistant — warm, concise, respectful.
 Write ONLY in {primary} (the user's locale).
-
+{known_frag}{hint}
 Have a SHORT natural conversation (often 4–8 user turns) to learn:
 1) What to call them (display name)
 2) Gender for Hebrew grammar — politely ask; only male or female in our product
@@ -214,11 +289,11 @@ Have a SHORT natural conversation (often 4–8 user turns) to learn:
 5) Preferred pacing (gentle, weekly rhythm, deeper dives, short focused bursts)
 
 Rules:
+- When a UI context block appears, do not re-ask those facts unless the user clearly contradicts them.
 - One focus per message when possible; if they answer several things at once, acknowledge warmly.
 - Never output JSON, bullet lists of internal codes, or markup — natural prose only.
 - Keep replies brief (usually 1–3 short paragraphs).
 - When you already know everything needed, warmly recap and invite them to continue into the app.
-{hint}
 """
 
 
@@ -261,19 +336,48 @@ def _sanitize_transcript(body: OnboardingIntakeRequest) -> list[OnboardingChatMe
     return msgs
 
 
-def _lc_messages_for_reply(language: str, seed: Optional[str], msgs: list[OnboardingChatMessage]) -> list:
-    sys = _build_reply_system_prompt(language, seed)
+def _lc_messages_for_reply(
+    language: str,
+    seed: Optional[str],
+    msgs: list[OnboardingChatMessage],
+    known_slots: Optional[KnownOnboardingSlots] = None,
+) -> list:
+    sys = _build_reply_system_prompt(language, seed, known_slots)
     lc_messages: list = [SystemMessage(content=sys)]
     lc_messages.extend(_history_to_lc(msgs))
     if not msgs:
-        lc_messages.append(
-            HumanMessage(
-                content=(
-                    "[Session start — no user message yet.] "
-                    "Send only your opening greeting and ask how they wish to be called."
+        name_from_known = (
+            _normalize_slots(
+                known_slots.display_name,
+                None,
+                None,
+                None,
+                None,
+            ).get("display_name")
+            if known_slots
+            else None
+        )
+
+        has_name_hint = bool(name_from_known or (seed and str(seed).strip()))
+        if has_name_hint:
+            lc_messages.append(
+                HumanMessage(
+                    content=(
+                        "[Session start — no user message yet.] "
+                        "Brief opening greeting. A name may already be known from signup or the UI — confirm it warmly "
+                        "instead of asking from scratch. Then continue only with intake topics still missing."
+                    )
                 )
             )
-        )
+        else:
+            lc_messages.append(
+                HumanMessage(
+                    content=(
+                        "[Session start — no user message yet.] "
+                        "Send only your opening greeting and ask how they wish to be called."
+                    )
+                )
+            )
     return lc_messages
 
 
@@ -359,13 +463,14 @@ async def onboarding_intake_stream(
     async def event_gen() -> AsyncIterator[str]:
         try:
             msgs = _sanitize_transcript(body)
-            lc_messages = _lc_messages_for_reply(body.language, body.seed_display_name, msgs)
+            lc_messages = _lc_messages_for_reply(body.language, body.seed_display_name, msgs, body.known_slots)
             full_reply = ""
             async for piece in _stream_reply_tokens(lc_messages):
                 full_reply += piece
                 yield f"data: {json.dumps({'content': piece})}\n\n"
 
             slots = await _extract_slots(msgs, full_reply)
+            slots = _merge_known_into_slots(slots, body.known_slots)
             intake_complete = _slots_complete(slots)
             payload = {
                 "done": True,
@@ -409,7 +514,7 @@ async def onboarding_intake_turn(
     body = await _load_onboarding_intake_request(request)
 
     msgs = _sanitize_transcript(body)
-    sys = _build_reply_system_prompt(body.language, body.seed_display_name)
+    sys = _build_reply_system_prompt(body.language, body.seed_display_name, body.known_slots)
     lc_messages: list = [SystemMessage(content=sys)]
     lc_messages.extend(_history_to_lc(msgs))
 
@@ -435,6 +540,17 @@ async def onboarding_intake_turn(
             logger.warning("[onboarding_intake] structured parse missing raw=%s", packed.get("raw"))
             raise HTTPException(status_code=502, detail="Intake model returned no structured payload")
         slots = _sanitize_enums_turn(parsed)
+        merged = _merge_known_into_slots(
+            {
+                "display_name": slots["display_name"],
+                "gender": slots["gender"],
+                "goal": slots["goal"],
+                "experience": slots["experience"],
+                "pace": slots["pace"],
+            },
+            body.known_slots,
+        )
+        slots.update(merged)
         intake_complete = _slots_complete(slots)
         return OnboardingIntakeResponse(
             assistant_message=slots["assistant_message"],

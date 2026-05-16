@@ -30,11 +30,20 @@ export function normalizeIntakeLanguage(lang: string | undefined): string {
   return primary.slice(0, 16);
 }
 
+export type OnboardingKnownSlots = {
+  display_name?: string;
+  gender?: 'male' | 'female';
+  goal?: string;
+  experience?: string;
+  pace?: string;
+};
+
 /** Stable JSON body for /onboarding/intake/* — avoids null/odd shapes that trigger FastAPI 422. */
 export function buildOnboardingIntakeBody(body: {
   language: string;
   messages: Array<{ role: 'user' | 'assistant'; content?: string | null }>;
   seed_display_name?: string | null;
+  known_slots?: OnboardingKnownSlots | null;
 }) {
   const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [];
   if (Array.isArray(body.messages)) {
@@ -50,12 +59,27 @@ export function buildOnboardingIntakeBody(body: {
     language: string;
     messages: Array<{ role: 'user' | 'assistant'; content: string }>;
     seed_display_name?: string;
+    known_slots?: OnboardingKnownSlots;
   } = {
     language: normalizeIntakeLanguage(body.language),
     messages,
   };
   const seed = body.seed_display_name?.trim();
   if (seed) payload.seed_display_name = seed;
+
+  const ks = body.known_slots;
+  if (ks && typeof ks === 'object') {
+    const compact: OnboardingKnownSlots = {};
+    const dn = ks.display_name?.trim();
+    if (dn) compact.display_name = dn.slice(0, 80);
+    if (ks.gender === 'male' || ks.gender === 'female') compact.gender = ks.gender;
+    for (const key of ['goal', 'experience', 'pace'] as const) {
+      const v = ks[key]?.trim();
+      if (v) compact[key] = v;
+    }
+    if (Object.keys(compact).length) payload.known_slots = compact;
+  }
+
   return payload;
 }
 
@@ -310,6 +334,7 @@ class ApiClient {
     language: string;
     messages: Array<{ role: 'user' | 'assistant'; content: string }>;
     seed_display_name?: string | null;
+    known_slots?: OnboardingKnownSlots | null;
   }) {
     const response = await this.client.post<{
       assistant_message: string;
@@ -329,6 +354,7 @@ class ApiClient {
       language: string;
       messages: Array<{ role: 'user' | 'assistant'; content: string }>;
       seed_display_name?: string | null;
+      known_slots?: OnboardingKnownSlots | null;
     },
     handlers: {
       onToken: (delta: string) => void;
