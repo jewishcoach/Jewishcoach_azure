@@ -21,6 +21,15 @@ function relativeUrlFromConfig(url: string | undefined): string | undefined {
   }
 }
 
+/** i18next / browser locales can be full BCP-47 strings; backend accepts a short primary subtag. */
+export function normalizeIntakeLanguage(lang: string | undefined): string {
+  const raw = (lang ?? 'he').trim();
+  if (!raw) return 'he';
+  const primary = raw.replace(/_/g, '-').split('-')[0]?.toLowerCase() ?? 'he';
+  if (primary === 'iw') return 'he';
+  return primary.slice(0, 16);
+}
+
 /**
  * Starlette/FastAPI return 400 for path params that are not valid integers
  * (e.g. /chat/conversations/undefined/insights/safe). Normalize before any request.
@@ -282,7 +291,7 @@ class ApiClient {
       pace?: string | null;
       intake_complete: boolean;
     }>('/onboarding/intake/turn', {
-      language: body.language,
+      language: normalizeIntakeLanguage(body.language),
       messages: body.messages,
       seed_display_name: body.seed_display_name?.trim() || undefined,
     });
@@ -323,7 +332,7 @@ class ApiClient {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify({
-        language: body.language,
+        language: normalizeIntakeLanguage(body.language),
         messages: body.messages,
         seed_display_name: body.seed_display_name?.trim() || undefined,
       }),

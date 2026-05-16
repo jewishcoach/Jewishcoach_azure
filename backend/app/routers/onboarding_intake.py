@@ -14,7 +14,7 @@ from typing import Any, AsyncIterator, Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from ..bsd.llm import get_azure_chat_llm_4o_mini
 from ..dependencies import get_current_user
@@ -44,6 +44,30 @@ class OnboardingIntakeRequest(BaseModel):
     language: str = Field(default="he", max_length=16)
     messages: list[OnboardingChatMessage] = Field(default_factory=list, max_length=48)
     seed_display_name: Optional[str] = Field(default=None, max_length=120)
+
+    @field_validator("language", mode="before")
+    @classmethod
+    def normalize_language(cls, v: object) -> str:
+        """Primary subtag only — full BCP-47 strings often exceed max_length and caused 422."""
+        if v is None:
+            return "he"
+        s = str(v).strip()
+        if not s:
+            return "he"
+        primary = s.replace("_", "-").split("-")[0].lower()
+        if not primary:
+            return "he"
+        if primary == "iw":
+            return "he"
+        return primary[:16]
+
+    @field_validator("seed_display_name", mode="before")
+    @classmethod
+    def truncate_seed_display_name(cls, v: object) -> Optional[str]:
+        if v is None:
+            return None
+        s = str(v).strip()
+        return s[:120] if s else None
 
 
 class OnboardingIntakeResponse(BaseModel):
