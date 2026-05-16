@@ -14,7 +14,7 @@ from typing import Any, AsyncIterator, Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from ..bsd.llm import get_azure_chat_llm_4o_mini
 from ..dependencies import get_current_user
@@ -322,15 +322,39 @@ async def _stream_reply_tokens(lc_messages: list) -> AsyncIterator[str]:
             yield piece
 
 
+async def _load_onboarding_intake_request(request: Request) -> OnboardingIntakeRequest:
+    """
+    Parse POST JSON without FastAPI's automatic body model injection.
+
+    Some proxies/clients still trigger Starlette/FastAPI RequestValidationError (HTTP 422)
+    before our route runs; reading and validating manually avoids that entirely.
+    """
+    raw = await request.body()
+    if not raw or not raw.strip():
+        data: dict[str, Any] = {}
+    else:
+        try:
+            parsed = json.loads(raw.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
+            logger.warning("[onboarding_intake] invalid JSON body: %s", type(exc).__name__)
+            parsed = {}
+        data = parsed if isinstance(parsed, dict) else {}
+    try:
+        return OnboardingIntakeRequest.model_validate(data)
+    except ValidationError as exc:
+        logger.warning("[onboarding_intake] body coerce failed, using defaults: %s", exc.errors()[:5])
+        return OnboardingIntakeRequest.model_validate({})
+
+
 @router.post("/intake/stream")
 @limiter.limit("40/minute")
 async def onboarding_intake_stream(
     request: Request,
-    body: OnboardingIntakeRequest,
     current_user: User = Depends(get_current_user),
 ):
     """SSE stream: many `data: {\"content\":\"...\"}` lines, then `data: {\"done\":true,...slots}`"""
     _ = current_user
+    body = await _load_onboarding_intake_request(request)
 
     async def event_gen() -> AsyncIterator[str]:
         try:
@@ -379,10 +403,10 @@ async def onboarding_intake_stream(
 @limiter.limit("40/minute")
 async def onboarding_intake_turn(
     request: Request,
-    body: OnboardingIntakeRequest,
     current_user: User = Depends(get_current_user),
 ):
     _ = current_user
+    body = await _load_onboarding_intake_request(request)
 
     msgs = _sanitize_transcript(body)
     sys = _build_reply_system_prompt(body.language, body.seed_display_name)
