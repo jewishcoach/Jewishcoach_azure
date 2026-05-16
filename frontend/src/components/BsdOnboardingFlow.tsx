@@ -179,19 +179,10 @@ function LeftDecorPanel({
   subtitle: string;
 }) {
   return (
-    <div className="relative hidden min-h-0 w-full flex-shrink-0 flex-col overflow-hidden bg-[#1C2636] md:flex md:w-[min(520px,36.1vw)] md:min-w-[300px] md:max-w-[520px]">
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <img
-          src="/bsd-onboarding-left-panel.svg"
-          alt=""
-          className="absolute left-1/2 top-[10%] h-[72%] w-[min(104%,520px)] max-w-none -translate-x-1/2 object-contain select-none"
-          draggable={false}
-          aria-hidden
-        />
-      </div>
-
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col px-10 pb-10 pt-10">
-        <div className="mt-auto flex flex-col items-center gap-3 px-2 pb-4 text-center md:pb-10">
+    <div className="relative flex min-h-[min(280px,38vh)] w-full shrink-0 flex-col overflow-hidden bg-[#1C2636] md:min-h-0 md:w-[min(520px,36.1vw)] md:min-w-[300px] md:max-w-[520px]">
+      {/* Decorative SVG omitted here — exported asset embedded duplicate EN/HE marketing text. */}
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col px-6 pb-8 pt-8 md:px-10 md:pb-10 md:pt-10">
+        <div className="mt-auto flex flex-col items-center gap-3 px-2 pb-2 text-center md:pb-10">
           <h2
             className="max-w-[320px] font-semibold leading-[1.05] text-[#ede9e0]"
             style={{
@@ -500,30 +491,10 @@ export function BsdOnboardingFlow({
       </span>
 
       <header
-        className="relative z-[101] flex min-h-[66px] shrink-0 items-center justify-between border-b border-white/[0.07] bg-[#1e293b] p-4 shadow-[0_4px_18px_-2px_rgba(0,0,0,0.35)] backdrop-blur-[25px] md:p-6"
+        className="relative z-[101] flex min-h-[66px] shrink-0 items-center justify-end border-b border-white/[0.07] bg-[#1e293b] px-4 py-4 shadow-[0_4px_18px_-2px_rgba(0,0,0,0.35)] backdrop-blur-[25px] md:justify-between md:px-6"
         dir="ltr"
       >
-        <div className="flex min-w-0 flex-shrink-0 items-center gap-2 md:gap-[1.2em]">
-          <img
-            src="/bsd-logo.png"
-            alt="BSD אימון יהודי"
-            className="h-12 flex-shrink-0 object-contain md:h-[69px]"
-          />
-          <p
-            className="hidden truncate font-semibold tracking-[0.02em] text-[#f0f4fa] sm:block sm:text-lg md:text-[1.75rem]"
-            dir={isHe ? 'rtl' : 'ltr'}
-            style={{
-              fontFamily: isHe
-                ? '"Frank Ruhl Libre", "Heebo", serif'
-                : '"Cormorant Garamond", Georgia, "Times New Roman", serif',
-              lineHeight: 1.35,
-              fontWeight: 600,
-            }}
-          >
-            {t('app.headerTagline')}
-          </p>
-        </div>
-        <div className="min-w-2 flex-1" />
+        <div className="hidden flex-1 md:block" aria-hidden />
         <div className="flex flex-shrink-0 items-center gap-3 md:gap-4">
           <div className="flex flex-col items-end gap-[7px]">
             <span
