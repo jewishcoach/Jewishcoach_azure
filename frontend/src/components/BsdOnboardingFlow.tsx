@@ -27,6 +27,7 @@ import type { LucideIcon } from 'lucide-react';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { WORKSPACE_CHAT_FONT } from '../constants/workspaceFonts';
 import { apiClient, type OnboardingKnownSlots } from '../services/api';
+import { buildIntakeOpeningMessage } from '../utils/welcomeMessage';
 
 type Props = {
   onComplete: () => void;
@@ -324,9 +325,6 @@ export function BsdOnboardingFlow({
     [onDisplayNameUpdated],
   );
 
-  const applyExtractedRef = useRef(applyExtracted);
-  applyExtractedRef.current = applyExtracted;
-
   const buildKnownSlotsPayload = useCallback(
     (
       hint?: Partial<{
@@ -354,70 +352,34 @@ export function BsdOnboardingFlow({
     [preferredName, initialDisplayName, gender, goalId, expId, paceId],
   );
 
-  /** Opening line via SSE — deps omit i18n.language/t so locale toggle mid-chat does not reset. */
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional narrow deps
+  /** Static opening: same voice as workspace welcome, ends with “what’s your name?” — not the coaching-permission question. */
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      setBootLoading(true);
-      setStreamHasContent(false);
-      setIntakeError(null);
-      try {
-        let coachId: string | null = null;
-        let buf = '';
-        const res = await apiClient.onboardingIntakeStream(
-          {
-            language: i18n.language,
-            messages: [],
-            seed_display_name: initialDisplayName,
-            known_slots:
-              typeof initialDisplayName === 'string' && initialDisplayName.trim()
-                ? { display_name: initialDisplayName.trim().slice(0, 80) }
-                : undefined,
-          },
-          {
-            onToken: (d) => {
-              if (cancelled) return;
-              buf += d;
-              setStreamHasContent(true);
-              if (!coachId) {
-                coachId = uid();
-                setMessages([
-                  {
-                    id: coachId,
-                    role: 'coach',
-                    text: buf,
-                    showCoachMeta: false,
-                  },
-                ]);
-              } else {
-                setMessages((prev) =>
-                  prev.map((m) => (m.id === coachId ? { ...m, text: buf } : m)),
-                );
-              }
-            },
-          },
-        );
-        if (cancelled) return;
-        if (coachId && res.assistant_message && buf !== res.assistant_message) {
-          setMessages((prev) =>
-            prev.map((m) => (m.id === coachId ? { ...m, text: res.assistant_message } : m)),
-          );
-        }
-        await applyExtractedRef.current(res);
-      } catch {
-        if (!cancelled) {
-          setMessages([]);
-          setIntakeError(t('bsdOnboarding.intakeError'));
-        }
-      } finally {
-        if (!cancelled) setBootLoading(false);
+    setBootLoading(true);
+    setStreamHasContent(true);
+    setIntakeError(null);
+    try {
+      const text = buildIntakeOpeningMessage(initialDisplayName, null, i18n.language, t);
+      if (!cancelled) {
+        setMessages([{ id: uid(), role: 'coach', text, showCoachMeta: false }]);
       }
-    })();
+    } finally {
+      if (!cancelled) setBootLoading(false);
+    }
     return () => {
       cancelled = true;
     };
-  }, [bootKey, initialDisplayName]);
+  }, [bootKey, initialDisplayName, i18n.language, t]);
+
+  /** Keep opening copy in sync if user switches language before replying. */
+  useEffect(() => {
+    setMessages((prev) => {
+      if (prev.length !== 1 || prev[0].role !== 'coach') return prev;
+      const next = buildIntakeOpeningMessage(initialDisplayName, null, i18n.language, t);
+      if (prev[0].text === next) return prev;
+      return [{ ...prev[0], text: next }];
+    });
+  }, [initialDisplayName, i18n.language, t]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
