@@ -496,6 +496,13 @@ export function BsdOnboardingFlow({
     intakeComplete && preferredName.trim() && gender && goalId && expId && paceId;
   const showTyping = composerBusy && !streamHasContent;
   const showQuickCards = !intakeComplete && !composerBusy;
+  /** Opening asks for name first; gender cards are step 2 only after at least one user reply. */
+  const hasUserMessaged = messages.some((m) => m.role === 'user');
+  const showGenderPick = hasUserMessaged && !gender;
+  const showGoalPick = Boolean(gender && !goalId);
+  const showExpPick = Boolean(gender && goalId && !expId);
+  const showPacePick = Boolean(gender && goalId && expId && !paceId);
+  const showAnyQuickPick = showGenderPick || showGoalPick || showExpPick || showPacePick;
 
   return (
     <div
@@ -602,14 +609,16 @@ export function BsdOnboardingFlow({
 
             {showQuickCards ? (
               <div className="flex w-full flex-col gap-4 pb-2">
-                <p
-                  className="text-center text-[13px] text-[#4c5a70]/90 md:text-start"
-                  style={{ fontFamily: 'Inter, sans-serif' }}
-                >
-                  {t('bsdOnboarding.quickPickHint')}
-                </p>
+                {showAnyQuickPick ? (
+                  <p
+                    className="text-center text-[13px] text-[#4c5a70]/90 md:text-start"
+                    style={{ fontFamily: 'Inter, sans-serif' }}
+                  >
+                    {t('bsdOnboarding.quickPickHint')}
+                  </p>
+                ) : null}
 
-                {!gender ? (
+                {showGenderPick ? (
                   <div className="flex w-full justify-center md:justify-start">
                     <div className="grid w-full max-w-[432px] grid-cols-2 gap-3">
                       {GENDER_IDS.map((id) => (
@@ -626,7 +635,7 @@ export function BsdOnboardingFlow({
                   </div>
                 ) : null}
 
-                {gender && !goalId ? (
+                {showGoalPick ? (
                   <div className="flex w-full justify-center md:justify-start">
                     <div className="grid w-full max-w-[432px] grid-cols-2 gap-3">
                       {GOAL_IDS.map((id) => (
@@ -643,7 +652,7 @@ export function BsdOnboardingFlow({
                   </div>
                 ) : null}
 
-                {gender && goalId && !expId ? (
+                {showExpPick ? (
                   <div className="flex w-full justify-center md:justify-start">
                     <div className="grid w-full max-w-[432px] grid-cols-2 gap-3">
                       {EXP_IDS.map((id) => (
@@ -660,7 +669,7 @@ export function BsdOnboardingFlow({
                   </div>
                 ) : null}
 
-                {gender && goalId && expId && !paceId ? (
+                {showPacePick ? (
                   <div className="flex w-full justify-center md:justify-start">
                     <div className="grid w-full max-w-[432px] grid-cols-2 gap-3">
                       {PACE_IDS.map((id) => (
