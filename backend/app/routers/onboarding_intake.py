@@ -320,6 +320,28 @@ def _known_slots_prompt_fragment(known: Optional[KnownOnboardingSlots]) -> str:
     )
 
 
+def _known_slots_for_llm_prompt(
+    known: Optional[KnownOnboardingSlots],
+    msgs: list[OnboardingChatMessage],
+) -> Optional[KnownOnboardingSlots]:
+    """Merge client known_slots with transcript heuristics before the reply LLM runs."""
+    heur = _heuristic_slots_from_transcript(msgs)
+    empty = _normalize_slots(None, None, None)
+    merged = _apply_heuristic_fill(_merge_known_into_slots(empty, known), heur)
+    if not any(merged.get(k) for k in ("display_name", "gender", "topic")):
+        return known
+    try:
+        return KnownOnboardingSlots.model_validate(
+            {
+                "display_name": merged.get("display_name"),
+                "gender": merged.get("gender"),
+                "topic": merged.get("topic"),
+            }
+        )
+    except ValidationError:
+        return known
+
+
 def _turn_constraint_message(known_slots: Optional[KnownOnboardingSlots]) -> HumanMessage:
     """Per-turn reminder so the model does not re-ask slots already captured in UI/transcript."""
     kn = _normalize_slots(
@@ -599,7 +621,10 @@ async def onboarding_intake_stream(
     async def event_gen() -> AsyncIterator[str]:
         try:
             msgs = _sanitize_transcript(body)
-            lc_messages = _lc_messages_for_reply(body.language, body.seed_display_name, msgs, body.known_slots)
+            prompt_known = _known_slots_for_llm_prompt(body.known_slots, msgs)
+            lc_messages = _lc_messages_for_reply(
+                body.language, body.seed_display_name, msgs, prompt_known
+            )
             full_reply = ""
             async for piece in _stream_reply_tokens(lc_messages):
                 full_reply += piece
@@ -656,11 +681,12 @@ async def onboarding_intake_turn(
     body = await _load_onboarding_intake_request(request)
 
     msgs = _sanitize_transcript(body)
-    sys = _build_reply_system_prompt(body.language, body.seed_display_name, body.known_slots)
+    prompt_known = _known_slots_for_llm_prompt(body.known_slots, msgs)
+    sys = _build_reply_system_prompt(body.language, body.seed_display_name, prompt_known)
     lc_messages: list = [SystemMessage(content=sys)]
     lc_messages.extend(_history_to_lc(msgs))
     if msgs:
-        lc_messages.append(_turn_constraint_message(body.known_slots))
+        lc_messages.append(_turn_constraint_message(prompt_known))
     else:
         lc_messages.append(
             HumanMessage(
