@@ -183,8 +183,13 @@ def _trim_messages_for_extract(msgs: list[OnboardingChatMessage]) -> list[Onboar
     return msgs[-_EXTRACT_MAX_MESSAGES:]
 
 
+def _strip_intake_noise(raw: str) -> str:
+    return re.sub(r"[\u200e\u200f\u202a-\u202e\u2066-\u2069]", "", raw).strip()
+
+
 def _heuristic_display_name_from_line(raw: str) -> Optional[str]:
-    t = re.sub(r"[.!?…]+\s*$", "", raw.strip()).strip()
+    t = _strip_intake_noise(raw)
+    t = re.sub(r"[.!?…]+\s*$", "", t).strip()
     if len(t) < 2 or len(t) > 48 or "\n" in t or "\r" in t:
         return None
     if any(c in t for c in ".!?"):
@@ -210,7 +215,7 @@ def _heuristic_slots_from_transcript(msgs: list[OnboardingChatMessage]) -> dict[
     for m in reversed(msgs):
         if m.role != "user":
             continue
-        raw = m.content.strip()
+        raw = _strip_intake_noise(m.content.strip())
         if not raw:
             continue
         low = raw.lower()
@@ -431,6 +436,8 @@ Have a SHORT natural conversation (often about 3–6 user turns) to collect ONLY
 3) Which coaching-life focus fits best — the UI offers topic chips such as goals, parenting, relationships, career, wellbeing, personal growth (internal codes only — never say codes aloud)
 
 Rules:
+- The first assistant message in the transcript often already asks for their name (e.g. «מה שמך», «What's your name»).
+  If the user's next short reply looks like a name, that reply IS their display name — never ask again how to address them (no rephrased name question).
 - When a UI context block lists facts already recorded, do NOT ask those again unless the user clearly contradicts them.
 - If display_name is already recorded (UI block or prior answer to «what's your name?»), NEVER ask again how to call them —
   no Hebrew variants («איך לקרוא לך», «איך תרצה שנקרא», וכו'): greet once with that name and continue to the next missing slot.

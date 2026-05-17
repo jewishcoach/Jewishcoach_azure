@@ -75,8 +75,12 @@ function transcriptForApi(messages: ChatMsg[]) {
  * First reply after "what's your name?" — if it looks like a name, send as known_slots.display_name
  * so the coach drops a wrong opener placeholder (not for quick-pick goal phrases).
  */
+function stripIntakeNoise(text: string): string {
+  return text.replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, '').trim();
+}
+
 function guessDisplayNameFromFirstReply(text: string): string | undefined {
-  const trimmed = text.trim().replace(/(?:[.!?…])+$/u, '').trim();
+  const trimmed = stripIntakeNoise(text).replace(/(?:[.!?…])+$/u, '').trim();
   const t = trimmed;
   if (t.length < 2 || t.length > 48) return undefined;
   if (/[\n\r]/.test(t)) return undefined;
@@ -93,7 +97,7 @@ function guessDisplayNameFromFirstReply(text: string): string | undefined {
 
 /** When strict guess fails (e.g. 3-word name), still send a single-line reply as display_name on turn 1. */
 function looseNameFromFirstReply(text: string): string | undefined {
-  const t = text.trim().replace(/(?:[.!?…])+$/u, '').trim();
+  const t = stripIntakeNoise(text).replace(/(?:[.!?…])+$/u, '').trim();
   if (t.length < 2 || t.length > 48 || /[\n\r]/.test(t) || /\d/.test(t)) return undefined;
   const low = t.toLowerCase();
   if (low === 'זכר' || low === 'נקבה' || low === 'male' || low === 'female') return undefined;
@@ -102,6 +106,35 @@ function looseNameFromFirstReply(text: string): string | undefined {
   if (words.some((w) => w.length > 22)) return undefined;
   if (!/^[\p{L}\s\-'.]+$/u.test(t)) return undefined;
   return t.slice(0, 80);
+}
+
+/**
+ * display_name sent in known_slots must include the name from an earlier line when the latest user
+ * message is only a chip tap (gender/topic); React state alone can lag or miss edge cases.
+ */
+function displayNameForKnownSlotsPayload(
+  historySnapshot: ChatMsg[],
+  currentRaw: string,
+  hintUsed: boolean,
+): string | undefined {
+  const tryLine = (raw: string): string | undefined => {
+    const t = stripIntakeNoise(raw);
+    return guessDisplayNameFromFirstReply(t) ?? looseNameFromFirstReply(t);
+  };
+  if (!hintUsed) {
+    const cur = tryLine(currentRaw);
+    if (cur) return cur.slice(0, 80);
+  }
+  const users = historySnapshot.filter((m) => m.role === 'user');
+  const toScan = hintUsed ? users.slice(0, -1) : users;
+  for (const m of toScan) {
+    const stripped = stripIntakeNoise(m.text);
+    const low = stripped.toLowerCase();
+    if (low === 'זכר' || low === 'נקבה' || low === 'male' || low === 'female') continue;
+    const n = tryLine(m.text);
+    if (n) return n.slice(0, 80);
+  }
+  return undefined;
 }
 
 const TOPIC_ICONS: Record<TopicId, LucideIcon> = {
@@ -406,16 +439,11 @@ export function BsdOnboardingFlow({
 
       try {
         const apiMsgs = transcriptForApi(historySnapshot);
-        const userTurnCount = apiMsgs.filter((m) => m.role === 'user').length;
         const hintUsed = Boolean(slotHint && Object.keys(slotHint).length > 0);
-        const guessedName =
-          !hintUsed && userTurnCount === 1 ? guessDisplayNameFromFirstReply(raw) : undefined;
-        const looseName =
-          !hintUsed && userTurnCount === 1 && !guessedName ? looseNameFromFirstReply(raw) : undefined;
-        const nameExtra = guessedName ?? looseName;
+        const nameForSlots = displayNameForKnownSlotsPayload(historySnapshot, raw, hintUsed);
 
-        if (nameExtra) {
-          setPreferredName(nameExtra.slice(0, 80));
+        if (nameForSlots) {
+          setPreferredName(nameForSlots.slice(0, 80));
         }
 
         const res = await apiClient.onboardingIntakeStream(
@@ -424,7 +452,7 @@ export function BsdOnboardingFlow({
             messages: apiMsgs,
             known_slots: buildKnownSlotsPayload(
               slotHint,
-              nameExtra ? { display_name: nameExtra } : undefined,
+              nameForSlots ? { display_name: nameForSlots } : undefined,
             ),
           },
           {
