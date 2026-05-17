@@ -1,5 +1,8 @@
 name: Deploy Frontend to Azure Static Web Apps
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   push:
     branches:
@@ -15,14 +18,14 @@ jobs:
     name: Build and Deploy
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         submodules: true
     
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
-        node-version: '20'
+        node-version: '22'
     
     - name: Install dependencies
       working-directory: frontend

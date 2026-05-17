@@ -28,6 +28,7 @@ on:
 env:
   AZURE_WEBAPP_NAME: jewishcoach-api
   SCM_URL: https://jewishcoach-api.scm.azurewebsites.net
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   deploy:
@@ -36,7 +37,7 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Python
         uses: actions/setup-python@v5
