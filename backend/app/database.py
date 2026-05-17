@@ -40,12 +40,26 @@ def _int_env(name: str, default: int, *, minimum: int | None = None) -> int:
 
 
 def _sqlite_engine_kwargs() -> dict:
-    return {
+    """
+    SQLite uses SQLAlchemy's QueuePool by default (small pool). For parallel load tests,
+    set SQLITE_POOL_SIZE / SQLITE_MAX_OVERFLOW to avoid pool timeouts.
+    """
+    out: dict = {
         "connect_args": {
             "check_same_thread": False,
             "timeout": float(os.getenv("SQLITE_BUSY_TIMEOUT_SEC", "30")),
         },
     }
+    raw_pool = os.getenv("SQLITE_POOL_SIZE", "").strip()
+    if raw_pool:
+        try:
+            ps = max(1, int(raw_pool))
+            out["pool_size"] = ps
+            out["max_overflow"] = _int_env("SQLITE_MAX_OVERFLOW", max(10, ps), minimum=0)
+            out["pool_timeout"] = _int_env("SQLITE_POOL_TIMEOUT", 60, minimum=1)
+        except ValueError:
+            pass
+    return out
 
 
 def _postgres_engine_kwargs() -> dict:

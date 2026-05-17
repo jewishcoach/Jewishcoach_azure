@@ -159,7 +159,11 @@ class CoachResponseSchema(BaseModel):
     """The complete response the model must return."""
 
     coach_message: str = Field(
-        description="התגובה האמפתית למשתמש (Clean Language). ללא מונחים טכניים."
+        description=(
+            "התגובה האמפתית למשתמש (Clean Language). ללא מונחים טכניים. "
+            "**נקודת תחנה:** אם ממלאים shehiya_mission_title/body — אין לסיים בשאלת חקירה לצ'אט; "
+            "רק סיכום קומה + הפניה רכה לכרטיס המשימה בממשק."
+        )
     )
     internal_state: InternalStateSchema = Field(
         description="מצב פנימי: current_step, saturation_score, reflection, collected_data"

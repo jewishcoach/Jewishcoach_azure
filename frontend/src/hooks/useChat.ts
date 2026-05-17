@@ -27,6 +27,11 @@ export const useChat = (
   const [hasInitialized, setHasInitialized] = useState(false);
   const [quotaExceeded, setQuotaExceeded] = useState(false);
   const [stationCheckpoint, setStationCheckpoint] = useState<StationCheckpointPayload | null>(null);
+  /** True while a station gate is active — blocks free-text send until «Continue coaching». */
+  const stationGateRef = useRef(false);
+  useEffect(() => {
+    stationGateRef.current = Boolean(stationCheckpoint);
+  }, [stationCheckpoint]);
   const streamingMessageIdRef = useRef<number | null>(null); // Track current streaming message
 
   // Auto-send welcome message once profile is ready (avoid Clerk name before /users/me returns)
@@ -124,7 +129,12 @@ export const useChat = (
       setMessages(cleanMessages);
       setCurrentPhase(conv.current_phase || 'S0');
       setConversationId(convId);
-      setStationCheckpoint(null);
+      const last = cleanMessages.length ? cleanMessages[cleanMessages.length - 1] : null;
+      let restoredStation: StationCheckpointPayload | null = null;
+      if (last?.role === 'assistant' && last.meta?.station_checkpoint) {
+        restoredStation = last.meta.station_checkpoint;
+      }
+      setStationCheckpoint(restoredStation);
       commitActiveTool(null); // NEW: Clear active tool when loading different conversation
       setHasInitialized(true);
     } catch (error) {
@@ -198,6 +208,10 @@ export const useChat = (
     onResponseComplete?: (responseText: string) => void,
   ) => {
     if (isChatBlockedByActiveTool(activeToolRef.current)) {
+      return;
+    }
+
+    if (stationGateRef.current) {
       return;
     }
 
@@ -524,6 +538,16 @@ export const useChat = (
     }
   };
 
+  /** User tapped «Continue coaching» on station card: persist intent, unlock chat, auto-send resume phrase for gentle coach turn. */
+  const submitStationContinue = async (token: string) => {
+    const cid = conversationId;
+    if (cid === null || stationCheckpoint === null) return;
+    await apiClient.sendStationIntent(cid, 'continue_coaching');
+    stationGateRef.current = false;
+    setStationCheckpoint(null);
+    await sendMessage(t('chat.stationResumeUserPhrase'), i18n.language, token);
+  };
+
   const clearMessages = () => {
     setMessages([]);
     setConversationId(null);
@@ -540,7 +564,7 @@ export const useChat = (
     quotaExceeded,
     dismissQuotaModal: () => setQuotaExceeded(false),
     stationCheckpoint,
-    dismissStationCheckpoint: () => setStationCheckpoint(null),
+    submitStationContinue,
     sendMessage,
     loadConversation,
     startNewConversation,

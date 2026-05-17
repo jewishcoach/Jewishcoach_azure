@@ -1,43 +1,26 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, ChevronUp, X } from 'lucide-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import type { StationCheckpointPayload } from '../../types';
 import { WORKSPACE_CHAT_FONT } from '../../constants/workspaceFonts';
-import { apiClient } from '../../services/api';
 
 interface StationCheckpointBarProps {
   checkpoint: StationCheckpointPayload;
-  conversationId: number;
-  getToken: () => Promise<string | null>;
-  onDismiss: () => void;
-  onIntentSent: () => void;
+  /** Persist intent, unlock chat, trigger resume coach turn — parent supplies token + API wiring. */
+  onContinue: () => Promise<void>;
 }
 
-export function StationCheckpointBar({
-  checkpoint,
-  conversationId,
-  getToken,
-  onDismiss,
-  onIntentSent,
-}: StationCheckpointBarProps) {
+export function StationCheckpointBar({ checkpoint, onContinue }: StationCheckpointBarProps) {
   const { t, i18n } = useTranslation();
   const [expanded, setExpanded] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const confirmContinue = async () => {
+  const handleContinue = async () => {
     setError(null);
     setBusy(true);
     try {
-      const token = await getToken();
-      if (!token) {
-        setError(t('chat.errorSessionNotFound'));
-        return;
-      }
-      apiClient.setToken(token);
-      await apiClient.sendStationIntent(conversationId, 'continue_coaching');
-      onIntentSent();
-      onDismiss();
+      await onContinue();
     } catch {
       setError(t('chat.errorGeneric'));
     } finally {
@@ -75,14 +58,6 @@ export function StationCheckpointBar({
           >
             {expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
           </button>
-          <button
-            type="button"
-            onClick={onDismiss}
-            className="p-2 rounded-lg text-[#2E3A56]/50 hover:bg-[#F0F1F3] transition-colors"
-            title={t('chat.stationHide')}
-          >
-            <X size={18} />
-          </button>
         </div>
       </div>
 
@@ -111,7 +86,7 @@ export function StationCheckpointBar({
             <button
               type="button"
               disabled={busy}
-              onClick={() => void confirmContinue()}
+              onClick={() => void handleContinue()}
               className="w-full px-4 py-2.5 rounded-xl text-[13px] font-semibold bg-[#B38728] text-white hover:bg-[#9a7222] disabled:opacity-50 transition-colors shadow-sm"
               style={{ fontFamily: WORKSPACE_CHAT_FONT }}
             >

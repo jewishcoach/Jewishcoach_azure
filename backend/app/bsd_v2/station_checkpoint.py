@@ -2,8 +2,9 @@
 Pedagogical station checkpoints between BSD floors (V2).
 
 Rules (product):
-- Offer a full station wrap (summary tone + homework + praise + permission to continue)
-  only when the coach advances into a milestone step AND at least 10 minutes have passed
+- When emitting a checkpoint, the coach summarizes in chat and points to the mission card — no discovery
+  question waiting for free-text in the chat line; details live in the sticky card.
+- Offer the checkpoint wrap only when advancing into a milestone step AND ≥10 minutes elapsed
   since max(training_started_at, last_station_checkpoint_at).
 - Persist active homework in v2_state for Insights + sticky UI.
 - Session-flow flags for pause vs immediate continue drive the *next* user-coach turn opening.
@@ -165,16 +166,18 @@ def build_session_flow_prompt_addon(state: Dict[str, Any], language: str) -> str
         if language == "he":
             blocks.append(
                 "\n\n# הקשר מיוחד לתור זה\n"
-                "המתאמן/ת **בחר/ה להמשיך באימון** מיד אחרי נקודת התחנה (ללא עצירה מוצהרת).\n"
-                "שאלו **מינימום** על המשימה — משפט אחד קצר או שילוב בשאלה הבאה — ואל תאריכו חקירה ארוכה.\n"
-                "המשיכו לעומק השלב."
+                "המתאמן/ת **לחץ/ה על «נמשיך באימון»** אחרי נקודת תחנה — זה רגע חזרה רך לשיחה.\n"
+                "פתחו במשפט קצר מקבל ובגובה העיניים (לא פורמלי, לא טכני), הכירו שחזרו אליכם, והזמינו להמשיך לעומק השלב הבא.\n"
+                "אם מתאים — שאלו **משפט אחד עדין** על איך הלך עם משימת ההשהיה; אם אין רצון לפרט — קבלו ותמשיכו בלי ללחוץ.\n"
+                "אל תחזרו על תוכן ארוך מהודעת הסיכום הקודמת; תנו תחושת המשך טבעית."
             )
         else:
             blocks.append(
                 "\n\n# Special context for this turn\n"
-                "The coachee **chose to continue coaching** right after a station checkpoint (no declared pause).\n"
-                "Ask **minimally** about the homework — one short sentence or weave into the next question — no long interrogation.\n"
-                "Then continue the stage work."
+                "The coachee **tapped Continue coaching** after a station checkpoint — a gentle re-entry moment.\n"
+                "Open with a short, human welcome-back (not formal jargon), acknowledge their return, and invite going deeper on the next stage work.\n"
+                "If fitting — **one soft sentence** about how the homework went; if they skip details, accept and move on.\n"
+                "Don't repeat the long wrap-up from the station message; feel like a natural continuation."
             )
 
     if not blocks:
@@ -191,21 +194,24 @@ def build_station_wrap_instruction(state: Dict[str, Any], language: str) -> str:
         return (
             "\n\n# נקודת עצירה בתחנה (רלוונטי רק אם **בתשובה זו** אתה **מקדם** את `current_step` לשלב חדש "
             f"מבין {', '.join(sorted(STATION_ENTRY_STEPS))})\n"
-            "אם **כן** — בתוך `coach_message` כללו בסגנון חם: התעניינות קצרה במה שהיה, סיכום קומה מעריך, "
-            "משימת השהיה הבאה ברורה, הוקרה קצרה («כל הכבוד על הדרך שלך!» או ניסוח דומה), "
-            "ומשפט אחד שמזכיר שאפשר לחזור לשיחה כשמתאים ולבצע את המשימה בקצב של המתאמן — בלי לחץ ובלי הצגת „מצבי עצירה” מלאכותיים.\n"
-            "במקביל **חובה** למלא ב־`internal_state` את השדות `shehiya_mission_title` ו־`shehiya_mission_body` "
-            "(כותרת קצרה + 2–4 משפטים מעשיים) — הם יוצגו במסך התובנות ובכרטיס המשימה.\n"
+            "אם **כן** — זהו סגירת קומה עם **כרטיס משימה נפרד** בממשק (לא צ'אט).\n"
+            "ב־`coach_message` **בלבד**: סיכום חם וקצר של מה שעשינו בקומה, הוקרה («כל הכבוד על הדרך שלך!» או דומה), "
+            "ומשפט/שניים שמפנים בעדינות לכרטיס המשימה **שמתחת לצ'אט** — שם פירוט המשימה והמשך הפעולה.\n"
+            "**אסור** בתור כזה לסיים ב**שאלת חקירה אימונית** שמחכה למענה בשורת הצ'אט (לא סימן שאלה שמזמין תשובה חופשית; "
+            "אין „מה אתה מרגיש עכשיו?”, „איפה עוד זה מופיע?” וכו'). אין לדרוש מהמתאמן להקליד תשובה לפני שקרא את הכרטיס.\n"
+            "במקביל **חובה** למלא ב־`internal_state` את `shehiya_mission_title` ו־`shehiya_mission_body` "
+            "(כותרת קצרה + 2–4 משפטים מעשיים) — אלו יוצגו בכרטיס.\n"
             "אם **לא** מקדמים שלב בתשובה זו — השאר את שני שדות השהיה כ־null."
         )
     return (
         "\n\n# Station checkpoint (only if **this** response **advances** `current_step` into a new milestone among "
         f"{', '.join(sorted(STATION_ENTRY_STEPS))})\n"
-        "If yes — in `coach_message` include warmly: brief check-in, appreciative floor summary, "
-        "clear next homework, short praise, plus one sentence that they can return to the chat whenever it suits them "
-        "and work the homework at their own pace — light touch; do **not** frame artificial “pause vs continue” modes.\n"
-        "You **must** fill `shehiya_mission_title` and `shehiya_mission_body` in `internal_state` (short title + 2–4 actionable sentences) "
-        "for the Insights panel and mission card.\n"
+        "If yes — this closes a floor with a **separate mission card** in the UI (not the chat line).\n"
+        "In `coach_message` **only**: warm brief summary of what you did on this floor, short praise, "
+        "and one or two sentences gently directing attention to the mission card **below the chat** — that card holds the homework details.\n"
+        "**Do not** end with a **coaching discovery question** waiting for free-text chat (no question mark that invites a typed answer; "
+        "avoid “how do you feel now?”, “where else does this show up?”, etc.). Do not ask them to reply before reading the card.\n"
+        "You **must** fill `shehiya_mission_title` and `shehiya_mission_body` in `internal_state` (short title + 2–4 actionable sentences).\n"
         "If you do **not** advance the step this turn — leave both shehiya fields null."
     )
 

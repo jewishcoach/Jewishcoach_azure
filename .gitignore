@@ -10,6 +10,7 @@ __pycache__/
 antenv/
 backend/antenv/
 .venv/
+.venv_loadtest/
 venv/
 env/
 ENV/

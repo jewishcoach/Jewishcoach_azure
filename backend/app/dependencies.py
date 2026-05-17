@@ -342,6 +342,10 @@ async def get_current_user(
     
     DEMO MODE: If request comes from tunnel domain (*.lhr.life, *.ngrok-free.app)
     and ALLOW_DEMO_MODE=true, create/return a demo user for testing.
+
+    Local load tests (scripts): ALLOW_DEMO_MODE=true + ALLOW_DEMO_LOCALHOST=true and an
+    Origin header pointing at http(s)://127.0.0.1[:port] or http(s)://localhost[:port].
+    Never enable these flags in production.
     """
     # Verbose per-request tracing is opt-in — logs JWT prefixes and origins otherwise.
     if _verbose_http_logs():
@@ -356,14 +360,28 @@ async def get_current_user(
     # azurestaticapps.net is production frontend - users there must use real Clerk auth
     # Default false: production-safe. Set ALLOW_DEMO_MODE=true for local tunnel testing only.
     allow_demo = os.getenv("ALLOW_DEMO_MODE", "false").lower() == "true"
+    allow_demo_localhost = os.getenv("ALLOW_DEMO_LOCALHOST", "false").lower() == "true"
     is_tunnel_domain = origin and any(domain in origin for domain in ['.lhr.life', '.ngrok-free.app', '.localhost.run'])
 
-    if _verbose_http_logs():
-        logger.info("allow_demo=%s, is_tunnel_domain=%s", allow_demo, is_tunnel_domain)
+    def _is_localhost_demo_origin(o: str | None) -> bool:
+        if not o:
+            return False
+        ol = o.strip().lower()
+        return ol.startswith(("http://127.0.0.1", "http://localhost", "https://127.0.0.1", "https://localhost"))
 
-    if allow_demo and is_tunnel_domain:
+    demo_origin_ok = bool(is_tunnel_domain or (allow_demo_localhost and _is_localhost_demo_origin(origin)))
+
+    if _verbose_http_logs():
+        logger.info(
+            "allow_demo=%s allow_demo_localhost=%s demo_origin_ok=%s",
+            allow_demo,
+            allow_demo_localhost,
+            demo_origin_ok,
+        )
+
+    if allow_demo and demo_origin_ok:
         if _verbose_http_logs():
-            logger.info("Demo mode request from tunnel domain")
+            logger.info("Demo mode request (tunnel or localhost load-test origin)")
         
         # Get or create demo user
         demo_clerk_id = "demo_user_tunnel"
