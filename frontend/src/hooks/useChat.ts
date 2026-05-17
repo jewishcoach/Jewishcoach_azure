@@ -3,46 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { useUser } from '@clerk/clerk-react';
 import type { Message, Conversation, ToolCall, StationCheckpointPayload } from '../types';
 import { isChatBlockedByActiveTool } from '../utils/activeFormTools';
-import type { I18nT } from '../i18nT';
 import { apiClient, normalizeConversationId } from '../services/api';
 import { BSD_VERSION, getBsdEndpoint } from '../config';
 import { stripUndefined } from '../utils/messageContent';
-
-/** Strip bidi / zero-width so "שלום" + name does not visually glue spaces (שלוםישי) */
-function normalizeGreetingName(s: string): string {
-  return s
-    .replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, '')
-    .replace(/[\u200b-\u200d\ufeff]/g, '')
-    .trim();
-}
-
-/** Prefer saved profile display name; empty profile → Clerk first name; then locale fallback */
-function getNameForGreeting(displayName?: string | null, clerkFirstName?: string | null, lang: string = 'he'): string {
-  const fromProfile = normalizeGreetingName(
-    displayName != null && typeof displayName === 'string' ? displayName : '',
-  );
-  if (fromProfile) return fromProfile;
-  const fromClerk = normalizeGreetingName(
-    clerkFirstName != null && typeof clerkFirstName === 'string' ? clerkFirstName : '',
-  );
-  if (fromClerk) return fromClerk;
-  return lang === 'he' ? 'רב' : 'there';
-}
-
-/** Build welcome message - guarantees no "undefined" in output */
-function buildWelcomeMessage(
-  displayName: string | null | undefined,
-  clerkFirstName: string | null | undefined,
-  lang: string,
-  t: I18nT
-): string {
-  const fallback = lang === 'he' ? 'רב' : 'there';
-  const name = getNameForGreeting(displayName, clerkFirstName, lang) || fallback;
-  let greeting = String(t('welcome_message', { name }) ?? '');
-  // Replace any "undefined" that slipped through (i18n can stringify undefined)
-  greeting = greeting.replace(/\bundefined\b/gi, fallback);
-  return stripUndefined(greeting);
-}
+import { buildWelcomeMessage } from '../utils/welcomeMessage';
 
 export const useChat = (displayName?: string | null, chatProfileReady = true) => {
   const { t, i18n } = useTranslation();
