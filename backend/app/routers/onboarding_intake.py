@@ -1,8 +1,9 @@
 """
-LLM-powered first-entry onboarding: streaming coach replies + structured slot extraction.
+LLM-powered first-entry onboarding.
 
-- POST /intake/stream — SSE: token chunks then final JSON with slots (recommended UX).
-- POST /intake/turn — single structured response (fallback / simple clients).
+- POST /intake/step — one structured JSON turn per user reply (focused prompt; recommended).
+- POST /intake/stream — SSE token chunks + extract (legacy UX).
+- POST /intake/turn — full-transcript structured reply (legacy).
 """
 
 from __future__ import annotations
@@ -53,6 +54,28 @@ _TOPIC_USER_HINTS: dict[str, tuple[str, ...]] = {
 }
 
 _EXTRACT_MAX_MESSAGES = 16
+
+# User declines to share a name — must not become display_name / greeting placeholder.
+_DISPLAY_NAME_REFUSAL_NORMALIZED: frozenset[str] = frozenset(
+    {
+        "לא רוצה להגיד",
+        "לא רוצה לומר",
+        "לא רוצה לומר שם",
+        "לא מעוניין לומר",
+        "לא מעוניינת לומר",
+        "עדיף לא לומר",
+        "בלי שם",
+        "אין לי שם",
+        "לא חשוב",
+        "סודי",
+        "אנונימי",
+        "prefer not to say",
+        "rather not say",
+        "no name",
+        "anonymous",
+        "skip",
+    }
+)
 
 
 class OnboardingChatMessage(BaseModel):
@@ -187,6 +210,24 @@ def _strip_intake_noise(raw: str) -> str:
     return re.sub(r"[\u200e\u200f\u202a-\u202e\u2066-\u2069]", "", raw).strip()
 
 
+def _normalize_phrase_for_refusal(raw: str) -> str:
+    t = _strip_intake_noise(raw).strip()
+    t = re.sub(r"[.!?…,:;\"'`]+$", "", t).strip()
+    return re.sub(r"\s+", " ", t).strip()
+
+
+def _is_display_name_refusal_line(raw: str) -> bool:
+    compact = _normalize_phrase_for_refusal(raw).lower()
+    if not compact:
+        return False
+    if compact in _DISPLAY_NAME_REFUSAL_NORMALIZED:
+        return True
+    # Common Hebrew stem phrases
+    if "לא רוצה" in compact and ("להגיד" in compact or "לומר" in compact):
+        return True
+    return False
+
+
 def _heuristic_gender_from_line(raw: str) -> Optional[str]:
     """Map common Hebrew/English gender replies (free text or chips) without the extractor LLM."""
     t = _strip_intake_noise(raw).strip()
@@ -212,6 +253,8 @@ def _heuristic_gender_from_line(raw: str) -> Optional[str]:
 def _heuristic_display_name_from_line(raw: str) -> Optional[str]:
     t = _strip_intake_noise(raw)
     t = re.sub(r"[.!?…]+\s*$", "", t).strip()
+    if _is_display_name_refusal_line(t):
+        return None
     if len(t) < 2 or len(t) > 48 or "\n" in t or "\r" in t:
         return None
     if any(c in t for c in ".!?"):
@@ -243,6 +286,42 @@ def _heuristic_display_name_from_line(raw: str) -> Optional[str]:
     return t[:80]
 
 
+def _heuristic_display_name_loose(raw: str) -> Optional[str]:
+    """Up to 3 words — mirrors frontend looseNameFromFirstReply for name-phase completion."""
+    t = _strip_intake_noise(raw)
+    t = re.sub(r"[.!?…]+\s*$", "", t).strip()
+    if len(t) < 2 or len(t) > 48 or "\n" in t or "\r" in t:
+        return None
+    if _is_display_name_refusal_line(t):
+        return None
+    if any(ch.isdigit() for ch in t):
+        return None
+    words = t.split()
+    if not words or len(words) > 3:
+        return None
+    if max(len(w) for w in words) > 22:
+        return None
+    low = t.lower()
+    if low in (
+        "זכר",
+        "נקבה",
+        "male",
+        "female",
+        "גבר",
+        "אישה",
+        "אשה",
+        "בן",
+        "בת",
+        "m",
+        "f",
+    ):
+        return None
+    for ch in t.replace(" ", "").replace("-", "").replace("'", "").replace(".", ""):
+        if not (ch.isalpha() or ("\u0590" <= ch <= "\u05ff")):
+            return None
+    return t[:80]
+
+
 def _heuristic_slots_from_transcript(msgs: list[OnboardingChatMessage]) -> dict[str, Any]:
     """Infer slots from user lines (chip taps, short names) without calling the extractor LLM."""
     out = _normalize_slots(None, None, None)
@@ -263,7 +342,7 @@ def _heuristic_slots_from_transcript(msgs: list[OnboardingChatMessage]) -> dict[
                     out["topic"] = tid
                     break
         if out["display_name"] is None:
-            guessed = _heuristic_display_name_from_line(raw)
+            guessed = _heuristic_display_name_from_line(raw) or _heuristic_display_name_loose(raw)
             if guessed:
                 out["display_name"] = guessed
     return out
@@ -314,11 +393,40 @@ def _sanitize_enums_slots(parsed: _SlotsOnly) -> dict[str, Any]:
 
 
 def _slots_complete(slots: dict[str, Any]) -> bool:
+    """Name is optional (user may decline); gender + coaching topic are required."""
     return bool(
-        slots.get("display_name")
-        and slots.get("gender") in ("male", "female")
-        and slots.get("topic") in _TRAINING_TOPICS
+        slots.get("gender") in ("male", "female") and slots.get("topic") in _TRAINING_TOPICS
     )
+
+
+def _name_collection_resolved(slots: dict[str, Any], msgs: list[OnboardingChatMessage]) -> bool:
+    if (slots.get("display_name") or "").strip():
+        return True
+    for m in msgs:
+        if m.role != "user":
+            continue
+        raw = m.content.strip()
+        if _is_display_name_refusal_line(raw):
+            return True
+        if _heuristic_display_name_from_line(raw) or _heuristic_display_name_loose(raw):
+            return True
+    return False
+
+
+def _missing_focus(slots: dict[str, Any], msgs: list[OnboardingChatMessage]) -> Optional[str]:
+    if not _name_collection_resolved(slots, msgs):
+        return "display_name"
+    if slots.get("gender") not in ("male", "female"):
+        return "gender"
+    if slots.get("topic") not in _TRAINING_TOPICS:
+        return "topic"
+    return None
+
+
+def _scrub_refusal_display_name(slots: dict[str, Any]) -> None:
+    dn = slots.get("display_name")
+    if isinstance(dn, str) and dn.strip() and _is_display_name_refusal_line(dn):
+        slots["display_name"] = None
 
 
 def _merge_known_into_slots(
@@ -605,6 +713,108 @@ def _lc_messages_for_reply(
     return lc_messages
 
 
+def _closing_copy(language: str) -> str:
+    lang = (language or "he").lower()
+    if lang.startswith("he"):
+        return "מעולה. עכשיו אפשר לבחור את נושא האימון מהכרטיסים למטה."
+    return "Great — pick your coaching focus from the cards below."
+
+
+def _build_step_system_prompt(
+    language: str,
+    seed_display_name: Optional[str],
+    missing: str,
+    slots_snapshot: dict[str, Any],
+) -> str:
+    lang_he = (language or "he").lower().startswith("he")
+    seed = (seed_display_name or "").strip()
+    seed_note = ""
+    if seed:
+        seed_note = (
+            f"\nרמז מההרשמה (אופציונלי): {seed[:80]} — רק אם המשתמש לא נתן שם אמיתי.\n"
+            if lang_he
+            else f"\nOptional signup name hint: {seed[:80]} — only if the user never chose a real name.\n"
+        )
+    bits: list[str] = []
+    dn = (slots_snapshot.get("display_name") or "").strip()
+    if dn:
+        bits.append(f"name={dn}")
+    if slots_snapshot.get("gender") in ("male", "female"):
+        bits.append(f"gender={slots_snapshot['gender']}")
+    if slots_snapshot.get("topic") in _TRAINING_TOPICS:
+        bits.append(f"topic={slots_snapshot['topic']}")
+    known_line = ", ".join(bits) if bits else ("(עדיין כלום)" if lang_he else "(nothing yet)")
+
+    if lang_he:
+        focus_map = {
+            "display_name": (
+                "שלב נוכחי — שם לפנייה (אופציונלי).\n"
+                "מההודעה האחרונה של המשתמש בלבד: מלא display_name רק אם זה שם קצר וסביר (עד 3 מילים, בלי ספרות).\n"
+                "אם מסרב לתת שם — השאר display_name ריק (null).\n"
+                "ב-assistant_message: אל תקרא למשתמש לפי משפט הסירוב; תודה קצרה והמשך לשאלת מגדר (זכר/נקבה) בלי לחץ.\n"
+                "אל תחזור על 'מה שמך' אחרי שם או סירוב ברור."
+            ),
+            "gender": (
+                "שלב נוכחי — מגדר לעברית.\n"
+                "מההודעה האחרונה בלבד: מלא gender כ‑male או female.\n"
+                "ב-assistant_message: בלי אישור נוסף ('נכון שאתה גבר?') אחרי זכר/גבר — המשך לנושא האימון בלבד.\n"
+                "אסור לשאול שוב זכר/נקבה אם המגדר כבר ידוע מהשיחה או מהמערכת."
+            ),
+            "topic": (
+                "שלב נוכחי — נושא אימון.\n"
+                "מההודעה האחרונה בלבד: מלא topic כאחד: goals, parenting, relationships, career, wellbeing, personal_growth.\n"
+                "ב-assistant_message: סיום קצר והזמנה להמשיך — בלי שאלות המשך."
+            ),
+        }
+        focus = focus_map[missing]
+        return (
+            "אתה עוזר קצר לקליטה ראשונה ב‑BSD (לא אימון מלא). כתוב בעברית בלבד.\n"
+            f"ידוע פנימית: {known_line}\n"
+            f"{seed_note}\n"
+            f"{focus}\n"
+            "פלט מובנה: assistant_message + שדות; השאר שדות שלא נלמדו מההודעה האחרונה כ‑null."
+        )
+
+    focus_en = {
+        "display_name": (
+            "Current step — optional calling name.\n"
+            "From the LAST user message only: set display_name only if it's a plausible short name (≤3 words, no digits).\n"
+            "If they refuse — leave display_name empty/null.\n"
+            "assistant_message: never address them by the refusal phrase; thank briefly and ask gender for Hebrew grammar.\n"
+        ),
+        "gender": (
+            "Current step — grammatical gender.\n"
+            "From the LAST user message only: set gender to male or female.\n"
+            "assistant_message: no redundant confirmation after they answered — move toward topic.\n"
+        ),
+        "topic": (
+            "Current step — coaching topic.\n"
+            "From the LAST user message only: set topic to one of: goals, parenting, relationships, career, wellbeing, personal_growth.\n"
+            "assistant_message: brief warm closing — no further interview questions.\n"
+        ),
+    }[missing]
+    return (
+        "You are a short BSD first-entry assistant (not full coaching). Write only in English.\n"
+        f"Already known internally: {known_line}\n"
+        f"{seed_note}\n"
+        f"{focus_en}\n"
+        "Structured output: assistant_message + fields; use null for fields not learned from the latest user message."
+    )
+
+
+def _step_transcript_human(msgs: list[OnboardingChatMessage], language: str) -> HumanMessage:
+    lines: list[str] = []
+    for m in msgs[-14:]:
+        tag = "User" if m.role == "user" else "Coach"
+        lines.append(f"{tag}: {m.content}")
+    body = "[Recent transcript]\n" + "\n".join(lines)
+    if (language or "he").lower().startswith("he"):
+        body += "\n\nמלא את הפלט המובנה לפי ההודעה האחרונה של המשתמש בלבד."
+    else:
+        body += "\n\nFill structured output from the LAST user message only."
+    return HumanMessage(content=body)
+
+
 def _chunk_text(chunk: Any) -> str:
     c = getattr(chunk, "content", None)
     if isinstance(c, str):
@@ -672,6 +882,88 @@ async def _load_onboarding_intake_request(request: Request) -> OnboardingIntakeR
     except ValidationError as exc:
         logger.warning("[onboarding_intake] body coerce failed, using defaults: %s", exc.errors()[:5])
         return OnboardingIntakeRequest.model_validate({})
+
+
+@router.post("/intake/step", response_model=OnboardingIntakeResponse)
+@limiter.limit("40/minute")
+async def onboarding_intake_step(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    One onboarding turn: focused prompt for the next missing slot + structured JSON
+    (assistant_message + partial slots). Simpler than stream + separate extract.
+    """
+    _ = current_user
+    body = await _load_onboarding_intake_request(request)
+    msgs = _sanitize_transcript(body)
+
+    empty = _normalize_slots(None, None, None)
+    slots = _merge_known_into_slots(empty, body.known_slots)
+    heur = _heuristic_slots_from_transcript(msgs)
+    slots = _apply_heuristic_fill(slots, heur)
+    _scrub_refusal_display_name(slots)
+
+    missing = _missing_focus(slots, msgs)
+
+    if missing is None:
+        return OnboardingIntakeResponse(
+            assistant_message=_closing_copy(body.language),
+            display_name=slots.get("display_name"),
+            gender=slots.get("gender"),
+            topic=slots.get("topic"),
+            intake_complete=True,
+        )
+
+    sys_prompt = _build_step_system_prompt(
+        body.language,
+        body.seed_display_name,
+        missing,
+        slots,
+    )
+    lc_messages: list = [
+        SystemMessage(content=sys_prompt),
+        _step_transcript_human(msgs, body.language),
+    ]
+
+    try:
+        llm = get_azure_chat_llm_4o_mini()
+        structured_llm = llm.with_structured_output(
+            _StructuredTurn,
+            method="function_calling",
+            include_raw=True,
+        )
+        packed = await structured_llm.ainvoke(lc_messages)
+        parsed = packed.get("parsed")
+        if parsed is None:
+            logger.warning("[onboarding_intake] step structured parse missing raw=%s", packed.get("raw"))
+            raise HTTPException(status_code=502, detail="Intake step unavailable")
+        turn = _sanitize_enums_turn(parsed)
+        patch = _normalize_slots(turn["display_name"], turn["gender"], turn["topic"])
+        for k in ("display_name", "gender", "topic"):
+            v = patch.get(k)
+            if v is None:
+                continue
+            if k == "display_name" and _is_display_name_refusal_line(str(v)):
+                continue
+            slots[k] = v
+        slots = _apply_heuristic_fill(slots, heur)
+        _scrub_refusal_display_name(slots)
+
+        intake_complete = _slots_complete(slots)
+        amsg = (turn.get("assistant_message") or "").strip() or _closing_copy(body.language)
+        return OnboardingIntakeResponse(
+            assistant_message=amsg,
+            display_name=slots.get("display_name"),
+            gender=slots.get("gender"),
+            topic=slots.get("topic"),
+            intake_complete=intake_complete,
+        )
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("[onboarding_intake] step failure lang=%s", body.language)
+        raise HTTPException(status_code=502, detail="Intake step failed") from None
 
 
 @router.post("/intake/stream")

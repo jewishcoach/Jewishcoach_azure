@@ -91,9 +91,46 @@ function inferGenderFromUserLine(text: string): GenderId | null {
   return null;
 }
 
+const DISPLAY_NAME_REFUSAL_NORMALIZED = new Set([
+  'לא רוצה להגיד',
+  'לא רוצה לומר',
+  'לא רוצה לומר שם',
+  'לא מעוניין לומר',
+  'לא מעוניינת לומר',
+  'עדיף לא לומר',
+  'בלי שם',
+  'אין לי שם',
+  'לא חשוב',
+  'סודי',
+  'אנונימי',
+  'prefer not to say',
+  'rather not say',
+  'no name',
+  'anonymous',
+  'skip',
+]);
+
+function normalizePhraseForRefusal(text: string): string {
+  return stripIntakeNoise(text)
+    .replace(/(?:[.!?…,:;"'`])+$/u, '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+}
+
+/** User declines to share a name — do not treat as display_name. */
+function isDisplayNameRefusalRaw(text: string): boolean {
+  const c = normalizePhraseForRefusal(text);
+  if (!c) return false;
+  if (DISPLAY_NAME_REFUSAL_NORMALIZED.has(c)) return true;
+  if (c.includes('לא רוצה') && (c.includes('להגיד') || c.includes('לומר'))) return true;
+  return false;
+}
+
 function guessDisplayNameFromFirstReply(text: string): string | undefined {
   const trimmed = stripIntakeNoise(text).replace(/(?:[.!?…])+$/u, '').trim();
   const t = trimmed;
+  if (isDisplayNameRefusalRaw(t)) return undefined;
   if (t.length < 2 || t.length > 48) return undefined;
   if (/[\n\r]/.test(t)) return undefined;
   if (/\d/.test(t)) return undefined;
@@ -124,6 +161,7 @@ function guessDisplayNameFromFirstReply(text: string): string | undefined {
 /** When strict guess fails (e.g. 3-word name), still send a single-line reply as display_name on turn 1. */
 function looseNameFromFirstReply(text: string): string | undefined {
   const t = stripIntakeNoise(text).replace(/(?:[.!?…])+$/u, '').trim();
+  if (isDisplayNameRefusalRaw(t)) return undefined;
   if (t.length < 2 || t.length > 48 || /[\n\r]/.test(t) || /\d/.test(t)) return undefined;
   const low = t.toLowerCase();
   if (
@@ -169,6 +207,7 @@ function displayNameForKnownSlotsPayload(
   const toScan = hintUsed ? users.slice(0, -1) : users;
   for (const m of toScan) {
     const stripped = stripIntakeNoise(m.text);
+    if (isDisplayNameRefusalRaw(stripped)) continue;
     const low = stripped.toLowerCase();
     if (
       low === 'זכר' ||
@@ -367,14 +406,16 @@ export function BsdOnboardingFlow({
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [bootLoading, setBootLoading] = useState(true);
   const [turnLoading, setTurnLoading] = useState(false);
-  const [streamHasContent, setStreamHasContent] = useState(false);
   const [intakeComplete, setIntakeComplete] = useState(false);
   const [intakeError, setIntakeError] = useState<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [bootKey, setBootKey] = useState(0);
 
-  const filledStep = [preferredName.trim(), gender, topicId].filter(Boolean).length;
+  const namePhaseDone =
+    Boolean(preferredName.trim()) ||
+    messages.some((m) => m.role === 'user' && isDisplayNameRefusalRaw(m.text));
+  const filledStep = [namePhaseDone, gender, topicId].filter(Boolean).length;
 
   const applyExtracted = useCallback(
     async (
@@ -387,7 +428,7 @@ export function BsdOnboardingFlow({
       opts?: { fallbackUserLine?: string },
     ) => {
       const name = res.display_name?.trim();
-      if (name) {
+      if (name && !isDisplayNameRefusalRaw(name)) {
         const short = name.slice(0, 80);
         setPreferredName(short);
         try {
@@ -443,7 +484,6 @@ export function BsdOnboardingFlow({
   useEffect(() => {
     let cancelled = false;
     setBootLoading(true);
-    setStreamHasContent(true);
     setIntakeError(null);
     try {
       const text = buildIntakeOpeningMessage(null, null, i18n.language, t);
@@ -470,7 +510,7 @@ export function BsdOnboardingFlow({
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages, bootLoading, turnLoading, intakeComplete, streamHasContent]);
+  }, [messages, bootLoading, turnLoading, intakeComplete]);
 
   const coachLabel = t('bsdOnboarding.coachLabel');
 
@@ -487,7 +527,6 @@ export function BsdOnboardingFlow({
 
       if (!textOverride) setInput('');
       setTurnLoading(true);
-      setStreamHasContent(false);
       setIntakeError(null);
 
       const rollbackGender = gender;
@@ -499,9 +538,6 @@ export function BsdOnboardingFlow({
         historySnapshot = [...prev, userMsg];
         return historySnapshot;
       });
-
-      let coachId: string | null = null;
-      let buf = '';
 
       try {
         if (slotHint?.gender === 'male' || slotHint?.gender === 'female') {
@@ -515,48 +551,31 @@ export function BsdOnboardingFlow({
         const hintUsed = Boolean(slotHint && Object.keys(slotHint).length > 0);
         const nameForSlots = displayNameForKnownSlotsPayload(historySnapshot, raw, hintUsed);
 
-        if (nameForSlots) {
+        if (nameForSlots && !isDisplayNameRefusalRaw(nameForSlots)) {
           setPreferredName(nameForSlots.slice(0, 80));
         }
 
-        const res = await apiClient.onboardingIntakeStream(
-          {
-            language: i18n.language,
-            messages: apiMsgs,
-            known_slots: buildKnownSlotsPayload(
-              slotHint,
-              nameForSlots ? { display_name: nameForSlots } : undefined,
-            ),
-          },
-          {
-            onToken: (d) => {
-              buf += d;
-              setStreamHasContent(true);
-              if (!coachId) {
-                coachId = uid();
-                setMessages((prev) => [
-                  ...prev,
-                  {
-                    id: coachId!,
-                    role: 'coach',
-                    text: buf,
-                    showCoachMeta: true,
-                  },
-                ]);
-              } else {
-                setMessages((prev) =>
-                  prev.map((m) => (m.id === coachId ? { ...m, text: buf } : m)),
-                );
-              }
-            },
-          },
-        );
+        const res = await apiClient.onboardingIntakeStep({
+          language: i18n.language,
+          messages: apiMsgs,
+          known_slots: buildKnownSlotsPayload(
+            slotHint,
+            nameForSlots && !isDisplayNameRefusalRaw(nameForSlots)
+              ? { display_name: nameForSlots }
+              : undefined,
+          ),
+        });
 
-        if (coachId && res.assistant_message && buf !== res.assistant_message) {
-          setMessages((prev) =>
-            prev.map((m) => (m.id === coachId ? { ...m, text: res.assistant_message } : m)),
-          );
-        }
+        const coachBubbleId = uid();
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: coachBubbleId,
+            role: 'coach',
+            text: res.assistant_message || '…',
+            showCoachMeta: true,
+          },
+        ]);
         await applyExtracted(res, { fallbackUserLine: raw });
       } catch {
         setIntakeError(t('bsdOnboarding.intakeError'));
@@ -598,9 +617,12 @@ export function BsdOnboardingFlow({
 
   const showComposer = !intakeComplete;
   const composerBusy = bootLoading || turnLoading;
-  const summaryReady =
-    intakeComplete && preferredName.trim() && gender && topicId;
-  const showTyping = composerBusy && !streamHasContent;
+  const summaryReady = intakeComplete && Boolean(gender) && Boolean(topicId);
+  const awaitingCoachReply =
+    turnLoading &&
+    messages.length > 0 &&
+    messages[messages.length - 1]?.role === 'user';
+  const showTyping = awaitingCoachReply;
   const showQuickCards = !intakeComplete && !composerBusy;
   /** Opening asks for name first; gender cards are step 2 only after at least one user reply. */
   const hasUserMessaged = messages.some((m) => m.role === 'user');

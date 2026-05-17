@@ -342,6 +342,23 @@ class ApiClient {
     return response.data;
   }
 
+  /** Step-wise intake: one structured LLM call per user reply (focused prompt). */
+  async onboardingIntakeStep(body: {
+    language: string;
+    messages: Array<{ role: 'user' | 'assistant'; content: string }>;
+    seed_display_name?: string | null;
+    known_slots?: OnboardingKnownSlots | null;
+  }) {
+    const response = await this.client.post<{
+      assistant_message: string;
+      display_name?: string | null;
+      gender?: 'male' | 'female' | null;
+      topic?: string | null;
+      intake_complete: boolean;
+    }>('/onboarding/intake/step', buildOnboardingIntakeBody(body));
+    return response.data;
+  }
+
   /** SSE intake: token deltas via onToken, then resolved payload with slots. */
   async onboardingIntakeStream(
     body: {
