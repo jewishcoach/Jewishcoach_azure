@@ -1,5 +1,7 @@
 # PostgreSQL on Azure — Runbook (Jewish Coach API)
 
+**להנחיות קצרות בעברית (לא מתכנתים):** `MULTIUSER_SETUP_HE.md` — סקריפט אוטומטי + 3 צעדים.
+
 מסמך הפעלה מקצועי: מעבר מ־SQLite קובץ ל־**Azure Database for PostgreSQL Flexible Server**, חיבור ל־**App Service** (`jewishcoach-api`), אימות, והעברת נתונים.
 
 ---
@@ -54,6 +56,17 @@ postgresql+psycopg2://ADMIN_USER:PASSWORD@FULL_HOST.postgres.database.azure.com:
 ---
 
 ## 5. הגדרות ב-App Service
+
+**דרך מהירה (מומלץ למי עם הרשאות Azure CLI):** מהשורש של הריפו:
+
+```bash
+export AZURE_PG_ADMIN_PASSWORD='…סיסמה-חזקה…'
+bash scripts/azure_enable_postgres_for_multiuser.sh
+```
+
+(פרטים וצעדים למתחילים: `MULTIUSER_SETUP_HE.md`.)
+
+**דרך ידנית בפורטל:**
 
 ב־**jewishcoach-api** → **Configuration** → **Application settings**:
 
@@ -112,6 +125,8 @@ PYTHONPATH=. python3 scripts/sqlite_to_postgres.py -v           # ביצוע
 
 ## 11. קישורים פנימיים בריפו
 
+- `scripts/azure_enable_postgres_for_multiuser.sh` — הקמת Postgres + חיבור ל־Web App + workers (יציבות ריבוי משתמשים).
+- `backend/docs/MULTIUSER_SETUP_HE.md` — מדריך בעברית בלי תשתית.
 - `backend/app/database.py` — יצירת מנוע ובריכה.
 - `backend/gunicorn_conf.py` — מספר workers לפי סוג DB.
 - `backend/scripts/sqlite_to_postgres.py` — העברת נתונים.
