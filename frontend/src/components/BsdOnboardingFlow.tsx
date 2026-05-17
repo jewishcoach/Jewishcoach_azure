@@ -162,7 +162,7 @@ function ChoiceCard({
       disabled={disabled}
       onClick={onClick}
       className={cx(
-        'flex h-[107px] w-full flex-col items-center justify-center gap-1 rounded-[18px] border bg-white px-3 py-3 text-center shadow-[0px_1px_8px_rgba(10,10,10,0.06)] transition-colors md:w-[210px]',
+        'flex h-[107px] w-full min-w-0 flex-col items-center justify-center gap-1 rounded-[18px] border bg-white px-2 py-3 text-center shadow-[0px_1px_8px_rgba(10,10,10,0.06)] transition-colors sm:px-3',
         selected
           ? 'border-[#C8953A] shadow-[0px_1px_28px_rgba(212,160,23,0.2)]'
           : 'border-[#E8E0CC] hover:border-[#d4c4a8]',
@@ -636,7 +636,7 @@ export function BsdOnboardingFlow({
 
                 {showTopicPick ? (
                   <div className="flex w-full justify-center md:justify-start">
-                    <div className="grid w-full max-w-[432px] grid-cols-2 gap-3">
+                    <div className="grid w-full max-w-[min(720px,100%)] grid-cols-3 gap-2 sm:gap-3">
                       {TOPIC_IDS.map((id) => (
                         <ChoiceCard
                           key={id}
