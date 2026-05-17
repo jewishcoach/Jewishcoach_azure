@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from typing import Any, AsyncIterator, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -183,7 +184,7 @@ def _trim_messages_for_extract(msgs: list[OnboardingChatMessage]) -> list[Onboar
 
 
 def _heuristic_display_name_from_line(raw: str) -> Optional[str]:
-    t = raw.strip()
+    t = re.sub(r"[.!?…]+\s*$", "", raw.strip()).strip()
     if len(t) < 2 or len(t) > 48 or "\n" in t or "\r" in t:
         return None
     if any(c in t for c in ".!?"):
@@ -342,6 +343,22 @@ def _turn_constraint_message(known_slots: Optional[KnownOnboardingSlots]) -> Hum
         missing.append("training topic (UI chips)")
     filled_s = "; ".join(filled) if filled else "(nothing confirmed yet)"
     missing_s = "; ".join(missing) if missing else "(nothing — all slots filled; closing only)"
+    forbid_name = ""
+    if kn["display_name"]:
+        forbid_name = (
+            "FORBIDDEN in your reply (do not express these in any wording): asking again what to call them, "
+            "nickname, 'preferred name', or Hebrew like "
+            "'איך לקרוא לך', 'איך תרצה שנקרא', 'באיזה שם', 'בשם מה לפנות אליך'. "
+            f"The display name is ALREADY «{kn['display_name']}» — use it and proceed.\n"
+        )
+    forbid_gender = ""
+    if kn["gender"] in ("male", "female"):
+        forbid_gender = (
+            "FORBIDDEN: asking male/female or Hebrew grammar gender again — already confirmed.\n"
+        )
+    forbid_topic = ""
+    if kn["topic"]:
+        forbid_topic = "FORBIDDEN: asking which coaching topic again — topic already confirmed.\n"
     he_grammar = ""
     if kn["gender"] == "male":
         he_grammar = (
@@ -359,6 +376,9 @@ def _turn_constraint_message(known_slots: Optional[KnownOnboardingSlots]) -> Hum
         f"You may only move toward: {missing_s}\n"
         "Never ask again about gender or topic if they appear under confirmed.\n"
         "If the user's latest message is a chip tap (topic/gender), accept it — do not re-ask.\n"
+        + forbid_name
+        + forbid_gender
+        + forbid_topic
         + he_grammar
         + "If nothing is missing, write a short warm closing with no questions."
     )
@@ -390,6 +410,8 @@ Have a SHORT natural conversation (often about 3–6 user turns) to collect ONLY
 
 Rules:
 - When a UI context block lists facts already recorded, do NOT ask those again unless the user clearly contradicts them.
+- If display_name is already recorded (UI block or prior answer to «what's your name?»), NEVER ask again how to call them —
+  no Hebrew variants («איך לקרוא לך», «איך תרצה שנקרא», וכו'): greet once with that name and continue to the next missing slot.
 - Do NOT repeat the same question across turns; one missing item per message when possible.
 - Do NOT verbally drill topic buttons — briefly acknowledge and invite continuing when those picks appear.
 - If gender is already confirmed, never ask male/female again; match Hebrew second-person grammar to their gender.

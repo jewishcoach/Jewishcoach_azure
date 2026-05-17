@@ -76,10 +76,10 @@ function transcriptForApi(messages: ChatMsg[]) {
  * so the coach drops a wrong opener placeholder (not for quick-pick goal phrases).
  */
 function guessDisplayNameFromFirstReply(text: string): string | undefined {
-  const t = text.trim();
+  const trimmed = text.trim().replace(/(?:[.!?…])+$/u, '').trim();
+  const t = trimmed;
   if (t.length < 2 || t.length > 48) return undefined;
   if (/[\n\r]/.test(t)) return undefined;
-  if (/[.!?]/.test(t)) return undefined;
   if (/\d/.test(t)) return undefined;
   const words = t.split(/\s+/).filter(Boolean);
   if (words.length === 0 || words.length > 2) return undefined;
@@ -89,6 +89,19 @@ function guessDisplayNameFromFirstReply(text: string): string | undefined {
   if (low === 'זכר' || low === 'נקבה' || low === 'male' || low === 'female') return undefined;
   if (!/^[\p{L}\s\-'.]+$/u.test(t)) return undefined;
   return joined.slice(0, 80);
+}
+
+/** When strict guess fails (e.g. 3-word name), still send a single-line reply as display_name on turn 1. */
+function looseNameFromFirstReply(text: string): string | undefined {
+  const t = text.trim().replace(/(?:[.!?…])+$/u, '').trim();
+  if (t.length < 2 || t.length > 48 || /[\n\r]/.test(t) || /\d/.test(t)) return undefined;
+  const low = t.toLowerCase();
+  if (low === 'זכר' || low === 'נקבה' || low === 'male' || low === 'female') return undefined;
+  const words = t.split(/\s+/).filter(Boolean);
+  if (words.length < 1 || words.length > 3) return undefined;
+  if (words.some((w) => w.length > 22)) return undefined;
+  if (!/^[\p{L}\s\-'.]+$/u.test(t)) return undefined;
+  return t.slice(0, 80);
 }
 
 const TOPIC_ICONS: Record<TopicId, LucideIcon> = {
@@ -397,9 +410,12 @@ export function BsdOnboardingFlow({
         const hintUsed = Boolean(slotHint && Object.keys(slotHint).length > 0);
         const guessedName =
           !hintUsed && userTurnCount === 1 ? guessDisplayNameFromFirstReply(raw) : undefined;
+        const looseName =
+          !hintUsed && userTurnCount === 1 && !guessedName ? looseNameFromFirstReply(raw) : undefined;
+        const nameExtra = guessedName ?? looseName;
 
-        if (guessedName) {
-          setPreferredName(guessedName.slice(0, 80));
+        if (nameExtra) {
+          setPreferredName(nameExtra.slice(0, 80));
         }
 
         const res = await apiClient.onboardingIntakeStream(
@@ -408,7 +424,7 @@ export function BsdOnboardingFlow({
             messages: apiMsgs,
             known_slots: buildKnownSlotsPayload(
               slotHint,
-              guessedName ? { display_name: guessedName } : undefined,
+              nameExtra ? { display_name: nameExtra } : undefined,
             ),
           },
           {
