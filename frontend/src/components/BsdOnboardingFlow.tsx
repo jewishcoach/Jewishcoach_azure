@@ -176,30 +176,29 @@ function LeftDecorPanel({
   subtitle: string;
 }) {
   return (
-    <div className="relative flex min-h-[min(280px,38vh)] w-full shrink-0 flex-col overflow-hidden bg-[#1C2636] md:min-h-0 md:w-[min(520px,36.1vw)] md:min-w-[300px] md:max-w-[520px]">
+    <div className="relative flex min-h-[min(168px,26svh)] w-full shrink-0 flex-col overflow-hidden bg-[#1C2636] md:min-h-0 md:w-[min(520px,36.1vw)] md:min-w-[300px] md:max-w-[520px]">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <img
           src="/bsd-onboarding-left-decor.svg"
           alt=""
-          className="absolute left-1/2 top-[10%] h-[72%] w-[min(104%,520px)] max-w-none -translate-x-1/2 select-none object-contain"
+          className="absolute left-1/2 top-[14%] h-[52%] w-[min(104%,520px)] max-w-none -translate-x-1/2 scale-[0.92] select-none object-contain opacity-[0.85] md:top-[10%] md:h-[72%] md:scale-100 md:opacity-100"
           draggable={false}
           aria-hidden
         />
       </div>
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col px-6 pb-8 pt-8 md:px-10 md:pb-10 md:pt-10">
-        <div className="mt-auto flex flex-col items-center gap-3 px-2 pb-2 text-center md:pb-10">
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col justify-center px-4 py-4 md:justify-end md:px-10 md:pb-10 md:pt-10">
+        <div className="flex flex-col items-center gap-1.5 px-1 text-center md:gap-3 md:px-2 md:pb-2 md:pt-0">
           <h2
-            className="max-w-[320px] font-semibold leading-[1.05] text-[#ede9e0]"
+            className="max-w-[min(320px,92vw)] font-semibold leading-[1.06] text-[#ede9e0] text-[clamp(1.5rem,5.4vw,2.75rem)] md:leading-[1.05]"
             style={{
               fontFamily: '"Cormorant Garamond", Georgia, serif',
-              fontSize: 44,
             }}
           >
             <span className="block">{headlineBefore}</span>
             <span className="block text-[#C9A96E]">{headlineAccent}</span>
           </h2>
           <p
-            className="max-w-[329px] text-[13px] font-normal leading-[21px] text-white/[0.55]"
+            className="max-w-[min(329px,92vw)] text-[11px] font-normal leading-snug text-white/[0.55] md:text-[13px] md:leading-[21px]"
             style={{ fontFamily: 'Inter, sans-serif' }}
           >
             {subtitle}
