@@ -17,6 +17,7 @@
 #   AZURE_PG_SERVER_NAME     ברירת מחדל: jewishcoach-pg
 #   AZURE_PG_ADMIN_USER      ברירת מחדל: jcadmin
 #   AZURE_PG_DATABASE        ברירת מחדל: jewishcoach
+#   AZURE_PG_LOCATION        אזור יצירת Postgres (ברירת מחדל: כמו ה-Web App; אם האזור חסום — westus2 / westeurope)
 #   SKIP_CONFIRM=1           דילוג על אישור אינטראקטיבי (אוטומציה בלבד)
 #
 set -euo pipefail
@@ -78,6 +79,13 @@ az webapp show --resource-group "$RG" --name "$WEBAPP" >/dev/null
 LOCATION="$(az webapp show --resource-group "$RG" --name "$WEBAPP" --query location -o tsv)"
 echo "   אזור Web App: $LOCATION"
 
+PG_LOCATION="${AZURE_PG_LOCATION:-$LOCATION}"
+if [ -n "${AZURE_PG_LOCATION:-}" ]; then
+  echo "   אזור Postgres (AZURE_PG_LOCATION): $PG_LOCATION"
+else
+  echo "   אזור Postgres: $PG_LOCATION (ברירת מחדל — כמו Web App)"
+fi
+
 EXISTING_DB_URL="$(az webapp config appsettings list --resource-group "$RG" --name "$WEBAPP" \
   --query "[?name=='DATABASE_URL'].value | [0]" -o tsv 2>/dev/null || true)"
 if [[ -n "$EXISTING_DB_URL" ]] && [[ "$EXISTING_DB_URL" == *"postgres"* ]]; then
@@ -95,7 +103,7 @@ else
   az postgres flexible-server create \
     --resource-group "$RG" \
     --name "$PG_NAME" \
-    --location "$LOCATION" \
+    --location "$PG_LOCATION" \
     --admin-user "$ADMIN_USER" \
     --admin-password "$AZURE_PG_ADMIN_PASSWORD" \
     --sku-name Standard_B1ms \
