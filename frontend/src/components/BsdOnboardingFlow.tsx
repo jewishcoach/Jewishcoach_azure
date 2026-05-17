@@ -317,10 +317,8 @@ export function BsdOnboardingFlow({
       extras?: { display_name?: string },
     ): OnboardingKnownSlots | undefined => {
       const extraName = extras?.display_name?.trim();
-      const name =
-        (extraName ? extraName.slice(0, 80) : '') ||
-        preferredName.trim() ||
-        (typeof initialDisplayName === 'string' ? initialDisplayName.trim() : '');
+      /** Never send profile/Clerk seed as display_name — it breaks intake (wrong glyphs, repeats wrong name). */
+      const name = (extraName ? extraName.slice(0, 80) : '') || preferredName.trim();
       const g = hint?.gender ?? gender ?? undefined;
       const topic = hint?.topic ?? topicId ?? undefined;
       const out: OnboardingKnownSlots = {};
@@ -329,7 +327,7 @@ export function BsdOnboardingFlow({
       if (topic) out.topic = topic;
       return Object.keys(out).length ? out : undefined;
     },
-    [preferredName, initialDisplayName, gender, topicId],
+    [preferredName, gender, topicId],
   );
 
   /** Static opening: same voice as workspace welcome, ends with “what’s your name?” — not the coaching-permission question. */
@@ -339,7 +337,7 @@ export function BsdOnboardingFlow({
     setStreamHasContent(true);
     setIntakeError(null);
     try {
-      const text = buildIntakeOpeningMessage(initialDisplayName, null, i18n.language, t);
+      const text = buildIntakeOpeningMessage(null, null, i18n.language, t);
       if (!cancelled) {
         setMessages([{ id: uid(), role: 'coach', text, showCoachMeta: false }]);
       }
@@ -349,17 +347,17 @@ export function BsdOnboardingFlow({
     return () => {
       cancelled = true;
     };
-  }, [bootKey, initialDisplayName, i18n.language, t]);
+  }, [bootKey, i18n.language, t]);
 
   /** Keep opening copy in sync if user switches language before replying. */
   useEffect(() => {
     setMessages((prev) => {
       if (prev.length !== 1 || prev[0].role !== 'coach') return prev;
-      const next = buildIntakeOpeningMessage(initialDisplayName, null, i18n.language, t);
+      const next = buildIntakeOpeningMessage(null, null, i18n.language, t);
       if (prev[0].text === next) return prev;
       return [{ ...prev[0], text: next }];
     });
-  }, [initialDisplayName, i18n.language, t]);
+  }, [i18n.language, t]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -400,11 +398,14 @@ export function BsdOnboardingFlow({
         const guessedName =
           !hintUsed && userTurnCount === 1 ? guessDisplayNameFromFirstReply(raw) : undefined;
 
+        if (guessedName) {
+          setPreferredName(guessedName.slice(0, 80));
+        }
+
         const res = await apiClient.onboardingIntakeStream(
           {
             language: i18n.language,
             messages: apiMsgs,
-            seed_display_name: initialDisplayName,
             known_slots: buildKnownSlotsPayload(
               slotHint,
               guessedName ? { display_name: guessedName } : undefined,
@@ -454,7 +455,6 @@ export function BsdOnboardingFlow({
       applyExtracted,
       bootLoading,
       buildKnownSlotsPayload,
-      initialDisplayName,
       input,
       intakeComplete,
       i18n.language,

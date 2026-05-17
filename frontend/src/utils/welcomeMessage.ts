@@ -40,16 +40,19 @@ export function buildWelcomeMessage(
   return stripUndefined(greeting);
 }
 
-/** Onboarding-only: same flavor as `welcome_message`, ends with asking for their name (no coaching permission). */
+/**
+ * Onboarding-only: same flavor as `welcome_message`, ends with asking for their name.
+ * Intentionally does NOT personalize with profile/Clerk names — those are often wrong before intake,
+ * and we ask for the user's chosen name in the same flow.
+ */
 export function buildIntakeOpeningMessage(
-  displayName: string | null | undefined,
-  clerkFirstName: string | null | undefined,
+  _displayName: string | null | undefined,
+  _clerkFirstName: string | null | undefined,
   lang: string,
   t: I18nT,
 ): string {
   const fallback = lang === 'he' ? 'רב' : 'there';
-  const name = getNameForGreeting(displayName, clerkFirstName, lang) || fallback;
-  let text = String(t('bsdOnboarding.intakeOpeningMessage', { name }) ?? '');
+  let text = String(t('bsdOnboarding.intakeOpeningMessage') ?? '');
   text = text.replace(/\bundefined\b/gi, fallback);
   return stripUndefined(text);
 }

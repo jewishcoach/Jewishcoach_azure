@@ -245,6 +245,52 @@ def _known_slots_prompt_fragment(known: Optional[KnownOnboardingSlots]) -> str:
     )
 
 
+def _turn_constraint_message(known_slots: Optional[KnownOnboardingSlots]) -> HumanMessage:
+    """Per-turn reminder so the model does not re-ask slots already captured in UI/transcript."""
+    kn = _normalize_slots(
+        known_slots.display_name if known_slots else None,
+        known_slots.gender if known_slots else None,
+        known_slots.topic if known_slots else None,
+    )
+    filled: list[str] = []
+    if kn["display_name"]:
+        filled.append(f"name={kn['display_name']}")
+    if kn["gender"] in ("male", "female"):
+        filled.append(f"gender={kn['gender']}")
+    if kn["topic"]:
+        filled.append(f"topic={kn['topic']}")
+    missing: list[str] = []
+    if not kn["display_name"]:
+        missing.append("display_name (what to call them)")
+    if kn["gender"] not in ("male", "female"):
+        missing.append("gender (male/female)")
+    if not kn["topic"]:
+        missing.append("training topic (UI chips)")
+    filled_s = "; ".join(filled) if filled else "(nothing confirmed yet)"
+    missing_s = "; ".join(missing) if missing else "(nothing — all slots filled; closing only)"
+    he_grammar = ""
+    if kn["gender"] == "male":
+        he_grammar = (
+            "Hebrew: user is male — when addressing them use masculine second-person forms "
+            "(e.g. אתה, שלך, מוכן).\n"
+        )
+    elif kn["gender"] == "female":
+        he_grammar = (
+            "Hebrew: user is female — when addressing them use feminine second-person forms "
+            "(e.g. את, שלך, מוכנה).\n"
+        )
+    body = (
+        "[Hard constraint for THIS reply — follow exactly]\n"
+        f"Already confirmed (do not ask again): {filled_s}\n"
+        f"You may only move toward: {missing_s}\n"
+        "Never ask again about gender or topic if they appear under confirmed.\n"
+        "If the user's latest message is a chip tap (topic/gender), accept it — do not re-ask.\n"
+        + he_grammar
+        + "If nothing is missing, write a short warm closing with no questions."
+    )
+    return HumanMessage(content=body)
+
+
 def _build_reply_system_prompt(
     language: str,
     seed_display_name: Optional[str],
@@ -272,6 +318,7 @@ Rules:
 - When a UI context block lists facts already recorded, do NOT ask those again unless the user clearly contradicts them.
 - Do NOT repeat the same question across turns; one missing item per message when possible.
 - Do NOT verbally drill topic buttons — briefly acknowledge and invite continuing when those picks appear.
+- If gender is already confirmed, never ask male/female again; match Hebrew second-person grammar to their gender.
 - If the user's latest message is clearly their name (or corrects an earlier wrong greeting), treat it as final:
   use only that name from now on — do not ask them to pick between it and an outdated hint or a mistaken opener.
 - If they answer several things at once, acknowledge warmly.
@@ -294,7 +341,15 @@ Return CUMULATIVE best-known values from the ENTIRE transcript plus the coach's 
 
 Use null whenever uncertain. Do not invent.
 If the user replied with a short name right after being asked what to call them, set display_name to that reply
-even when the assistant greeting used a different placeholder."""
+even when the assistant greeting used a different placeholder.
+If the user selected a topic by tapping a UI label, map common Hebrew chip text to topic:
+- wellbeing: mood/stress/wellbeing phrasing (e.g. מצב רוח, לחץ, רווחה רגשית)
+- goals: השגת יעדים
+- parenting: הורות
+- relationships: זוגיות / מערכות יחסים
+- career: קריירה / עבודה
+- personal_growth: צמיחה אישית
+English chip phrases map similarly (Achieving goals → goals; Parenting → parenting; etc.)."""
 
 
 def _history_to_lc(messages: list[OnboardingChatMessage]) -> list:
@@ -330,7 +385,9 @@ def _lc_messages_for_reply(
     sys = _build_reply_system_prompt(language, seed, known_slots)
     lc_messages: list = [SystemMessage(content=sys)]
     lc_messages.extend(_history_to_lc(msgs))
-    if not msgs:
+    if msgs:
+        lc_messages.append(_turn_constraint_message(known_slots))
+    elif not msgs:
         name_from_known = (
             _normalize_slots(
                 known_slots.display_name,
@@ -498,8 +555,9 @@ async def onboarding_intake_turn(
     sys = _build_reply_system_prompt(body.language, body.seed_display_name, body.known_slots)
     lc_messages: list = [SystemMessage(content=sys)]
     lc_messages.extend(_history_to_lc(msgs))
-
-    if not msgs:
+    if msgs:
+        lc_messages.append(_turn_constraint_message(body.known_slots))
+    else:
         lc_messages.append(
             HumanMessage(
                 content=(
