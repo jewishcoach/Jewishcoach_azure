@@ -100,6 +100,7 @@ from app.database import engine
 from sqlalchemy import text, inspect as sa_inspect
 try:
     insp = sa_inspect(engine)
+    dialect = engine.dialect.name
     with engine.connect() as conn:
         cols = [c['name'] for c in insp.get_columns('users')]
         if 'primary_discipline' not in cols:
