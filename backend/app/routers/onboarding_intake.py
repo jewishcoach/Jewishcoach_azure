@@ -77,6 +77,33 @@ _DISPLAY_NAME_REFUSAL_NORMALIZED: frozenset[str] = frozenset(
     }
 )
 
+# Single-token lines that look like questions/reactions — never treat as display_name.
+_DISPLAY_NAME_JUNK_TOKENS_HE: frozenset[str] = frozenset(
+    {
+        "מה",
+        "למה",
+        "איך",
+        "מתי",
+        "איפה",
+        "מי",
+        "כמה",
+        "נו",
+        "אה",
+        "הממ",
+        "היי",
+        "שלום",
+        "סבבה",
+        "יאללה",
+        "בסדר",
+        "אוקי",
+        "ok",
+        "okay",
+        "what",
+        "why",
+        "how",
+    }
+)
+
 
 class OnboardingChatMessage(BaseModel):
     """One transcript line; permissive defaults avoid 422 when clients omit empty strings."""
@@ -216,6 +243,18 @@ def _normalize_phrase_for_refusal(raw: str) -> str:
     return re.sub(r"\s+", " ", t).strip()
 
 
+def _looks_like_interjection_not_name(raw: str) -> bool:
+    compact = _normalize_phrase_for_refusal(raw).lower()
+    if not compact:
+        return True
+    if any(c in compact for c in "?？"):
+        return True
+    words = compact.split()
+    if len(words) == 1 and words[0] in _DISPLAY_NAME_JUNK_TOKENS_HE:
+        return True
+    return False
+
+
 def _is_display_name_refusal_line(raw: str) -> bool:
     compact = _normalize_phrase_for_refusal(raw).lower()
     if not compact:
@@ -240,6 +279,15 @@ def _heuristic_gender_from_line(raw: str) -> Optional[str]:
         return "male"
     if low in ("female", "f"):
         return "female"
+    spaced = re.sub(r"\s+", " ", low).strip()
+    if "i'm male" in spaced or "i am male" in spaced:
+        return "male"
+    if "i'm female" in spaced or "i am female" in spaced:
+        return "female"
+    if "אני גבר" in spaced or "אני זכר" in spaced:
+        return "male"
+    if "אני אישה" in spaced or "אני אשה" in spaced or "אני נקבה" in spaced:
+        return "female"
     compact = re.sub(r"\s+", " ", t).strip()
     male_he = frozenset({"זכר", "גבר", "בן"})
     female_he = frozenset({"נקבה", "אישה", "אשה", "בת"})
@@ -253,6 +301,8 @@ def _heuristic_gender_from_line(raw: str) -> Optional[str]:
 def _heuristic_display_name_from_line(raw: str) -> Optional[str]:
     t = _strip_intake_noise(raw)
     t = re.sub(r"[.!?…]+\s*$", "", t).strip()
+    if _looks_like_interjection_not_name(t):
+        return None
     if _is_display_name_refusal_line(t):
         return None
     if len(t) < 2 or len(t) > 48 or "\n" in t or "\r" in t:
@@ -291,6 +341,10 @@ def _heuristic_display_name_loose(raw: str) -> Optional[str]:
     t = _strip_intake_noise(raw)
     t = re.sub(r"[.!?…]+\s*$", "", t).strip()
     if len(t) < 2 or len(t) > 48 or "\n" in t or "\r" in t:
+        return None
+    if any(c in t for c in "?？"):
+        return None
+    if _looks_like_interjection_not_name(t):
         return None
     if _is_display_name_refusal_line(t):
         return None
@@ -720,6 +774,33 @@ def _closing_copy(language: str) -> str:
     return "Great — pick your coaching focus from the cards below."
 
 
+def _last_user_text(msgs: list[OnboardingChatMessage]) -> str:
+    for m in reversed(msgs):
+        if m.role == "user":
+            return _strip_intake_noise(m.content.strip())
+    return ""
+
+
+def _gender_clarify_fallback(language: str, display_name: Optional[str]) -> str:
+    lang = (language or "he").lower()
+    dn = (display_name or "").strip()
+    if lang.startswith("he"):
+        if dn:
+            return (
+                f"{dn}, כדי לנסח בעברית בצורה טבעית — בחר/י למטה זכר או נקבה, "
+                "או כתוב במילים (זכר/גבר או נקבה/אישה)."
+            )
+        return (
+            "כדי לנסח בעברית בצורה טבעית — בחר/י למטה זכר או נקבה, "
+            "או כתוב במילים (זכר/גבר או נקבה/אישה)."
+        )
+    if dn:
+        return (
+            f"{dn}, please tap Male or Female below, or type your answer (male / female)."
+        )
+    return "Please tap Male or Female below, or type male / female."
+
+
 def _build_step_system_prompt(
     language: str,
     seed_display_name: Optional[str],
@@ -755,9 +836,14 @@ def _build_step_system_prompt(
                 "אל תחזור על 'מה שמך' אחרי שם או סירוב ברור."
             ),
             "gender": (
-                "שלב נוכחי — מגדר לעברית.\n"
-                "מההודעה האחרונה בלבד: מלא gender כ‑male או female.\n"
-                "ב-assistant_message: בלי אישור נוסף ('נכון שאתה גבר?') אחרי זכר/גבר — המשך לנושא האימון בלבד.\n"
+                "שלב נוכחי — מגדר דקדוקי לעברית.\n"
+                "חוק קשיח: אסור להסיק gender מהשם או מסטריאוטיפים — גם אם השם 'נשמע' זכר או נקבה.\n"
+                "מלא gender (male/female) רק אם ההודעה האחרונה של המשתמש היא תשובת מגדר מפורשת "
+                "(זכר, גבר, נקבה, אישה, אני גבר/נקבה וכו').\n"
+                "אם ההודעה האחרונה אינה תשובת מגדר כזו — השאר gender כ‑null.\n"
+                "ב-assistant_message כש‑gender נשאר null: שאל בקצרה לגבי מגדר והפנה לכרטיסי זכר/נקבה למטה; "
+                "אסור לנסח כאילו המגדר כבר נקבע ('אתה גבר', 'נמשיך') לפני תשובה מפורשת.\n"
+                "רק אחרי תשובת מגדר ברורה — assistant_message קצר בלי אישור מיותר והמשך לנושא האימון.\n"
                 "אסור לשאול שוב זכר/נקבה אם המגדר כבר ידוע מהשיחה או מהמערכת."
             ),
             "topic": (
@@ -769,6 +855,7 @@ def _build_step_system_prompt(
         focus = focus_map[missing]
         return (
             "אתה עוזר קצר לקליטה ראשונה ב‑BSD (לא אימון מלא). כתוב בעברית בלבד.\n"
+            "סגנון: שיחה טבעית עם המשתמש בלבד — בלי מטא־הסברים (לא 'מתרגלים', לא 'מזהים מהטקסט', לא תיאור תהליכים פנימיים).\n"
             f"ידוע פנימית: {known_line}\n"
             f"{seed_note}\n"
             f"{focus}\n"
@@ -783,9 +870,13 @@ def _build_step_system_prompt(
             "assistant_message: never address them by the refusal phrase; thank briefly and ask gender for Hebrew grammar.\n"
         ),
         "gender": (
-            "Current step — grammatical gender.\n"
-            "From the LAST user message only: set gender to male or female.\n"
-            "assistant_message: no redundant confirmation after they answered — move toward topic.\n"
+            "Current step — grammatical gender for Hebrew.\n"
+            "Hard rule: NEVER infer gender from names or stereotypes.\n"
+            "Set gender only if the LAST user message explicitly states male/female (or equivalent).\n"
+            "If the last message is not an explicit gender answer — leave gender null.\n"
+            "When gender stays null: assistant_message must ask clearly (and point to Male/Female chips);\n"
+            "do NOT assume gender ('you're a guy', \"let's continue\") before they answer.\n"
+            "After an explicit answer only — brief assistant_message, no redundant confirmation, move toward topic.\n"
         ),
         "topic": (
             "Current step — coaching topic.\n"
@@ -795,6 +886,7 @@ def _build_step_system_prompt(
     }[missing]
     return (
         "You are a short BSD first-entry assistant (not full coaching). Write only in English.\n"
+        "Tone: natural welcome chat only — never meta commentary about tests, classifiers, or 'practicing detection from text'.\n"
         f"Already known internally: {known_line}\n"
         f"{seed_note}\n"
         f"{focus_en}\n"
@@ -940,18 +1032,41 @@ async def onboarding_intake_step(
             raise HTTPException(status_code=502, detail="Intake step unavailable")
         turn = _sanitize_enums_turn(parsed)
         patch = _normalize_slots(turn["display_name"], turn["gender"], turn["topic"])
+        patch_gender = patch.get("gender")
         for k in ("display_name", "gender", "topic"):
             v = patch.get(k)
             if v is None:
                 continue
-            if k == "display_name" and _is_display_name_refusal_line(str(v)):
+            if k == "display_name":
+                if missing != "display_name":
+                    continue
+                vs = str(v).strip()
+                if _is_display_name_refusal_line(vs):
+                    continue
+                if _looks_like_interjection_not_name(vs):
+                    continue
+                slots[k] = vs
                 continue
             slots[k] = v
         slots = _apply_heuristic_fill(slots, heur)
         _scrub_refusal_display_name(slots)
 
-        intake_complete = _slots_complete(slots)
         amsg = (turn.get("assistant_message") or "").strip() or _closing_copy(body.language)
+        if missing == "gender":
+            lu = _last_user_text(msgs)
+            hg = _heuristic_gender_from_line(lu)
+            if hg:
+                slots["gender"] = hg
+            else:
+                last_suggests_name_only = bool(
+                    _heuristic_display_name_from_line(lu) or _heuristic_display_name_loose(lu)
+                )
+                junk_line = bool(lu.strip()) and _looks_like_interjection_not_name(lu)
+                if patch_gender in ("male", "female") and (last_suggests_name_only or junk_line):
+                    slots["gender"] = None
+                    amsg = _gender_clarify_fallback(body.language, slots.get("display_name"))
+
+        intake_complete = _slots_complete(slots)
         return OnboardingIntakeResponse(
             assistant_message=amsg,
             display_name=slots.get("display_name"),

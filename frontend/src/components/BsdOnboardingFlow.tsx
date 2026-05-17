@@ -79,18 +79,6 @@ function stripIntakeNoise(text: string): string {
   return text.replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, '').trim();
 }
 
-/** Infer gender from a single user line when the LLM/extractor lags (Hebrew UI asks «גבר או אישה?»). */
-function inferGenderFromUserLine(text: string): GenderId | null {
-  const t = stripIntakeNoise(text).replace(/(?:[.!?…,:;"'`])+$/u, '').trim();
-  if (!t) return null;
-  const low = t.toLowerCase();
-  if (low === 'זכר' || low === 'גבר' || low === 'בן' || low === 'male' || low === 'm') return 'male';
-  if (low === 'נקבה' || low === 'אישה' || low === 'אשה' || low === 'בת' || low === 'female' || low === 'f') {
-    return 'female';
-  }
-  return null;
-}
-
 const DISPLAY_NAME_REFUSAL_NORMALIZED = new Set([
   'לא רוצה להגיד',
   'לא רוצה לומר',
@@ -418,15 +406,12 @@ export function BsdOnboardingFlow({
   const filledStep = [namePhaseDone, gender, topicId].filter(Boolean).length;
 
   const applyExtracted = useCallback(
-    async (
-      res: {
-        display_name?: string | null;
-        gender?: 'male' | 'female' | null;
-        topic?: string | null;
-        intake_complete: boolean;
-      },
-      opts?: { fallbackUserLine?: string },
-    ) => {
+    async (res: {
+      display_name?: string | null;
+      gender?: 'male' | 'female' | null;
+      topic?: string | null;
+      intake_complete: boolean;
+    }) => {
       const name = res.display_name?.trim();
       if (name && !isDisplayNameRefusalRaw(name)) {
         const short = name.slice(0, 80);
@@ -438,12 +423,8 @@ export function BsdOnboardingFlow({
           /* best-effort */
         }
       }
-      let effectiveGender: 'male' | 'female' | null =
+      const effectiveGender: 'male' | 'female' | null =
         res.gender === 'male' || res.gender === 'female' ? res.gender : null;
-      if (!effectiveGender && opts?.fallbackUserLine) {
-        const inferred = inferGenderFromUserLine(opts.fallbackUserLine);
-        if (inferred) effectiveGender = inferred;
-      }
       if (effectiveGender === 'male' || effectiveGender === 'female') {
         setGender(effectiveGender);
         try {
@@ -576,7 +557,7 @@ export function BsdOnboardingFlow({
             showCoachMeta: true,
           },
         ]);
-        await applyExtracted(res, { fallbackUserLine: raw });
+        await applyExtracted(res);
       } catch {
         setIntakeError(t('bsdOnboarding.intakeError'));
         setGender(rollbackGender);
