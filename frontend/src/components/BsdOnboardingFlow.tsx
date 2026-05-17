@@ -111,6 +111,15 @@ function isDisplayNameRefusalRaw(text: string): boolean {
   const c = normalizePhraseForRefusal(text);
   if (!c) return false;
   if (DISPLAY_NAME_REFUSAL_NORMALIZED.has(c)) return true;
+  if (
+    c === 'לא רוצה' ||
+    c === 'לא מעוניין' ||
+    c === 'לא מעוניינת' ||
+    c === 'לא רוצה שם' ||
+    c === 'בלי שם בבקשה'
+  ) {
+    return true;
+  }
   if (c.includes('לא רוצה') && (c.includes('להגיד') || c.includes('לומר'))) return true;
   return false;
 }

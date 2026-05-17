@@ -38,7 +38,7 @@ export function AppUserButton() {
       <UserButton.MenuItems>
         <UserButton.Action
           label={t('app.signOut')}
-          labelIcon={<LogOut className="h-4 w-4" aria-hidden />}
+          labelIcon={<LogOut className="h-4 w-4 text-white" aria-hidden />}
           onClick={() => void handleSignOut()}
         />
       </UserButton.MenuItems>

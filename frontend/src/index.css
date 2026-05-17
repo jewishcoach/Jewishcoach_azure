@@ -486,3 +486,21 @@ body {
   color: #f1f5f9 !important;
   opacity: 1 !important;
 }
+
+/* Custom UserButton.MenuItems / Clerk menu rows — default theme uses muted text (barely visible on #0f172a) */
+[class*="userButtonPopoverCard"] [class*="userButtonPopoverMain"] button,
+[class*="userButtonPopoverCard"] [class*="userButtonPopoverMain"] [role="menuitem"],
+[class*="userButtonPopoverCard"] [class*="userButtonPopoverMain"] .cl-button {
+  color: #ffffff !important;
+}
+[class*="userButtonPopoverCard"] [class*="userButtonPopoverMain"] button *,
+[class*="userButtonPopoverCard"] [class*="userButtonPopoverMain"] [role="menuitem"] *,
+[class*="userButtonPopoverCard"] [class*="userButtonPopoverMain"] .cl-button * {
+  color: inherit !important;
+  opacity: 1 !important;
+}
+[class*="userButtonPopoverCard"] [class*="userButtonPopoverMain"] svg {
+  color: #ffffff !important;
+  opacity: 1 !important;
+  stroke: currentColor !important;
+}

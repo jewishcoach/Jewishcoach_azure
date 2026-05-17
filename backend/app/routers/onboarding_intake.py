@@ -1,9 +1,9 @@
 """
-LLM-powered first-entry onboarding.
+First-entry onboarding intake.
 
-- POST /intake/step — one structured JSON turn per user reply (focused prompt; recommended).
-- POST /intake/stream — SSE token chunks + extract (legacy UX).
-- POST /intake/turn — full-transcript structured reply (legacy).
+- POST /intake/step — deterministic coach copy + structured slot extraction (LLM extracts only; never writes UX copy).
+- POST /intake/stream — removed (410 Gone).
+- POST /intake/turn — removed (410 Gone).
 """
 
 from __future__ import annotations
@@ -11,14 +11,14 @@ from __future__ import annotations
 import json
 import logging
 import re
-from typing import Any, AsyncIterator, Literal, Optional
+from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import StreamingResponse
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from ..bsd.llm import get_azure_chat_llm_4o_mini
+from ..bsd.onboarding_intake_messages import intake_closing, pick_intake_assistant_message
 from ..dependencies import get_current_user
 from ..limiter import limiter
 from ..models import User
@@ -52,8 +52,6 @@ _TOPIC_USER_HINTS: dict[str, tuple[str, ...]] = {
     "wellbeing": ("מצב רוח", "לחץ", "רווחה רגשית", "stress", "wellbeing", "emotional"),
     "personal_growth": ("צמיחה אישית", "personal growth"),
 }
-
-_EXTRACT_MAX_MESSAGES = 16
 
 # User declines to share a name — must not become display_name / greeting placeholder.
 _DISPLAY_NAME_REFUSAL_NORMALIZED: frozenset[str] = frozenset(
@@ -212,25 +210,13 @@ class OnboardingIntakeResponse(BaseModel):
     intake_complete: bool = False
 
 
-class _StructuredTurn(BaseModel):
-    assistant_message: str = Field(..., max_length=4000)
-    display_name: Optional[str] = Field(default=None, max_length=80)
-    gender: Optional[Literal["male", "female"]] = None
-    topic: Optional[str] = None
+class _SlotExtract(BaseModel):
+    """LLM output only — no user-facing prose."""
 
-
-class _SlotsOnly(BaseModel):
-    """Post-reply extraction — cumulative slots from full transcript + latest coach text."""
-
-    display_name: Optional[str] = Field(default=None, max_length=80)
-    gender: Optional[Literal["male", "female"]] = None
-    topic: Optional[str] = None
-
-
-def _trim_messages_for_extract(msgs: list[OnboardingChatMessage]) -> list[OnboardingChatMessage]:
-    if len(msgs) <= _EXTRACT_MAX_MESSAGES:
-        return msgs
-    return msgs[-_EXTRACT_MAX_MESSAGES:]
+    extracted_display_name: Optional[str] = Field(default=None, max_length=80)
+    name_refusal_detected: bool = False
+    extracted_gender: Optional[Literal["male", "female"]] = None
+    extracted_topic: Optional[str] = None
 
 
 def _strip_intake_noise(raw: str) -> str:
@@ -260,6 +246,9 @@ def _is_display_name_refusal_line(raw: str) -> bool:
     if not compact:
         return False
     if compact in _DISPLAY_NAME_REFUSAL_NORMALIZED:
+        return True
+    # Elliptical / partial typing — still clearly declining (not a name)
+    if compact in ("לא רוצה", "לא מעוניין", "לא מעוניינת", "לא רוצה שם", "בלי שם בבקשה"):
         return True
     # Common Hebrew stem phrases
     if "לא רוצה" in compact and ("להגיד" in compact or "לומר" in compact):
@@ -436,16 +425,6 @@ def _normalize_slots(
     }
 
 
-def _sanitize_enums_turn(parsed: _StructuredTurn) -> dict[str, Any]:
-    base = _normalize_slots(parsed.display_name, parsed.gender, parsed.topic)
-    base["assistant_message"] = (parsed.assistant_message or "").strip() or "…"
-    return base
-
-
-def _sanitize_enums_slots(parsed: _SlotsOnly) -> dict[str, Any]:
-    return _normalize_slots(parsed.display_name, parsed.gender, parsed.topic)
-
-
 def _slots_complete(slots: dict[str, Any]) -> bool:
     """Name is optional (user may decline); gender + coaching topic are required."""
     return bool(
@@ -453,7 +432,14 @@ def _slots_complete(slots: dict[str, Any]) -> bool:
     )
 
 
-def _name_collection_resolved(slots: dict[str, Any], msgs: list[OnboardingChatMessage]) -> bool:
+def _name_collection_resolved(
+    slots: dict[str, Any],
+    msgs: list[OnboardingChatMessage],
+    *,
+    extractor_refusal: bool = False,
+) -> bool:
+    if extractor_refusal:
+        return True
     if (slots.get("display_name") or "").strip():
         return True
     for m in msgs:
@@ -467,8 +453,13 @@ def _name_collection_resolved(slots: dict[str, Any], msgs: list[OnboardingChatMe
     return False
 
 
-def _missing_focus(slots: dict[str, Any], msgs: list[OnboardingChatMessage]) -> Optional[str]:
-    if not _name_collection_resolved(slots, msgs):
+def _missing_focus(
+    slots: dict[str, Any],
+    msgs: list[OnboardingChatMessage],
+    *,
+    extractor_refusal: bool = False,
+) -> Optional[str]:
+    if not _name_collection_resolved(slots, msgs, extractor_refusal=extractor_refusal):
         return "display_name"
     if slots.get("gender") not in ("male", "female"):
         return "gender"
@@ -498,214 +489,6 @@ def _merge_known_into_slots(
     return out
 
 
-def _known_slots_prompt_fragment(known: Optional[KnownOnboardingSlots]) -> str:
-    if known is None:
-        return ""
-    kn = _normalize_slots(known.display_name, known.gender, known.topic)
-    lines: list[str] = []
-    if kn["display_name"]:
-        lines.append(f"- Name to use: {kn['display_name']}")
-    if kn["gender"] in ("male", "female"):
-        lines.append(f"- Gender: {kn['gender']}")
-    if kn["topic"]:
-        lines.append(f"- Training focus topic (internal): {kn['topic']}")
-    if not lines:
-        return ""
-    return (
-        "\nThe product UI already recorded the items below (internal codes shown for you only). "
-        "Do not ask those questions again unless the user clearly contradicts them. "
-        "Speak naturally — never read codes aloud. Continue only with topics still missing.\n"
-        + "\n".join(lines)
-        + "\n"
-    )
-
-
-def _known_slots_for_llm_prompt(
-    known: Optional[KnownOnboardingSlots],
-    msgs: list[OnboardingChatMessage],
-) -> Optional[KnownOnboardingSlots]:
-    """Merge client known_slots with transcript heuristics before the reply LLM runs."""
-    heur = _heuristic_slots_from_transcript(msgs)
-    empty = _normalize_slots(None, None, None)
-    merged = _apply_heuristic_fill(_merge_known_into_slots(empty, known), heur)
-    if not any(merged.get(k) for k in ("display_name", "gender", "topic")):
-        return known
-    try:
-        return KnownOnboardingSlots.model_validate(
-            {
-                "display_name": merged.get("display_name"),
-                "gender": merged.get("gender"),
-                "topic": merged.get("topic"),
-            }
-        )
-    except ValidationError:
-        safe_topic = merged.get("topic")
-        if safe_topic not in _TRAINING_TOPICS:
-            safe_topic = None
-        safe_gender = merged.get("gender")
-        if safe_gender not in ("male", "female"):
-            safe_gender = None
-        dn = merged.get("display_name")
-        safe_name = (dn[:80] if isinstance(dn, str) and dn.strip() else None)
-        try:
-            return KnownOnboardingSlots.model_validate(
-                {
-                    "display_name": safe_name,
-                    "gender": safe_gender,
-                    "topic": safe_topic,
-                }
-            )
-        except ValidationError:
-            return known
-
-
-def _turn_constraint_message(known_slots: Optional[KnownOnboardingSlots]) -> HumanMessage:
-    """Per-turn reminder so the model does not re-ask slots already captured in UI/transcript."""
-    kn = _normalize_slots(
-        known_slots.display_name if known_slots else None,
-        known_slots.gender if known_slots else None,
-        known_slots.topic if known_slots else None,
-    )
-    filled: list[str] = []
-    if kn["display_name"]:
-        filled.append(f"name={kn['display_name']}")
-    if kn["gender"] in ("male", "female"):
-        filled.append(f"gender={kn['gender']}")
-    if kn["topic"]:
-        filled.append(f"topic={kn['topic']}")
-    missing: list[str] = []
-    if not kn["display_name"]:
-        missing.append("display_name (what to call them)")
-    if kn["gender"] not in ("male", "female"):
-        missing.append("gender (male/female)")
-    if not kn["topic"]:
-        missing.append("training topic (UI chips)")
-    filled_s = "; ".join(filled) if filled else "(nothing confirmed yet)"
-    missing_s = "; ".join(missing) if missing else "(nothing — all slots filled; closing only)"
-    forbid_name = ""
-    if kn["display_name"]:
-        forbid_name = (
-            "FORBIDDEN in your reply (do not express these in any wording): asking again what to call them, "
-            "nickname, 'preferred name', or Hebrew like "
-            "'איך לקרוא לך', 'איך תרצה שנקרא', 'באיזה שם', 'בשם מה לפנות אליך'. "
-            f"The display name is ALREADY «{kn['display_name']}» — use it and proceed.\n"
-        )
-    forbid_gender = ""
-    if kn["gender"] in ("male", "female"):
-        gtxt = "male (masculine Hebrew)" if kn["gender"] == "male" else "female (feminine Hebrew)"
-        forbid_gender = (
-            "FORBIDDEN: any question, confirmation, hedging, or re-check about gender, sex, "
-            "or Hebrew grammatical gender — including «נכון?», «סתם לוודא», «מזדהה כגבר», «גבר או אישה», "
-            "«זכר או נקבה», «לשון זכר או נקבה», «בלשון זכר או בלשון נקבה», "
-            "«איך אתה מעדיף שאדבר», or asking again how to conjugate. "
-            f"The grammatical gender for Hebrew is ALREADY «{gtxt}». Acknowledge briefly if needed, then continue.\n"
-        )
-    forbid_topic = ""
-    if kn["topic"]:
-        forbid_topic = "FORBIDDEN: asking which coaching topic again — topic already confirmed.\n"
-    he_grammar = ""
-    if kn["gender"] == "male":
-        he_grammar = (
-            "Hebrew: user is male — when addressing them use masculine second-person forms "
-            "(e.g. אתה, שלך, מוכן).\n"
-        )
-    elif kn["gender"] == "female":
-        he_grammar = (
-            "Hebrew: user is female — when addressing them use feminine second-person forms "
-            "(e.g. את, שלך, מוכנה).\n"
-        )
-    body = (
-        "[Hard constraint for THIS reply — follow exactly]\n"
-        f"Already confirmed (do not ask again): {filled_s}\n"
-        f"You may only move toward: {missing_s}\n"
-        "Never ask again about gender or topic if they appear under confirmed.\n"
-        "If the user's latest message is a chip tap (topic/gender), accept it — do not re-ask.\n"
-        + forbid_name
-        + forbid_gender
-        + forbid_topic
-        + he_grammar
-        + "If nothing is missing, write a short warm closing with no questions."
-    )
-    return HumanMessage(content=body)
-
-
-def _build_reply_system_prompt(
-    language: str,
-    seed_display_name: Optional[str],
-    known_slots: Optional[KnownOnboardingSlots] = None,
-) -> str:
-    lang = (language or "he").lower()
-    primary = "Hebrew" if lang.startswith("he") else "English"
-    hint = ""
-    if seed_display_name and seed_display_name.strip():
-        hint = (
-            f"\nOptional signup/profile name hint (use ONLY if the user has not clearly chosen "
-            f"a different name in the transcript — their stated name always wins): "
-            f"{seed_display_name.strip()[:80]}\n"
-        )
-    known_frag = _known_slots_prompt_fragment(known_slots)
-    return f"""You are the BSD Jewish Coach intake assistant — warm, concise, respectful.
-Write ONLY in {primary} (the user's locale).
-{known_frag}{hint}
-Have a SHORT natural conversation (often about 3–6 user turns) to collect ONLY:
-1) What to call them (display name)
-2) Gender for Hebrew grammar — politely; only male or female in our product (often picked via UI buttons)
-3) Which coaching-life focus fits best — the UI offers topic chips such as goals, parenting, relationships, career, wellbeing, personal growth (internal codes only — never say codes aloud)
-
-Rules:
-- The first assistant message in the transcript often already asks for their name (e.g. «מה שמך», «What's your name»).
-  If the user's next short reply looks like a name, that reply IS their display name — never ask again how to address them (no rephrased name question).
-- When a UI context block lists facts already recorded, do NOT ask those again unless the user clearly contradicts them.
-- If display_name is already recorded (UI block or prior answer to «what's your name?»), NEVER ask again how to call them —
-  no Hebrew variants («איך לקרוא לך», «איך תרצה שנקרא», וכו'): greet once with that name and continue to the next missing slot.
-- If BOTH gender and topic are still missing, ask ONLY for gender first in this reply — do NOT mention topic choice yet.
-- Do NOT repeat the same question across turns; one missing item per message when possible.
-- Hebrew before gender is known: avoid feminine second-person agreement toward the user (do not use «שמחה לפגוש אותך» as if they are female).
-  Prefer neutral wording («נעים להכיר», «טוב לפגוש אותך», «שמח להכיר») until gender is confirmed; once female is confirmed, switch fully to feminine agreement.
-- Do NOT verbally drill topic buttons — briefly acknowledge and invite continuing when those picks appear.
-- If gender is already confirmed, never ask male/female again — including confirmations («נכון?», «רק לוודא»); match Hebrew second-person grammar and move on.
-- If the user's latest message is clearly their name (or corrects an earlier wrong greeting), treat it as final:
-  use only that name from now on — do not ask them to pick between it and an outdated hint or a mistaken opener.
-- If they answer several things at once, acknowledge warmly.
-- Never output JSON, bullet lists of internal codes, or markup — natural prose only.
-- Keep replies brief (usually 1–3 short paragraphs).
-- When name, gender, and topic are all known, close warmly: affirm they are in the right place and that coaching can begin soon — invite them to enter the app (do not start a long coaching session here).
-"""
-
-
-def _build_extract_system_prompt() -> str:
-    codes = ", ".join(sorted(_TRAINING_TOPICS))
-    return f"""You extract onboarding slots from a coaching intake transcript (Hebrew and/or English).
-
-Return CUMULATIVE best-known values from the ENTIRE transcript plus the coach's latest reply:
-- display_name: short name to call the user; null if unknown.
-- gender: only "male" or "female"; null if not stated.
-- topic: exactly one of {codes} — or null if unknown.
-  goals=achieving goals / targets; parenting=parenthood / kids; relationships=couple / intimate relationship;
-  career=work / career; wellbeing=stress / balance / emotional wellbeing; personal_growth=general self growth.
-
-Use null whenever uncertain. Do not invent.
-If the user's message is only זכר, נקבה, Male, or Female (typical UI chip taps), set gender to male/female accordingly — do not leave gender null after such a line.
-If the user replied with a short name right after being asked what to call them, set display_name to that reply
-even when the assistant greeting used a different placeholder.
-If the user selected a topic by tapping a UI label, map common Hebrew chip text to topic:
-- wellbeing: mood/stress/wellbeing phrasing (e.g. מצב רוח, לחץ, רווחה רגשית)
-- goals: השגת יעדים
-- parenting: הורות
-- relationships: זוגיות / מערכות יחסים
-- career: קריירה / עבודה
-- personal_growth: צמיחה אישית
-English chip phrases map similarly (Achieving goals → goals; Parenting → parenting; etc.)."""
-
-
-def _history_to_lc(messages: list[OnboardingChatMessage]) -> list:
-    out = []
-    for m in messages:
-        if m.role == "user":
-            out.append(HumanMessage(content=m.content))
-        else:
-            out.append(AIMessage(content=m.content))
-    return out
 
 
 def _sanitize_transcript(body: OnboardingIntakeRequest) -> list[OnboardingChatMessage]:
@@ -722,56 +505,8 @@ def _sanitize_transcript(body: OnboardingIntakeRequest) -> list[OnboardingChatMe
     return msgs
 
 
-def _lc_messages_for_reply(
-    language: str,
-    seed: Optional[str],
-    msgs: list[OnboardingChatMessage],
-    known_slots: Optional[KnownOnboardingSlots] = None,
-) -> list:
-    sys = _build_reply_system_prompt(language, seed, known_slots)
-    lc_messages: list = [SystemMessage(content=sys)]
-    lc_messages.extend(_history_to_lc(msgs))
-    if msgs:
-        lc_messages.append(_turn_constraint_message(known_slots))
-    elif not msgs:
-        name_from_known = (
-            _normalize_slots(
-                known_slots.display_name,
-                None,
-                None,
-            ).get("display_name")
-            if known_slots
-            else None
-        )
-
-        has_name_hint = bool(name_from_known or (seed and str(seed).strip()))
-        if has_name_hint:
-            lc_messages.append(
-                HumanMessage(
-                    content=(
-                        "[Session start — no user message yet.] "
-                        "Brief opening greeting. A name may already be known from signup or the UI — confirm it warmly "
-                        "instead of asking from scratch. Then continue only with intake topics still missing."
-                    )
-                )
-            )
-        else:
-            lc_messages.append(
-                HumanMessage(
-                    content=(
-                        "[Session start — no user message yet.] "
-                        "Send only your opening greeting and ask how they wish to be called."
-                    )
-                )
-            )
-    return lc_messages
-
-
-def _closing_copy(language: str) -> str:
-    lang = (language or "he").lower()
-    if lang.startswith("he"):
-        return "מעולה. עכשיו אפשר לבחור את נושא האימון מהכרטיסים למטה."
-    return "Great — pick your coaching focus from the cards below."
+def _user_turn_count(msgs: list[OnboardingChatMessage]) -> int:
+    return sum(1 for m in msgs if m.role == "user")
 
 
 def _last_user_text(msgs: list[OnboardingChatMessage]) -> str:
@@ -781,40 +516,35 @@ def _last_user_text(msgs: list[OnboardingChatMessage]) -> str:
     return ""
 
 
-def _gender_clarify_fallback(language: str, display_name: Optional[str]) -> str:
-    lang = (language or "he").lower()
-    dn = (display_name or "").strip()
-    if lang.startswith("he"):
-        if dn:
-            return (
-                f"{dn}, כדי לנסח בעברית בצורה טבעית — בחר/י למטה זכר או נקבה, "
-                "או כתוב במילים (זכר/גבר או נקבה/אישה)."
-            )
-        return (
-            "כדי לנסח בעברית בצורה טבעית — בחר/י למטה זכר או נקבה, "
-            "או כתוב במילים (זכר/גבר או נקבה/אישה)."
+def _extractor_transcript_human(msgs: list[OnboardingChatMessage], language: str) -> HumanMessage:
+    lines: list[str] = []
+    for m in msgs[-14:]:
+        tag = "User" if m.role == "user" else "Coach"
+        lines.append(f"{tag}: {m.content}")
+    body = "[Recent transcript]\n" + "\n".join(lines)
+    if (language or "he").lower().startswith("he"):
+        body += (
+            "\n\nחלץ לפי כל ההיסטוריה; למגדר ולנושא עדיף להסתמך בעיקר על ההודעה האחרונה של המשתמש."
         )
-    if dn:
-        return (
-            f"{dn}, please tap Male or Female below, or type your answer (male / female)."
-        )
-    return "Please tap Male or Female below, or type male / female."
+    else:
+        body += "\n\nExtract using the full transcript; weight the user's latest message for gender/topic."
+    return HumanMessage(content=body)
 
 
-def _build_step_system_prompt(
+def _build_slot_extractor_system_prompt(
     language: str,
     seed_display_name: Optional[str],
-    missing: str,
     slots_snapshot: dict[str, Any],
 ) -> str:
+    codes = ", ".join(sorted(_TRAINING_TOPICS))
     lang_he = (language or "he").lower().startswith("he")
     seed = (seed_display_name or "").strip()
     seed_note = ""
     if seed:
         seed_note = (
-            f"\nרמז מההרשמה (אופציונלי): {seed[:80]} — רק אם המשתמש לא נתן שם אמיתי.\n"
+            f"\nרמז שם מההרשמה (אופציונלי): {seed[:80]}.\n"
             if lang_he
-            else f"\nOptional signup name hint: {seed[:80]} — only if the user never chose a real name.\n"
+            else f"\nOptional signup name hint: {seed[:80]}.\n"
         )
     bits: list[str] = []
     dn = (slots_snapshot.get("display_name") or "").strip()
@@ -824,132 +554,75 @@ def _build_step_system_prompt(
         bits.append(f"gender={slots_snapshot['gender']}")
     if slots_snapshot.get("topic") in _TRAINING_TOPICS:
         bits.append(f"topic={slots_snapshot['topic']}")
-    known_line = ", ".join(bits) if bits else ("(עדיין כלום)" if lang_he else "(nothing yet)")
+    known_line = ", ".join(bits) if bits else ("(ריק)" if lang_he else "(empty)")
 
     if lang_he:
-        focus_map = {
-            "display_name": (
-                "שלב נוכחי — שם לפנייה (אופציונלי).\n"
-                "מההודעה האחרונה של המשתמש בלבד: מלא display_name רק אם זה שם קצר וסביר (עד 3 מילים, בלי ספרות).\n"
-                "אם מסרב לתת שם — השאר display_name ריק (null).\n"
-                "ב-assistant_message: אל תקרא למשתמש לפי משפט הסירוב; תודה קצרה והמשך לשאלת מגדר (זכר/נקבה) בלי לחץ.\n"
-                "אל תחזור על 'מה שמך' אחרי שם או סירוב ברור."
-            ),
-            "gender": (
-                "שלב נוכחי — מגדר דקדוקי לעברית.\n"
-                "חוק קשיח: אסור להסיק gender מהשם או מסטריאוטיפים — גם אם השם 'נשמע' זכר או נקבה.\n"
-                "מלא gender (male/female) רק אם ההודעה האחרונה של המשתמש היא תשובת מגדר מפורשת "
-                "(זכר, גבר, נקבה, אישה, אני גבר/נקבה וכו').\n"
-                "אם ההודעה האחרונה אינה תשובת מגדר כזו — השאר gender כ‑null.\n"
-                "ב-assistant_message כש‑gender נשאר null: שאל בקצרה לגבי מגדר והפנה לכרטיסי זכר/נקבה למטה; "
-                "אסור לנסח כאילו המגדר כבר נקבע ('אתה גבר', 'נמשיך') לפני תשובה מפורשת.\n"
-                "רק אחרי תשובת מגדר ברורה — assistant_message קצר בלי אישור מיותר והמשך לנושא האימון.\n"
-                "אסור לשאול שוב זכר/נקבה אם המגדר כבר ידוע מהשיחה או מהמערכת."
-            ),
-            "topic": (
-                "שלב נוכחי — נושא אימון.\n"
-                "מההודעה האחרונה בלבד: מלא topic כאחד: goals, parenting, relationships, career, wellbeing, personal_growth.\n"
-                "ב-assistant_message: סיום קצר והזמנה להמשיך — בלי שאלות המשך."
-            ),
-        }
-        focus = focus_map[missing]
         return (
-            "אתה עוזר קצר לקליטה ראשונה ב‑BSD (לא אימון מלא). כתוב בעברית בלבד.\n"
-            "סגנון: שיחה טבעית עם המשתמש בלבד — בלי מטא־הסברים (לא 'מתרגלים', לא 'מזהים מהטקסט', לא תיאור תהליכים פנימיים).\n"
-            f"ידוע פנימית: {known_line}\n"
-            f"{seed_note}\n"
-            f"{focus}\n"
-            "פלט מובנה: assistant_message + שדות; השאר שדות שלא נלמדו מההודעה האחרונה כ‑null."
+            "אתה מחלץ שדות קליטה בלבד ל‑BSD — בלי טקסט למשתמש.\n"
+            "פלט: extracted_display_name, name_refusal_detected, extracted_gender, extracted_topic בלבד.\n\n"
+            "• extracted_display_name — עד 3 מילים, בלי ספרות; null אם אין שם ברור.\n"
+            "• name_refusal_detected=true רק כשהמשתמש מסרב במפורש לתת שם.\n"
+            "• extracted_gender — male/female רק אם נאמר במפורש; אסור להסיק משם פרטי → אחרת null.\n"
+            f"• extracted_topic — אחד מ־{codes} או null אם לא נאמר במפורש.\n"
+            "מפה ביטויי צ'יפים בעברית לקוד הנושא המתאים.\n\n"
+            f"תמונת מצב מהמערכת: {known_line}\n"
+            f"{seed_note}"
         )
 
-    focus_en = {
-        "display_name": (
-            "Current step — optional calling name.\n"
-            "From the LAST user message only: set display_name only if it's a plausible short name (≤3 words, no digits).\n"
-            "If they refuse — leave display_name empty/null.\n"
-            "assistant_message: never address them by the refusal phrase; thank briefly and ask gender for Hebrew grammar.\n"
-        ),
-        "gender": (
-            "Current step — grammatical gender for Hebrew.\n"
-            "Hard rule: NEVER infer gender from names or stereotypes.\n"
-            "Set gender only if the LAST user message explicitly states male/female (or equivalent).\n"
-            "If the last message is not an explicit gender answer — leave gender null.\n"
-            "When gender stays null: assistant_message must ask clearly (and point to Male/Female chips);\n"
-            "do NOT assume gender ('you're a guy', \"let's continue\") before they answer.\n"
-            "After an explicit answer only — brief assistant_message, no redundant confirmation, move toward topic.\n"
-        ),
-        "topic": (
-            "Current step — coaching topic.\n"
-            "From the LAST user message only: set topic to one of: goals, parenting, relationships, career, wellbeing, personal_growth.\n"
-            "assistant_message: brief warm closing — no further interview questions.\n"
-        ),
-    }[missing]
     return (
-        "You are a short BSD first-entry assistant (not full coaching). Write only in English.\n"
-        "Tone: natural welcome chat only — never meta commentary about tests, classifiers, or 'practicing detection from text'.\n"
-        f"Already known internally: {known_line}\n"
-        f"{seed_note}\n"
-        f"{focus_en}\n"
-        "Structured output: assistant_message + fields; use null for fields not learned from the latest user message."
+        "Extract BSD onboarding slots ONLY — no prose for the user.\n"
+        "Output: extracted_display_name, name_refusal_detected, extracted_gender, extracted_topic.\n\n"
+        "• extracted_display_name — ≤3 words, no digits; null if unclear.\n"
+        "• name_refusal_detected=true only on explicit refusal to share a name.\n"
+        "• extracted_gender — male/female only if explicitly stated; NEVER infer from names → else null.\n"
+        f"• extracted_topic — one of {codes}, or null unless explicit.\n\n"
+        f"Snapshot: {known_line}\n"
+        f"{seed_note}"
     )
 
 
-def _step_transcript_human(msgs: list[OnboardingChatMessage], language: str) -> HumanMessage:
-    lines: list[str] = []
-    for m in msgs[-14:]:
-        tag = "User" if m.role == "user" else "Coach"
-        lines.append(f"{tag}: {m.content}")
-    body = "[Recent transcript]\n" + "\n".join(lines)
-    if (language or "he").lower().startswith("he"):
-        body += "\n\nמלא את הפלט המובנה לפי ההודעה האחרונה של המשתמש בלבד."
-    else:
-        body += "\n\nFill structured output from the LAST user message only."
-    return HumanMessage(content=body)
+def _apply_extractor_patch(
+    slots: dict[str, Any],
+    ext: _SlotExtract,
+    *,
+    missing_before: str,
+) -> None:
+    if ext.name_refusal_detected:
+        slots["display_name"] = None
+
+    cand = _slug(ext.extracted_display_name)
+    if cand and not ext.name_refusal_detected:
+        if not _is_display_name_refusal_line(cand) and not _looks_like_interjection_not_name(cand):
+            if missing_before == "display_name" or not (slots.get("display_name") or "").strip():
+                slots["display_name"] = cand
+
+    if ext.extracted_gender in ("male", "female"):
+        slots["gender"] = ext.extracted_gender
+
+    tp = _slug(ext.extracted_topic)
+    if tp in _TRAINING_TOPICS:
+        slots["topic"] = tp
 
 
-def _chunk_text(chunk: Any) -> str:
-    c = getattr(chunk, "content", None)
-    if isinstance(c, str):
-        return c
-    if isinstance(c, list):
-        parts: list[str] = []
-        for p in c:
-            if isinstance(p, dict) and p.get("type") == "text":
-                parts.append(str(p.get("text", "")))
-            elif isinstance(p, str):
-                parts.append(p)
-        return "".join(parts)
-    return ""
-
-
-async def _extract_slots(
+def _gender_guard_clear_if_hallucinated(
+    slots: dict[str, Any],
     msgs: list[OnboardingChatMessage],
-    assistant_reply: str,
-) -> dict[str, Any]:
-    transcript = [{"role": m.role, "content": m.content} for m in msgs]
-    human = (
-        json.dumps(transcript, ensure_ascii=False)
-        + "\n\nLatest coach reply:\n"
-        + (assistant_reply or "").strip()
+    extracted_gender_fallback: Optional[str],
+) -> None:
+    """Drop gender if last user line looks like name-only/junk but model guessed gender."""
+    lu = _last_user_text(msgs)
+    hg = _heuristic_gender_from_line(lu)
+    if hg:
+        slots["gender"] = hg
+        return
+    if slots.get("gender") not in ("male", "female"):
+        return
+    last_suggests_name_only = bool(
+        _heuristic_display_name_from_line(lu) or _heuristic_display_name_loose(lu)
     )
-    llm = get_azure_chat_llm_4o_mini()
-    structured_llm = llm.with_structured_output(_SlotsOnly, method="function_calling", include_raw=True)
-    packed = await structured_llm.ainvoke(
-        [SystemMessage(content=_build_extract_system_prompt()), HumanMessage(content=human)]
-    )
-    parsed = packed.get("parsed")
-    if parsed is None:
-        logger.warning("[onboarding_intake] extract parse missing")
-        return _normalize_slots(None, None, None)
-    return _sanitize_enums_slots(parsed)
-
-
-async def _stream_reply_tokens(lc_messages: list) -> AsyncIterator[str]:
-    llm = get_azure_chat_llm_4o_mini()
-    async for chunk in llm.astream(lc_messages):
-        piece = _chunk_text(chunk)
-        if piece:
-            yield piece
+    junk_line = bool(lu.strip()) and _looks_like_interjection_not_name(lu)
+    if extracted_gender_fallback in ("male", "female") and (last_suggests_name_only or junk_line):
+        slots["gender"] = None
 
 
 async def _load_onboarding_intake_request(request: Request) -> OnboardingIntakeRequest:
@@ -983,8 +656,7 @@ async def onboarding_intake_step(
     current_user: User = Depends(get_current_user),
 ):
     """
-    One onboarding turn: focused prompt for the next missing slot + structured JSON
-    (assistant_message + partial slots). Simpler than stream + separate extract.
+    Single onboarding turn: LLM extracts slots only; assistant_message is deterministic server copy.
     """
     _ = current_user
     body = await _load_onboarding_intake_request(request)
@@ -996,75 +668,63 @@ async def onboarding_intake_step(
     slots = _apply_heuristic_fill(slots, heur)
     _scrub_refusal_display_name(slots)
 
-    missing = _missing_focus(slots, msgs)
+    missing_before = _missing_focus(slots, msgs)
 
-    if missing is None:
+    if missing_before is None:
         return OnboardingIntakeResponse(
-            assistant_message=_closing_copy(body.language),
+            assistant_message=intake_closing(body.language),
             display_name=slots.get("display_name"),
             gender=slots.get("gender"),
             topic=slots.get("topic"),
             intake_complete=True,
         )
 
-    sys_prompt = _build_step_system_prompt(
-        body.language,
-        body.seed_display_name,
-        missing,
-        slots,
-    )
+    sys_prompt = _build_slot_extractor_system_prompt(body.language, body.seed_display_name, slots)
     lc_messages: list = [
         SystemMessage(content=sys_prompt),
-        _step_transcript_human(msgs, body.language),
+        _extractor_transcript_human(msgs, body.language),
     ]
 
     try:
         llm = get_azure_chat_llm_4o_mini()
         structured_llm = llm.with_structured_output(
-            _StructuredTurn,
+            _SlotExtract,
             method="function_calling",
             include_raw=True,
         )
         packed = await structured_llm.ainvoke(lc_messages)
         parsed = packed.get("parsed")
         if parsed is None:
-            logger.warning("[onboarding_intake] step structured parse missing raw=%s", packed.get("raw"))
+            logger.warning("[onboarding_intake] slot extract parse missing raw=%s", packed.get("raw"))
             raise HTTPException(status_code=502, detail="Intake step unavailable")
-        turn = _sanitize_enums_turn(parsed)
-        patch = _normalize_slots(turn["display_name"], turn["gender"], turn["topic"])
-        patch_gender = patch.get("gender")
-        for k in ("display_name", "gender", "topic"):
-            v = patch.get(k)
-            if v is None:
-                continue
-            if k == "display_name":
-                if missing != "display_name":
-                    continue
-                vs = str(v).strip()
-                if _is_display_name_refusal_line(vs):
-                    continue
-                if _looks_like_interjection_not_name(vs):
-                    continue
-                slots[k] = vs
-                continue
-            slots[k] = v
+        ext_model = parsed if isinstance(parsed, _SlotExtract) else _SlotExtract.model_validate(parsed)
+        extracted_guess = ext_model.extracted_gender
+
+        _apply_extractor_patch(slots, ext_model, missing_before=missing_before)
         slots = _apply_heuristic_fill(slots, heur)
         _scrub_refusal_display_name(slots)
 
-        amsg = (turn.get("assistant_message") or "").strip() or _closing_copy(body.language)
-        if missing == "gender":
-            lu = _last_user_text(msgs)
-            hg = _heuristic_gender_from_line(lu)
-            if hg:
-                slots["gender"] = hg
-            else:
-                last_suggests_name_only = bool(
-                    _heuristic_display_name_from_line(lu) or _heuristic_display_name_loose(lu)
-                )
-                junk_line = bool(lu.strip()) and _looks_like_interjection_not_name(lu)
-                if patch_gender in ("male", "female") and (last_suggests_name_only or junk_line):
-                    slots["gender"] = None
-                    amsg = _gender_clarify_fallback(body.language, slots.get("display_name"))
+        _gender_guard_clear_if_hallucinated(slots, msgs, extracted_guess)
+
+        extractor_refusal = bool(ext_model.name_refusal_detected)
+        missing_after = _missing_focus(slots, msgs, extractor_refusal=extractor_refusal)
+
+        if missing_after is None:
+            return OnboardingIntakeResponse(
+                assistant_message=intake_closing(body.language),
+                display_name=slots.get("display_name"),
+                gender=slots.get("gender"),
+                topic=slots.get("topic"),
+                intake_complete=True,
+            )
+
+        ut_count = _user_turn_count(msgs)
+        amsg = pick_intake_assistant_message(
+            body.language,
+            missing=missing_after,
+            gender=slots.get("gender"),
+            user_message_count=ut_count,
+        )
 
         intake_complete = _slots_complete(slots)
         return OnboardingIntakeResponse(
@@ -1081,67 +741,20 @@ async def onboarding_intake_step(
         raise HTTPException(status_code=502, detail="Intake step failed") from None
 
 
+_DEPRECATED_INTAKE = (
+    "Onboarding intake legacy endpoint removed. Use POST /api/onboarding/intake/step only."
+)
+
+
 @router.post("/intake/stream")
 @limiter.limit("40/minute")
 async def onboarding_intake_stream(
     request: Request,
     current_user: User = Depends(get_current_user),
 ):
-    """SSE stream: many `data: {\"content\":\"...\"}` lines, then `data: {\"done\":true,...slots}`"""
     _ = current_user
-    body = await _load_onboarding_intake_request(request)
-
-    async def event_gen() -> AsyncIterator[str]:
-        try:
-            msgs = _sanitize_transcript(body)
-            prompt_known = _known_slots_for_llm_prompt(body.known_slots, msgs)
-            lc_messages = _lc_messages_for_reply(
-                body.language, body.seed_display_name, msgs, prompt_known
-            )
-            full_reply = ""
-            async for piece in _stream_reply_tokens(lc_messages):
-                full_reply += piece
-                yield f"data: {json.dumps({'content': piece})}\n\n"
-
-            empty = _normalize_slots(None, None, None)
-            slots = _merge_known_into_slots(empty, body.known_slots)
-            heur = _heuristic_slots_from_transcript(msgs)
-            slots = _apply_heuristic_fill(slots, heur)
-
-            if not _slots_complete(slots):
-                extracted = await _extract_slots(_trim_messages_for_extract(msgs), full_reply)
-                slots = _merge_known_into_slots(extracted, body.known_slots)
-                slots = _apply_heuristic_fill(slots, heur)
-
-            intake_complete = _slots_complete(slots)
-            payload = {
-                "done": True,
-                "assistant_message": full_reply.strip() or "…",
-                "display_name": slots.get("display_name"),
-                "gender": slots.get("gender"),
-                "topic": slots.get("topic"),
-                "intake_complete": intake_complete,
-            }
-            yield f"data: {json.dumps(payload)}\n\n"
-        except HTTPException as he:
-            detail = he.detail
-            err = detail if isinstance(detail, str) else str(detail)
-            yield f"data: {json.dumps({'error': err})}\n\n"
-        except ChatMessageRejected as e:
-            yield f"data: {json.dumps({'error': e.reason})}\n\n"
-        except Exception:
-            logger.exception("[onboarding_intake] stream failure lang=%s", body.language)
-            yield f"data: {json.dumps({'error': 'intake_stream_failed'})}\n\n"
-
-    return StreamingResponse(
-        event_gen(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-        },
-    )
+    _ = request
+    raise HTTPException(status_code=410, detail=_DEPRECATED_INTAKE)
 
 
 @router.post("/intake/turn", response_model=OnboardingIntakeResponse)
@@ -1151,56 +764,5 @@ async def onboarding_intake_turn(
     current_user: User = Depends(get_current_user),
 ):
     _ = current_user
-    body = await _load_onboarding_intake_request(request)
-
-    msgs = _sanitize_transcript(body)
-    prompt_known = _known_slots_for_llm_prompt(body.known_slots, msgs)
-    sys = _build_reply_system_prompt(body.language, body.seed_display_name, prompt_known)
-    lc_messages: list = [SystemMessage(content=sys)]
-    lc_messages.extend(_history_to_lc(msgs))
-    if msgs:
-        lc_messages.append(_turn_constraint_message(prompt_known))
-    else:
-        lc_messages.append(
-            HumanMessage(
-                content=(
-                    "[Bootstrap — no user reply yet.] Opening only; ask how they wish to be called."
-                )
-            )
-        )
-
-    try:
-        llm = get_azure_chat_llm_4o_mini()
-        structured_llm = llm.with_structured_output(
-            _StructuredTurn,
-            method="function_calling",
-            include_raw=True,
-        )
-        packed = await structured_llm.ainvoke(lc_messages)
-        parsed = packed.get("parsed")
-        if parsed is None:
-            logger.warning("[onboarding_intake] structured parse missing raw=%s", packed.get("raw"))
-            raise HTTPException(status_code=502, detail="Intake model returned no structured payload")
-        slots = _sanitize_enums_turn(parsed)
-        merged = _merge_known_into_slots(
-            {
-                "display_name": slots["display_name"],
-                "gender": slots["gender"],
-                "topic": slots["topic"],
-            },
-            body.known_slots,
-        )
-        slots.update(merged)
-        intake_complete = _slots_complete(slots)
-        return OnboardingIntakeResponse(
-            assistant_message=slots["assistant_message"],
-            display_name=slots["display_name"],
-            gender=slots["gender"],
-            topic=slots["topic"],
-            intake_complete=intake_complete,
-        )
-    except HTTPException:
-        raise
-    except Exception:
-        logger.exception("[onboarding_intake] LLM failure user_lang=%s", body.language)
-        raise HTTPException(status_code=502, detail="Intake assistant temporarily unavailable") from None
+    _ = request
+    raise HTTPException(status_code=410, detail=_DEPRECATED_INTAKE)
