@@ -110,7 +110,10 @@ try:
             print('✓ primary_discipline already present on users')
         cols = [c['name'] for c in insp.get_columns('users')]
         if 'mentor_disciplines' not in cols:
-            conn.execute(text('ALTER TABLE users ADD COLUMN mentor_disciplines TEXT'))
+            if dialect == 'postgresql':
+                conn.execute(text('ALTER TABLE users ADD COLUMN mentor_disciplines JSONB'))
+            else:
+                conn.execute(text('ALTER TABLE users ADD COLUMN mentor_disciplines TEXT'))
             conn.commit()
             print('✓ Added mentor_disciplines to users')
         else:

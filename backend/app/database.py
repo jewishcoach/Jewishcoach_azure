@@ -1,33 +1,41 @@
 from datetime import datetime, timezone
+import os
+
+from dotenv import load_dotenv
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import declarative_base, sessionmaker
-from dotenv import load_dotenv
-import os
 
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./coaching.db")
+_IS_SQLITE = "sqlite" in DATABASE_URL.lower()
 
-_sqlite_connect_args = (
-    {
-        "check_same_thread": False,
-        # Reduce "database is locked" under concurrent requests (Azure logs showed this under burst PATCH + POST).
-        "timeout": float(os.getenv("SQLITE_BUSY_TIMEOUT_SEC", "30")),
+
+def _engine_kwargs() -> dict:
+    if _IS_SQLITE:
+        return {
+            "connect_args": {
+                "check_same_thread": False,
+                # Reduce "database is locked" under concurrent requests (Azure logs showed this under burst PATCH + POST).
+                "timeout": float(os.getenv("SQLITE_BUSY_TIMEOUT_SEC", "30")),
+            },
+        }
+    # PostgreSQL / other servers: pooling + reconnect after idle disconnect (Azure Flexible Server, etc.)
+    return {
+        "pool_pre_ping": True,
+        "pool_size": int(os.getenv("DB_POOL_SIZE", "5")),
+        "max_overflow": int(os.getenv("DB_MAX_OVERFLOW", "10")),
+        "pool_timeout": int(os.getenv("DB_POOL_TIMEOUT", "30")),
+        "pool_recycle": int(os.getenv("DB_POOL_RECYCLE_SEC", "280")),
     }
-    if "sqlite" in DATABASE_URL
-    else {}
-)
 
-# Create engine (async support can be added later)
-engine = create_engine(
-    DATABASE_URL,
-    connect_args=_sqlite_connect_args,
-)
+
+engine = create_engine(DATABASE_URL, **_engine_kwargs())
 
 
 @event.listens_for(engine, "connect")
 def _sqlite_pragmas(dbapi_connection, connection_record):
-    if "sqlite" not in DATABASE_URL:
+    if not _IS_SQLITE:
         return
     cursor = dbapi_connection.cursor()
     try:
@@ -46,6 +54,7 @@ def utc_now():
     """Timezone-aware UTC now (replaces deprecated datetime.utcnow)."""
     return datetime.now(timezone.utc)
 
+
 def get_db():
     """Dependency for FastAPI routes"""
     db = SessionLocal()
@@ -53,7 +62,3 @@ def get_db():
         yield db
     finally:
         db.close()
-
-
-
-

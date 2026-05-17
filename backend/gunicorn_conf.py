@@ -13,7 +13,7 @@ backlog = 2048
 # Worker processes - 2 for Azure (avoids OOM on B1/S1); override with GUNICORN_WORKERS.
 # SQLite file DB + multiple Gunicorn workers often loses writes or shows stale reads on App Service
 # (webhook hits worker A, admin list hits worker B). Postgres can safely use multiple workers.
-_database_url = (os.getenv("DATABASE_URL") or "").lower()
+_database_url = (os.getenv("DATABASE_URL") or "").lower()  # match app.database._IS_SQLITE
 _requested_workers = int(os.getenv("GUNICORN_WORKERS", "2"))
 if "sqlite" in _database_url:
     workers = 1
