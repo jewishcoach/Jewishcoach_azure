@@ -41,6 +41,18 @@ _TRAINING_TOPICS = frozenset(
     }
 )
 
+# Substrings from UI chip labels / typical user taps — avoids a 2nd LLM call when slots are obvious.
+_TOPIC_USER_HINTS: dict[str, tuple[str, ...]] = {
+    "goals": ("השגת יעדים", "achieving goals"),
+    "parenting": ("הורות", "parenting"),
+    "relationships": ("זוגיות", "מערכות יחסים", "relationships", "couples"),
+    "career": ("קריירה", "עבודה", "career", "work"),
+    "wellbeing": ("מצב רוח", "לחץ", "רווחה רגשית", "stress", "wellbeing", "emotional"),
+    "personal_growth": ("צמיחה אישית", "personal growth"),
+}
+
+_EXTRACT_MAX_MESSAGES = 16
+
 
 class OnboardingChatMessage(BaseModel):
     """One transcript line; permissive defaults avoid 422 when clients omit empty strings."""
@@ -162,6 +174,68 @@ class _SlotsOnly(BaseModel):
     display_name: Optional[str] = Field(default=None, max_length=80)
     gender: Optional[Literal["male", "female"]] = None
     topic: Optional[str] = None
+
+
+def _trim_messages_for_extract(msgs: list[OnboardingChatMessage]) -> list[OnboardingChatMessage]:
+    if len(msgs) <= _EXTRACT_MAX_MESSAGES:
+        return msgs
+    return msgs[-_EXTRACT_MAX_MESSAGES:]
+
+
+def _heuristic_display_name_from_line(raw: str) -> Optional[str]:
+    t = raw.strip()
+    if len(t) < 2 or len(t) > 48 or "\n" in t or "\r" in t:
+        return None
+    if any(c in t for c in ".!?"):
+        return None
+    if any(ch.isdigit() for ch in t):
+        return None
+    words = t.split()
+    if not words or len(words) > 2:
+        return None
+    low = t.lower()
+    if low in ("זכר", "נקבה", "male", "female"):
+        return None
+    # Letters / Hebrew / basic punctuation only (aligned with frontend guessDisplayNameFromFirstReply)
+    for ch in t.replace(" ", "").replace("-", "").replace("'", "").replace(".", ""):
+        if not (ch.isalpha() or ("\u0590" <= ch <= "\u05ff")):
+            return None
+    return t[:80]
+
+
+def _heuristic_slots_from_transcript(msgs: list[OnboardingChatMessage]) -> dict[str, Any]:
+    """Infer slots from user lines (chip taps, short names) without calling the extractor LLM."""
+    out = _normalize_slots(None, None, None)
+    for m in reversed(msgs):
+        if m.role != "user":
+            continue
+        raw = m.content.strip()
+        if not raw:
+            continue
+        low = raw.lower()
+        if out["gender"] is None:
+            if raw == "זכר" or low == "male":
+                out["gender"] = "male"
+            elif raw == "נקבה" or low == "female":
+                out["gender"] = "female"
+        if out["topic"] is None:
+            for tid, needles in _TOPIC_USER_HINTS.items():
+                if any(n.lower() in low or n in raw for n in needles):
+                    out["topic"] = tid
+                    break
+        if out["display_name"] is None:
+            guessed = _heuristic_display_name_from_line(raw)
+            if guessed:
+                out["display_name"] = guessed
+    return out
+
+
+def _apply_heuristic_fill(slots: dict[str, Any], heur: dict[str, Any]) -> dict[str, Any]:
+    merged = dict(slots)
+    for k in ("display_name", "gender", "topic"):
+        if merged.get(k) is None and heur.get(k) is not None:
+            merged[k] = heur[k]
+    return merged
 
 
 def _slug(s: Optional[str]) -> Optional[str]:
@@ -509,8 +583,16 @@ async def onboarding_intake_stream(
                 full_reply += piece
                 yield f"data: {json.dumps({'content': piece})}\n\n"
 
-            slots = await _extract_slots(msgs, full_reply)
-            slots = _merge_known_into_slots(slots, body.known_slots)
+            empty = _normalize_slots(None, None, None)
+            slots = _merge_known_into_slots(empty, body.known_slots)
+            heur = _heuristic_slots_from_transcript(msgs)
+            slots = _apply_heuristic_fill(slots, heur)
+
+            if not _slots_complete(slots):
+                extracted = await _extract_slots(_trim_messages_for_extract(msgs), full_reply)
+                slots = _merge_known_into_slots(extracted, body.known_slots)
+                slots = _apply_heuristic_fill(slots, heur)
+
             intake_complete = _slots_complete(slots)
             payload = {
                 "done": True,
