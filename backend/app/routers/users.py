@@ -22,9 +22,7 @@ class UserPreferencesPatch(BaseModel):
     # True after user finishes BSD intro carousel (first entry to the app).
     bsd_intro_screens_completed: Optional[bool] = None
     # Optional persisted answers from first-entry onboarding (split-panel flow).
-    bsd_onboard_goal: Optional[str] = None
-    bsd_onboard_experience: Optional[str] = None
-    bsd_onboard_pace: Optional[str] = None
+    bsd_onboard_topic: Optional[str] = None
 
     model_config = ConfigDict(extra="ignore")
 

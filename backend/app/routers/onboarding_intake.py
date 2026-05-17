@@ -30,9 +30,16 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/onboarding", tags=["onboarding"])
 
-_GOALS = frozenset({"peace", "confidence", "knowSelf", "pattern"})
-_EXPERIENCE = frozenset({"coached", "new", "self", "unsure"})
-_PACES = frozenset({"gentle", "weekly", "immersive", "focused"})
+_TRAINING_TOPICS = frozenset(
+    {
+        "goals",
+        "parenting",
+        "relationships",
+        "career",
+        "wellbeing",
+        "personal_growth",
+    }
+)
 
 
 class OnboardingChatMessage(BaseModel):
@@ -51,9 +58,7 @@ class KnownOnboardingSlots(BaseModel):
 
     display_name: Optional[str] = Field(default=None, max_length=80)
     gender: Optional[Literal["male", "female"]] = None
-    goal: Optional[str] = None
-    experience: Optional[str] = None
-    pace: Optional[str] = None
+    topic: Optional[str] = None
 
 
 class OnboardingIntakeRequest(BaseModel):
@@ -126,9 +131,7 @@ class OnboardingIntakeRequest(BaseModel):
             nk = _normalize_slots(
                 raw_known.get("display_name"),
                 raw_known.get("gender"),
-                raw_known.get("goal"),
-                raw_known.get("experience"),
-                raw_known.get("pace"),
+                raw_known.get("topic"),
             )
             compact = {k: v for k, v in nk.items() if v is not None}
             out["known_slots"] = compact if compact else None
@@ -142,9 +145,7 @@ class OnboardingIntakeResponse(BaseModel):
     assistant_message: str
     display_name: Optional[str] = None
     gender: Optional[Literal["male", "female"]] = None
-    goal: Optional[str] = None
-    experience: Optional[str] = None
-    pace: Optional[str] = None
+    topic: Optional[str] = None
     intake_complete: bool = False
 
 
@@ -152,9 +153,7 @@ class _StructuredTurn(BaseModel):
     assistant_message: str = Field(..., max_length=4000)
     display_name: Optional[str] = Field(default=None, max_length=80)
     gender: Optional[Literal["male", "female"]] = None
-    goal: Optional[str] = None
-    experience: Optional[str] = None
-    pace: Optional[str] = None
+    topic: Optional[str] = None
 
 
 class _SlotsOnly(BaseModel):
@@ -162,9 +161,7 @@ class _SlotsOnly(BaseModel):
 
     display_name: Optional[str] = Field(default=None, max_length=80)
     gender: Optional[Literal["male", "female"]] = None
-    goal: Optional[str] = None
-    experience: Optional[str] = None
-    pace: Optional[str] = None
+    topic: Optional[str] = None
 
 
 def _slug(s: Optional[str]) -> Optional[str]:
@@ -177,19 +174,11 @@ def _slug(s: Optional[str]) -> Optional[str]:
 def _normalize_slots(
     display_name: Optional[str],
     gender: Optional[str],
-    goal: Optional[str],
-    experience: Optional[str],
-    pace: Optional[str],
+    topic: Optional[str],
 ) -> dict[str, Any]:
-    g = _slug(goal)
-    if g is not None and g not in _GOALS:
-        g = None
-    e = _slug(experience)
-    if e is not None and e not in _EXPERIENCE:
-        e = None
-    p = _slug(pace)
-    if p is not None and p not in _PACES:
-        p = None
+    tp = _slug(topic)
+    if tp is not None and tp not in _TRAINING_TOPICS:
+        tp = None
     gen = gender
     if gen not in ("male", "female", None):
         gen = None
@@ -197,29 +186,25 @@ def _normalize_slots(
     return {
         "display_name": name,
         "gender": gen,
-        "goal": g,
-        "experience": e,
-        "pace": p,
+        "topic": tp,
     }
 
 
 def _sanitize_enums_turn(parsed: _StructuredTurn) -> dict[str, Any]:
-    base = _normalize_slots(parsed.display_name, parsed.gender, parsed.goal, parsed.experience, parsed.pace)
+    base = _normalize_slots(parsed.display_name, parsed.gender, parsed.topic)
     base["assistant_message"] = (parsed.assistant_message or "").strip() or "…"
     return base
 
 
 def _sanitize_enums_slots(parsed: _SlotsOnly) -> dict[str, Any]:
-    return _normalize_slots(parsed.display_name, parsed.gender, parsed.goal, parsed.experience, parsed.pace)
+    return _normalize_slots(parsed.display_name, parsed.gender, parsed.topic)
 
 
 def _slots_complete(slots: dict[str, Any]) -> bool:
     return bool(
         slots.get("display_name")
         and slots.get("gender") in ("male", "female")
-        and slots.get("goal") in _GOALS
-        and slots.get("experience") in _EXPERIENCE
-        and slots.get("pace") in _PACES
+        and slots.get("topic") in _TRAINING_TOPICS
     )
 
 
@@ -230,9 +215,9 @@ def _merge_known_into_slots(
     """Client/UI selections win over model extraction when provided."""
     if known is None:
         return extracted
-    kn = _normalize_slots(known.display_name, known.gender, known.goal, known.experience, known.pace)
+    kn = _normalize_slots(known.display_name, known.gender, known.topic)
     out = dict(extracted)
-    for key in ("display_name", "gender", "goal", "experience", "pace"):
+    for key in ("display_name", "gender", "topic"):
         if kn.get(key) is not None:
             out[key] = kn[key]
     return out
@@ -241,18 +226,14 @@ def _merge_known_into_slots(
 def _known_slots_prompt_fragment(known: Optional[KnownOnboardingSlots]) -> str:
     if known is None:
         return ""
-    kn = _normalize_slots(known.display_name, known.gender, known.goal, known.experience, known.pace)
+    kn = _normalize_slots(known.display_name, known.gender, known.topic)
     lines: list[str] = []
     if kn["display_name"]:
         lines.append(f"- Name to use: {kn['display_name']}")
     if kn["gender"] in ("male", "female"):
         lines.append(f"- Gender: {kn['gender']}")
-    if kn["goal"]:
-        lines.append(f"- Goal (internal): {kn['goal']}")
-    if kn["experience"]:
-        lines.append(f"- Experience (internal): {kn['experience']}")
-    if kn["pace"]:
-        lines.append(f"- Pace (internal): {kn['pace']}")
+    if kn["topic"]:
+        lines.append(f"- Training focus topic (internal): {kn['topic']}")
     if not lines:
         return ""
     return (
@@ -282,35 +263,34 @@ def _build_reply_system_prompt(
     return f"""You are the BSD Jewish Coach intake assistant — warm, concise, respectful.
 Write ONLY in {primary} (the user's locale).
 {known_frag}{hint}
-Have a SHORT natural conversation (often 4–8 user turns) to learn:
+Have a SHORT natural conversation (often about 3–6 user turns) to collect ONLY:
 1) What to call them (display name)
-2) Gender for Hebrew grammar — politely ask; only male or female in our product
-3) Main coaching goal (inner peace / confidence / self-knowledge / overcoming a pattern)
-4) Past coaching experience level
-5) Preferred pacing (gentle, weekly rhythm, deeper dives, short focused bursts)
+2) Gender for Hebrew grammar — politely; only male or female in our product (often picked via UI buttons)
+3) Which coaching-life focus fits best — the UI offers topic chips such as goals, parenting, relationships, career, wellbeing, personal growth (internal codes only — never say codes aloud)
 
 Rules:
-- When a UI context block appears, do not re-ask those facts unless the user clearly contradicts them.
+- When a UI context block lists facts already recorded, do NOT ask those again unless the user clearly contradicts them.
+- Do NOT repeat the same question across turns; one missing item per message when possible.
+- Do NOT verbally drill topic buttons — briefly acknowledge and invite continuing when those picks appear.
 - If the user's latest message is clearly their name (or corrects an earlier wrong greeting), treat it as final:
   use only that name from now on — do not ask them to pick between it and an outdated hint or a mistaken opener.
-- One focus per message when possible; if they answer several things at once, acknowledge warmly.
+- If they answer several things at once, acknowledge warmly.
 - Never output JSON, bullet lists of internal codes, or markup — natural prose only.
 - Keep replies brief (usually 1–3 short paragraphs).
-- When you already know everything needed, warmly recap and invite them to continue into the app.
+- When name, gender, and topic are all known, close warmly: affirm they are in the right place and that coaching can begin soon — invite them to enter the app (do not start a long coaching session here).
 """
 
 
 def _build_extract_system_prompt() -> str:
-    return """You extract onboarding slots from a coaching intake transcript (Hebrew and/or English).
+    codes = ", ".join(sorted(_TRAINING_TOPICS))
+    return f"""You extract onboarding slots from a coaching intake transcript (Hebrew and/or English).
 
 Return CUMULATIVE best-known values from the ENTIRE transcript plus the coach's latest reply:
 - display_name: short name to call the user; null if unknown.
 - gender: only "male" or "female"; null if not stated.
-- goal: exactly one of peace, confidence, knowSelf, pattern — or null if unknown.
-  peace=inner calm/peace; confidence=self-confidence; knowSelf=know myself; pattern=habit/pattern to change.
-- experience: exactly one of coached, new, self, unsure — or null.
-  coached=worked with coach before; new=new to coaching; self=likes self-guided; unsure=unsure.
-- pace: exactly one of gentle, weekly, immersive, focused — or null.
+- topic: exactly one of {codes} — or null if unknown.
+  goals=achieving goals / targets; parenting=parenthood / kids; relationships=couple / intimate relationship;
+  career=work / career; wellbeing=stress / balance / emotional wellbeing; personal_growth=general self growth.
 
 Use null whenever uncertain. Do not invent.
 If the user replied with a short name right after being asked what to call them, set display_name to that reply
@@ -354,8 +334,6 @@ def _lc_messages_for_reply(
         name_from_known = (
             _normalize_slots(
                 known_slots.display_name,
-                None,
-                None,
                 None,
                 None,
             ).get("display_name")
@@ -419,7 +397,7 @@ async def _extract_slots(
     parsed = packed.get("parsed")
     if parsed is None:
         logger.warning("[onboarding_intake] extract parse missing")
-        return _normalize_slots(None, None, None, None, None)
+        return _normalize_slots(None, None, None)
     return _sanitize_enums_slots(parsed)
 
 
@@ -482,9 +460,7 @@ async def onboarding_intake_stream(
                 "assistant_message": full_reply.strip() or "…",
                 "display_name": slots.get("display_name"),
                 "gender": slots.get("gender"),
-                "goal": slots.get("goal"),
-                "experience": slots.get("experience"),
-                "pace": slots.get("pace"),
+                "topic": slots.get("topic"),
                 "intake_complete": intake_complete,
             }
             yield f"data: {json.dumps(payload)}\n\n"
@@ -549,9 +525,7 @@ async def onboarding_intake_turn(
             {
                 "display_name": slots["display_name"],
                 "gender": slots["gender"],
-                "goal": slots["goal"],
-                "experience": slots["experience"],
-                "pace": slots["pace"],
+                "topic": slots["topic"],
             },
             body.known_slots,
         )
@@ -561,9 +535,7 @@ async def onboarding_intake_turn(
             assistant_message=slots["assistant_message"],
             display_name=slots["display_name"],
             gender=slots["gender"],
-            goal=slots["goal"],
-            experience=slots["experience"],
-            pace=slots["pace"],
+            topic=slots["topic"],
             intake_complete=intake_complete,
         )
     except HTTPException:

@@ -33,9 +33,7 @@ export function normalizeIntakeLanguage(lang: string | undefined): string {
 export type OnboardingKnownSlots = {
   display_name?: string;
   gender?: 'male' | 'female';
-  goal?: string;
-  experience?: string;
-  pace?: string;
+  topic?: string;
 };
 
 /** Stable JSON body for /onboarding/intake/* — avoids null/odd shapes that trigger FastAPI 422. */
@@ -73,10 +71,8 @@ export function buildOnboardingIntakeBody(body: {
     const dn = ks.display_name?.trim();
     if (dn) compact.display_name = dn.slice(0, 80);
     if (ks.gender === 'male' || ks.gender === 'female') compact.gender = ks.gender;
-    for (const key of ['goal', 'experience', 'pace'] as const) {
-      const v = ks[key]?.trim();
-      if (v) compact[key] = v;
-    }
+    const top = ks.topic?.trim();
+    if (top) compact.topic = top;
     if (Object.keys(compact).length) payload.known_slots = compact;
   }
 
@@ -340,9 +336,7 @@ class ApiClient {
       assistant_message: string;
       display_name?: string | null;
       gender?: 'male' | 'female' | null;
-      goal?: string | null;
-      experience?: string | null;
-      pace?: string | null;
+      topic?: string | null;
       intake_complete: boolean;
     }>('/onboarding/intake/turn', buildOnboardingIntakeBody(body));
     return response.data;
@@ -364,9 +358,7 @@ class ApiClient {
     assistant_message: string;
     display_name?: string | null;
     gender?: 'male' | 'female' | null;
-    goal?: string | null;
-    experience?: string | null;
-    pace?: string | null;
+    topic?: string | null;
     intake_complete: boolean;
   }> {
     const token = this.getToken();
@@ -422,9 +414,7 @@ class ApiClient {
       assistant_message: string;
       display_name?: string | null;
       gender?: 'male' | 'female' | null;
-      goal?: string | null;
-      experience?: string | null;
-      pace?: string | null;
+      topic?: string | null;
       intake_complete: boolean;
     } | null = null;
 
@@ -451,9 +441,7 @@ class ApiClient {
             assistant_message: String(data.assistant_message ?? ''),
             display_name: (data.display_name as string | null | undefined) ?? null,
             gender: (data.gender as 'male' | 'female' | null | undefined) ?? null,
-            goal: (data.goal as string | null | undefined) ?? null,
-            experience: (data.experience as string | null | undefined) ?? null,
-            pace: (data.pace as string | null | undefined) ?? null,
+            topic: (data.topic as string | null | undefined) ?? null,
             intake_complete: Boolean(data.intake_complete),
           };
         }

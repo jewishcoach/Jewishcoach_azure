@@ -8,18 +8,13 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Bird,
-  CalendarDays,
-  CircleHelp,
-  Compass,
-  Crosshair,
-  Flame,
-  Flower2,
+  Briefcase,
   Heart,
-  Lightbulb,
   Mic,
   Send,
-  Shield,
+  Sparkles,
+  Sprout,
+  Target,
   UserRound,
   Users,
 } from 'lucide-react';
@@ -42,19 +37,20 @@ type ChatMsg = {
   showCoachMeta?: boolean;
 };
 
-const GOAL_IDS = ['peace', 'confidence', 'knowSelf', 'pattern'] as const;
-type GoalId = (typeof GOAL_IDS)[number];
-
-const EXP_IDS = ['coached', 'new', 'self', 'unsure'] as const;
-type ExpId = (typeof EXP_IDS)[number];
-
-const PACE_IDS = ['gentle', 'weekly', 'immersive', 'focused'] as const;
-type PaceId = (typeof PACE_IDS)[number];
+const TOPIC_IDS = [
+  'goals',
+  'parenting',
+  'relationships',
+  'career',
+  'wellbeing',
+  'personal_growth',
+] as const;
+type TopicId = (typeof TOPIC_IDS)[number];
 
 const GENDER_IDS = ['male', 'female'] as const;
 type GenderId = (typeof GENDER_IDS)[number];
 
-const STEPS = 5;
+const STEPS = 3;
 
 function cx(...parts: (string | false | undefined | null)[]) {
   return parts.filter(Boolean).join(' ');
@@ -64,16 +60,8 @@ function uid() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-function isGoalId(s: string): s is GoalId {
-  return (GOAL_IDS as readonly string[]).includes(s);
-}
-
-function isExpId(s: string): s is ExpId {
-  return (EXP_IDS as readonly string[]).includes(s);
-}
-
-function isPaceId(s: string): s is PaceId {
-  return (PACE_IDS as readonly string[]).includes(s);
+function isTopicId(s: string): s is TopicId {
+  return (TOPIC_IDS as readonly string[]).includes(s);
 }
 
 function transcriptForApi(messages: ChatMsg[]) {
@@ -103,25 +91,13 @@ function guessDisplayNameFromFirstReply(text: string): string | undefined {
   return joined.slice(0, 80);
 }
 
-const GOAL_ICONS: Record<GoalId, LucideIcon> = {
-  peace: Bird,
-  confidence: Shield,
-  knowSelf: UserRound,
-  pattern: Flower2,
-};
-
-const EXP_ICONS: Record<ExpId, LucideIcon> = {
-  coached: Users,
-  new: Lightbulb,
-  self: Compass,
-  unsure: CircleHelp,
-};
-
-const PACE_ICONS: Record<PaceId, LucideIcon> = {
-  gentle: Heart,
-  weekly: CalendarDays,
-  immersive: Flame,
-  focused: Crosshair,
+const TOPIC_ICONS: Record<TopicId, LucideIcon> = {
+  goals: Target,
+  parenting: Users,
+  relationships: Heart,
+  career: Briefcase,
+  wellbeing: Sparkles,
+  personal_growth: Sprout,
 };
 
 const GENDER_ICONS: Record<GenderId, LucideIcon> = {
@@ -288,9 +264,7 @@ export function BsdOnboardingFlow({
   const [input, setInput] = useState('');
   const [preferredName, setPreferredName] = useState('');
   const [gender, setGender] = useState<'male' | 'female' | null>(null);
-  const [goalId, setGoalId] = useState<GoalId | null>(null);
-  const [expId, setExpId] = useState<ExpId | null>(null);
-  const [paceId, setPaceId] = useState<PaceId | null>(null);
+  const [topicId, setTopicId] = useState<TopicId | null>(null);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [bootLoading, setBootLoading] = useState(true);
   const [turnLoading, setTurnLoading] = useState(false);
@@ -301,21 +275,13 @@ export function BsdOnboardingFlow({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [bootKey, setBootKey] = useState(0);
 
-  const filledStep = [
-    preferredName.trim(),
-    gender,
-    goalId,
-    expId,
-    paceId,
-  ].filter(Boolean).length;
+  const filledStep = [preferredName.trim(), gender, topicId].filter(Boolean).length;
 
   const applyExtracted = useCallback(
     async (res: {
       display_name?: string | null;
       gender?: 'male' | 'female' | null;
-      goal?: string | null;
-      experience?: string | null;
-      pace?: string | null;
+      topic?: string | null;
       intake_complete: boolean;
     }) => {
       const name = res.display_name?.trim();
@@ -337,9 +303,7 @@ export function BsdOnboardingFlow({
           /* best-effort */
         }
       }
-      if (res.goal && isGoalId(res.goal)) setGoalId(res.goal);
-      if (res.experience && isExpId(res.experience)) setExpId(res.experience);
-      if (res.pace && isPaceId(res.pace)) setPaceId(res.pace);
+      if (res.topic && isTopicId(res.topic)) setTopicId(res.topic);
       setIntakeComplete(res.intake_complete);
     },
     [onDisplayNameUpdated],
@@ -349,9 +313,7 @@ export function BsdOnboardingFlow({
     (
       hint?: Partial<{
         gender: GenderId;
-        goal: GoalId;
-        experience: ExpId;
-        pace: PaceId;
+        topic: TopicId;
       }>,
       extras?: { display_name?: string },
     ): OnboardingKnownSlots | undefined => {
@@ -361,18 +323,14 @@ export function BsdOnboardingFlow({
         preferredName.trim() ||
         (typeof initialDisplayName === 'string' ? initialDisplayName.trim() : '');
       const g = hint?.gender ?? gender ?? undefined;
-      const goal = hint?.goal ?? goalId ?? undefined;
-      const exp = hint?.experience ?? expId ?? undefined;
-      const pace = hint?.pace ?? paceId ?? undefined;
+      const topic = hint?.topic ?? topicId ?? undefined;
       const out: OnboardingKnownSlots = {};
       if (name) out.display_name = name.slice(0, 80);
       if (g) out.gender = g;
-      if (goal) out.goal = goal;
-      if (exp) out.experience = exp;
-      if (pace) out.pace = pace;
+      if (topic) out.topic = topic;
       return Object.keys(out).length ? out : undefined;
     },
-    [preferredName, initialDisplayName, gender, goalId, expId, paceId],
+    [preferredName, initialDisplayName, gender, topicId],
   );
 
   /** Static opening: same voice as workspace welcome, ends with “what’s your name?” — not the coaching-permission question. */
@@ -415,9 +373,7 @@ export function BsdOnboardingFlow({
       textOverride?: string,
       slotHint?: Partial<{
         gender: GenderId;
-        goal: GoalId;
-        experience: ExpId;
-        pace: PaceId;
+        topic: TopicId;
       }>,
     ) => {
       const raw = (textOverride ?? input).trim();
@@ -512,29 +468,25 @@ export function BsdOnboardingFlow({
     try {
       await apiClient.patchUserPreferences({
         bsd_intro_screens_completed: true,
-        bsd_onboard_goal: goalId ?? undefined,
-        bsd_onboard_experience: expId ?? undefined,
-        bsd_onboard_pace: paceId ?? undefined,
+        bsd_onboard_topic: topicId ?? undefined,
       });
     } catch {
       /* App.tsx retries completion */
     }
     onComplete();
-  }, [expId, goalId, onComplete, paceId]);
+  }, [onComplete, topicId]);
 
   const showComposer = !intakeComplete;
   const composerBusy = bootLoading || turnLoading;
   const summaryReady =
-    intakeComplete && preferredName.trim() && gender && goalId && expId && paceId;
+    intakeComplete && preferredName.trim() && gender && topicId;
   const showTyping = composerBusy && !streamHasContent;
   const showQuickCards = !intakeComplete && !composerBusy;
   /** Opening asks for name first; gender cards are step 2 only after at least one user reply. */
   const hasUserMessaged = messages.some((m) => m.role === 'user');
   const showGenderPick = hasUserMessaged && !gender;
-  const showGoalPick = Boolean(gender && !goalId);
-  const showExpPick = Boolean(gender && goalId && !expId);
-  const showPacePick = Boolean(gender && goalId && expId && !paceId);
-  const showAnyQuickPick = showGenderPick || showGoalPick || showExpPick || showPacePick;
+  const showTopicPick = Boolean(gender && !topicId);
+  const showAnyQuickPick = showGenderPick || showTopicPick;
 
   return (
     <div
@@ -667,51 +619,17 @@ export function BsdOnboardingFlow({
                   </div>
                 ) : null}
 
-                {showGoalPick ? (
+                {showTopicPick ? (
                   <div className="flex w-full justify-center md:justify-start">
                     <div className="grid w-full max-w-[432px] grid-cols-2 gap-3">
-                      {GOAL_IDS.map((id) => (
+                      {TOPIC_IDS.map((id) => (
                         <ChoiceCard
                           key={id}
-                          icon={GOAL_ICONS[id]}
-                          label={t(`bsdOnboarding.goal.${id}`)}
+                          icon={TOPIC_ICONS[id]}
+                          label={t(`bsdOnboarding.topic.${id}`)}
                           selected={false}
                           disabled={false}
-                          onClick={() => void sendUserTurn(t(`bsdOnboarding.goal.${id}`), { goal: id })}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-
-                {showExpPick ? (
-                  <div className="flex w-full justify-center md:justify-start">
-                    <div className="grid w-full max-w-[432px] grid-cols-2 gap-3">
-                      {EXP_IDS.map((id) => (
-                        <ChoiceCard
-                          key={id}
-                          icon={EXP_ICONS[id]}
-                          label={t(`bsdOnboarding.exp.${id}`)}
-                          selected={false}
-                          disabled={false}
-                          onClick={() => void sendUserTurn(t(`bsdOnboarding.exp.${id}`), { experience: id })}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-
-                {showPacePick ? (
-                  <div className="flex w-full justify-center md:justify-start">
-                    <div className="grid w-full max-w-[432px] grid-cols-2 gap-3">
-                      {PACE_IDS.map((id) => (
-                        <ChoiceCard
-                          key={id}
-                          icon={PACE_ICONS[id]}
-                          label={t(`bsdOnboarding.pace.${id}`)}
-                          selected={false}
-                          disabled={false}
-                          onClick={() => void sendUserTurn(t(`bsdOnboarding.pace.${id}`), { pace: id })}
+                          onClick={() => void sendUserTurn(t(`bsdOnboarding.topic.${id}`), { topic: id })}
                         />
                       ))}
                     </div>
@@ -745,17 +663,11 @@ export function BsdOnboardingFlow({
                         {gender ? t(`bsdOnboarding.gender.${gender}`) : '—'}
                       </dd>
                     </div>
-                    <div className="flex justify-between gap-4 border-b border-[#E8E0CC]/80 pb-2">
-                      <dt className="text-[#4c5a70]">{t('bsdOnboarding.summary.goal')}</dt>
-                      <dd className="text-end font-medium text-[#1a1510]">{t(`bsdOnboarding.goal.${goalId}`)}</dd>
-                    </div>
-                    <div className="flex justify-between gap-4 border-b border-[#E8E0CC]/80 pb-2">
-                      <dt className="text-[#4c5a70]">{t('bsdOnboarding.summary.exp')}</dt>
-                      <dd className="text-end font-medium text-[#1a1510]">{t(`bsdOnboarding.exp.${expId}`)}</dd>
-                    </div>
                     <div className="flex justify-between gap-4">
-                      <dt className="text-[#4c5a70]">{t('bsdOnboarding.summary.pace')}</dt>
-                      <dd className="text-end font-medium text-[#1a1510]">{t(`bsdOnboarding.pace.${paceId}`)}</dd>
+                      <dt className="text-[#4c5a70]">{t('bsdOnboarding.summary.topic')}</dt>
+                      <dd className="text-end font-medium text-[#1a1510]">
+                        {topicId ? t(`bsdOnboarding.topic.${topicId}`) : '—'}
+                      </dd>
                     </div>
                   </dl>
                 </div>
