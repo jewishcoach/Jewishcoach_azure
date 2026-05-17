@@ -1,8 +1,25 @@
-from datetime import datetime, timezone
+"""
+Database engine and session factory.
+
+Supports:
+  - SQLite (local dev / legacy App Service file DB): WAL + busy timeout to reduce lock contention.
+  - PostgreSQL (recommended production): connection pool, pre-ping, recycle for Azure Flexible Server.
+
+Configure via ``DATABASE_URL``. SQLAlchemy URL cheatsheet:
+
+  SQLite file (relative path): ``sqlite:///./coaching.db``
+  SQLite absolute path (four slashes): ``sqlite:////var/data/coaching.db``
+  PostgreSQL (psycopg2): ``postgresql+psycopg2://user:pass@host:5432/dbname?sslmode=require``
+"""
+
+from __future__ import annotations
+
 import os
+from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, event
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 load_dotenv()
@@ -11,30 +28,50 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./coaching.db")
 _IS_SQLITE = "sqlite" in DATABASE_URL.lower()
 
 
-def _engine_kwargs() -> dict:
-    if _IS_SQLITE:
-        return {
-            "connect_args": {
-                "check_same_thread": False,
-                # Reduce "database is locked" under concurrent requests (Azure logs showed this under burst PATCH + POST).
-                "timeout": float(os.getenv("SQLITE_BUSY_TIMEOUT_SEC", "30")),
-            },
-        }
-    # PostgreSQL / other servers: pooling + reconnect after idle disconnect (Azure Flexible Server, etc.)
+def _int_env(name: str, default: int, *, minimum: int | None = None) -> int:
+    raw = os.getenv(name, str(default)).strip()
+    try:
+        v = int(raw)
+    except ValueError:
+        return default
+    if minimum is not None and v < minimum:
+        return default
+    return v
+
+
+def _sqlite_engine_kwargs() -> dict:
     return {
-        "pool_pre_ping": True,
-        "pool_size": int(os.getenv("DB_POOL_SIZE", "5")),
-        "max_overflow": int(os.getenv("DB_MAX_OVERFLOW", "10")),
-        "pool_timeout": int(os.getenv("DB_POOL_TIMEOUT", "30")),
-        "pool_recycle": int(os.getenv("DB_POOL_RECYCLE_SEC", "280")),
+        "connect_args": {
+            "check_same_thread": False,
+            "timeout": float(os.getenv("SQLITE_BUSY_TIMEOUT_SEC", "30")),
+        },
     }
 
 
-engine = create_engine(DATABASE_URL, **_engine_kwargs())
+def _postgres_engine_kwargs() -> dict:
+    return {
+        "pool_pre_ping": True,
+        "pool_size": _int_env("DB_POOL_SIZE", 5, minimum=1),
+        "max_overflow": _int_env("DB_MAX_OVERFLOW", 10, minimum=0),
+        "pool_timeout": _int_env("DB_POOL_TIMEOUT", 30, minimum=1),
+        "pool_recycle": _int_env("DB_POOL_RECYCLE_SEC", 280, minimum=-1),
+    }
+
+
+def _engine_kwargs() -> dict:
+    return _sqlite_engine_kwargs() if _IS_SQLITE else _postgres_engine_kwargs()
+
+
+engine: Engine = create_engine(DATABASE_URL, **_engine_kwargs())
+
+
+def is_sqlite_backend() -> bool:
+    """Return True if the active URL targets SQLite."""
+    return _IS_SQLITE
 
 
 @event.listens_for(engine, "connect")
-def _sqlite_pragmas(dbapi_connection, connection_record):
+def _sqlite_pragmas(dbapi_connection, connection_record) -> None:
     if not _IS_SQLITE:
         return
     cursor = dbapi_connection.cursor()
@@ -46,6 +83,7 @@ def _sqlite_pragmas(dbapi_connection, connection_record):
     finally:
         cursor.close()
 
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -56,7 +94,7 @@ def utc_now():
 
 
 def get_db():
-    """Dependency for FastAPI routes"""
+    """FastAPI dependency: one session per request, always closed."""
     db = SessionLocal()
     try:
         yield db

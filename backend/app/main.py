@@ -210,6 +210,7 @@ def health_check():
         from .database import engine
         from sqlalchemy import text
 
+        health_status["checks"]["database_backend"] = engine.dialect.name
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         health_status["checks"]["database"] = "ok"
@@ -217,6 +218,8 @@ def health_check():
         health_status["checks"]["database"] = (
             f"error: {str(e)}" if allow_public_error_details() else "error"
         )
+        if "database_backend" not in health_status["checks"]:
+            health_status["checks"]["database_backend"] = "unknown"
         health_status["status"] = "degraded"
 
     if allow_public_error_details():

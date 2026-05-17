@@ -1,7 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Gunicorn Configuration for BSD Coach Backend
-Optimized for Azure App Service with Hebrew text support
+Gunicorn configuration for the BSD Coach API on Azure App Service.
+
+Workers
+-------
+- **SQLite** (file DB): forced to **1** worker — avoids cross-worker stale reads and write conflicts.
+- **PostgreSQL**: honors ``GUNICORN_WORKERS`` (default **2**); tune for plan CPU/memory.
+
+Hebrew text is unrelated to worker count; uvicorn worker handles UTF-8.
 """
 
 import os
