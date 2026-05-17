@@ -11,7 +11,7 @@ def test_pick_name_first_vs_redirect_hebrew():
         "he", missing="display_name", gender=None, user_message_count=2
     )
     assert first != redirect
-    assert "בקליטה" in redirect
+    assert "נשארתי" in redirect or "קשר" in redirect
 
 
 def test_pick_topic_gendered_hebrew():
@@ -21,4 +21,4 @@ def test_pick_topic_gendered_hebrew():
     female = pick_intake_assistant_message(
         "he", missing="topic", gender="female", user_message_count=3
     )
-    assert "תוכל " in male and "תוכלי" in female
+    assert "תן לעצמך" in male and "תני לעצמך" in female

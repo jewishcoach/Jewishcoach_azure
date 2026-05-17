@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import {
   Briefcase,
   Heart,
+  Loader2,
   Mic,
   Send,
   Sparkles,
@@ -258,7 +259,7 @@ function CoachRow({ label }: { label: string }) {
       <CoachAvatarBadge />
       <span
         className="text-[12px] font-medium uppercase tracking-[1px] text-[#C9A96E]"
-        style={{ fontFamily: 'Inter, sans-serif' }}
+        style={{ fontFamily: WORKSPACE_CHAT_FONT }}
       >
         {label}
       </span>
@@ -291,7 +292,7 @@ function ChoiceCard({
           : 'border-[#E8E0CC] hover:border-[#d4c4a8]',
         disabled && 'pointer-events-none opacity-60',
       )}
-      style={{ fontFamily: 'Inter, sans-serif' }}
+      style={{ fontFamily: WORKSPACE_CHAT_FONT }}
     >
       <Icon
         className={cx('h-8 w-8', selected ? 'text-[#C8953A]' : 'text-[#6b7280]')}
@@ -335,12 +336,25 @@ function LeftDecorPanel({
           </h2>
           <p
             className="max-w-[min(329px,92vw)] text-[11px] font-normal leading-snug text-white/[0.55] md:text-[13px] md:leading-[21px]"
-            style={{ fontFamily: 'Inter, sans-serif' }}
+            style={{ fontFamily: WORKSPACE_CHAT_FONT }}
           >
             {subtitle}
           </p>
         </div>
       </div>
+    </div>
+  );
+}
+
+function CoachBubbleBody({ text }: { text: string }) {
+  const blocks = text.split(/\n\n/).map((p) => p.trim()).filter(Boolean);
+  return (
+    <div className="flex flex-col gap-3">
+      {blocks.map((block, i) => (
+        <p key={i} className="m-0 whitespace-pre-wrap">
+          {block}
+        </p>
+      ))}
     </div>
   );
 }
@@ -356,10 +370,14 @@ function ChatBubble({
   return (
     <div
       className={cx(
-        'max-w-[min(497px,92vw)] rounded-[4px_18px_18px_18px] border border-[#E8E0CC] bg-white px-6 py-4 shadow-[0px_1px_8px_rgba(10,10,10,0.06)]',
+        'max-w-[min(497px,92vw)] rounded-[4px_18px_18px_18px] border border-[#E8E0CC] bg-white px-6 py-4 text-[14px] shadow-[0px_1px_8px_rgba(10,10,10,0.06)] md:text-[16px]',
         coach ? 'text-[#393939]' : 'text-[#1a1510]',
       )}
-      style={{ fontFamily: 'Inter, sans-serif', fontSize: 16, lineHeight: 1.85 }}
+      style={{
+        fontFamily: WORKSPACE_CHAT_FONT,
+        fontWeight: 400,
+        lineHeight: 1.65,
+      }}
     >
       {children}
     </div>
@@ -405,6 +423,7 @@ export function BsdOnboardingFlow({
   const [turnLoading, setTurnLoading] = useState(false);
   const [intakeComplete, setIntakeComplete] = useState(false);
   const [intakeError, setIntakeError] = useState<string | null>(null);
+  const [enteringWorkspace, setEnteringWorkspace] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [bootKey, setBootKey] = useState(0);
@@ -594,6 +613,8 @@ export function BsdOnboardingFlow({
   );
 
   const enterWorkspace = useCallback(async () => {
+    if (enteringWorkspace) return;
+    setEnteringWorkspace(true);
     try {
       await apiClient.patchUserPreferences({
         bsd_intro_screens_completed: true,
@@ -603,7 +624,7 @@ export function BsdOnboardingFlow({
       /* App.tsx retries completion */
     }
     onComplete();
-  }, [onComplete, topicId]);
+  }, [enteringWorkspace, onComplete, topicId]);
 
   const showComposer = !intakeComplete;
   const composerBusy = bootLoading || turnLoading;
@@ -642,7 +663,7 @@ export function BsdOnboardingFlow({
           <div className="flex flex-col items-end gap-[7px]">
             <span
               className="text-[12px] text-white/[0.55] md:text-[14px]"
-              style={{ fontFamily: 'Inter, sans-serif' }}
+              style={{ fontFamily: WORKSPACE_CHAT_FONT }}
             >
               {t('bsdOnboarding.step', { current: Math.max(1, filledStep), total: STEPS })}
             </span>
@@ -691,7 +712,7 @@ export function BsdOnboardingFlow({
                   type="button"
                   onClick={() => setBootKey((k) => k + 1)}
                   className="rounded-[11px] bg-[#1E293B] px-4 py-2 text-[14px] font-medium text-white"
-                  style={{ fontFamily: 'Inter, sans-serif' }}
+                  style={{ fontFamily: WORKSPACE_CHAT_FONT }}
                 >
                   {t('bsdOnboarding.retry')}
                 </button>
@@ -713,7 +734,9 @@ export function BsdOnboardingFlow({
                 {msg.role === 'coach' ? (
                   <>
                     {msg.showCoachMeta !== false ? <CoachRow label={coachLabel} /> : null}
-                    <ChatBubble role="coach">{msg.text}</ChatBubble>
+                    <ChatBubble role="coach">
+                      <CoachBubbleBody text={msg.text} />
+                    </ChatBubble>
                   </>
                 ) : (
                   <ChatBubble role="user">{msg.text}</ChatBubble>
@@ -728,7 +751,7 @@ export function BsdOnboardingFlow({
                 {showAnyQuickPick ? (
                   <p
                     className="text-center text-[13px] text-[#4c5a70]/90 md:text-start"
-                    style={{ fontFamily: 'Inter, sans-serif' }}
+                    style={{ fontFamily: WORKSPACE_CHAT_FONT }}
                   >
                     {t('bsdOnboarding.quickPickHint')}
                   </p>
@@ -774,8 +797,8 @@ export function BsdOnboardingFlow({
               <div className="flex w-full flex-col items-center gap-5 pb-6 md:items-start">
                 <div className="w-full max-w-[432px] rounded-2xl border border-[#E8E0CC] bg-white p-6 shadow-[0px_1px_8px_rgba(10,10,10,0.06)]">
                   <h3
-                    className="text-lg font-medium text-[#1a1510]"
-                    style={{ fontFamily: '"Cormorant Garamond", Georgia, serif' }}
+                    className="text-lg font-semibold text-[#1a1510]"
+                    style={{ fontFamily: WORKSPACE_CHAT_FONT }}
                   >
                     {t('bsdOnboarding.summaryTitle')}
                   </h3>
@@ -805,11 +828,20 @@ export function BsdOnboardingFlow({
                 </div>
                 <button
                   type="button"
+                  disabled={enteringWorkspace}
+                  aria-busy={enteringWorkspace}
                   onClick={() => void enterWorkspace()}
-                  className="w-full max-w-[432px] rounded-[11px] bg-[#1E293B] py-3 text-[15px] font-medium text-white shadow-sm transition hover:bg-[#151e2e]"
-                  style={{ fontFamily: 'Inter, sans-serif' }}
+                  className="flex w-full max-w-[432px] min-h-[48px] items-center justify-center rounded-[11px] bg-[#1E293B] py-3 text-[15px] font-medium text-white shadow-sm transition enabled:hover:bg-[#151e2e] disabled:cursor-wait disabled:opacity-95"
+                  style={{ fontFamily: WORKSPACE_CHAT_FONT }}
                 >
-                  {t('bsdOnboarding.enterSpace')}
+                  {enteringWorkspace ? (
+                    <span className="inline-flex items-center justify-center gap-2">
+                      <Loader2 className="h-5 w-5 shrink-0 animate-spin" aria-hidden />
+                      <span>{t('bsdOnboarding.enteringSpace')}</span>
+                    </span>
+                  ) : (
+                    t('bsdOnboarding.enterSpace')
+                  )}
                 </button>
               </div>
             ) : null}
@@ -833,7 +865,7 @@ export function BsdOnboardingFlow({
                   disabled={composerBusy}
                   placeholder={t('bsdOnboarding.inputPlaceholder')}
                   className="min-w-0 flex-1 bg-transparent text-[14px] font-light text-[#4c5a70] outline-none placeholder:text-[#4c5a70]/70 disabled:opacity-50"
-                  style={{ fontFamily: 'Inter, sans-serif' }}
+                  style={{ fontFamily: WORKSPACE_CHAT_FONT }}
                   aria-label={t('bsdOnboarding.inputAria')}
                 />
                 <button
