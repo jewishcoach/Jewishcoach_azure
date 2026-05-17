@@ -79,6 +79,18 @@ function stripIntakeNoise(text: string): string {
   return text.replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, '').trim();
 }
 
+/** Infer gender from a single user line when the LLM/extractor lags (Hebrew UI asks «גבר או אישה?»). */
+function inferGenderFromUserLine(text: string): GenderId | null {
+  const t = stripIntakeNoise(text).replace(/(?:[.!?…,:;"'`])+$/u, '').trim();
+  if (!t) return null;
+  const low = t.toLowerCase();
+  if (low === 'זכר' || low === 'גבר' || low === 'בן' || low === 'male' || low === 'm') return 'male';
+  if (low === 'נקבה' || low === 'אישה' || low === 'אשה' || low === 'בת' || low === 'female' || low === 'f') {
+    return 'female';
+  }
+  return null;
+}
+
 function guessDisplayNameFromFirstReply(text: string): string | undefined {
   const trimmed = stripIntakeNoise(text).replace(/(?:[.!?…])+$/u, '').trim();
   const t = trimmed;
@@ -90,7 +102,21 @@ function guessDisplayNameFromFirstReply(text: string): string | undefined {
   const joined = words.join(' ');
   if (joined.length > 28) return undefined;
   const low = t.toLowerCase();
-  if (low === 'זכר' || low === 'נקבה' || low === 'male' || low === 'female') return undefined;
+  if (
+    low === 'זכר' ||
+    low === 'נקבה' ||
+    low === 'גבר' ||
+    low === 'אישה' ||
+    low === 'אשה' ||
+    low === 'בן' ||
+    low === 'בת' ||
+    low === 'male' ||
+    low === 'female' ||
+    low === 'm' ||
+    low === 'f'
+  ) {
+    return undefined;
+  }
   if (!/^[\p{L}\s\-'.]+$/u.test(t)) return undefined;
   return joined.slice(0, 80);
 }
@@ -100,7 +126,21 @@ function looseNameFromFirstReply(text: string): string | undefined {
   const t = stripIntakeNoise(text).replace(/(?:[.!?…])+$/u, '').trim();
   if (t.length < 2 || t.length > 48 || /[\n\r]/.test(t) || /\d/.test(t)) return undefined;
   const low = t.toLowerCase();
-  if (low === 'זכר' || low === 'נקבה' || low === 'male' || low === 'female') return undefined;
+  if (
+    low === 'זכר' ||
+    low === 'נקבה' ||
+    low === 'גבר' ||
+    low === 'אישה' ||
+    low === 'אשה' ||
+    low === 'בן' ||
+    low === 'בת' ||
+    low === 'male' ||
+    low === 'female' ||
+    low === 'm' ||
+    low === 'f'
+  ) {
+    return undefined;
+  }
   const words = t.split(/\s+/).filter(Boolean);
   if (words.length < 1 || words.length > 3) return undefined;
   if (words.some((w) => w.length > 22)) return undefined;
@@ -130,7 +170,21 @@ function displayNameForKnownSlotsPayload(
   for (const m of toScan) {
     const stripped = stripIntakeNoise(m.text);
     const low = stripped.toLowerCase();
-    if (low === 'זכר' || low === 'נקבה' || low === 'male' || low === 'female') continue;
+    if (
+      low === 'זכר' ||
+      low === 'נקבה' ||
+      low === 'גבר' ||
+      low === 'אישה' ||
+      low === 'אשה' ||
+      low === 'בן' ||
+      low === 'בת' ||
+      low === 'male' ||
+      low === 'female' ||
+      low === 'm' ||
+      low === 'f'
+    ) {
+      continue;
+    }
     const n = tryLine(m.text);
     if (n) return n.slice(0, 80);
   }
@@ -323,12 +377,15 @@ export function BsdOnboardingFlow({
   const filledStep = [preferredName.trim(), gender, topicId].filter(Boolean).length;
 
   const applyExtracted = useCallback(
-    async (res: {
-      display_name?: string | null;
-      gender?: 'male' | 'female' | null;
-      topic?: string | null;
-      intake_complete: boolean;
-    }) => {
+    async (
+      res: {
+        display_name?: string | null;
+        gender?: 'male' | 'female' | null;
+        topic?: string | null;
+        intake_complete: boolean;
+      },
+      opts?: { fallbackUserLine?: string },
+    ) => {
       const name = res.display_name?.trim();
       if (name) {
         const short = name.slice(0, 80);
@@ -340,10 +397,16 @@ export function BsdOnboardingFlow({
           /* best-effort */
         }
       }
-      if (res.gender === 'male' || res.gender === 'female') {
-        setGender(res.gender);
+      let effectiveGender: 'male' | 'female' | null =
+        res.gender === 'male' || res.gender === 'female' ? res.gender : null;
+      if (!effectiveGender && opts?.fallbackUserLine) {
+        const inferred = inferGenderFromUserLine(opts.fallbackUserLine);
+        if (inferred) effectiveGender = inferred;
+      }
+      if (effectiveGender === 'male' || effectiveGender === 'female') {
+        setGender(effectiveGender);
         try {
-          await apiClient.updateProfile({ gender: res.gender });
+          await apiClient.updateProfile({ gender: effectiveGender });
         } catch {
           /* best-effort */
         }
@@ -494,7 +557,7 @@ export function BsdOnboardingFlow({
             prev.map((m) => (m.id === coachId ? { ...m, text: res.assistant_message } : m)),
           );
         }
-        await applyExtracted(res);
+        await applyExtracted(res, { fallbackUserLine: raw });
       } catch {
         setIntakeError(t('bsdOnboarding.intakeError'));
         setGender(rollbackGender);

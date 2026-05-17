@@ -187,6 +187,28 @@ def _strip_intake_noise(raw: str) -> str:
     return re.sub(r"[\u200e\u200f\u202a-\u202e\u2066-\u2069]", "", raw).strip()
 
 
+def _heuristic_gender_from_line(raw: str) -> Optional[str]:
+    """Map common Hebrew/English gender replies (free text or chips) without the extractor LLM."""
+    t = _strip_intake_noise(raw).strip()
+    t = re.sub(r"[.!?…,:;\"'`]+\s*$", "", t).strip()
+    t = re.sub(r"^\s*[\"'`]+", "", t).strip()
+    if not t:
+        return None
+    low = t.lower().strip()
+    if low in ("male", "m"):
+        return "male"
+    if low in ("female", "f"):
+        return "female"
+    compact = re.sub(r"\s+", " ", t).strip()
+    male_he = frozenset({"זכר", "גבר", "בן"})
+    female_he = frozenset({"נקבה", "אישה", "אשה", "בת"})
+    if compact in male_he or low in male_he:
+        return "male"
+    if compact in female_he or low in female_he:
+        return "female"
+    return None
+
+
 def _heuristic_display_name_from_line(raw: str) -> Optional[str]:
     t = _strip_intake_noise(raw)
     t = re.sub(r"[.!?…]+\s*$", "", t).strip()
@@ -200,7 +222,19 @@ def _heuristic_display_name_from_line(raw: str) -> Optional[str]:
     if not words or len(words) > 2:
         return None
     low = t.lower()
-    if low in ("זכר", "נקבה", "male", "female"):
+    if low in (
+        "זכר",
+        "נקבה",
+        "male",
+        "female",
+        "גבר",
+        "אישה",
+        "אשה",
+        "בן",
+        "בת",
+        "m",
+        "f",
+    ):
         return None
     # Letters / Hebrew / basic punctuation only (aligned with frontend guessDisplayNameFromFirstReply)
     for ch in t.replace(" ", "").replace("-", "").replace("'", "").replace(".", ""):
@@ -220,10 +254,9 @@ def _heuristic_slots_from_transcript(msgs: list[OnboardingChatMessage]) -> dict[
             continue
         low = raw.lower()
         if out["gender"] is None:
-            if raw == "זכר" or low == "male":
-                out["gender"] = "male"
-            elif raw == "נקבה" or low == "female":
-                out["gender"] = "female"
+            hg = _heuristic_gender_from_line(raw)
+            if hg:
+                out["gender"] = hg
         if out["topic"] is None:
             for tid, needles in _TOPIC_USER_HINTS.items():
                 if any(n.lower() in low or n in raw for n in needles):
@@ -344,7 +377,24 @@ def _known_slots_for_llm_prompt(
             }
         )
     except ValidationError:
-        return known
+        safe_topic = merged.get("topic")
+        if safe_topic not in _TRAINING_TOPICS:
+            safe_topic = None
+        safe_gender = merged.get("gender")
+        if safe_gender not in ("male", "female"):
+            safe_gender = None
+        dn = merged.get("display_name")
+        safe_name = (dn[:80] if isinstance(dn, str) and dn.strip() else None)
+        try:
+            return KnownOnboardingSlots.model_validate(
+                {
+                    "display_name": safe_name,
+                    "gender": safe_gender,
+                    "topic": safe_topic,
+                }
+            )
+        except ValidationError:
+            return known
 
 
 def _turn_constraint_message(known_slots: Optional[KnownOnboardingSlots]) -> HumanMessage:
