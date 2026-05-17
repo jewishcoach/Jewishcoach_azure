@@ -352,7 +352,7 @@ export function BsdOnboardingFlow({
     try {
       const text = buildIntakeOpeningMessage(null, null, i18n.language, t);
       if (!cancelled) {
-        setMessages([{ id: uid(), role: 'coach', text, showCoachMeta: false }]);
+        setMessages([{ id: uid(), role: 'coach', text }]);
       }
     } finally {
       if (!cancelled) setBootLoading(false);
