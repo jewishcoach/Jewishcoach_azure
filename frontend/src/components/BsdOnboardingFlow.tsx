@@ -427,6 +427,9 @@ export function BsdOnboardingFlow({
       setStreamHasContent(false);
       setIntakeError(null);
 
+      const rollbackGender = gender;
+      const rollbackTopicId = topicId;
+
       let historySnapshot: ChatMsg[] = [];
       setMessages((prev) => {
         const userMsg: ChatMsg = { id: uid(), role: 'user', text: raw };
@@ -438,6 +441,13 @@ export function BsdOnboardingFlow({
       let buf = '';
 
       try {
+        if (slotHint?.gender === 'male' || slotHint?.gender === 'female') {
+          setGender(slotHint.gender);
+        }
+        if (slotHint?.topic && isTopicId(slotHint.topic)) {
+          setTopicId(slotHint.topic);
+        }
+
         const apiMsgs = transcriptForApi(historySnapshot);
         const hintUsed = Boolean(slotHint && Object.keys(slotHint).length > 0);
         const nameForSlots = displayNameForKnownSlotsPayload(historySnapshot, raw, hintUsed);
@@ -487,6 +497,8 @@ export function BsdOnboardingFlow({
         await applyExtracted(res);
       } catch {
         setIntakeError(t('bsdOnboarding.intakeError'));
+        setGender(rollbackGender);
+        setTopicId(rollbackTopicId);
         if (!textOverride) setInput(raw);
         setMessages((prev) =>
           prev.length && prev[prev.length - 1]?.role === 'user' ? prev.slice(0, -1) : prev,
@@ -499,10 +511,12 @@ export function BsdOnboardingFlow({
       applyExtracted,
       bootLoading,
       buildKnownSlotsPayload,
+      gender,
       input,
       intakeComplete,
       i18n.language,
       t,
+      topicId,
       turnLoading,
     ],
   );

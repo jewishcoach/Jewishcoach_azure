@@ -380,8 +380,13 @@ def _turn_constraint_message(known_slots: Optional[KnownOnboardingSlots]) -> Hum
         )
     forbid_gender = ""
     if kn["gender"] in ("male", "female"):
+        gtxt = "male (masculine Hebrew)" if kn["gender"] == "male" else "female (feminine Hebrew)"
         forbid_gender = (
-            "FORBIDDEN: asking male/female or Hebrew grammar gender again — already confirmed.\n"
+            "FORBIDDEN: any question, confirmation, hedging, or re-check about gender, sex, "
+            "or Hebrew grammatical gender — including «נכון?», «סתם לוודא», «מזדהה כגבר», «גבר או אישה», "
+            "«זכר או נקבה», «לשון זכר או נקבה», «בלשון זכר או בלשון נקבה», "
+            "«איך אתה מעדיף שאדבר», or asking again how to conjugate. "
+            f"The grammatical gender for Hebrew is ALREADY «{gtxt}». Acknowledge briefly if needed, then continue.\n"
         )
     forbid_topic = ""
     if kn["topic"]:
@@ -441,9 +446,12 @@ Rules:
 - When a UI context block lists facts already recorded, do NOT ask those again unless the user clearly contradicts them.
 - If display_name is already recorded (UI block or prior answer to «what's your name?»), NEVER ask again how to call them —
   no Hebrew variants («איך לקרוא לך», «איך תרצה שנקרא», וכו'): greet once with that name and continue to the next missing slot.
+- If BOTH gender and topic are still missing, ask ONLY for gender first in this reply — do NOT mention topic choice yet.
 - Do NOT repeat the same question across turns; one missing item per message when possible.
+- Hebrew before gender is known: avoid feminine second-person agreement toward the user (do not use «שמחה לפגוש אותך» as if they are female).
+  Prefer neutral wording («נעים להכיר», «טוב לפגוש אותך», «שמח להכיר») until gender is confirmed; once female is confirmed, switch fully to feminine agreement.
 - Do NOT verbally drill topic buttons — briefly acknowledge and invite continuing when those picks appear.
-- If gender is already confirmed, never ask male/female again; match Hebrew second-person grammar to their gender.
+- If gender is already confirmed, never ask male/female again — including confirmations («נכון?», «רק לוודא»); match Hebrew second-person grammar and move on.
 - If the user's latest message is clearly their name (or corrects an earlier wrong greeting), treat it as final:
   use only that name from now on — do not ask them to pick between it and an outdated hint or a mistaken opener.
 - If they answer several things at once, acknowledge warmly.
@@ -465,6 +473,7 @@ Return CUMULATIVE best-known values from the ENTIRE transcript plus the coach's 
   career=work / career; wellbeing=stress / balance / emotional wellbeing; personal_growth=general self growth.
 
 Use null whenever uncertain. Do not invent.
+If the user's message is only זכר, נקבה, Male, or Female (typical UI chip taps), set gender to male/female accordingly — do not leave gender null after such a line.
 If the user replied with a short name right after being asked what to call them, set display_name to that reply
 even when the assistant greeting used a different placeholder.
 If the user selected a topic by tapping a UI label, map common Hebrew chip text to topic:
