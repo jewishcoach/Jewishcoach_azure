@@ -9,6 +9,7 @@ from datetime import datetime
 import logging
 from ..bsd_v2.single_agent_coach import handle_conversation
 from ..bsd_v2.stage_tool_triggers import resolve_post_turn_tool_call, mark_trait_picker_sent
+from ..bsd_v2.onboarding_topics_context import inject_onboarding_topics_into_state
 from ..security.chat_input import ChatMessageRejected, sanitize_chat_message
 
 logger = logging.getLogger(__name__)
@@ -120,6 +121,7 @@ async def submit_tool_response(
 
             if summary:
                 language = v2_state.get("language", "he")
+                inject_onboarding_topics_into_state(v2_state, user.preferences or {}, language)
                 user_gender = getattr(user, "gender", None) or None
                 coach_message, updated_state = await handle_conversation(
                     user_message=summary,

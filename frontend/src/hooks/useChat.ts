@@ -6,9 +6,13 @@ import { isChatBlockedByActiveTool } from '../utils/activeFormTools';
 import { apiClient, normalizeConversationId } from '../services/api';
 import { BSD_VERSION, getBsdEndpoint } from '../config';
 import { stripUndefined } from '../utils/messageContent';
-import { buildWelcomeMessage } from '../utils/welcomeMessage';
+import { buildWelcomeMessage, type TraineeGender } from '../utils/welcomeMessage';
 
-export const useChat = (displayName?: string | null, chatProfileReady = true) => {
+export const useChat = (
+  displayName?: string | null,
+  chatProfileReady = true,
+  traineeGender: TraineeGender | null = null,
+) => {
   const { t, i18n } = useTranslation();
   const { user: clerkUser } = useUser();
 
@@ -37,7 +41,13 @@ export const useChat = (displayName?: string | null, chatProfileReady = true) =>
 
       // Add welcome message with animation delay
       setTimeout(() => {
-        const greeting = buildWelcomeMessage(displayName, clerkUser?.firstName, i18n.language, t);
+        const greeting = buildWelcomeMessage(
+          displayName,
+          clerkUser?.firstName,
+          i18n.language,
+          t,
+          traineeGender,
+        );
 
         const welcomeMessage: Message = {
           id: Date.now(),
@@ -50,18 +60,24 @@ export const useChat = (displayName?: string | null, chatProfileReady = true) =>
         setLoading(false); // Ensure loading is off after welcome message
       }, 500); // Small delay for animation
     }
-  }, [hasInitialized, messages.length, conversationId, t, i18n.language, displayName, clerkUser?.firstName, chatProfileReady]);
+  }, [hasInitialized, messages.length, conversationId, t, i18n.language, displayName, clerkUser?.firstName, chatProfileReady, traineeGender]);
 
   /** When display_name loads or changes (e.g. after Dashboard save), refresh lone welcome bubble */
   useEffect(() => {
     if (!chatProfileReady || conversationId !== null) return;
     setMessages((prev) => {
       if (prev.length !== 1 || prev[0].role !== 'assistant') return prev;
-      const next = buildWelcomeMessage(displayName, clerkUser?.firstName, i18n.language, t);
+      const next = buildWelcomeMessage(
+        displayName,
+        clerkUser?.firstName,
+        i18n.language,
+        t,
+        traineeGender,
+      );
       if (prev[0].content === next) return prev;
       return [{ ...prev[0], content: next }];
     });
-  }, [displayName, clerkUser?.firstName, chatProfileReady, conversationId, i18n.language, t]);
+  }, [displayName, clerkUser?.firstName, chatProfileReady, conversationId, i18n.language, t, traineeGender]);
 
   useEffect(() => {
     activeToolRef.current = activeTool;
@@ -122,7 +138,13 @@ export const useChat = (displayName?: string | null, chatProfileReady = true) =>
     setLoading(false); // Clear any loading state when starting new chat
     setHistoryLoading(false);
 
-    const greeting = buildWelcomeMessage(displayName, clerkUser?.firstName, i18n.language, t);
+    const greeting = buildWelcomeMessage(
+      displayName,
+      clerkUser?.firstName,
+      i18n.language,
+      t,
+      traineeGender,
+    );
 
     // Add welcome message immediately to prevent visual "jump"
     const welcomeMessage: Message = {

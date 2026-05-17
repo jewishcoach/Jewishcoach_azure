@@ -1,6 +1,14 @@
 import type { I18nT } from '../i18nT';
 import { stripUndefined } from './messageContent';
 
+/** Trainee gender from profile (`/users/me`). Unknown / skipped onboarding → neutral copy. */
+export type TraineeGender = 'male' | 'female' | null;
+
+export function normalizeTraineeGender(raw: unknown): TraineeGender {
+  if (raw === 'male' || raw === 'female') return raw;
+  return null;
+}
+
 /** Strip bidi / zero-width so "שלום" + name does not visually glue spaces (שלוםישי) */
 function normalizeGreetingName(s: string): string {
   return s
@@ -26,16 +34,32 @@ export function getNameForGreeting(
   return lang === 'he' ? 'רב' : 'there';
 }
 
-/** Same welcome copy as workspace chat (`welcome_message` in i18n) — no "undefined" in output */
+function workspaceWelcomeKey(lang: string, traineeGender: TraineeGender): string {
+  const he = (lang || 'he').toLowerCase().startsWith('he');
+  if (!he) return 'welcome_message';
+  if (traineeGender === 'female') return 'welcome_message_he_female';
+  if (traineeGender === 'male') return 'welcome_message_he_male';
+  return 'welcome_message_he_neutral';
+}
+
+/** Same welcome copy as workspace chat — English uses `welcome_message`; Hebrew picks gendered/neutral keys. */
 export function buildWelcomeMessage(
   displayName: string | null | undefined,
   clerkFirstName: string | null | undefined,
   lang: string,
   t: I18nT,
+  traineeGender: TraineeGender = null,
 ): string {
   const fallback = lang === 'he' ? 'רב' : 'there';
   const name = getNameForGreeting(displayName, clerkFirstName, lang) || fallback;
-  let greeting = String(t('welcome_message', { name }) ?? '');
+  const key = workspaceWelcomeKey(lang, traineeGender);
+  const he = (lang || 'he').toLowerCase().startsWith('he');
+  let greeting = String(t(key, { name }) ?? '');
+  if (!greeting.trim() || greeting === key) {
+    greeting = String(
+      he ? t('welcome_message_he_neutral', { name }) : t('welcome_message', { name }),
+    );
+  }
   greeting = greeting.replace(/\bundefined\b/gi, fallback);
   return stripUndefined(greeting);
 }

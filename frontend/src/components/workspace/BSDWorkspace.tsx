@@ -20,9 +20,11 @@ import { apiClient } from '../../services/api';
 import type { Conversation } from '../../types';
 import { WORKSPACE_CHAT_FONT } from '../../constants/workspaceFonts';
 import { isChatBlockedByActiveTool } from '../../utils/activeFormTools';
+import type { TraineeGender } from '../../utils/welcomeMessage';
 
 interface BSDWorkspaceProps {
   displayName?: string | null;
+  profileGender?: TraineeGender | null;
   /** False until App finishes first /users/me — avoids welcome using Clerk before profile display_name loads */
   chatProfileReady?: boolean;
   showDashboard?: boolean;
@@ -36,6 +38,7 @@ interface BSDWorkspaceProps {
 
 export const BSDWorkspace = ({
   displayName,
+  profileGender = null,
   chatProfileReady = true,
   showDashboard = false,
   onCloseDashboard,
@@ -67,7 +70,7 @@ export const BSDWorkspace = ({
     loadConversation,
     startNewConversation,
     applyToolResponse,
-  } = useChat(displayName, chatProfileReady);
+  } = useChat(displayName, chatProfileReady, profileGender);
   const { isRecording, livePreview, startRecording, stopRecording } = useVoiceRecord(i18n.language, getToken);
   const [recordingInputBase, setRecordingInputBase] = useState<string | null>(null);
   const chatLockedByForm = isChatBlockedByActiveTool(activeTool);
@@ -487,8 +490,9 @@ export const BSDWorkspace = ({
                 <div className={`flex ${coachBubbleRowJustify}`}>
                   <div
                     className="flex items-center gap-3 rounded-[18px] border border-[#e8e0cc] bg-white px-5 py-4 shadow-[0px_1px_4px_rgba(10,10,10,0.06)]"
+                    dir={i18n.dir()}
                   >
-                    <div className="flex gap-1">
+                    <div className="flex gap-1" aria-hidden>
                       <span className="w-2.5 h-2.5 rounded-full bg-[#AA771C] animate-bounce shadow-sm" style={{ animationDelay: '0ms' }} />
                       <span className="w-2.5 h-2.5 rounded-full bg-[#AA771C] animate-bounce shadow-sm" style={{ animationDelay: '150ms' }} />
                       <span className="w-2.5 h-2.5 rounded-full bg-[#AA771C] animate-bounce shadow-sm" style={{ animationDelay: '300ms' }} />
@@ -496,7 +500,6 @@ export const BSDWorkspace = ({
                     <span
                       className="text-[14px] font-medium text-[#4c5a70]"
                       style={{ fontFamily: WORKSPACE_CHAT_FONT }}
-                      dir={i18n.dir()}
                     >
                       {t('chat.thinkingCoach')}
                     </span>

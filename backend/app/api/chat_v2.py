@@ -25,6 +25,7 @@ from ..bsd_v2.single_agent_coach import handle_conversation, warm_prompt_cache
 from ..bsd_v2.stage_tool_triggers import resolve_post_turn_tool_call, mark_trait_picker_sent
 from ..bsd_v2.state_schema_v2 import create_initial_state
 from ..bsd_v2.station_checkpoint import ensure_training_started_at, apply_station_intent
+from ..bsd_v2.onboarding_topics_context import inject_onboarding_topics_into_state
 from ..database import get_db
 from ..limiter import limiter
 from ..models import User, Conversation as ConversationModel, Message
@@ -218,6 +219,7 @@ async def send_message_v2(
         t1 = time.time()
         state = load_v2_state(body.conversation_id, db)
         ensure_training_started_at(state)
+        inject_onboarding_topics_into_state(state, current_user.preferences or {}, body.language)
         t2 = time.time()
         logger.debug("[PERF API] Load state from DB: %.0fms", (t2 - t1) * 1000)
         logger.debug(

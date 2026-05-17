@@ -14,6 +14,7 @@ import { apiClient } from './services/api';
 import './i18n';
 import { isClerkSyntheticEmail } from './lib/clerkEmail';
 import { isClerkUiAdminAllowlisted } from './config';
+import { normalizeTraineeGender } from './utils/welcomeMessage';
 
 // Check if running on tunnel domain (Demo Mode)
 const isTunnelDomain = () => {
@@ -109,6 +110,7 @@ function SignedInContent() {
   const [showDashboard, setShowDashboard] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
+  const [profileGender, setProfileGender] = useState<ReturnType<typeof normalizeTraineeGender>>(null);
   /** After first /users/me attempt — delays chat welcome until profile display_name can override Clerk */
   const [chatProfileReady, setChatProfileReady] = useState(false);
   /** First-session onboarding until preferences flag is set */
@@ -134,6 +136,7 @@ function SignedInContent() {
           const userData = await apiClient.getCurrentUser();
           setIsAdmin(!!userData.isAdmin);
           setDisplayName(userData.display_name);
+          setProfileGender(normalizeTraineeGender(userData.gender));
           try {
             const prefs = await apiClient.getUserPreferences();
             setShowIntroScreens(!prefs?.bsd_intro_screens_completed);
@@ -149,6 +152,7 @@ function SignedInContent() {
         } else {
           setIsAdmin(false);
           setDisplayName(null);
+          setProfileGender(null);
           setShowIntroScreens(false);
           setIntroPrefsResolved(true);
         }
@@ -180,10 +184,12 @@ function SignedInContent() {
             apiClient.setToken(token);
             const userData = await apiClient.getCurrentUser();
             setDisplayName(userData?.display_name ?? user?.firstName ?? null);
+            setProfileGender(normalizeTraineeGender(userData?.gender));
           }
         } catch {
           // Fallback: use Clerk user when API fails (CORS, 401, etc.)
           setDisplayName(user?.firstName ?? null);
+          setProfileGender(null);
         }
       };
       reloadDisplayName();
@@ -196,6 +202,9 @@ function SignedInContent() {
       if (token) {
         apiClient.setToken(token);
         await apiClient.patchUserPreferences({ bsd_intro_screens_completed: true });
+        const userData = await apiClient.getCurrentUser();
+        setDisplayName(userData.display_name ?? null);
+        setProfileGender(normalizeTraineeGender(userData.gender));
       }
     } catch (e) {
       console.warn('[BsdOnboardingFlow] Failed to persist completion:', e);
@@ -327,6 +336,7 @@ function SignedInContent() {
         {showBilling ? <BillingPage /> : showAdmin ? <AdminDashboard /> : (
           <BSDWorkspace
             displayName={displayName}
+            profileGender={profileGender}
             chatProfileReady={chatProfileReady}
             showDashboard={showDashboard}
             onCloseDashboard={() => setShowDashboard(false)}

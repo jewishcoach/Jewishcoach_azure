@@ -2157,6 +2157,14 @@ def build_conversation_context(
     context_parts.append("# מצב נוכחי" if language == "he" else "# Current State")
     context_parts.append(f"שלב: {state['current_step']}" if language == "he" else f"Stage: {state['current_step']}")
     context_parts.append(f"Saturation Score: {state['saturation_score']:.1f}")
+
+    ot = (state.get("coach_context_onboarding_topics") or "").strip()
+    if ot and state.get("current_step") in ("S1", "S2"):
+        context_parts.append(
+            "\n# הקשר קליטה — תחומי עניין (שימוש מוגבל)\n" + ot
+            if language == "he"
+            else "\n# Intake context — focus areas (limited use)\n" + ot
+        )
     
     # Entities section — prominent placement so LLM uses real names/places throughout
     entities = (state.get("collected_data") or {}).get("entities") or {}
