@@ -391,7 +391,7 @@ async def generate_coach_message(
         logger.info(f"🗣️ [TALKER S2_READY] LOW_SELF_BELIEF - stopping process")
         if language == "he":
             text = (
-                "אני שומע/ת אותך.\n\n"
+                "מבין אותך לגמרי.\n\n"
                 "אימון דורש **כוחות קיימים** ('יש') – מקום שממנו אפשר לפעול.\n"
                 "כשאנחנו מרגישים 'אין לי כוח' או 'לא מסוגל/ת', זה אולי לא הזמן לאימון.\n\n"
                 "אולי כדאי לחשוב על **ריפוי** או **טיפול תומך** קודם – מקום שיחזיר את הכוחות.\n\n"
@@ -400,7 +400,7 @@ async def generate_coach_message(
             return (adapt_to_gender(text, user_gender, language), None)
         else:
             return ((
-                "I hear you.\n\n"
+                "I get it.\n\n"
                 "Coaching requires **existing capacity** ('Yesh') – a place from which you can act.\n"
                 "When we feel 'I have no strength' or 'I'm not capable', it may not be the time for coaching.\n\n"
                 "Perhaps consider **healing** or **supportive therapy** first – a place that will restore your capacity.\n\n"
@@ -510,13 +510,13 @@ async def generate_coach_message(
         
         if language == "he":
             return ((
-                f"שמעתי: {tokens_str}\n"
+                f"יש פה את {tokens_str}.\n"
                 "רק לוודא — האם זה שם של רגש?\n"
                 "אם כן, תוכל/י לכתוב אותו שוב בצורה ברורה יותר?"
             ), None)
         else:
             return ((
-                f"I heard: {tokens_str}\n"
+                f"You wrote {tokens_str}.\n"
                 "Just to confirm — is that the name of an emotion?\n"
                 "If so, could you write it again more clearly?"
             ), None)
@@ -573,15 +573,13 @@ async def generate_coach_message(
             logger.info(f"🗣️ [TALKER S1] S1_CONFIRM - unclear topic")
             if language == "he":
                 text = (
-                    "שמעתי אותך.\n"
-                    "רק כדי לדייק — על מה היית רוצה להתאמן? ספר/י את הנושא במילה או שתיים.\n"
+                    "בוא נדייק רגע — על מה היית רוצה להתאמן? ספר/י את הנושא במילה או שתיים.\n"
                     "(לדוגמה: הורות, זוגיות, עבודה)"
                 )
                 return (adapt_to_gender(text, user_gender, language), None)
             else:
                 return ((
-                    "I hear you.\n"
-                    "Just to clarify — what would you like to coach on? Write the topic in a word or two.\n"
+                    "Let me clarify — what would you like to coach on? Say it in a word or two.\n"
                     "(For example: parenting, relationships, work)"
                 ), None)
         
@@ -733,7 +731,7 @@ async def generate_coach_message(
             logger.info(f"🗣️ [TALKER S5] Got actual, now asking for desired")
             if language == "he":
                 text = (
-                    "שמעתי את מה שעשית בפועל.\n"
+                    "מובן מה תיארת לגבי מה שעשית בפועל.\n"
                     "\n"
                     "ועכשיו, נסתכל על המצב האידיאלי:\n"
                     "איך היית רוצה להרגיש באותו רגע?\n"
@@ -743,7 +741,7 @@ async def generate_coach_message(
                 return (adapt_to_gender(text, user_gender, language), None)
             else:
                 return ((
-                    "I hear what you actually did.\n"
+                    "Thanks — that's what you actually did.\n"
                     "\n"
                     "And now, let's look at the ideal state:\n"
                     "How would you want to feel in that moment?\n"
@@ -774,13 +772,11 @@ async def generate_coach_message(
             # Already handled above, but keep as fallback
             if language == "he":
                 return ((
-                    "שמעתי.\n"
                     "רק לוודא — למה התכוונת?\n"
                     "(לדוגמה: הורות, זוגיות, עבודה…)"
                 ), None)
             else:
                 return ((
-                    "I hear you.\n"
                     "Just to confirm — what did you mean?\n"
                     "(For example: parenting, relationships, work…)"
                 ), None)
@@ -788,13 +784,11 @@ async def generate_coach_message(
         elif stg == StageId.S6 and "confirm_gap_name" in missing:
             if language == "he":
                 return ((
-                    "שמעתי.\n"
                     "רק לוודא — איך היית רוצה לקרוא לפער הזה?\n"
                     "תוכל/י לנסח אותו במילה או שתיים?"
                 ), None)
             else:
                 return ((
-                    "I hear you.\n"
                     "Just to confirm — how would you like to name this gap?\n"
                     "Can you phrase it in a word or two?"
                 ), None)
@@ -802,12 +796,10 @@ async def generate_coach_message(
         # Generic confirmation (fallback)
         if language == "he":
             return ((
-                "שמעתי.\n"
                 "רק לוודא — תוכל/י לנסח את זה במילה או שתיים?"
             ), None)
         else:
             return ((
-                "I hear you.\n"
                 "Just to confirm — can you phrase it in a word or two?"
             ), None)
     
@@ -819,13 +811,13 @@ async def generate_coach_message(
         logger.info(f"🗣️ [TALKER S0] Redirecting to consent")
         if language == "he":
             return ((
-                "שמעתי אותך.\n"
+                "מבין.\n"
                 "כדי להתחיל אני צריך רשות מפורשת להיכנס לתהליך.\n"
                 "האם יש לי רשות להתחיל?"
             ), None)
         else:
             return ((
-                "I hear you.\n"
+                "Okay.\n"
                 "To begin, I need explicit permission to enter the process.\n"
                 "Do I have your permission to start?"
             ), None)
@@ -946,5 +938,5 @@ async def generate_coach_message(
     except Exception as e:
         logger.error(f"🗣️ [TALKER ERROR] {stg.value}: {e}")
         # Fail-safe on exception
-        reflection = "שמעתי אותך." if language == "he" else "I hear you."
+        reflection = "בוא נמשיך." if language == "he" else "Okay — let's continue."
         return (f"{reflection}\n\n{script}", None)

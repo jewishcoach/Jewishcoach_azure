@@ -125,10 +125,48 @@ function isDisplayNameRefusalRaw(text: string): boolean {
   return false;
 }
 
+/** Gender decline / chip text — must never become display_name (e.g. «לא רוצה לשתף» is 3 tokens). */
+function isGenderSkipLine(text: string): boolean {
+  const c = normalizePhraseForRefusal(text);
+  if (!c) return false;
+  if (
+    c === 'prefer not to say' ||
+    c === 'prefer not to share' ||
+    c === 'rather not say' ||
+    c === "don't want to share" ||
+    c === 'לא רוצה לשתף' ||
+    c === 'לא רוצה לומר' ||
+    c === 'לא משתף מגדר' ||
+    c === 'לא רוצה לשתף מגדר' ||
+    c === 'בלי מגדר' ||
+    c === 'עדיף לא לומר'
+  ) {
+    return true;
+  }
+  if (
+    c.includes('prefer not') ||
+    c.includes('rather not') ||
+    c.includes('skip gender') ||
+    c.includes('no gender')
+  ) {
+    return true;
+  }
+  const needlesHe = [
+    'לא רוצה לשתף',
+    'לא רוצה לומר',
+    'לא משתף',
+    'בלי מגדר',
+    'לא רלוונטי למגדר',
+    'מגדר שלי',
+  ];
+  if (needlesHe.some((n) => c.includes(n))) return true;
+  return false;
+}
+
 function guessDisplayNameFromFirstReply(text: string): string | undefined {
   const trimmed = stripIntakeNoise(text).replace(/(?:[.!?…])+$/u, '').trim();
   const t = trimmed;
-  if (isDisplayNameRefusalRaw(t)) return undefined;
+  if (isDisplayNameRefusalRaw(t) || isGenderSkipLine(t)) return undefined;
   if (t.length < 2 || t.length > 48) return undefined;
   if (/[\n\r]/.test(t)) return undefined;
   if (/\d/.test(t)) return undefined;
@@ -159,7 +197,7 @@ function guessDisplayNameFromFirstReply(text: string): string | undefined {
 /** When strict guess fails (e.g. 3-word name), still send a single-line reply as display_name on turn 1. */
 function looseNameFromFirstReply(text: string): string | undefined {
   const t = stripIntakeNoise(text).replace(/(?:[.!?…])+$/u, '').trim();
-  if (isDisplayNameRefusalRaw(t)) return undefined;
+  if (isDisplayNameRefusalRaw(t) || isGenderSkipLine(t)) return undefined;
   if (t.length < 2 || t.length > 48 || /[\n\r]/.test(t) || /\d/.test(t)) return undefined;
   const low = t.toLowerCase();
   if (
@@ -205,7 +243,7 @@ function displayNameForKnownSlotsPayload(
   const toScan = hintUsed ? users.slice(0, -1) : users;
   for (const m of toScan) {
     const stripped = stripIntakeNoise(m.text);
-    if (isDisplayNameRefusalRaw(stripped)) continue;
+    if (isDisplayNameRefusalRaw(stripped) || isGenderSkipLine(stripped)) continue;
     const low = stripped.toLowerCase();
     if (
       low === 'זכר' ||
@@ -417,7 +455,11 @@ export function BsdOnboardingFlow({
   const [input, setInput] = useState('');
   const [preferredName, setPreferredName] = useState('');
   const [gender, setGender] = useState<'male' | 'female' | null>(null);
-  const [topicId, setTopicId] = useState<TopicId | null>(null);
+  const [genderSkipped, setGenderSkipped] = useState(false);
+  const [topicIds, setTopicIds] = useState<TopicId[]>([]);
+  const [topicsSkipped, setTopicsSkipped] = useState(false);
+  /** Local multi-select before confirming with the server */
+  const [draftTopicIds, setDraftTopicIds] = useState<TopicId[]>([]);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [bootLoading, setBootLoading] = useState(true);
   const [turnLoading, setTurnLoading] = useState(false);
@@ -428,16 +470,29 @@ export function BsdOnboardingFlow({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [bootKey, setBootKey] = useState(0);
 
+  const genderStepDone = Boolean(gender || genderSkipped);
+  const prevGenderStepDoneRef = useRef(false);
+  useEffect(() => {
+    if (genderStepDone && !prevGenderStepDoneRef.current) {
+      setDraftTopicIds([]);
+    }
+    prevGenderStepDoneRef.current = genderStepDone;
+  }, [genderStepDone]);
+
   const namePhaseDone =
     Boolean(preferredName.trim()) ||
     messages.some((m) => m.role === 'user' && isDisplayNameRefusalRaw(m.text));
-  const filledStep = [namePhaseDone, gender, topicId].filter(Boolean).length;
+  const topicMilestoneDone = topicsSkipped || topicIds.length > 0;
+  const filledStep = [namePhaseDone, genderStepDone, topicMilestoneDone].filter(Boolean).length;
 
   const applyExtracted = useCallback(
     async (res: {
       display_name?: string | null;
       gender?: 'male' | 'female' | null;
       topic?: string | null;
+      topics?: string[] | null;
+      topics_skipped?: boolean;
+      gender_skipped?: boolean;
       intake_complete: boolean;
     }) => {
       const name = res.display_name?.trim();
@@ -453,7 +508,11 @@ export function BsdOnboardingFlow({
       }
       const effectiveGender: 'male' | 'female' | null =
         res.gender === 'male' || res.gender === 'female' ? res.gender : null;
-      if (effectiveGender === 'male' || effectiveGender === 'female') {
+      if (res.gender_skipped === true) {
+        setGenderSkipped(true);
+        setGender(null);
+      } else if (effectiveGender === 'male' || effectiveGender === 'female') {
+        setGenderSkipped(false);
         setGender(effectiveGender);
         try {
           await apiClient.updateProfile({ gender: effectiveGender });
@@ -461,7 +520,23 @@ export function BsdOnboardingFlow({
           /* best-effort */
         }
       }
-      if (res.topic && isTopicId(res.topic)) setTopicId(res.topic);
+
+      if (res.topics_skipped) {
+        setTopicsSkipped(true);
+        setTopicIds([]);
+        setDraftTopicIds([]);
+      } else {
+        setTopicsSkipped(false);
+        const fromApi = (res.topics ?? []).filter(isTopicId);
+        const next =
+          fromApi.length > 0
+            ? fromApi
+            : res.topic && isTopicId(res.topic)
+              ? [res.topic]
+              : [];
+        setTopicIds(next);
+        setDraftTopicIds(next);
+      }
       setIntakeComplete(res.intake_complete);
     },
     [onDisplayNameUpdated],
@@ -471,23 +546,57 @@ export function BsdOnboardingFlow({
     (
       hint?: Partial<{
         gender: GenderId;
+        genderSkipped: boolean;
         topic: TopicId;
+        topics: TopicId[];
+        topicsSkipped: boolean;
       }>,
       extras?: { display_name?: string },
     ): OnboardingKnownSlots | undefined => {
       const extraName = extras?.display_name?.trim();
       /** Never send profile/Clerk seed as display_name — it breaks intake (wrong glyphs, repeats wrong name). */
       const name = (extraName ? extraName.slice(0, 80) : '') || preferredName.trim();
-      const g = hint?.gender ?? gender ?? undefined;
-      const topic = hint?.topic ?? topicId ?? undefined;
       const out: OnboardingKnownSlots = {};
       if (name) out.display_name = name.slice(0, 80);
-      if (g) out.gender = g;
-      if (topic) out.topic = topic;
+
+      if (hint?.genderSkipped === true) {
+        out.gender_skipped = true;
+      } else if (hint?.gender === 'male' || hint?.gender === 'female') {
+        out.gender = hint.gender;
+      } else if (gender === 'male' || gender === 'female') {
+        out.gender = gender;
+      } else if (genderSkipped) {
+        out.gender_skipped = true;
+      }
+
+      if (hint?.topicsSkipped === true) {
+        out.topics_skipped = true;
+      } else {
+        const hintedTopics = hint?.topics?.filter(isTopicId);
+        if (hintedTopics && hintedTopics.length > 0) {
+          out.topics = hintedTopics;
+        } else if (hint?.topic && isTopicId(hint.topic)) {
+          out.topic = hint.topic;
+        } else if (
+          !hint?.gender &&
+          !hint?.genderSkipped &&
+          topicIds.length > 0 &&
+          !topicsSkipped
+        ) {
+          out.topics = [...topicIds];
+        }
+      }
+
       return Object.keys(out).length ? out : undefined;
     },
-    [preferredName, gender, topicId],
+    [preferredName, gender, genderSkipped, topicIds, topicsSkipped],
   );
+
+  const toggleDraftTopic = useCallback((id: TopicId) => {
+    setDraftTopicIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }, []);
 
   /** Static opening: same voice as workspace welcome, ends with “what’s your name?” — not the coaching-permission question. */
   useEffect(() => {
@@ -528,7 +637,10 @@ export function BsdOnboardingFlow({
       textOverride?: string,
       slotHint?: Partial<{
         gender: GenderId;
+        genderSkipped: boolean;
         topic: TopicId;
+        topics: TopicId[];
+        topicsSkipped: boolean;
       }>,
     ) => {
       const raw = (textOverride ?? input).trim();
@@ -539,7 +651,10 @@ export function BsdOnboardingFlow({
       setIntakeError(null);
 
       const rollbackGender = gender;
-      const rollbackTopicId = topicId;
+      const rollbackGenderSkipped = genderSkipped;
+      const rollbackTopicIds = topicIds;
+      const rollbackTopicsSkipped = topicsSkipped;
+      const rollbackDraftTopicIds = draftTopicIds;
 
       let historySnapshot: ChatMsg[] = [];
       setMessages((prev) => {
@@ -549,11 +664,13 @@ export function BsdOnboardingFlow({
       });
 
       try {
+        if (slotHint?.genderSkipped === true) {
+          setGenderSkipped(true);
+          setGender(null);
+        }
         if (slotHint?.gender === 'male' || slotHint?.gender === 'female') {
           setGender(slotHint.gender);
-        }
-        if (slotHint?.topic && isTopicId(slotHint.topic)) {
-          setTopicId(slotHint.topic);
+          setGenderSkipped(false);
         }
 
         const apiMsgs = transcriptForApi(historySnapshot);
@@ -589,7 +706,10 @@ export function BsdOnboardingFlow({
       } catch {
         setIntakeError(t('bsdOnboarding.intakeError'));
         setGender(rollbackGender);
-        setTopicId(rollbackTopicId);
+        setGenderSkipped(rollbackGenderSkipped);
+        setTopicIds(rollbackTopicIds);
+        setTopicsSkipped(rollbackTopicsSkipped);
+        setDraftTopicIds(rollbackDraftTopicIds);
         if (!textOverride) setInput(raw);
         setMessages((prev) =>
           prev.length && prev[prev.length - 1]?.role === 'user' ? prev.slice(0, -1) : prev,
@@ -602,12 +722,15 @@ export function BsdOnboardingFlow({
       applyExtracted,
       bootLoading,
       buildKnownSlotsPayload,
+      draftTopicIds,
       gender,
+      genderSkipped,
       input,
       intakeComplete,
       i18n.language,
       t,
-      topicId,
+      topicIds,
+      topicsSkipped,
       turnLoading,
     ],
   );
@@ -616,19 +739,26 @@ export function BsdOnboardingFlow({
     if (enteringWorkspace) return;
     setEnteringWorkspace(true);
     try {
-      await apiClient.patchUserPreferences({
+      const patch: Record<string, unknown> = {
         bsd_intro_screens_completed: true,
-        bsd_onboard_topic: topicId ?? undefined,
-      });
+      };
+      if (topicsSkipped) {
+        patch.bsd_topics_skipped = true;
+        patch.bsd_onboard_topics = [];
+      } else {
+        patch.bsd_onboard_topics = topicIds;
+        if (topicIds[0]) patch.bsd_onboard_topic = topicIds[0];
+      }
+      await apiClient.patchUserPreferences(patch);
     } catch {
       /* App.tsx retries completion */
     }
     onComplete();
-  }, [enteringWorkspace, onComplete, topicId]);
+  }, [enteringWorkspace, onComplete, topicIds, topicsSkipped]);
 
   const showComposer = !intakeComplete;
   const composerBusy = bootLoading || turnLoading;
-  const summaryReady = intakeComplete && Boolean(gender) && Boolean(topicId);
+  const summaryReady = intakeComplete && genderStepDone && topicMilestoneDone;
   const awaitingCoachReply =
     turnLoading &&
     messages.length > 0 &&
@@ -637,8 +767,8 @@ export function BsdOnboardingFlow({
   const showQuickCards = !intakeComplete && !composerBusy;
   /** Opening asks for name first; gender cards are step 2 only after at least one user reply. */
   const hasUserMessaged = messages.some((m) => m.role === 'user');
-  const showGenderPick = hasUserMessaged && !gender;
-  const showTopicPick = Boolean(gender && !topicId);
+  const showGenderPick = hasUserMessaged && !gender && !genderSkipped;
+  const showTopicPick = genderStepDone && !intakeComplete;
   const showAnyQuickPick = showGenderPick || showTopicPick;
 
   return (
@@ -753,12 +883,12 @@ export function BsdOnboardingFlow({
                     className="text-center text-[13px] text-[#4c5a70]/90 md:text-start"
                     style={{ fontFamily: WORKSPACE_CHAT_FONT }}
                   >
-                    {t('bsdOnboarding.quickPickHint')}
+                    {showTopicPick ? t('bsdOnboarding.topicMultiHint') : t('bsdOnboarding.quickPickHint')}
                   </p>
                 ) : null}
 
                 {showGenderPick ? (
-                  <div className="flex w-full justify-center md:justify-start">
+                  <div className="flex w-full flex-col items-center gap-3 md:items-start">
                     <div className="grid w-full max-w-[432px] grid-cols-2 gap-3">
                       {GENDER_IDS.map((id) => (
                         <ChoiceCard
@@ -771,22 +901,64 @@ export function BsdOnboardingFlow({
                         />
                       ))}
                     </div>
+                    <button
+                      type="button"
+                      disabled={composerBusy}
+                      onClick={() =>
+                        void sendUserTurn(t('bsdOnboarding.genderSkippedLine'), { genderSkipped: true })
+                      }
+                      className="w-full max-w-[432px] rounded-[11px] border border-[#E8E0CC] bg-white px-4 py-3 text-[14px] font-medium text-[#393939] shadow-sm transition enabled:hover:bg-[#faf6ee] disabled:opacity-40"
+                      style={{ fontFamily: WORKSPACE_CHAT_FONT }}
+                    >
+                      {t('bsdOnboarding.genderSkip')}
+                    </button>
                   </div>
                 ) : null}
 
                 {showTopicPick ? (
-                  <div className="flex w-full justify-center md:justify-start">
+                  <div className="flex w-full flex-col items-center gap-4 md:items-start">
                     <div className="grid w-full max-w-[min(720px,100%)] grid-cols-3 gap-2 sm:gap-3">
                       {TOPIC_IDS.map((id) => (
                         <ChoiceCard
                           key={id}
                           icon={TOPIC_ICONS[id]}
                           label={t(`bsdOnboarding.topic.${id}`)}
-                          selected={false}
+                          selected={draftTopicIds.includes(id)}
                           disabled={false}
-                          onClick={() => void sendUserTurn(t(`bsdOnboarding.topic.${id}`), { topic: id })}
+                          onClick={() => toggleDraftTopic(id)}
                         />
                       ))}
+                    </div>
+                    <div className="flex w-full max-w-[min(720px,100%)] flex-col gap-2 sm:flex-row sm:items-center sm:justify-start sm:gap-3">
+                      <button
+                        type="button"
+                        disabled={composerBusy || draftTopicIds.length === 0}
+                        onClick={() =>
+                          void sendUserTurn(
+                            t('bsdOnboarding.topicContinueLine', {
+                              topics: draftTopicIds
+                                .map((tid) => t(`bsdOnboarding.topic.${tid}`))
+                                .join(isHe ? ', ' : ', '),
+                            }),
+                            { topics: draftTopicIds },
+                          )
+                        }
+                        className="w-full rounded-[11px] bg-[#1E293B] px-4 py-3 text-[14px] font-medium text-white shadow-sm transition enabled:hover:bg-[#151e2e] disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto sm:min-w-[200px]"
+                        style={{ fontFamily: WORKSPACE_CHAT_FONT }}
+                      >
+                        {t('bsdOnboarding.topicContinue')}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={composerBusy}
+                        onClick={() =>
+                          void sendUserTurn(t('bsdOnboarding.topicSkippedLine'), { topicsSkipped: true })
+                        }
+                        className="w-full rounded-[11px] border border-[#E8E0CC] bg-white px-4 py-3 text-[14px] font-medium text-[#393939] shadow-sm transition enabled:hover:bg-[#faf6ee] disabled:opacity-40 sm:w-auto"
+                        style={{ fontFamily: WORKSPACE_CHAT_FONT }}
+                      >
+                        {t('bsdOnboarding.topicSkip')}
+                      </button>
                     </div>
                   </div>
                 ) : null}
@@ -815,13 +987,21 @@ export function BsdOnboardingFlow({
                     <div className="flex justify-between gap-4 border-b border-[#E8E0CC]/80 pb-2">
                       <dt className="text-[#4c5a70]">{t('bsdOnboarding.summary.gender')}</dt>
                       <dd className="text-end font-medium text-[#1a1510]">
-                        {gender ? t(`bsdOnboarding.gender.${gender}`) : '—'}
+                        {gender === 'male' || gender === 'female'
+                          ? t(`bsdOnboarding.gender.${gender}`)
+                          : genderSkipped
+                            ? t('bsdOnboarding.summaryGenderSkipped')
+                            : '—'}
                       </dd>
                     </div>
                     <div className="flex justify-between gap-4">
                       <dt className="text-[#4c5a70]">{t('bsdOnboarding.summary.topic')}</dt>
-                      <dd className="text-end font-medium text-[#1a1510]">
-                        {topicId ? t(`bsdOnboarding.topic.${topicId}`) : '—'}
+                      <dd className="max-w-[min(240px,55%)] text-end font-medium text-[#1a1510]">
+                        {topicsSkipped
+                          ? t('bsdOnboarding.summaryTopicsSkipped')
+                          : topicIds.length > 0
+                            ? topicIds.map((tid) => t(`bsdOnboarding.topic.${tid}`)).join(' · ')
+                            : '—'}
                       </dd>
                     </div>
                   </dl>

@@ -120,6 +120,9 @@ class KnownOnboardingSlots(BaseModel):
     display_name: Optional[str] = Field(default=None, max_length=80)
     gender: Optional[Literal["male", "female"]] = None
     topic: Optional[str] = None
+    topics: Optional[list[str]] = None
+    topics_skipped: Optional[bool] = None
+    gender_skipped: Optional[bool] = None
 
 
 class OnboardingIntakeRequest(BaseModel):
@@ -189,12 +192,47 @@ class OnboardingIntakeRequest(BaseModel):
         if raw_known is None or raw_known == {}:
             out["known_slots"] = None
         elif isinstance(raw_known, dict):
+            topics_raw = raw_known.get("topics")
+            topics_list: Optional[list[str]] = None
+            if isinstance(topics_raw, list):
+                topics_list = [str(x).strip() for x in topics_raw[:16] if str(x).strip()]
+            ts_raw = raw_known.get("topics_skipped")
+            topics_skipped_v: Optional[bool] = None
+            if ts_raw is not None:
+                if isinstance(ts_raw, bool):
+                    topics_skipped_v = ts_raw
+                else:
+                    topics_skipped_v = str(ts_raw).strip().lower() in ("true", "1", "yes")
+
+            gs_raw = raw_known.get("gender_skipped")
+            gender_skipped_v: Optional[bool] = None
+            if gs_raw is not None:
+                if isinstance(gs_raw, bool):
+                    gender_skipped_v = gs_raw
+                else:
+                    gender_skipped_v = str(gs_raw).strip().lower() in ("true", "1", "yes")
+
             nk = _normalize_slots(
                 raw_known.get("display_name"),
                 raw_known.get("gender"),
                 raw_known.get("topic"),
+                topics=topics_list,
+                topics_skipped=topics_skipped_v,
+                gender_skipped=gender_skipped_v,
             )
-            compact = {k: v for k, v in nk.items() if v is not None}
+            compact: dict[str, Any] = {}
+            if nk["display_name"] is not None:
+                compact["display_name"] = nk["display_name"]
+            if nk["gender"] is not None:
+                compact["gender"] = nk["gender"]
+            if nk["topic"] is not None:
+                compact["topic"] = nk["topic"]
+            if nk["topics"]:
+                compact["topics"] = list(nk["topics"])
+            if nk["topics_skipped"]:
+                compact["topics_skipped"] = True
+            if nk["gender_skipped"]:
+                compact["gender_skipped"] = True
             out["known_slots"] = compact if compact else None
         else:
             out["known_slots"] = None
@@ -207,6 +245,9 @@ class OnboardingIntakeResponse(BaseModel):
     display_name: Optional[str] = None
     gender: Optional[Literal["male", "female"]] = None
     topic: Optional[str] = None
+    topics: Optional[list[str]] = None
+    topics_skipped: bool = False
+    gender_skipped: bool = False
     intake_complete: bool = False
 
 
@@ -287,12 +328,41 @@ def _heuristic_gender_from_line(raw: str) -> Optional[str]:
     return None
 
 
+def _heuristic_gender_skip_from_line(raw: str) -> bool:
+    """User declines to share gender — chip text or free-form."""
+    c = _normalize_phrase_for_refusal(raw).lower()
+    if not c:
+        return False
+    if c in (
+        "prefer not to say",
+        "prefer not to share",
+        "rather not say",
+        "don't want to share",
+        "לא רוצה לשתף",
+        "לא רוצה לומר",
+        "לא משתף מגדר",
+        "לא רוצה לשתף מגדר",
+        "בלי מגדר",
+        "עדיף לא לומר",
+    ):
+        return True
+    needles_en = ("prefer not", "rather not", "skip gender", "no gender")
+    needles_he = ("לא רוצה לשתף", "לא רוצה לומר", "לא משתף", "בלי מגדר", "לא רלוונטי למגדר")
+    if any(n in c for n in needles_en):
+        return True
+    if any(n in c for n in needles_he):
+        return True
+    return False
+
+
 def _heuristic_display_name_from_line(raw: str) -> Optional[str]:
     t = _strip_intake_noise(raw)
     t = re.sub(r"[.!?…]+\s*$", "", t).strip()
     if _looks_like_interjection_not_name(t):
         return None
     if _is_display_name_refusal_line(t):
+        return None
+    if _heuristic_gender_skip_from_line(t):
         return None
     if len(t) < 2 or len(t) > 48 or "\n" in t or "\r" in t:
         return None
@@ -337,6 +407,8 @@ def _heuristic_display_name_loose(raw: str) -> Optional[str]:
         return None
     if _is_display_name_refusal_line(t):
         return None
+    if _heuristic_gender_skip_from_line(t):
+        return None
     if any(ch.isdigit() for ch in t):
         return None
     words = t.split()
@@ -365,10 +437,22 @@ def _heuristic_display_name_loose(raw: str) -> Optional[str]:
     return t[:80]
 
 
+def _dedupe_topics(ids: Optional[list[str]]) -> tuple[str, ...]:
+    if not ids:
+        return ()
+    seen: list[str] = []
+    for x in ids:
+        t = _slug(str(x).strip() if x is not None else None)
+        if t in _TRAINING_TOPICS and t not in seen:
+            seen.append(t)
+    return tuple(seen)
+
+
 def _heuristic_slots_from_transcript(msgs: list[OnboardingChatMessage]) -> dict[str, Any]:
     """Infer slots from user lines (chip taps, short names) without calling the extractor LLM."""
     out = _normalize_slots(None, None, None)
-    for m in reversed(msgs):
+    topic_acc: list[str] = []
+    for m in msgs:
         if m.role != "user":
             continue
         raw = _strip_intake_noise(m.content.strip())
@@ -379,23 +463,54 @@ def _heuristic_slots_from_transcript(msgs: list[OnboardingChatMessage]) -> dict[
             hg = _heuristic_gender_from_line(raw)
             if hg:
                 out["gender"] = hg
-        if out["topic"] is None:
-            for tid, needles in _TOPIC_USER_HINTS.items():
-                if any(n.lower() in low or n in raw for n in needles):
-                    out["topic"] = tid
-                    break
+                out["gender_skipped"] = False
+            elif not out.get("gender_skipped") and _heuristic_gender_skip_from_line(raw):
+                out["gender_skipped"] = True
+                out["gender"] = None
+        for tid, needles in _TOPIC_USER_HINTS.items():
+            if tid in topic_acc:
+                continue
+            if any(n.lower() in low or n in raw for n in needles):
+                topic_acc.append(tid)
         if out["display_name"] is None:
             guessed = _heuristic_display_name_from_line(raw) or _heuristic_display_name_loose(raw)
             if guessed:
                 out["display_name"] = guessed
+    if topic_acc:
+        tup = tuple(topic_acc)
+        out["topics"] = tup
+        out["topic"] = tup[0]
     return out
 
 
 def _apply_heuristic_fill(slots: dict[str, Any], heur: dict[str, Any]) -> dict[str, Any]:
     merged = dict(slots)
-    for k in ("display_name", "gender", "topic"):
-        if merged.get(k) is None and heur.get(k) is not None:
-            merged[k] = heur[k]
+    if heur.get("gender") in ("male", "female"):
+        merged["gender"] = heur["gender"]
+        merged["gender_skipped"] = False
+    elif merged.get("gender") not in ("male", "female") and not merged.get("gender_skipped"):
+        if heur.get("gender_skipped"):
+            merged["gender_skipped"] = True
+            merged["gender"] = None
+
+    if merged.get("topics_skipped"):
+        if merged.get("display_name") is None and heur.get("display_name") is not None:
+            merged["display_name"] = heur["display_name"]
+        return merged
+
+    if merged.get("display_name") is None and heur.get("display_name") is not None:
+        merged["display_name"] = heur["display_name"]
+
+    if merged.get("topic") is None and heur.get("topic") is not None:
+        merged["topic"] = heur["topic"]
+
+    ht = heur.get("topics") or ()
+    mt = merged.get("topics") or ()
+    if ht:
+        u = _dedupe_topics(list(mt) + list(ht))
+        if u:
+            merged["topics"] = u
+            merged["topic"] = u[0]
     return merged
 
 
@@ -410,26 +525,44 @@ def _normalize_slots(
     display_name: Optional[str],
     gender: Optional[str],
     topic: Optional[str],
+    *,
+    topics: Optional[list[str]] = None,
+    topics_skipped: Optional[bool] = None,
+    gender_skipped: Optional[bool] = None,
 ) -> dict[str, Any]:
-    tp = _slug(topic)
-    if tp is not None and tp not in _TRAINING_TOPICS:
-        tp = None
+    skipped = bool(topics_skipped)
+    merged_topics = () if skipped else _dedupe_topics([*(topics or []), *([topic] if topic else [])])
     gen = gender
     if gen not in ("male", "female", None):
         gen = None
+    gskip = bool(gender_skipped)
+    if gskip:
+        gen = None
     name = _slug(display_name)
+    tp = merged_topics[0] if merged_topics else None
     return {
         "display_name": name,
         "gender": gen,
         "topic": tp,
+        "topics": merged_topics,
+        "topics_skipped": skipped,
+        "gender_skipped": gskip,
     }
 
 
-def _slots_complete(slots: dict[str, Any]) -> bool:
-    """Name is optional (user may decline); gender + coaching topic are required."""
-    return bool(
-        slots.get("gender") in ("male", "female") and slots.get("topic") in _TRAINING_TOPICS
-    )
+def _ensure_topics_sync(slots: dict[str, Any]) -> dict[str, Any]:
+    if slots.get("topics_skipped"):
+        slots["topics"] = ()
+        slots["topic"] = None
+        return slots
+    topics = slots.get("topics") or ()
+    if isinstance(topics, list):
+        topics = _dedupe_topics(topics)
+    else:
+        topics = _dedupe_topics(list(topics))
+    slots["topics"] = topics
+    slots["topic"] = topics[0] if topics else None
+    return slots
 
 
 def _name_collection_resolved(
@@ -453,6 +586,17 @@ def _name_collection_resolved(
     return False
 
 
+def _slots_complete(slots: dict[str, Any]) -> bool:
+    """Name is optional (user may decline); gender or explicit skip; topic optional if user skipped."""
+    gender_ok = slots.get("gender") in ("male", "female") or bool(slots.get("gender_skipped"))
+    if not gender_ok:
+        return False
+    if slots.get("topics_skipped"):
+        return True
+    topics = slots.get("topics") or ()
+    return len(topics) >= 1
+
+
 def _missing_focus(
     slots: dict[str, Any],
     msgs: list[OnboardingChatMessage],
@@ -461,17 +605,20 @@ def _missing_focus(
 ) -> Optional[str]:
     if not _name_collection_resolved(slots, msgs, extractor_refusal=extractor_refusal):
         return "display_name"
-    if slots.get("gender") not in ("male", "female"):
+    gender_ok = slots.get("gender") in ("male", "female") or bool(slots.get("gender_skipped"))
+    if not gender_ok:
         return "gender"
-    if slots.get("topic") not in _TRAINING_TOPICS:
+    topics = slots.get("topics") or ()
+    if not topics and not slots.get("topics_skipped"):
         return "topic"
     return None
 
 
 def _scrub_refusal_display_name(slots: dict[str, Any]) -> None:
     dn = slots.get("display_name")
-    if isinstance(dn, str) and dn.strip() and _is_display_name_refusal_line(dn):
-        slots["display_name"] = None
+    if isinstance(dn, str) and dn.strip():
+        if _is_display_name_refusal_line(dn) or _heuristic_gender_skip_from_line(dn):
+            slots["display_name"] = None
 
 
 def _merge_known_into_slots(
@@ -480,13 +627,34 @@ def _merge_known_into_slots(
 ) -> dict[str, Any]:
     """Client/UI selections win over model extraction when provided."""
     if known is None:
-        return extracted
-    kn = _normalize_slots(known.display_name, known.gender, known.topic)
+        return _ensure_topics_sync(dict(extracted))
     out = dict(extracted)
-    for key in ("display_name", "gender", "topic"):
-        if kn.get(key) is not None:
-            out[key] = kn[key]
-    return out
+    if known.display_name is not None:
+        out["display_name"] = _slug(known.display_name)
+    if known.gender_skipped:
+        out["gender_skipped"] = True
+        out["gender"] = None
+    elif known.gender in ("male", "female"):
+        out["gender"] = known.gender
+        out["gender_skipped"] = False
+
+    if known.topics_skipped:
+        out["topics_skipped"] = True
+        out["topics"] = ()
+        out["topic"] = None
+    else:
+        tl: list[str] = []
+        if known.topics:
+            tl.extend(str(x) for x in known.topics)
+        if known.topic:
+            tl.append(str(known.topic))
+        merged = _dedupe_topics(tl)
+        if merged:
+            out["topics"] = merged
+            out["topic"] = merged[0]
+            out["topics_skipped"] = False
+
+    return _ensure_topics_sync(out)
 
 
 
@@ -552,8 +720,16 @@ def _build_slot_extractor_system_prompt(
         bits.append(f"name={dn}")
     if slots_snapshot.get("gender") in ("male", "female"):
         bits.append(f"gender={slots_snapshot['gender']}")
-    if slots_snapshot.get("topic") in _TRAINING_TOPICS:
-        bits.append(f"topic={slots_snapshot['topic']}")
+    if slots_snapshot.get("gender_skipped"):
+        bits.append("gender_skipped=yes")
+    if slots_snapshot.get("topics_skipped"):
+        bits.append("topics_skipped=yes")
+    else:
+        ts = slots_snapshot.get("topics") or ()
+        if ts:
+            bits.append("topics=" + ",".join(ts))
+        elif slots_snapshot.get("topic") in _TRAINING_TOPICS:
+            bits.append(f"topic={slots_snapshot['topic']}")
     known_line = ", ".join(bits) if bits else ("(ריק)" if lang_he else "(empty)")
 
     if lang_he:
@@ -592,16 +768,29 @@ def _apply_extractor_patch(
 
     cand = _slug(ext.extracted_display_name)
     if cand and not ext.name_refusal_detected:
-        if not _is_display_name_refusal_line(cand) and not _looks_like_interjection_not_name(cand):
+        if (
+            not _is_display_name_refusal_line(cand)
+            and not _looks_like_interjection_not_name(cand)
+            and not _heuristic_gender_skip_from_line(cand)
+        ):
             if missing_before == "display_name" or not (slots.get("display_name") or "").strip():
                 slots["display_name"] = cand
 
-    if ext.extracted_gender in ("male", "female"):
+    if ext.extracted_gender in ("male", "female") and not slots.get("gender_skipped"):
         slots["gender"] = ext.extracted_gender
+        slots["gender_skipped"] = False
+
+    if slots.get("topics_skipped"):
+        return
 
     tp = _slug(ext.extracted_topic)
     if tp in _TRAINING_TOPICS:
-        slots["topic"] = tp
+        cur = list(slots.get("topics") or ())
+        if tp not in cur:
+            cur.append(tp)
+        tup = _dedupe_topics(cur)
+        slots["topics"] = tup
+        slots["topic"] = tup[0] if tup else None
 
 
 def _gender_guard_clear_if_hallucinated(
@@ -611,9 +800,14 @@ def _gender_guard_clear_if_hallucinated(
 ) -> None:
     """Drop gender if last user line looks like name-only/junk but model guessed gender."""
     lu = _last_user_text(msgs)
+    if _heuristic_gender_skip_from_line(lu):
+        slots["gender_skipped"] = True
+        slots["gender"] = None
+        return
     hg = _heuristic_gender_from_line(lu)
     if hg:
         slots["gender"] = hg
+        slots["gender_skipped"] = False
         return
     if slots.get("gender") not in ("male", "female"):
         return
@@ -649,6 +843,16 @@ async def _load_onboarding_intake_request(request: Request) -> OnboardingIntakeR
         return OnboardingIntakeRequest.model_validate({})
 
 
+def _topics_payload(slots: dict[str, Any]) -> dict[str, Any]:
+    tops = slots.get("topics") or ()
+    return {
+        "topic": slots.get("topic"),
+        "topics": list(tops) if tops else None,
+        "topics_skipped": bool(slots.get("topics_skipped")),
+        "gender_skipped": bool(slots.get("gender_skipped")),
+    }
+
+
 @router.post("/intake/step", response_model=OnboardingIntakeResponse)
 @limiter.limit("40/minute")
 async def onboarding_intake_step(
@@ -667,6 +871,7 @@ async def onboarding_intake_step(
     heur = _heuristic_slots_from_transcript(msgs)
     slots = _apply_heuristic_fill(slots, heur)
     _scrub_refusal_display_name(slots)
+    _ensure_topics_sync(slots)
 
     missing_before = _missing_focus(slots, msgs)
 
@@ -675,8 +880,8 @@ async def onboarding_intake_step(
             assistant_message=intake_closing(body.language),
             display_name=slots.get("display_name"),
             gender=slots.get("gender"),
-            topic=slots.get("topic"),
             intake_complete=True,
+            **_topics_payload(slots),
         )
 
     sys_prompt = _build_slot_extractor_system_prompt(body.language, body.seed_display_name, slots)
@@ -707,6 +912,7 @@ async def onboarding_intake_step(
         _gender_guard_clear_if_hallucinated(slots, msgs, extracted_guess)
 
         extractor_refusal = bool(ext_model.name_refusal_detected)
+        _ensure_topics_sync(slots)
         missing_after = _missing_focus(slots, msgs, extractor_refusal=extractor_refusal)
 
         if missing_after is None:
@@ -714,8 +920,8 @@ async def onboarding_intake_step(
                 assistant_message=intake_closing(body.language),
                 display_name=slots.get("display_name"),
                 gender=slots.get("gender"),
-                topic=slots.get("topic"),
                 intake_complete=True,
+                **_topics_payload(slots),
             )
 
         ut_count = _user_turn_count(msgs)
@@ -724,6 +930,7 @@ async def onboarding_intake_step(
             missing=missing_after,
             gender=slots.get("gender"),
             user_message_count=ut_count,
+            gender_skipped=bool(slots.get("gender_skipped")),
         )
 
         intake_complete = _slots_complete(slots)
@@ -731,8 +938,8 @@ async def onboarding_intake_step(
             assistant_message=amsg,
             display_name=slots.get("display_name"),
             gender=slots.get("gender"),
-            topic=slots.get("topic"),
             intake_complete=intake_complete,
+            **_topics_payload(slots),
         )
     except HTTPException:
         raise

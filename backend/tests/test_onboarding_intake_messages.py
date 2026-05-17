@@ -21,4 +21,20 @@ def test_pick_topic_gendered_hebrew():
     female = pick_intake_assistant_message(
         "he", missing="topic", gender="female", user_message_count=3
     )
-    assert "תן לעצמך" in male and "תני לעצמך" in female
+    assert male == female
+    assert "נושא" in male and "מחייב" in male
+
+
+def test_pick_topic_with_gender_skipped_hebrew():
+    msg = pick_intake_assistant_message(
+        "he",
+        missing="topic",
+        gender=None,
+        user_message_count=3,
+        gender_skipped=True,
+    )
+    male = pick_intake_assistant_message(
+        "he", missing="topic", gender="male", user_message_count=3
+    )
+    assert msg == male
+    assert "נושא" in msg

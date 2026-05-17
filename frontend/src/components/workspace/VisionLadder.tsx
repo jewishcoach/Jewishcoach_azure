@@ -242,7 +242,9 @@ export const VisionLadder = ({
       {/* כותרת — שלבי האימון שלך + כרטיס התקדמות */}
       <header className="flex-shrink-0 overflow-x-hidden border-b border-white/[0.06] px-5 pb-4 pt-6">
         <h2
-          className="text-[1.5rem] font-semibold leading-tight tracking-[0.02em] text-white sm:text-[1.65rem]"
+          className={`font-semibold leading-tight tracking-[0.02em] text-white ${
+            isRTL ? 'text-[1.28rem] sm:text-[1.4rem]' : 'text-[1.5rem] sm:text-[1.65rem]'
+          }`}
           style={{ fontFamily: isRTL ? WORKSPACE_CHAT_FONT : JOURNEY_TITLE_SERIF }}
         >
           {t('ladder.journeyTitle')}

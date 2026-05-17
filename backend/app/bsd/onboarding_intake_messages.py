@@ -10,14 +10,8 @@ from __future__ import annotations
 def intake_closing(language: str) -> str:
     lang = (language or "he").lower()
     if lang.startswith("he"):
-        return (
-            "מצוין.\n\n"
-            "עכשיו רק לבחור מהכרטיסים למטה את נושא האימון שהכי מדבר אליך ברגע הזה — ומשם נמשיך."
-        )
-    return (
-        "Lovely.\n\n"
-        "Pick the coaching focus below that feels most alive for you right now — and we'll take it from there."
-    )
+        return "מעולה, תודה ששיתפת."
+    return "Thank you for sharing that."
 
 
 def intake_ask_name_first(language: str) -> str:
@@ -51,37 +45,30 @@ def intake_ask_gender(language: str) -> str:
     lang = (language or "he").lower()
     if lang.startswith("he"):
         return (
-            "יש לי עוד משהו קטן טכני בשביל הניסוח בעברית:\n\n"
-            "זכר או נקבה? יש למטה גם כפתורים נוחים — ואפשר גם פשוט לכתוב במילים."
+            "מה המגדר שלך?\n\n"
+            "אין חובה לשתף — רק כדי שאוכל להתאים את הניסוח. "
+            "אפשר לבחור למטה, לכתוב במילים, או ללחוץ על «לא רוצה לשתף»."
         )
     return (
-        "One small practical detail so I can phrase things naturally:\n\n"
-        "Male or female grammatical form? There are quick buttons below — or you can just type it."
+        "What's your gender? You're welcome not to share — it only helps me phrase things naturally. "
+        "Pick below, type it in your own words, or tap “Prefer not to say.”"
     )
 
 
 def intake_ask_topic(language: str, gender: str) -> str:
+    """gender kept for API stability; copy is neutral (multi-select + optional)."""
     lang = (language or "he").lower()
     if lang.startswith("he"):
-        if gender == "female":
-            return (
-                "מצוין.\n\n"
-                "עכשיו תני לעצמך רגע: מהכרטיסים למטה, מה מרגיש לך הכי רלוונטי לאימון כרגע? "
-                "מזה נמשיך את השיחה."
-            )
         return (
             "מצוין.\n\n"
-            "עכשיו תן לעצמך רגע: מהכרטיסים למטה, מה מרגיש לך הכי רלוונטי לאימון כרגע? "
-            "מזה נמשיך את השיחה."
-        )
-    if gender == "female":
-        return (
-            "Beautiful.\n\n"
-            "Take a breath — which card below feels most like what you want coaching on right now? We'll go from there."
+            "אם בא לך — אפשר לסמן נושא אחד או יותר שמרגישים רלוונטיים; "
+            "זה לא מחייב את מהלך האימון, רק עוזר לי להכיר אתכם טוב יותר. "
+            "אפשר גם לדלג ולהמשיך בלי."
         )
     return (
-        "Beautiful.\n\n"
-        "Take a breath — which card below feels most like what you want coaching on right now? We'll go from there."
+        "Great.\n\n"
+        "If you'd like, choose one or more focus areas — nothing here locks us into a path; "
+        "it simply helps me know you a little better. You can also skip and continue without choosing."
     )
 
 
@@ -91,6 +78,7 @@ def pick_intake_assistant_message(
     missing: str,
     gender: str | None,
     user_message_count: int,
+    gender_skipped: bool = False,
 ) -> str:
     """
     :param missing: display_name | gender | topic (must not be complete).
@@ -102,7 +90,7 @@ def pick_intake_assistant_message(
     if missing == "gender":
         return intake_ask_gender(language)
     if missing == "topic":
-        if gender in ("male", "female"):
-            return intake_ask_topic(language, gender)
+        if gender in ("male", "female") or gender_skipped:
+            return intake_ask_topic(language, gender or "")
         return intake_ask_gender(language)
     return intake_closing(language)

@@ -23,6 +23,9 @@ class UserPreferencesPatch(BaseModel):
     bsd_intro_screens_completed: Optional[bool] = None
     # Optional persisted answers from first-entry onboarding (split-panel flow).
     bsd_onboard_topic: Optional[str] = None
+    # Multi-select topic ids from onboarding (goals, parenting, …); optional list in preferences JSON.
+    bsd_onboard_topics: Optional[list[str]] = None
+    bsd_topics_skipped: Optional[bool] = None
 
     model_config = ConfigDict(extra="ignore")
 

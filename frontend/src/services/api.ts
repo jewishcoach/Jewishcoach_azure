@@ -33,7 +33,10 @@ export function normalizeIntakeLanguage(lang: string | undefined): string {
 export type OnboardingKnownSlots = {
   display_name?: string;
   gender?: 'male' | 'female';
+  gender_skipped?: boolean;
   topic?: string;
+  topics?: string[];
+  topics_skipped?: boolean;
 };
 
 /** Stable JSON body for /onboarding/intake/* — avoids null/odd shapes that trigger FastAPI 422. */
@@ -71,8 +74,13 @@ export function buildOnboardingIntakeBody(body: {
     const dn = ks.display_name?.trim();
     if (dn) compact.display_name = dn.slice(0, 80);
     if (ks.gender === 'male' || ks.gender === 'female') compact.gender = ks.gender;
+    if (ks.gender_skipped === true) compact.gender_skipped = true;
     const top = ks.topic?.trim();
     if (top) compact.topic = top;
+    if (Array.isArray(ks.topics) && ks.topics.length > 0) {
+      compact.topics = ks.topics.map((x) => String(x).trim()).filter(Boolean).slice(0, 16);
+    }
+    if (ks.topics_skipped === true) compact.topics_skipped = true;
     if (Object.keys(compact).length) payload.known_slots = compact;
   }
 
@@ -337,6 +345,9 @@ class ApiClient {
       display_name?: string | null;
       gender?: 'male' | 'female' | null;
       topic?: string | null;
+      topics?: string[] | null;
+      topics_skipped?: boolean;
+      gender_skipped?: boolean;
       intake_complete: boolean;
     }>('/onboarding/intake/step', buildOnboardingIntakeBody(body));
     return response.data;
