@@ -274,7 +274,8 @@ def _build_reply_system_prompt(
     hint = ""
     if seed_display_name and seed_display_name.strip():
         hint = (
-            f"\nA signup hint suggests this name (confirm naturally, user may correct): "
+            f"\nOptional signup/profile name hint (use ONLY if the user has not clearly chosen "
+            f"a different name in the transcript — their stated name always wins): "
             f"{seed_display_name.strip()[:80]}\n"
         )
     known_frag = _known_slots_prompt_fragment(known_slots)
@@ -290,6 +291,8 @@ Have a SHORT natural conversation (often 4–8 user turns) to learn:
 
 Rules:
 - When a UI context block appears, do not re-ask those facts unless the user clearly contradicts them.
+- If the user's latest message is clearly their name (or corrects an earlier wrong greeting), treat it as final:
+  use only that name from now on — do not ask them to pick between it and an outdated hint or a mistaken opener.
 - One focus per message when possible; if they answer several things at once, acknowledge warmly.
 - Never output JSON, bullet lists of internal codes, or markup — natural prose only.
 - Keep replies brief (usually 1–3 short paragraphs).
@@ -309,7 +312,9 @@ Return CUMULATIVE best-known values from the ENTIRE transcript plus the coach's 
   coached=worked with coach before; new=new to coaching; self=likes self-guided; unsure=unsure.
 - pace: exactly one of gentle, weekly, immersive, focused — or null.
 
-Use null whenever uncertain. Do not invent."""
+Use null whenever uncertain. Do not invent.
+If the user replied with a short name right after being asked what to call them, set display_name to that reply
+even when the assistant greeting used a different placeholder."""
 
 
 def _history_to_lc(messages: list[OnboardingChatMessage]) -> list:

@@ -229,7 +229,7 @@ function SignedInContent() {
       <div className="h-screen flex flex-col bg-[#faf8f3] workspace-root overflow-x-hidden">
         <BsdOnboardingFlow
           onComplete={handleIntroComplete}
-          initialDisplayName={displayName ?? user?.firstName ?? null}
+          initialDisplayName={displayName ?? null}
           onDisplayNameUpdated={(name) => setDisplayName(name)}
         />
       </div>

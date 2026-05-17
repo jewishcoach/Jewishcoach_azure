@@ -83,6 +83,26 @@ function transcriptForApi(messages: ChatMsg[]) {
   }));
 }
 
+/**
+ * First reply after "what's your name?" — if it looks like a name, send as known_slots.display_name
+ * so the coach drops a wrong opener placeholder (not for quick-pick goal phrases).
+ */
+function guessDisplayNameFromFirstReply(text: string): string | undefined {
+  const t = text.trim();
+  if (t.length < 2 || t.length > 48) return undefined;
+  if (/[\n\r]/.test(t)) return undefined;
+  if (/[.!?]/.test(t)) return undefined;
+  if (/\d/.test(t)) return undefined;
+  const words = t.split(/\s+/).filter(Boolean);
+  if (words.length === 0 || words.length > 2) return undefined;
+  const joined = words.join(' ');
+  if (joined.length > 28) return undefined;
+  const low = t.toLowerCase();
+  if (low === 'זכר' || low === 'נקבה' || low === 'male' || low === 'female') return undefined;
+  if (!/^[\p{L}\s\-'.]+$/u.test(t)) return undefined;
+  return joined.slice(0, 80);
+}
+
 const GOAL_ICONS: Record<GoalId, LucideIcon> = {
   peace: Bird,
   confidence: Shield,
@@ -333,8 +353,11 @@ export function BsdOnboardingFlow({
         experience: ExpId;
         pace: PaceId;
       }>,
+      extras?: { display_name?: string },
     ): OnboardingKnownSlots | undefined => {
+      const extraName = extras?.display_name?.trim();
       const name =
+        (extraName ? extraName.slice(0, 80) : '') ||
         preferredName.trim() ||
         (typeof initialDisplayName === 'string' ? initialDisplayName.trim() : '');
       const g = hint?.gender ?? gender ?? undefined;
@@ -416,12 +439,21 @@ export function BsdOnboardingFlow({
       let buf = '';
 
       try {
+        const apiMsgs = transcriptForApi(historySnapshot);
+        const userTurnCount = apiMsgs.filter((m) => m.role === 'user').length;
+        const hintUsed = Boolean(slotHint && Object.keys(slotHint).length > 0);
+        const guessedName =
+          !hintUsed && userTurnCount === 1 ? guessDisplayNameFromFirstReply(raw) : undefined;
+
         const res = await apiClient.onboardingIntakeStream(
           {
             language: i18n.language,
-            messages: transcriptForApi(historySnapshot),
+            messages: apiMsgs,
             seed_display_name: initialDisplayName,
-            known_slots: buildKnownSlotsPayload(slotHint),
+            known_slots: buildKnownSlotsPayload(
+              slotHint,
+              guessedName ? { display_name: guessedName } : undefined,
+            ),
           },
           {
             onToken: (d) => {
