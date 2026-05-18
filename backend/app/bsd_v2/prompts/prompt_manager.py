@@ -104,6 +104,7 @@ def assemble_system_prompt(current_step: str, language: str = "he", user_gender:
 
     core_files: List[str] = [
         "persona.md",
+        "coach_charter.md",
         "process_map.md",
         "response_format.md",
     ]
