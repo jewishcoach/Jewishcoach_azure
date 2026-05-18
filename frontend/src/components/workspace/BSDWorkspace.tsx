@@ -82,7 +82,11 @@ export const BSDWorkspace = ({
   }, [isRecording]);
   const chatToolRef = useRef<HTMLDivElement>(null);
   const messagesScrollRef = useRef<HTMLDivElement>(null);
-  const { messagesEndRef, lastMessageRef } = useChatScrollIntoLatest(messages, loading || historyLoading);
+  const { messagesEndRef, lastMessageRef } = useChatScrollIntoLatest(
+    messages,
+    loading || historyLoading,
+    Boolean(stationCheckpoint),
+  );
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isSendingRef = useRef(false);
   /** Matches WorkspaceMessageBubble: coach-aligned widgets on the same side as assistant bubbles. */
@@ -430,6 +434,11 @@ export const BSDWorkspace = ({
                 ref={messagesScrollRef}
                 className="min-h-0 flex-1 overflow-y-auto px-3 py-4 md:px-10 md:py-10 custom-scrollbar bg-[#faf8f3] relative"
                 dir="ltr"
+                style={
+                  stationCheckpoint
+                    ? { scrollPaddingBottom: 'min(52vh, 520px)' }
+                    : undefined
+                }
               >
           {historyLoading && (
             <div
@@ -459,7 +468,9 @@ export const BSDWorkspace = ({
               </p>
             </motion.div>
           ) : (
-            <div className="space-y-5 md:space-y-9">
+            <div
+              className={`space-y-5 md:space-y-9 ${stationCheckpoint ? 'pb-[min(52vh,520px)]' : ''}`}
+            >
               {sessionPillLabel ? (
                 <div className="flex justify-center pb-0 pt-1">
                   <div
