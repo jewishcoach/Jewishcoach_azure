@@ -29,6 +29,14 @@ Important:
 Ask for details:
 "Who was there? When was it? What exactly happened?"
 
+## Depth vs Gate (priority)
+
+**Gate before depth:** If in one message or two clear turns the user gives **when + where + who + what happened in a sensible sequence**, plus **interactive contact** with another person, that satisfies the Gate and is **enough** to move to S3. Do **not** open another round of scene interrogation just to polish, add artificial depth, or hit an exchange quota.
+
+**More turns only when:** A Gate axis is **missing**, **vague**, or it is unclear there was real **back-and-forth contact** — until the Gate is satisfied.
+
+**“At least 3–4 exchanges”** applies **only** when information is missing for the Gate. When the Gate is already satisfied from what they wrote — **do not** demand more exchanges in S2.
+
 ## Clarification Requests
 
 **If the user asks** "What else should I write?", "Explain what you need", "What should I describe?", "What's missing?", "I don't understand what you want":
@@ -37,4 +45,27 @@ Ask for details:
 - **End with a targeted question** based on what's missing: "You already mentioned [X]. Can you add when it was? Where were you?"
 - **Stay in S2** – keep `current_step` as "S2".
 
-Gate: clear when+where+who+what and valid event -> S3.
+## Do not repeat questions
+
+**Before every new question:** If **when · where · who · what** are already filled from the user’s messages **and** interactive contact is clear — **do not** ask again about what they already said; at most one short acknowledgement in their words, then **go to S3**. Do not continue another “scene interview” when the picture is complete.
+
+Check each axis separately:
+- Already said when? → don’t ask “when” again.
+- Already said where? → don’t ask “where” again.
+- Already said who? → don’t ask “who” again.
+- Already described what happened (sequence counts even without verbatim dialogue)? → don’t ask “what happened” again in the same way, and don’t start a “step-by-step verbatim” round without a real gap.
+
+**If the user says they already told you → apologize and move to S3 immediately.**
+
+## Observation-style questions — only when something is missing
+
+Questions about **verbatim wording** (“what was the first thing you said and what did they answer word-for-word?”) are **optional**. Use them **only** when **actions and mutual contact** are unclear — **not** to drill dialogue after a continuous, clear story.
+
+Examples — use only when there is a **real gap**, not when the Gate is already satisfied:
+- “Let’s look at what happened there — what exactly was the situation?”
+- “What was the other person’s response?”
+- “What happened right before the storm started?”
+
+Gate: clear when + where + who + what, valid interpersonal event → **S3**.
+
+**As soon as the Gate is met:** stop probing scene details. Open **S3** from the emotional / actual-state angle — e.g. what they felt there or what stood out — instead of another round of verbal reconstruction.
