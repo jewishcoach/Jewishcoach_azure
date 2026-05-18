@@ -67,5 +67,3 @@ Examples — use only when there is a **real gap**, not when the Gate is already
 - “What happened right before the storm started?”
 
 Gate: clear when + where + who + what, valid interpersonal event → **S3**.
-
-**As soon as the Gate is met:** stop probing scene details. Open **S3** from the emotional / actual-state angle — e.g. what they felt there or what stood out — instead of another round of verbal reconstruction.
