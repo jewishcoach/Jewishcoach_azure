@@ -75,8 +75,33 @@ export function buildIntakeOpeningMessage(
   lang: string,
   t: I18nT,
 ): string {
+  return getIntakeOpeningBlocks(lang, t).join('\n\n');
+}
+
+/** Three staggered coach bubbles for onboarding entry (typing sequence). */
+export function getIntakeOpeningBlocks(lang: string, t: I18nT): string[] {
   const fallback = lang === 'he' ? 'רב' : 'there';
-  let text = String(t('bsdOnboarding.intakeOpeningMessage') ?? '');
-  text = text.replace(/\bundefined\b/gi, fallback);
-  return stripUndefined(text);
+  const keys = [
+    'bsdOnboarding.intakeOpeningBlock1',
+    'bsdOnboarding.intakeOpeningBlock2',
+    'bsdOnboarding.intakeOpeningBlock3',
+  ] as const;
+  const blocks = keys
+    .map((key) => {
+      let text = String(t(key) ?? '');
+      if (!text.trim() || text === key) return '';
+      text = text.replace(/\bundefined\b/gi, fallback);
+      return stripUndefined(text);
+    })
+    .filter(Boolean);
+  if (blocks.length >= 3) return blocks;
+  const legacy = String(t('bsdOnboarding.intakeOpeningMessage') ?? '');
+  if (legacy.trim() && legacy !== 'bsdOnboarding.intakeOpeningMessage') {
+    return legacy
+      .replace(/\bundefined\b/gi, fallback)
+      .split(/\n\n+/)
+      .map((p) => p.trim())
+      .filter(Boolean);
+  }
+  return blocks;
 }

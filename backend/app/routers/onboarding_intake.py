@@ -853,6 +853,102 @@ def _topics_payload(slots: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _line_matches_topic_hints(raw: str) -> bool:
+    low = raw.lower()
+    for needles in _TOPIC_USER_HINTS.values():
+        if any(n.lower() in low or n in raw for n in needles):
+            return True
+    return False
+
+
+def _can_skip_extractor_llm(
+    slots: dict[str, Any],
+    msgs: list[OnboardingChatMessage],
+    known: Optional[KnownOnboardingSlots],
+) -> bool:
+    """
+  Skip Azure structured extract when slots + last user line are unambiguous
+  (e.g. short name after opening — avoids multi-second LLM latency).
+    """
+    missing = _missing_focus(slots, msgs)
+    if missing is None:
+        return True
+    last = _last_user_text(msgs)
+    if missing == "display_name":
+        if (slots.get("display_name") or "").strip():
+            return True
+        if _is_display_name_refusal_line(last):
+            return True
+        if _heuristic_display_name_from_line(last) or _heuristic_display_name_loose(last):
+            return True
+        return False
+    if missing == "gender":
+        if not _name_collection_resolved(slots, msgs):
+            return False
+        if known is not None:
+            if known.gender_skipped or known.gender in ("male", "female"):
+                return True
+            if known.topics_skipped or (known.topics and len(known.topics) > 0):
+                return True
+        if slots.get("gender") in ("male", "female") or slots.get("gender_skipped"):
+            return True
+        if _heuristic_gender_from_line(last) or _heuristic_gender_skip_from_line(last):
+            return True
+        if _heuristic_display_name_from_line(last) or _heuristic_display_name_loose(last):
+            return True
+        if _is_display_name_refusal_line(last):
+            return True
+        return False
+    if missing == "topic":
+        gender_ok = slots.get("gender") in ("male", "female") or bool(slots.get("gender_skipped"))
+        if not gender_ok:
+            return False
+        if known is not None and (known.topics_skipped or (known.topics and len(known.topics) > 0)):
+            return True
+        if slots.get("topics_skipped") or (slots.get("topics") or ()):
+            return True
+        if _line_matches_topic_hints(last):
+            return True
+        return False
+    return False
+
+
+def _deterministic_intake_response(
+    body: OnboardingIntakeRequest,
+    slots: dict[str, Any],
+    msgs: list[OnboardingChatMessage],
+) -> Optional[OnboardingIntakeResponse]:
+    """Build response from heuristics + known_slots only (no LLM)."""
+    if not _can_skip_extractor_llm(slots, msgs, body.known_slots):
+        return None
+
+    missing = _missing_focus(slots, msgs)
+    if missing is None:
+        return OnboardingIntakeResponse(
+            assistant_message=intake_closing(body.language),
+            display_name=slots.get("display_name"),
+            gender=slots.get("gender"),
+            intake_complete=True,
+            **_topics_payload(slots),
+        )
+
+    ut_count = _user_turn_count(msgs)
+    amsg = pick_intake_assistant_message(
+        body.language,
+        missing=missing,
+        gender=slots.get("gender"),
+        user_message_count=ut_count,
+        gender_skipped=bool(slots.get("gender_skipped")),
+    )
+    return OnboardingIntakeResponse(
+        assistant_message=amsg,
+        display_name=slots.get("display_name"),
+        gender=slots.get("gender"),
+        intake_complete=_slots_complete(slots),
+        **_topics_payload(slots),
+    )
+
+
 @router.post("/intake/step", response_model=OnboardingIntakeResponse)
 @limiter.limit("40/minute")
 async def onboarding_intake_step(
@@ -883,6 +979,15 @@ async def onboarding_intake_step(
             intake_complete=True,
             **_topics_payload(slots),
         )
+
+    fast = _deterministic_intake_response(body, slots, msgs)
+    if fast is not None:
+        logger.info(
+            "[onboarding_intake] fast path (no LLM) missing=%s users=%s",
+            missing_before,
+            _user_turn_count(msgs),
+        )
+        return fast
 
     sys_prompt = _build_slot_extractor_system_prompt(body.language, body.seed_display_name, slots)
     lc_messages: list = [

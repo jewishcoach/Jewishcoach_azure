@@ -23,7 +23,7 @@ import type { LucideIcon } from 'lucide-react';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { WORKSPACE_CHAT_FONT } from '../constants/workspaceFonts';
 import { apiClient, type OnboardingKnownSlots } from '../services/api';
-import { buildIntakeOpeningMessage } from '../utils/welcomeMessage';
+import { getIntakeOpeningBlocks } from '../utils/welcomeMessage';
 
 type Props = {
   onComplete: () => void;
@@ -397,6 +397,41 @@ function CoachBubbleBody({ text }: { text: string }) {
   );
 }
 
+const OPENING_BLOCK_PAUSE_MS = 420;
+const OPENING_CHAR_MS = 26;
+const OPENING_CHARS_PER_TICK = 2;
+
+function sleep(ms: number, signal: AbortSignal) {
+  return new Promise<void>((resolve) => {
+    if (signal.aborted) {
+      resolve();
+      return;
+    }
+    const id = window.setTimeout(() => resolve(), ms);
+    signal.addEventListener(
+      'abort',
+      () => {
+        window.clearTimeout(id);
+        resolve();
+      },
+      { once: true },
+    );
+  });
+}
+
+async function revealTypedBlock(
+  fullText: string,
+  onPartial: (partial: string) => void,
+  signal: AbortSignal,
+) {
+  for (let i = 0; i < fullText.length; i += OPENING_CHARS_PER_TICK) {
+    if (signal.aborted) return;
+    onPartial(fullText.slice(0, Math.min(i + OPENING_CHARS_PER_TICK, fullText.length)));
+    await sleep(OPENING_CHAR_MS, signal);
+  }
+  onPartial(fullText);
+}
+
 function ChatBubble({
   role,
   children,
@@ -462,12 +497,15 @@ export function BsdOnboardingFlow({
   const [draftTopicIds, setDraftTopicIds] = useState<TopicId[]>([]);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [bootLoading, setBootLoading] = useState(true);
+  const [openingBusy, setOpeningBusy] = useState(true);
+  const [openingTypingText, setOpeningTypingText] = useState<string | null>(null);
   const [turnLoading, setTurnLoading] = useState(false);
   const [intakeComplete, setIntakeComplete] = useState(false);
   const [intakeError, setIntakeError] = useState<string | null>(null);
   const [enteringWorkspace, setEnteringWorkspace] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const openingLangRef = useRef(i18n.language);
   const [bootKey, setBootKey] = useState(0);
 
   const genderStepDone = Boolean(gender || genderSkipped);
@@ -598,37 +636,72 @@ export function BsdOnboardingFlow({
     );
   }, []);
 
-  /** Static opening: same voice as workspace welcome, ends with “what’s your name?” — not the coaching-permission question. */
+  /** Opening: three coach bubbles, typed in sequence (no API). */
   useEffect(() => {
+    const ac = new AbortController();
     let cancelled = false;
-    setBootLoading(true);
-    setIntakeError(null);
-    try {
-      const text = buildIntakeOpeningMessage(null, null, i18n.language, t);
-      if (!cancelled) {
-        setMessages([{ id: uid(), role: 'coach', text }]);
+
+    const run = async () => {
+      setBootLoading(true);
+      setOpeningBusy(true);
+      setIntakeError(null);
+      setMessages([]);
+      setOpeningTypingText(null);
+
+      const blocks = getIntakeOpeningBlocks(i18n.language, t);
+      try {
+        for (let bi = 0; bi < blocks.length; bi += 1) {
+          if (ac.signal.aborted || cancelled) return;
+          setOpeningTypingText('');
+          await revealTypedBlock(
+            blocks[bi],
+            (partial) => {
+              if (!cancelled) setOpeningTypingText(partial);
+            },
+            ac.signal,
+          );
+          if (ac.signal.aborted || cancelled) return;
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: uid(),
+              role: 'coach',
+              text: blocks[bi],
+              showCoachMeta: bi === 0,
+            },
+          ]);
+          setOpeningTypingText(null);
+          if (bi < blocks.length - 1) {
+            await sleep(OPENING_BLOCK_PAUSE_MS, ac.signal);
+          }
+        }
+      } finally {
+        if (!cancelled) {
+          setBootLoading(false);
+          setOpeningBusy(false);
+          setOpeningTypingText(null);
+        }
       }
-    } finally {
-      if (!cancelled) setBootLoading(false);
-    }
+    };
+
+    void run();
     return () => {
       cancelled = true;
+      ac.abort();
     };
   }, [bootKey, i18n.language, t]);
 
-  /** Keep opening copy in sync if user switches language before replying. */
+  /** Restart opening sequence if language changes before the user replies. */
   useEffect(() => {
-    setMessages((prev) => {
-      if (prev.length !== 1 || prev[0].role !== 'coach') return prev;
-      const next = buildIntakeOpeningMessage(null, null, i18n.language, t);
-      if (prev[0].text === next) return prev;
-      return [{ ...prev[0], text: next }];
-    });
-  }, [i18n.language, t]);
+    if (openingLangRef.current === i18n.language) return;
+    openingLangRef.current = i18n.language;
+    if (messages.some((m) => m.role === 'user')) return;
+    setBootKey((k) => k + 1);
+  }, [i18n.language, messages]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages, bootLoading, turnLoading, intakeComplete]);
+  }, [messages, bootLoading, turnLoading, intakeComplete, openingTypingText]);
 
   const coachLabel = t('bsdOnboarding.coachLabel');
 
@@ -644,7 +717,7 @@ export function BsdOnboardingFlow({
       }>,
     ) => {
       const raw = (textOverride ?? input).trim();
-      if (!raw || bootLoading || turnLoading || intakeComplete) return;
+      if (!raw || bootLoading || openingBusy || turnLoading || intakeComplete) return;
 
       if (!textOverride) setInput('');
       setTurnLoading(true);
@@ -702,7 +775,7 @@ export function BsdOnboardingFlow({
             showCoachMeta: true,
           },
         ]);
-        await applyExtracted(res);
+        void applyExtracted(res);
       } catch {
         setIntakeError(t('bsdOnboarding.intakeError'));
         setGender(rollbackGender);
@@ -721,6 +794,7 @@ export function BsdOnboardingFlow({
     [
       applyExtracted,
       bootLoading,
+      openingBusy,
       buildKnownSlotsPayload,
       draftTopicIds,
       gender,
@@ -756,8 +830,8 @@ export function BsdOnboardingFlow({
     onComplete();
   }, [enteringWorkspace, onComplete, topicIds, topicsSkipped]);
 
-  const showComposer = !intakeComplete;
-  const composerBusy = bootLoading || turnLoading;
+  const showComposer = !intakeComplete && !openingBusy;
+  const composerBusy = bootLoading || openingBusy || turnLoading;
   const summaryReady = intakeComplete && genderStepDone && topicMilestoneDone;
   const awaitingCoachReply =
     turnLoading &&
@@ -851,6 +925,15 @@ export function BsdOnboardingFlow({
 
             {intakeError && messages.length > 0 ? (
               <p className="text-center text-[14px] text-red-700 md:text-start">{intakeError}</p>
+            ) : null}
+
+            {openingTypingText !== null ? (
+              <div className="flex w-full flex-col items-start gap-2">
+                {messages.length === 0 ? <CoachRow label={coachLabel} /> : null}
+                <ChatBubble role="coach">
+                  <CoachBubbleBody text={openingTypingText} />
+                </ChatBubble>
+              </div>
             ) : null}
 
             {messages.map((msg) => (
