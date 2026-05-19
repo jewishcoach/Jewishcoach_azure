@@ -23,7 +23,11 @@ import type { LucideIcon } from 'lucide-react';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { WORKSPACE_CHAT_FONT } from '../constants/workspaceFonts';
 import { apiClient, type OnboardingKnownSlots } from '../services/api';
-import { buildAfterNameCoachMessage, getIntakeOpeningBlocks } from '../utils/welcomeMessage';
+import {
+  buildAfterGenderCoachMessage,
+  buildAfterNameCoachMessage,
+  getIntakeOpeningBlocks,
+} from '../utils/welcomeMessage';
 
 type Props = {
   onComplete: () => void;
@@ -161,6 +165,22 @@ function isGenderSkipLine(text: string): boolean {
   ];
   if (needlesHe.some((n) => c.includes(n))) return true;
   return false;
+}
+
+function isGenderSelectionLine(text: string): boolean {
+  const t = stripIntakeNoise(text).replace(/(?:[.!?…,:;"'`])+\s*$/u, '').trim();
+  if (!t) return false;
+  if (isGenderSkipLine(t)) return true;
+  const low = t.toLowerCase();
+  if (low === 'male' || low === 'female' || low === 'm' || low === 'f') return true;
+  if (low.includes("i'm male") || low.includes('i am male')) return true;
+  if (low.includes("i'm female") || low.includes('i am female')) return true;
+  if (t.includes('אני גבר') || t.includes('אני זכר')) return true;
+  if (t.includes('אני אישה') || t.includes('אני אשה') || t.includes('אני נקבה')) return true;
+  const compact = t.replace(/\s+/g, ' ').trim();
+  const maleHe = new Set(['זכר', 'גבר', 'בן']);
+  const femaleHe = new Set(['נקבה', 'אישה', 'אשה', 'בת']);
+  return maleHe.has(compact) || femaleHe.has(compact) || maleHe.has(low) || femaleHe.has(low);
 }
 
 function guessDisplayNameFromFirstReply(text: string): string | undefined {
@@ -771,11 +791,38 @@ export function BsdOnboardingFlow({
           historySnapshot.filter((m) => m.role === 'user').length === 1 &&
           Boolean(resolvedName);
 
+        const hadGenderBefore = Boolean(gender || genderSkipped);
+        const acceptsGender =
+          slotHint?.gender === 'male' ||
+          slotHint?.gender === 'female' ||
+          slotHint?.genderSkipped === true ||
+          (!hintUsed && isGenderSelectionLine(raw));
+        const isGenderToTopicReply =
+          !hadGenderBefore &&
+          acceptsGender &&
+          (Boolean(preferredName.trim()) ||
+            historySnapshot.some(
+              (m) => m.role === 'user' && isDisplayNameRefusalRaw(m.text),
+            ));
+
         let optimisticCoachId: string | undefined;
         if (isFirstNameReply && resolvedName) {
           const coachId = uid();
           optimisticCoachId = coachId;
           const optimisticText = buildAfterNameCoachMessage(resolvedName, i18n.language, t);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: coachId,
+              role: 'coach',
+              text: optimisticText,
+              showCoachMeta: true,
+            },
+          ]);
+        } else if (isGenderToTopicReply) {
+          const coachId = uid();
+          optimisticCoachId = coachId;
+          const optimisticText = buildAfterGenderCoachMessage(i18n.language, t);
           setMessages((prev) => [
             ...prev,
             {
@@ -845,6 +892,9 @@ export function BsdOnboardingFlow({
       topicIds,
       topicsSkipped,
       turnLoading,
+      preferredName,
+      gender,
+      genderSkipped,
     ],
   );
 

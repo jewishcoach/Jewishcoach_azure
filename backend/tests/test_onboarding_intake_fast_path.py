@@ -10,6 +10,7 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from app.routers.onboarding_intake import (  # noqa: E402
+    KnownOnboardingSlots,
     OnboardingChatMessage,
     OnboardingIntakeRequest,
     _can_skip_extractor_llm,
@@ -43,6 +44,26 @@ def test_skip_llm_after_short_hebrew_name():
     assert resp is not None
     assert "נעים להכיר" in resp.assistant_message
     assert "ישי" in resp.assistant_message
+
+
+def test_skip_llm_after_gender_chip_moves_to_topic():
+    msgs = [
+        OnboardingChatMessage(role="assistant", content="שלום ישי, נעים להכיר!"),
+        OnboardingChatMessage(role="user", content="ישי"),
+        OnboardingChatMessage(role="assistant", content="זכר או נקבה?"),
+        OnboardingChatMessage(role="user", content="זכר"),
+    ]
+    slots = _slots(display_name="ישי", gender="male")
+    known = KnownOnboardingSlots(gender="male")
+    assert _can_skip_extractor_llm(slots, msgs, known) is True
+    resp = _deterministic_intake_response(
+        OnboardingIntakeRequest(language="he", messages=msgs, known_slots=known),
+        slots,
+        msgs,
+    )
+    assert resp is not None
+    assert "מצוין" in resp.assistant_message
+    assert "נושא" in resp.assistant_message
 
 
 def test_no_skip_llm_on_ambiguous_first_reply():

@@ -119,3 +119,15 @@ export function buildAfterNameCoachMessage(
   }
   return stripUndefined(text.replace(/\bundefined\b/gi, name));
 }
+
+/** Mirrors server `intake_ask_topic` — shown instantly after gender step. */
+export function buildAfterGenderCoachMessage(lang: string, t: I18nT): string {
+  let text = String(t('bsdOnboarding.afterGenderCoach') ?? '');
+  if (!text.trim() || text === 'bsdOnboarding.afterGenderCoach') {
+    text =
+      lang.startsWith('he')
+        ? 'מצוין.\n\nאם בא לך — אפשר לסמן נושא אחד או יותר שמרגישים רלוונטיים; זה לא מחייב את מהלך האימון, רק עוזר לי להכיר אתכם טוב יותר. אפשר גם לדלג ולהמשיך בלי.'
+        : "Great.\n\nIf you'd like, choose one or more focus areas — nothing here locks us into a path; it simply helps me know you a little better. You can also skip and continue without choosing.";
+  }
+  return text.trim();
+}

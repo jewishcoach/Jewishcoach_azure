@@ -254,6 +254,8 @@ const resources = {
       "bsdOnboarding.intakeOpeningBlock2": "I'm not here to hand you ready-made answers — they're already in you. I'll walk beside you with questions, at your pace, in the direction you choose.",
       "bsdOnboarding.intakeOpeningBlock3": "Before we dive in: what should I call you?",
       "bsdOnboarding.afterNameCoach": "Hello {{name}}, lovely to meet you!\n\nHow should I address you — masculine or feminine?\n\nPick below, type it in your own words, or tap “Prefer not to say.”",
+      "bsdOnboarding.afterGenderCoach":
+        "Great.\n\nIf you'd like, choose one or more focus areas — nothing here locks us into a path; it simply helps me know you a little better. You can also skip and continue without choosing.",
       "bsdOnboarding.chatSection": "Coach conversation",
       "bsdOnboarding.tagline": "אם יש לך שמיים, נתן לך כנפיים",
       "bsdOnboarding.headlineBefore": "Find your",
@@ -734,6 +736,8 @@ const resources = {
       "bsdOnboarding.intakeOpeningBlock2": "אני כאן כדי לעזור לך לזהות את הרצון האמיתי שלך, להתגבר על חסמים ודפוסים, ולצאת לדרך של עשייה משמחת ומדויקת יותר. הדרך שבה נצעד יחד נקראת 'תהליך השיבה' – שיבה אל עצמך ואל המקור שלך.",
       "bsdOnboarding.intakeOpeningBlock3": "חשוב לי לומר כבר עכשיו: התשובות נמצאות אצלך. התפקיד שלי הוא רק לשאול את השאלות שיאפשרו להן להתגלות – בקצב שלך ובכיוון שתבחר.\n\nכדי שנוכל לצאת לדרך, איך לקרוא לך?",
       "bsdOnboarding.afterNameCoach": "שלום {{name}}, נעים להכיר!\n\nאיך לפנות אליך — בלשון זכר או נקבה?\n\nאפשר לבחור למטה, לכתוב במילים, או ללחוץ על «לא רוצה לשתף».",
+      "bsdOnboarding.afterGenderCoach":
+        "מצוין.\n\nאם בא לך — אפשר לסמן נושא אחד או יותר שמרגישים רלוונטיים; זה לא מחייב את מהלך האימון, רק עוזר לי להכיר אתכם טוב יותר. אפשר גם לדלג ולהמשיך בלי.",
       "bsdOnboarding.chatSection": "שיחה עם המאמן",
       "bsdOnboarding.tagline": "אם יש לך שמיים, נתן לך כנפיים",
       "bsdOnboarding.headlineBefore": "מצא את",

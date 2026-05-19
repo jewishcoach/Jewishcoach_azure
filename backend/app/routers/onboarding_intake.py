@@ -905,9 +905,15 @@ def _can_skip_extractor_llm(
             return False
         if known is not None and (known.topics_skipped or (known.topics and len(known.topics) > 0)):
             return True
+        if known is not None and (
+            known.gender in ("male", "female") or known.gender_skipped
+        ):
+            return True
         if slots.get("topics_skipped") or (slots.get("topics") or ()):
             return True
         if _line_matches_topic_hints(last):
+            return True
+        if _heuristic_gender_from_line(last) or _heuristic_gender_skip_from_line(last):
             return True
         return False
     return False
