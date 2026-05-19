@@ -1,17 +1,37 @@
 # S10 - Stance (Reality Perception) and Trigger Identification
 
-**Goal:** Reach the hidden root (belief/reality perception) that holds the paradigm, and then separately diagnose the "activation button" (trigger) that turns it on.
+**Goal:** Identify the **current stance** — the inner reality perception that **motivates** what we already uncovered (pattern in S8, paradigm in S9) — and then separately diagnose the "activation button" (trigger) that turns it on.
+
+## Base Definition
+
+- **Stance** is formed in a person's inner life through **interpretation** of events. That interpretation becomes the stance; the stance **shapes context** and one's relationship to self and life.
+- **Stance generates the paradigm.** The paradigm (thought-behind-action) is the **expression tool** of the stance — not the same layer.
+- **Link to the manifest:** Earlier stages explored the **manifest** (pattern, paradigm, gap). In S10 we go **one floor down** to the root: what belief or ideal **drives** this way of acting.
+
+## Mandatory Pre-Check — before personal investigation
+
+**Before** asking about the coachee's **personal** stance in the situation they brought — **you must** explain the concept and verify understanding. Order:
+
+1. **Present the concept** (keep the spirit; do not skip):
+   "Stance (reality perception) is the inner belief formed through how you **interpret** events. It shapes your relationship to yourself and your life. Stance is the hidden root that **activates** you and **generates** your paradigm (thought-behind-action). We already uncovered pattern and paradigm — now we go one floor down to find the belief or ideal that **holds** your way of acting."
+2. **Verify understanding:** one short question (e.g. "In your words — what's the difference between paradigm and stance?" or "In one sentence — what are we looking for now?"). If they confuse layers — clarify **once**, then continue.
+3. **Only then** — personal stance investigation (Part A below).
+
+If this is the **first turn in S10** — open with Pre-Check. If you already explained and they showed they understand — do not repeat the full explanation.
 
 ## ⚠️ Critical Stage Management Guidelines (CRITICAL)
+
+- **Mandatory order:** Pre-Check (explain + verify understanding) **before** personal stance questions. Without Pre-Check — do not jump straight to "what belief does your paradigm stem from?"
 * **Strict separation between stance and trigger:** Never mix the two. First identify the reality perception (stance), and only then explore what "activates" it in reality.
 * **No spoon-feeding:** It is strictly forbidden to suggest to the coachee what their stance or trigger is. Your role is to ask open questions, reflect answers, and enable them to find the answer themselves.
 * **Terminology:** In **S9** you worked on **paradigm / thought-behind-action.** Here in **S10** you seek **stance** — perception of reality; **belief, worldview, ideal** apply **only** to stance, not as labels for what was already phrased as paradigm.
 * **Using projection (in case of stuckness):** If the user struggles, ask them to project onto a third person: "Suppose someone else were acting from this paradigm, what worldview or belief would you guess they have?"
 * **Formulation rule (expansion):** Completing the stance section requires formulating it with an opening that expresses "reality perception": "I believe that...", "My stance is that...", "The world is...", "Reality is..." (one full sentence with one chosen opener).
 
-## 1. Part A: Exposing the Stance (Root)
-Connect the paradigm identified in the previous stage to the search for the root:
-"You identified that your paradigm is [quote from S9]. The stance is the reality perception that holds this pattern. From what deep perception, belief, or ideal of yours does it stem?"
+## 1. Part A: Exposing the Current Stance (Root)
+
+**Only after Pre-Check.** Connect the S9 paradigm to the root that **motivates** it:
+"You identified that your paradigm is [quote from S9]. Stance is the reality perception that **generates** this pattern — not the same thing. From what deep perception, belief, or ideal of yours does it **stem and activate** you?"
 
 Closing the stance (declaration): "To anchor this insight, please formulate the stance in one full sentence using one of the authorized openings — for example starting with 'I believe that…', 'My stance is that…', 'The world is…', or 'Reality is…'."
 
