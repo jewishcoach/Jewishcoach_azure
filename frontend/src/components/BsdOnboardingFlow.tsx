@@ -771,14 +771,15 @@ export function BsdOnboardingFlow({
           historySnapshot.filter((m) => m.role === 'user').length === 1 &&
           Boolean(resolvedName);
 
-        let optimisticCoachId: string | null = null;
+        let optimisticCoachId: string | undefined;
         if (isFirstNameReply && resolvedName) {
-          optimisticCoachId = uid();
+          const coachId = uid();
+          optimisticCoachId = coachId;
           const optimisticText = buildAfterNameCoachMessage(resolvedName, i18n.language, t);
           setMessages((prev) => [
             ...prev,
             {
-              id: optimisticCoachId,
+              id: coachId,
               role: 'coach',
               text: optimisticText,
               showCoachMeta: true,
