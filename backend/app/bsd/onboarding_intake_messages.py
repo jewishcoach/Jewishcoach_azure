@@ -55,6 +55,25 @@ def intake_ask_gender(language: str) -> str:
     )
 
 
+def intake_ask_gender_after_name(language: str, display_name: str) -> str:
+    """Right after the coachee shared their name — greet by name, then ask grammatical gender."""
+    name = (display_name or "").strip()
+    if not name:
+        return intake_ask_gender(language)
+    lang = (language or "he").lower()
+    if lang.startswith("he"):
+        return (
+            f"שלום {name}, נעים להכיר!\n\n"
+            "איך לפנות אליך — בלשון זכר או נקבה?\n\n"
+            "אפשר לבחור למטה, לכתוב במילים, או ללחוץ על «לא רוצה לשתף»."
+        )
+    return (
+        f"Hello {name}, lovely to meet you!\n\n"
+        "How should I address you — masculine or feminine?\n\n"
+        "Pick below, type it in your own words, or tap “Prefer not to say.”"
+    )
+
+
 def intake_ask_topic(language: str, gender: str) -> str:
     """gender kept for API stability; copy is neutral (multi-select + optional)."""
     lang = (language or "he").lower()
@@ -79,6 +98,7 @@ def pick_intake_assistant_message(
     gender: str | None,
     user_message_count: int,
     gender_skipped: bool = False,
+    display_name: str | None = None,
 ) -> str:
     """
     :param missing: display_name | gender | topic (must not be complete).
@@ -88,6 +108,9 @@ def pick_intake_assistant_message(
             return intake_ask_name_redirect(language)
         return intake_ask_name_first(language)
     if missing == "gender":
+        dn = (display_name or "").strip()
+        if dn:
+            return intake_ask_gender_after_name(language, dn)
         return intake_ask_gender(language)
     if missing == "topic":
         if gender in ("male", "female") or gender_skipped:

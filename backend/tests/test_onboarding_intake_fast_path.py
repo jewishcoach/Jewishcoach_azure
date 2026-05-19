@@ -41,7 +41,8 @@ def test_skip_llm_after_short_hebrew_name():
         msgs,
     )
     assert resp is not None
-    assert "מגדר" in resp.assistant_message
+    assert "נעים להכיר" in resp.assistant_message
+    assert "ישי" in resp.assistant_message
 
 
 def test_no_skip_llm_on_ambiguous_first_reply():

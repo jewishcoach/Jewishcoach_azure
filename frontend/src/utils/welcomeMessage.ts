@@ -105,3 +105,17 @@ export function getIntakeOpeningBlocks(lang: string, t: I18nT): string[] {
   }
   return blocks;
 }
+
+/** Mirrors server `intake_ask_gender_after_name` — shown instantly after first name reply. */
+export function buildAfterNameCoachMessage(
+  displayName: string,
+  lang: string,
+  t: I18nT,
+): string {
+  const name = getNameForGreeting(displayName, null, lang) || displayName.trim();
+  let text = String(t('bsdOnboarding.afterNameCoach', { name }) ?? '');
+  if (!text.trim() || text === 'bsdOnboarding.afterNameCoach') {
+    text = `שלום ${name}, נעים להכיר!`;
+  }
+  return stripUndefined(text.replace(/\bundefined\b/gi, name));
+}

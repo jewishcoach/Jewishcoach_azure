@@ -253,6 +253,7 @@ const resources = {
       "bsdOnboarding.intakeOpeningBlock1": "Hey — I'm really glad you're here.\n\nI'm your coach in this space. I work with the BSD approach Beni Gal developed: Jewish psychology woven with practical tools for real change.",
       "bsdOnboarding.intakeOpeningBlock2": "I'm not here to hand you ready-made answers — they're already in you. I'll walk beside you with questions, at your pace, in the direction you choose.",
       "bsdOnboarding.intakeOpeningBlock3": "Before we dive in: what should I call you?",
+      "bsdOnboarding.afterNameCoach": "Hello {{name}}, lovely to meet you!\n\nHow should I address you — masculine or feminine?\n\nPick below, type it in your own words, or tap “Prefer not to say.”",
       "bsdOnboarding.chatSection": "Coach conversation",
       "bsdOnboarding.tagline": "אם יש לך שמיים, נתן לך כנפיים",
       "bsdOnboarding.headlineBefore": "Find your",
@@ -294,8 +295,6 @@ const resources = {
       "bsdOnboarding.genderSkippedLine": "I'd prefer not to share my gender.",
       "bsdOnboarding.summaryGenderSkipped": "Prefer not to say",
       "bsdOnboarding.quickPickHint": "You can type freely below—or tap a quick option:",
-      "bsdOnboarding.topicMultiHint":
-        "Pick one or more focus areas (optional — it won't lock our coaching path; it just helps me know you better). Then tap Continue, or skip if you prefer.",
       "bsdOnboarding.topicContinue": "Continue",
       "bsdOnboarding.topicSkip": "Skip — no specific topic for now",
       "bsdOnboarding.topicSkippedLine": "I'd rather continue without picking a focus area right now.",
@@ -734,6 +733,7 @@ const resources = {
       "bsdOnboarding.intakeOpeningBlock1": "שלום! שמח מאוד שהצטרפת אלינו.\n\nאני המאמן הווירטואלי שלך. הוכשרתי לפעול על פי שיטת האימון היהודי (BSD) שפיתח בני גל – גישה המחברת בין תורת הנפש היהודית לכלים מעשיים ומקצועיים לשינוי וצמיחה.",
       "bsdOnboarding.intakeOpeningBlock2": "אני כאן כדי לעזור לך לזהות את הרצון האמיתי שלך, להתגבר על חסמים ודפוסים, ולצאת לדרך של עשייה משמחת ומדויקת יותר. הדרך שבה נצעד יחד נקראת 'תהליך השיבה' – שיבה אל עצמך ואל המקור שלך.",
       "bsdOnboarding.intakeOpeningBlock3": "חשוב לי לומר כבר עכשיו: התשובות נמצאות אצלך. התפקיד שלי הוא רק לשאול את השאלות שיאפשרו להן להתגלות – בקצב שלך ובכיוון שתבחר.\n\nכדי שנוכל לצאת לדרך, איך לקרוא לך?",
+      "bsdOnboarding.afterNameCoach": "שלום {{name}}, נעים להכיר!\n\nאיך לפנות אליך — בלשון זכר או נקבה?\n\nאפשר לבחור למטה, לכתוב במילים, או ללחוץ על «לא רוצה לשתף».",
       "bsdOnboarding.chatSection": "שיחה עם המאמן",
       "bsdOnboarding.tagline": "אם יש לך שמיים, נתן לך כנפיים",
       "bsdOnboarding.headlineBefore": "מצא את",
@@ -775,8 +775,6 @@ const resources = {
       "bsdOnboarding.genderSkippedLine": "לא רוצה לשתף את המגדר שלי.",
       "bsdOnboarding.summaryGenderSkipped": "לא משתף",
       "bsdOnboarding.quickPickHint": "אפשר לכתוב בתיבת הטקסט למטה — או לבחור באפשרות המוכנה:",
-      "bsdOnboarding.topicMultiHint":
-        "אפשר לסמן נושא אחד או יותר (לא חובה — זה לא מתחייב לכיוון האימון, רק עוזר לי להכיר אתכם טוב יותר). אחרי הבחירה לוחצים על \"המשך\", או \"דילוג\" אם נוח יותר בלי.",
       "bsdOnboarding.topicContinue": "המשך",
       "bsdOnboarding.topicSkip": "דילוג — בלי נושא ספציפי כרגע",
       "bsdOnboarding.topicSkippedLine": "נוח לי להמשיך בלי לבחור נושא ספציפי כרגע.",

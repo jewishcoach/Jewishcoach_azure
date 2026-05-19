@@ -25,6 +25,19 @@ def test_pick_topic_gendered_hebrew():
     assert "נושא" in male and "מחייב" in male
 
 
+def test_pick_gender_after_name_hebrew():
+    msg = pick_intake_assistant_message(
+        "he",
+        missing="gender",
+        gender=None,
+        user_message_count=1,
+        display_name="ישי",
+    )
+    assert "שלום ישי" in msg
+    assert "נעים להכיר" in msg
+    assert "זכר או נקבה" in msg
+
+
 def test_pick_topic_with_gender_skipped_hebrew():
     msg = pick_intake_assistant_message(
         "he",

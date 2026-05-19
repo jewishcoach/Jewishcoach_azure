@@ -23,7 +23,7 @@ import type { LucideIcon } from 'lucide-react';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { WORKSPACE_CHAT_FONT } from '../constants/workspaceFonts';
 import { apiClient, type OnboardingKnownSlots } from '../services/api';
-import { getIntakeOpeningBlocks } from '../utils/welcomeMessage';
+import { buildAfterNameCoachMessage, getIntakeOpeningBlocks } from '../utils/welcomeMessage';
 
 type Props = {
   onComplete: () => void;
@@ -537,12 +537,14 @@ export function BsdOnboardingFlow({
       if (name && !isDisplayNameRefusalRaw(name)) {
         const short = name.slice(0, 80);
         setPreferredName(short);
-        try {
-          await apiClient.updateProfile({ display_name: short });
-          onDisplayNameUpdated?.(short);
-        } catch {
-          /* best-effort */
-        }
+        void (async () => {
+          try {
+            await apiClient.updateProfile({ display_name: short });
+            onDisplayNameUpdated?.(short);
+          } catch {
+            /* best-effort */
+          }
+        })();
       }
       const effectiveGender: 'male' | 'female' | null =
         res.gender === 'male' || res.gender === 'female' ? res.gender : null;
@@ -552,11 +554,13 @@ export function BsdOnboardingFlow({
       } else if (effectiveGender === 'male' || effectiveGender === 'female') {
         setGenderSkipped(false);
         setGender(effectiveGender);
-        try {
-          await apiClient.updateProfile({ gender: effectiveGender });
-        } catch {
-          /* best-effort */
-        }
+        void (async () => {
+          try {
+            await apiClient.updateProfile({ gender: effectiveGender });
+          } catch {
+            /* best-effort */
+          }
+        })();
       }
 
       if (res.topics_skipped) {
@@ -691,6 +695,10 @@ export function BsdOnboardingFlow({
     };
   }, [bootKey, i18n.language, t]);
 
+  useEffect(() => {
+    void apiClient.warmupCache(i18n.language);
+  }, [i18n.language]);
+
   /** Restart opening sequence if language changes before the user replies. */
   useEffect(() => {
     if (openingLangRef.current === i18n.language) return;
@@ -750,8 +758,32 @@ export function BsdOnboardingFlow({
         const hintUsed = Boolean(slotHint && Object.keys(slotHint).length > 0);
         const nameForSlots = displayNameForKnownSlotsPayload(historySnapshot, raw, hintUsed);
 
-        if (nameForSlots && !isDisplayNameRefusalRaw(nameForSlots)) {
-          setPreferredName(nameForSlots.slice(0, 80));
+        const resolvedName =
+          nameForSlots && !isDisplayNameRefusalRaw(nameForSlots)
+            ? nameForSlots.slice(0, 80)
+            : undefined;
+        if (resolvedName) {
+          setPreferredName(resolvedName);
+        }
+
+        const isFirstNameReply =
+          !hintUsed &&
+          historySnapshot.filter((m) => m.role === 'user').length === 1 &&
+          Boolean(resolvedName);
+
+        let optimisticCoachId: string | null = null;
+        if (isFirstNameReply && resolvedName) {
+          optimisticCoachId = uid();
+          const optimisticText = buildAfterNameCoachMessage(resolvedName, i18n.language, t);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: optimisticCoachId,
+              role: 'coach',
+              text: optimisticText,
+              showCoachMeta: true,
+            },
+          ]);
         }
 
         const res = await apiClient.onboardingIntakeStep({
@@ -759,22 +791,28 @@ export function BsdOnboardingFlow({
           messages: apiMsgs,
           known_slots: buildKnownSlotsPayload(
             slotHint,
-            nameForSlots && !isDisplayNameRefusalRaw(nameForSlots)
-              ? { display_name: nameForSlots }
-              : undefined,
+            resolvedName ? { display_name: resolvedName } : undefined,
           ),
         });
 
-        const coachBubbleId = uid();
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: coachBubbleId,
-            role: 'coach',
-            text: res.assistant_message || '…',
-            showCoachMeta: true,
-          },
-        ]);
+        const serverText = res.assistant_message || '…';
+        if (optimisticCoachId) {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === optimisticCoachId ? { ...m, text: serverText } : m,
+            ),
+          );
+        } else {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: uid(),
+              role: 'coach',
+              text: serverText,
+              showCoachMeta: true,
+            },
+          ]);
+        }
         void applyExtracted(res);
       } catch {
         setIntakeError(t('bsdOnboarding.intakeError'));
@@ -843,7 +881,6 @@ export function BsdOnboardingFlow({
   const hasUserMessaged = messages.some((m) => m.role === 'user');
   const showGenderPick = hasUserMessaged && !gender && !genderSkipped;
   const showTopicPick = genderStepDone && !intakeComplete;
-  const showAnyQuickPick = showGenderPick || showTopicPick;
 
   return (
     <div
@@ -927,15 +964,6 @@ export function BsdOnboardingFlow({
               <p className="text-center text-[14px] text-red-700 md:text-start">{intakeError}</p>
             ) : null}
 
-            {openingTypingText !== null ? (
-              <div className="flex w-full flex-col items-start gap-2">
-                {messages.length === 0 ? <CoachRow label={coachLabel} /> : null}
-                <ChatBubble role="coach">
-                  <CoachBubbleBody text={openingTypingText} />
-                </ChatBubble>
-              </div>
-            ) : null}
-
             {messages.map((msg) => (
               <div
                 key={msg.id}
@@ -957,16 +985,25 @@ export function BsdOnboardingFlow({
               </div>
             ))}
 
+            {openingTypingText !== null ? (
+              <div className="flex w-full flex-col items-start gap-2">
+                {messages.length === 0 ? <CoachRow label={coachLabel} /> : null}
+                <ChatBubble role="coach">
+                  <CoachBubbleBody text={openingTypingText} />
+                </ChatBubble>
+              </div>
+            ) : null}
+
             {showTyping ? <TypingIndicator label={t('bsdOnboarding.thinking')} /> : null}
 
             {showQuickCards ? (
               <div className="flex w-full flex-col gap-4 pb-2">
-                {showAnyQuickPick ? (
+                {showGenderPick ? (
                   <p
                     className="text-center text-[13px] text-[#4c5a70]/90 md:text-start"
                     style={{ fontFamily: WORKSPACE_CHAT_FONT }}
                   >
-                    {showTopicPick ? t('bsdOnboarding.topicMultiHint') : t('bsdOnboarding.quickPickHint')}
+                    {t('bsdOnboarding.quickPickHint')}
                   </p>
                 ) : null}
 

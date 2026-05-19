@@ -939,6 +939,7 @@ def _deterministic_intake_response(
         gender=slots.get("gender"),
         user_message_count=ut_count,
         gender_skipped=bool(slots.get("gender_skipped")),
+        display_name=slots.get("display_name"),
     )
     return OnboardingIntakeResponse(
         assistant_message=amsg,
@@ -1036,6 +1037,7 @@ async def onboarding_intake_step(
             gender=slots.get("gender"),
             user_message_count=ut_count,
             gender_skipped=bool(slots.get("gender_skipped")),
+            display_name=slots.get("display_name"),
         )
 
         intake_complete = _slots_complete(slots)
