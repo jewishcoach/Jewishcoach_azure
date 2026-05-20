@@ -56,10 +56,6 @@ export const LandingPage = ({ onGetStarted }: Props) => {
               className="h-[4.5rem] sm:h-28 object-contain mx-auto mb-7"
             />
 
-            <p className="text-sm sm:text-[0.95rem] text-slate-300 font-medium tracking-wide mb-3">
-              {t('landing.quote')}
-            </p>
-
             <h1 className="text-[1.35rem] sm:text-2xl md:text-[1.75rem] text-slate-50 font-semibold leading-snug mb-4">
               {t('landing.subtitle')}
             </h1>
