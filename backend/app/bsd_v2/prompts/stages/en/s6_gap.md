@@ -3,8 +3,8 @@
 **Goal:** Name the gap between actual and desired (short title + 1–10 score), then **work the gap** using **stage key questions** — not “what stops you?” as the default move.
 
 ## ⚠️ CRITICAL stage rules
-* **No duplicate gap-work question types:** For each question type (belief / opportunity / dwelling / surrender / three screens) — **only once** per gap-working sequence after a substantive answer. **Do not** ask the same template again (e.g. two surrender questions). “Depth” = a **different** type from the list, or move to **S8** when the Gate is met — **not** repeating the same type.
-* **Track in `collected_data.gap_booklet_moves`:** Each S7 turn, append one of: `belief`, `opportunity`, `dwelling`, `waiver`, `authenticity` when that type has been **explored and answered**. Before choosing the next question: **read the list from state**; if the type is already listed — do not ask it again; pick another type or proceed toward S8.
+* **No duplicate gap-work question types:** For each question type (belief / opportunity / dwelling / three screens) — **only once** per gap-working sequence after a substantive answer. **Do not** ask the same template again. “Depth” = a **different** type from the list, or move to **S8** when the Gate is met — **not** repeating the same type.
+* **Track in `collected_data.gap_booklet_moves`:** Each S7 turn, append one of: `belief`, `opportunity`, `dwelling`, `authenticity` when that type has been **explored and answered**. Before choosing the next question: **read the list from state**; if the type is already listed — do not ask it again; pick another type or proceed toward S8.
 * **If the user says they already answered / you repeated yourself:** apologize briefly, **do not** re-ask the same question; choose a type not yet in `gap_booklet_moves`, or go to S8 if the Gate is satisfied.
 * **One question per turn:** first **gap name** → then **score (1–10)** → then **one** gap-working question per message. Never bundle two different question-types in one coach message.
 * **Short title:** 1–2 words. If the user gives a long sentence, ask for a compact title.
@@ -31,11 +31,7 @@ Moves focus from outer difficulty to **possibility of moving** with the gap.
 * “**Are you able to stay inside this gap without an immediate solution?**”  
   Goal: not to “solve” the block at once, but to **stay in the depth of the gap** so something new can emerge.
 
-### 4) Surrender / trade-off (chosen vs excess)
-* “**What are you willing to give up in order to gain?**”  
-  Surfaces **what can be released** versus what is **chosen** — not a substitute for belief/opportunity, but a different lens than “what stops you.”
-
-### 5) Authenticity — “three screens” (actual vs desired)
+### 4) Authenticity — “three screens” (actual vs desired)
 If one clear mirror helps (even if parts were gathered in earlier stages):
 * “**What do you feel, say, and do in the actual state — versus what you feel, say, and do in the desired state?**”  
   Work the gap through **feeling–statement–action** on both sides.
@@ -49,4 +45,4 @@ If one clear mirror helps (even if parts were gathered in earlier stages):
   **Coach (move to S8 when gate is met):** “Learning to speak up — that’s real opportunity. Now that we have the gap picture, **do you see yourself showing up like this in other areas of life?**” (set `current_step` to **S8**).
 
 **Gate Check:** **Short name** + **score 1–10** + at least **belief** (method-aligned) **and** **opportunity** explored → can move to **S8** (pattern).  
-Dwelling / surrender / three-screen questions — **optional depth**, not required for every user if already rich.
+Dwelling / three-screen questions — **optional depth**, not required for every user if already rich.

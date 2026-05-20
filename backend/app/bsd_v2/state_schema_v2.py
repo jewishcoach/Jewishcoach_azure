@@ -44,7 +44,7 @@ def create_initial_state(
             # S6: Gap
             "gap_name": None,
             "gap_score": None,
-            "gap_booklet_moves": [],  # S7: belief | opportunity | dwelling | waiver | authenticity
+            "gap_booklet_moves": [],  # S7: belief | opportunity | dwelling | authenticity
             # S7: Pattern
             "pattern": None,  # דפוס חוזר
             # S8: Stance (gains + losses)

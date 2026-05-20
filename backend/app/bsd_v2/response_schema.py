@@ -93,7 +93,7 @@ class CollectedDataSchema(BaseModel):
         default_factory=list,
         description=(
             "S7 בלבד: רשימת סוגי שאלות תפעול הפער שכבר נאספו בתשובה מלאה — "
-            "ערכים קבועים: belief, opportunity, dwelling, waiver, authenticity. "
+            "ערכים קבועים: belief, opportunity, dwelling, authenticity. "
             "הוסף לרשימה (או החזר רשימה מצטברת) כשסוג השאלה כבר נחקר; "
             "**אסור** לשאול שוב אותו סוג אם הוא כבר ברשימה."
         ),
