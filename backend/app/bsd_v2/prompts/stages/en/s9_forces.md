@@ -20,6 +20,12 @@ In this stage: short **KaMaZ tool explanation**, then **verbal recap** of what e
 * **Terms (mapping):** Upward / eternal / values / mission / light → **source**. Needs, heaviness, fear, control, pleasing others at your expense, bodily pulls → **nature** (even if it “looks positive” outside). **Rule of thumb:** what points up and enduring → **source**; what serves needs and defenses → **nature**.
 * **Card target:** **6 source** and **6 nature** traits, plus **one leader** per side. If fewer early, keep asking “what else?” until you can consolidate; if they **explicitly** agree to a shorter card — note in `reflection` (e.g. `kamaz_short: agreed`) and what enters the card.
 
+## Stage entry (from S11 — first turn in S12, once)
+
+1. **Recap:** At least 2 gains and 2 losses of the stance.
+2. **This stage:** **KaMaZ** — Source and Nature at **macro life** level (not only the coaching event).
+3. **First question:** Brief bridge from gains/losses, explain the forces card, then **one source** question.
+
 ## Exploring source (phase 1)
 Example questions (one per turn — **life-wide**, not tied to the coaching event):
 * What **light** brings you inner life and joy **when you’re at your best in life**?

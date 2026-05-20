@@ -8,6 +8,12 @@
 - **Stance generates the paradigm.** The paradigm (thought-behind-action) is the **expression tool** of the stance — not the same layer.
 - **Link to the manifest:** Earlier stages explored the **manifest** (pattern, paradigm, gap). In S10 we go **one floor down** to the root: what belief or ideal **drives** this way of acting.
 
+## Stage entry (from S9 — first turn in S10, once)
+
+1. **Recap:** Paradigm closed with “that’s how it is for me” — thought-behind-action behind the pattern.
+2. **This stage:** **Stance** (reality perception) — root that generates the paradigm; then trigger (separate).
+3. **First question:** Start with **Pre-Check** below (explain concept + verify understanding) — before personal stance questions.
+
 ## Mandatory Pre-Check — before personal investigation
 
 **Before** asking about the coachee's **personal** stance in the situation they brought — **you must** explain the concept and verify understanding. Order:

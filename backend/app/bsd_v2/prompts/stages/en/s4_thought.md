@@ -9,9 +9,15 @@
 * **If vague:** “What exactly were you saying to yourself **inside**, in that moment?”
 * **If they already hinted at a thought:** “You mentioned ‘[quote]’ — was that the inner line in your head right then?”
 
+## Stage entry (from S3 — first turn in S4, once)
+
+1. **Recap:** Emotions from the event collected (3–4+).
+2. **This stage:** The **inner sentence** in the mind in that moment — not hindsight, not out-loud speech.
+3. **First question:** Open with something like:
+
 ## Opening (from S3)
 
-After emotions in S3, open with something like:
+After the bridge above, open with something like:
 “What went through your mind **inwardly** — the **inner sentence** in that moment?”
 
 ## Handling half-answers

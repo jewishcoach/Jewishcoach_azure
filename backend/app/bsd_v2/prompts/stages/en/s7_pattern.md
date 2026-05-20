@@ -23,9 +23,11 @@
 - Clarify: **different situations — same response**; do not explain the pattern through relationship analysis.
 - When there is enough material and confirmation — move to **S9** with paradigm questions (see S9 stage file): “What is the ‘that’s how it is for me’ behind this pattern?” “Which way of acting feels self-evident such that this pattern is its expression?” — **not** relationship-causal questions.
 
-## 1. Opening pattern inquiry
+## 1. Stage entry and opening pattern inquiry (from S7 — first turn in S8, once)
 
-After the gap stage, ask open-ended prompts (examples — don’t present as a pick-one menu):
+1. **Recap:** Gap named, scored, and worked.
+2. **This stage:** **Pattern** — same emotion–thought–action bundle as situations change (not only this one event).
+3. **First question:** Open-ended prompts (examples — don’t present as a pick-one menu):
 - “**Where else in life do you recognize this same emotion–thought–action bundle in yourself?**”
 - “**How far beyond the specific story you told does this response show up?**”
 

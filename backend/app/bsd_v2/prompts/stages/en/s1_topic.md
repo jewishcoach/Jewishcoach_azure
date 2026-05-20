@@ -27,6 +27,14 @@ A suitable coaching topic must meet all five conditions:
 
 ---
 
+## Stage entry (from S0 — first turn in S1, once)
+
+1. **Recap:** Explicit permission to start coaching.
+2. **This stage:** **General topic** only — not an event, not emotions, not actual/desired yet.
+3. **First question:** What would you like to coach on today? (natural wording)
+
+---
+
 ## S2 Transition Rule (Single, Absolute)
 
 **Move to S2 only if:** There are 2+ user messages about the topic **and** enough content to understand what to coach on.

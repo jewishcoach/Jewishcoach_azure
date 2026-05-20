@@ -34,6 +34,12 @@ If they label a pattern as paradigm or mix floors — **don’t agree to keep ra
 ### Enabling questions only
 **Open questions only.** No paired binary options in one question; no **“or”** splitting two canned alternatives — rewrite.
 
+## Stage entry (from S8 — first turn in S9, once)
+
+1. **Recap:** Pattern identified and confirmed — recurring response across situations.
+2. **This stage:** **Paradigm** (thought-behind-action) — the “autopilot” behind the pattern; not the same layer as pattern or stance.
+3. **First question:** Open with the paradigm explanation below.
+
 ## 1. Opening
 “We’ve identified your pattern. Now step back to what’s hidden: every pattern has a **paradigm** — **thought-behind-action**, like autopilot. **What is the ‘that’s how it is for me’ from which this pattern comes?**”
 

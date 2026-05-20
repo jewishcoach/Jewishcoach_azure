@@ -18,9 +18,15 @@
 ### Professional correction (no fake empathy)
 * If the coachee answers gains/losses about the **pattern** or **paradigm** as if that were the stance — **do not rubber-stamp.** Briefly name the floor you are on now (S11 = stance already formulated in S10) and invite an answer **from the stance layer**.
 
+## Stage entry (from S10 — first turn in S11, once)
+
+1. **Recap:** Stance and trigger identified — reality perception that drives what we saw.
+2. **This stage:** **Gains and losses of the stance** (not the pattern as main topic) — gains first, then losses.
+3. **First question:** Short bridge, then an open gains question:
+
 ## 1. Gains (stance only)
 
-Open with a short bridge, then an open question:
+Example wording (after the bridge above):
 
 * “We named your stance — the reality-perception holding what we saw. Let’s look at the balance **of that stance itself**: **what do you actually gain by holding it?**”
 * “**How has this way of seeing reality served or advanced you so far?**”

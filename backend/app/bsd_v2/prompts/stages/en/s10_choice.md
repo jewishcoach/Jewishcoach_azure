@@ -11,8 +11,14 @@
 * **Joy check:** At the end of the process (in the pattern stage), you must verify that the new choice delights the coachee.
 * **No coach–coachee dyad analysis:** After recapping stance/paradigm/pattern — do not invite analysis of the experience **with the coach** (comfort, usefulness, "question marks" about them or their summaries). The next question must be a **BSD-only** follow-up: wording accuracy, exact choice, KaMaZ mix, concrete pattern. If the coachee opens this meta **themselves** — one or two sentences, then immediately back to a content question.
 
+## Stage entry (from S12 — first turn in S13, once)
+
+1. **Recap:** KaMaZ card closed — source and nature (6+6 or agreed shorter).
+2. **This stage:** Redesign **desired top-down** — stance → paradigm → pattern, with KaMaZ mix per floor.
+3. **First question:** Transition to choosing the new root:
+
 ## 1. Part A: Choosing a New Stance (The Root)
-Open the stage by transitioning to choosing and designing the new root:
+Example opening (after the bridge above):
 "We've done deep identification work. Now we're moving to redesign the desired, and we start at the top – the root. What new stances ('I believe that...' / 'Reality is...') could replace your old stance?"
 
 After choosing the stance, demand the mix: "Which exact stance did you choose? And according to your KaMaZ, what mix (percentages) of Source and Nature forces do you choose to appear in this new stance?"
