@@ -47,6 +47,8 @@ export const useChat = (
   const welcomeAbortRef = useRef<AbortController | null>(null);
   const [welcomeOpeningBusy, setWelcomeOpeningBusy] = useState(false);
   const [welcomeTypingText, setWelcomeTypingText] = useState<string | null>(null);
+  /** Full welcome copy while `welcomeTypingText` is partial — fixes bubble width during reveal. */
+  const [welcomeTypingLayoutText, setWelcomeTypingLayoutText] = useState<string | null>(null);
 
   const playWelcomeSequence = useCallback(async () => {
     welcomeAbortRef.current?.abort();
@@ -54,6 +56,7 @@ export const useChat = (
     welcomeAbortRef.current = ac;
     setWelcomeOpeningBusy(true);
     setWelcomeTypingText(null);
+    setWelcomeTypingLayoutText(null);
     setMessages([]);
     setLoading(false);
 
@@ -68,6 +71,7 @@ export const useChat = (
     try {
       await sleep(300, ac.signal);
       if (ac.signal.aborted) return;
+      setWelcomeTypingLayoutText(welcomeText);
       setWelcomeTypingText('');
       await revealTypedBlock(
         welcomeText,
@@ -91,10 +95,12 @@ export const useChat = (
         },
       ]);
       setWelcomeTypingText(null);
+      setWelcomeTypingLayoutText(null);
     } finally {
       if (!ac.signal.aborted) {
         setWelcomeOpeningBusy(false);
         setWelcomeTypingText(null);
+        setWelcomeTypingLayoutText(null);
       }
     }
   }, [displayName, clerkUser?.firstName, i18n.language, t, traineeGender]);
@@ -178,6 +184,7 @@ export const useChat = (
     welcomeAbortRef.current?.abort();
     setWelcomeOpeningBusy(false);
     setWelcomeTypingText(null);
+    setWelcomeTypingLayoutText(null);
     setHistoryLoading(true);
     setMessages([]);
     setConversationId(convId);
@@ -612,6 +619,7 @@ export const useChat = (
     welcomeAbortRef.current?.abort();
     setWelcomeOpeningBusy(false);
     setWelcomeTypingText(null);
+    setWelcomeTypingLayoutText(null);
     setMessages([]);
     setConversationId(null);
     setHasInitialized(false);
@@ -623,6 +631,7 @@ export const useChat = (
     historyLoading,
     welcomeOpeningBusy,
     welcomeTypingText,
+    welcomeTypingLayoutText,
     currentPhase,
     conversationId,
     activeTool,

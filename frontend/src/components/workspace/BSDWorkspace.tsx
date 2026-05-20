@@ -62,6 +62,7 @@ export const BSDWorkspace = ({
     historyLoading,
     welcomeOpeningBusy,
     welcomeTypingText,
+    welcomeTypingLayoutText,
     currentPhase,
     conversationId,
     activeTool,
@@ -90,6 +91,7 @@ export const BSDWorkspace = ({
     loading || historyLoading || welcomeOpeningBusy,
     Boolean(stationCheckpoint),
     welcomeTypingText,
+    welcomeTypingLayoutText,
   );
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isSendingRef = useRef(false);
@@ -563,6 +565,7 @@ export const BSDWorkspace = ({
                     }}
                     animateTyping={false}
                     dir={i18n.dir() as 'ltr' | 'rtl'}
+                    layoutSizeText={welcomeTypingLayoutText ?? undefined}
                   />
                 </div>
               ) : null}

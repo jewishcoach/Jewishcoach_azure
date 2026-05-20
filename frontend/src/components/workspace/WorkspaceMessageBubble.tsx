@@ -14,9 +14,16 @@ interface Props {
   message: Message;
   animateTyping?: boolean;
   dir?: 'ltr' | 'rtl';
+  /** Full final text — keeps coach bubble at final size while `message.content` grows (welcome typing). */
+  layoutSizeText?: string;
 }
 
-export const WorkspaceMessageBubble = ({ message, animateTyping = false, dir = 'rtl' }: Props) => {
+export const WorkspaceMessageBubble = ({
+  message,
+  animateTyping = false,
+  dir = 'rtl',
+  layoutSizeText,
+}: Props) => {
   const { t, i18n } = useTranslation();
   const isUser = message.role === 'user';
   /** Parent scroll region is dir=ltr; Hebrew chat keeps coach on the right, English mirrors typical LTR messengers (coach left). */
@@ -61,8 +68,11 @@ export const WorkspaceMessageBubble = ({ message, animateTyping = false, dir = '
    * Feeding growing Hebrew (or mixed) text into ReactMarkdown breaks the parser (merged words,
    * stray "undefined"). During typing, render plain text; run Markdown only on the final string.
    */
-  const showPlainTyping = animateTyping && displayedContent !== fullContent;
-  const rawContent = showPlainTyping ? displayedContent : fullContent;
+  const staggeredReveal =
+    Boolean(layoutSizeText) && fullContent !== layoutSizeText;
+  const showPlainTyping =
+    staggeredReveal || (animateTyping && displayedContent !== fullContent);
+  const rawContent = showPlainTyping ? (staggeredReveal ? fullContent : displayedContent) : fullContent;
   const contentToRender =
     !isUser && !showPlainTyping ? emphasizeBsdCoachTerms(fullContent, i18n.language) : rawContent;
 
@@ -104,12 +114,30 @@ export const WorkspaceMessageBubble = ({ message, animateTyping = false, dir = '
         }}
       >
           {showPlainTyping ? (
-            <div
-              className="whitespace-pre-wrap break-words leading-relaxed text-[14px] md:text-[16px]"
-              style={{ lineHeight: 1.65, textAlign: dir === 'rtl' ? 'justify' : 'left' }}
-            >
-              {displayedContent}
-            </div>
+            staggeredReveal ? (
+              <div className="grid w-full">
+                <div
+                  className="col-start-1 row-start-1 invisible whitespace-pre-wrap break-words text-[14px] md:text-[16px] pointer-events-none select-none"
+                  style={{ lineHeight: 1.65, textAlign: dir === 'rtl' ? 'justify' : 'left' }}
+                  aria-hidden
+                >
+                  {layoutSizeText}
+                </div>
+                <div
+                  className="col-start-1 row-start-1 whitespace-pre-wrap break-words leading-relaxed text-[14px] md:text-[16px]"
+                  style={{ lineHeight: 1.65, textAlign: dir === 'rtl' ? 'justify' : 'left' }}
+                >
+                  {fullContent}
+                </div>
+              </div>
+            ) : (
+              <div
+                className="whitespace-pre-wrap break-words leading-relaxed text-[14px] md:text-[16px]"
+                style={{ lineHeight: 1.65, textAlign: dir === 'rtl' ? 'justify' : 'left' }}
+              >
+                {displayedContent}
+              </div>
+            )
           ) : (
             <ReactMarkdown
               components={{
@@ -179,7 +207,7 @@ export const WorkspaceMessageBubble = ({ message, animateTyping = false, dir = '
 
   return (
     <motion.div
-      className={`flex ${rowJustify}`}
+      className={`flex w-full ${rowJustify}`}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
