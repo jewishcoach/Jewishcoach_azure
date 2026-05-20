@@ -46,12 +46,6 @@ export function WorkspaceS0QuickPick({ disabled, onPick }: Props) {
 
   return (
     <div className="w-full max-w-[min(520px,100%)] px-1" dir={dir}>
-      <p
-        className="mb-3 text-center text-[13px] text-[#4c5a70]/85 sm:text-start"
-        style={{ fontFamily: WORKSPACE_CHAT_FONT }}
-      >
-        {t('workspace.s0QuickPickHint')}
-      </p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <S0ChoiceCard
           label={readyMsg}

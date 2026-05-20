@@ -56,7 +56,24 @@ function workspaceWelcomeBlockKeys(lang: string, traineeGender: TraineeGender): 
   ];
 }
 
-/** Three staggered workspace welcome bubbles (typing sequence). */
+/** i18n blocks joined into one workspace welcome message (typing sequence). */
+export function getWorkspaceWelcomeMessage(
+  displayName: string | null | undefined,
+  clerkFirstName: string | null | undefined,
+  lang: string,
+  t: I18nT,
+  traineeGender: TraineeGender = null,
+): string {
+  return getWorkspaceWelcomeBlocks(
+    displayName,
+    clerkFirstName,
+    lang,
+    t,
+    traineeGender,
+  ).join('\n\n');
+}
+
+/** Raw i18n blocks (3 keys) — used internally; prefer `getWorkspaceWelcomeMessage` for chat. */
 export function getWorkspaceWelcomeBlocks(
   displayName: string | null | undefined,
   clerkFirstName: string | null | undefined,
@@ -102,9 +119,7 @@ export function buildWelcomeMessage(
   t: I18nT,
   traineeGender: TraineeGender = null,
 ): string {
-  return getWorkspaceWelcomeBlocks(displayName, clerkFirstName, lang, t, traineeGender).join(
-    '\n\n',
-  );
+  return getWorkspaceWelcomeMessage(displayName, clerkFirstName, lang, t, traineeGender);
 }
 
 /**

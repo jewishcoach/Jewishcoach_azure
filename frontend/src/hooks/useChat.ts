@@ -6,19 +6,17 @@ import { isChatBlockedByActiveTool } from '../utils/activeFormTools';
 import { apiClient, normalizeConversationId } from '../services/api';
 import { BSD_VERSION, getBsdEndpoint } from '../config';
 import { stripUndefined } from '../utils/messageContent';
-import { getWorkspaceWelcomeBlocks, type TraineeGender } from '../utils/welcomeMessage';
+import { getWorkspaceWelcomeMessage, type TraineeGender } from '../utils/welcomeMessage';
 import {
-  STAGGERED_BLOCK_PAUSE_MS,
+  WORKSPACE_WELCOME_CHAR_MS,
+  WORKSPACE_WELCOME_CHARS_PER_TICK,
   revealTypedBlock,
   sleep,
 } from '../utils/staggeredTyping';
 
 function isWorkspaceWelcomeOnly(msgs: Message[]): boolean {
-  return (
-    msgs.length > 0 &&
-    msgs.length <= 3 &&
-    msgs.every((m) => m.role === 'assistant' && m.meta?.phase === 'S0')
-  );
+  if (msgs.length === 0 || msgs.length > 3) return false;
+  return msgs.every((m) => m.role === 'assistant' && m.meta?.phase === 'S0');
 }
 
 export const useChat = (
@@ -59,7 +57,7 @@ export const useChat = (
     setMessages([]);
     setLoading(false);
 
-    const blocks = getWorkspaceWelcomeBlocks(
+    const welcomeText = getWorkspaceWelcomeMessage(
       displayName,
       clerkUser?.firstName,
       i18n.language,
@@ -69,30 +67,30 @@ export const useChat = (
 
     try {
       await sleep(300, ac.signal);
-      for (let bi = 0; bi < blocks.length; bi += 1) {
-        if (ac.signal.aborted) return;
-        setWelcomeTypingText('');
-        await revealTypedBlock(
-          blocks[bi],
-          (partial) => {
-            if (!ac.signal.aborted) setWelcomeTypingText(partial);
-          },
-          ac.signal,
-        );
-        if (ac.signal.aborted) return;
-        const msg: Message = {
-          id: Date.now() + bi,
+      if (ac.signal.aborted) return;
+      setWelcomeTypingText('');
+      await revealTypedBlock(
+        welcomeText,
+        (partial) => {
+          if (!ac.signal.aborted) setWelcomeTypingText(partial);
+        },
+        ac.signal,
+        {
+          charMs: WORKSPACE_WELCOME_CHAR_MS,
+          charsPerTick: WORKSPACE_WELCOME_CHARS_PER_TICK,
+        },
+      );
+      if (ac.signal.aborted) return;
+      setMessages([
+        {
+          id: Date.now(),
           role: 'assistant',
-          content: blocks[bi],
+          content: welcomeText,
           timestamp: new Date().toISOString(),
           meta: { phase: 'S0' },
-        };
-        setMessages((prev) => [...prev, msg]);
-        setWelcomeTypingText(null);
-        if (bi < blocks.length - 1) {
-          await sleep(STAGGERED_BLOCK_PAUSE_MS, ac.signal);
-        }
-      }
+        },
+      ]);
+      setWelcomeTypingText(null);
     } finally {
       if (!ac.signal.aborted) {
         setWelcomeOpeningBusy(false);
@@ -129,7 +127,7 @@ export const useChat = (
     if (!chatProfileReady || conversationId !== null || welcomeOpeningBusy) return;
     setMessages((prev) => {
       if (!isWorkspaceWelcomeOnly(prev)) return prev;
-      const blocks = getWorkspaceWelcomeBlocks(
+      const welcomeText = getWorkspaceWelcomeMessage(
         displayName,
         clerkUser?.firstName,
         i18n.language,
@@ -137,15 +135,16 @@ export const useChat = (
         traineeGender,
       );
       const prevJoined = prev.map((m) => m.content).join('\n\n');
-      const nextJoined = blocks.join('\n\n');
-      if (prevJoined === nextJoined) return prev;
-      return blocks.map((content, i) => ({
-        id: prev[i]?.id ?? Date.now() + i,
-        role: 'assistant' as const,
-        content,
-        timestamp: prev[i]?.timestamp ?? new Date().toISOString(),
-        meta: { phase: 'S0' as const },
-      }));
+      if (prevJoined === welcomeText) return prev;
+      return [
+        {
+          id: prev[0]?.id ?? Date.now(),
+          role: 'assistant' as const,
+          content: welcomeText,
+          timestamp: prev[0]?.timestamp ?? new Date().toISOString(),
+          meta: { phase: 'S0' as const },
+        },
+      ];
     });
   }, [
     displayName,
