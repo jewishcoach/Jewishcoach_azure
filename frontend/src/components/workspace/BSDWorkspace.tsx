@@ -12,6 +12,7 @@ import { ArchiveDrawer } from './ArchiveDrawer';
 import { HudPanel } from './HudPanel';
 import { ShehiyaProgress } from './ShehiyaProgress';
 import { WorkspaceMessageBubble } from './WorkspaceMessageBubble';
+import { WorkspaceS0QuickPick } from './WorkspaceS0QuickPick';
 import { StationCheckpointBar } from './StationCheckpointBar';
 import { ActiveToolRenderer } from '../InsightHub/ActiveToolRenderer';
 import { Dashboard } from '../Dashboard';
@@ -59,6 +60,8 @@ export const BSDWorkspace = ({
     messages,
     loading,
     historyLoading,
+    welcomeOpeningBusy,
+    welcomeTypingText,
     currentPhase,
     conversationId,
     activeTool,
@@ -75,7 +78,7 @@ export const BSDWorkspace = ({
   const [recordingInputBase, setRecordingInputBase] = useState<string | null>(null);
   const chatLockedByForm = isChatBlockedByActiveTool(activeTool);
   const chatLockedByStation = Boolean(stationCheckpoint);
-  const chatInputLocked = chatLockedByForm || chatLockedByStation;
+  const chatInputLocked = chatLockedByForm || chatLockedByStation || welcomeOpeningBusy;
 
   useEffect(() => {
     if (!isRecording) setRecordingInputBase(null);
@@ -84,13 +87,53 @@ export const BSDWorkspace = ({
   const messagesScrollRef = useRef<HTMLDivElement>(null);
   const { messagesEndRef, lastMessageRef } = useChatScrollIntoLatest(
     messages,
-    loading || historyLoading,
+    loading || historyLoading || welcomeOpeningBusy,
     Boolean(stationCheckpoint),
+    welcomeTypingText,
   );
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isSendingRef = useRef(false);
   /** Matches WorkspaceMessageBubble: coach-aligned widgets on the same side as assistant bubbles. */
   const coachBubbleRowJustify = i18n.language.startsWith('he') ? 'justify-end' : 'justify-start';
+
+  const hasUserReplied = messages.some((m) => m.role === 'user');
+  const showS0QuickPick =
+    !welcomeOpeningBusy &&
+    welcomeTypingText === null &&
+    conversationId === null &&
+    currentPhase === 'S0' &&
+    !hasUserReplied &&
+    messages.length > 0 &&
+    messages.every((m) => m.role === 'assistant');
+
+  const sendQuickPick = useCallback(
+    async (text: string) => {
+      if (chatInputLocked || loading || historyLoading || isSendingRef.current) return;
+      isSendingRef.current = true;
+      try {
+        await sendMessage(text, i18n.language, async () =>
+          (await getToken()) || apiClient.getToken() || null,
+        );
+        const convs = await apiClient.getConversations();
+        setConversations(convs);
+        inputRef.current?.focus();
+      } catch (error) {
+        console.error('Error sending S0 quick pick:', error);
+      } finally {
+        setTimeout(() => {
+          isSendingRef.current = false;
+        }, 300);
+      }
+    },
+    [
+      chatInputLocked,
+      getToken,
+      historyLoading,
+      i18n.language,
+      loading,
+      sendMessage,
+    ],
+  );
 
   const handlePhaseClick = useCallback((phaseIndex: number) => {
     const stages = PHASE_TO_STAGES[phaseIndex];
@@ -310,11 +353,13 @@ export const BSDWorkspace = ({
           }}
           onKeyDown={handleKeyDown}
           placeholder={
-            chatLockedByStation
-              ? t('chat.stationBlocksTyping')
-              : chatLockedByForm
-                ? t('chat.formBlocksTyping')
-                : t('chat.placeholder')
+            welcomeOpeningBusy
+              ? t('chat.welcomeOpening')
+              : chatLockedByStation
+                ? t('chat.stationBlocksTyping')
+                : chatLockedByForm
+                  ? t('chat.formBlocksTyping')
+                  : t('chat.placeholder')
           }
           disabled={loading || historyLoading || isRecording || chatInputLocked}
           className="min-h-[24px] max-h-28 flex-1 min-w-0 resize-none border-0 bg-transparent text-[14px] md:text-[16px] placeholder-[#4c5a70]/80 placeholder:text-[14px] focus:outline-none focus:ring-0 disabled:opacity-60"
@@ -332,9 +377,11 @@ export const BSDWorkspace = ({
           disabled={loading || historyLoading || chatInputLocked}
           title={
             chatInputLocked
-              ? chatLockedByStation
-                ? t('chat.stationBlocksTyping')
-                : t('chat.formBlocksTyping')
+              ? welcomeOpeningBusy
+                ? t('chat.welcomeOpening')
+                : chatLockedByStation
+                  ? t('chat.stationBlocksTyping')
+                  : t('chat.formBlocksTyping')
               : isRecording
                 ? t('chat.stopRecording')
                 : t('chat.recordVoice')
@@ -456,7 +503,7 @@ export const BSDWorkspace = ({
               </p>
             </div>
           )}
-          {messages.length === 0 ? (
+          {messages.length === 0 && !welcomeOpeningBusy && welcomeTypingText === null ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -504,6 +551,29 @@ export const BSDWorkspace = ({
                   );
                 })}
               </AnimatePresence>
+              {welcomeTypingText !== null ? (
+                <div className={`flex ${coachBubbleRowJustify}`}>
+                  <WorkspaceMessageBubble
+                    message={{
+                      id: -1,
+                      role: 'assistant',
+                      content: welcomeTypingText,
+                      timestamp: new Date().toISOString(),
+                      meta: { phase: 'S0' },
+                    }}
+                    animateTyping={false}
+                    dir={i18n.dir() as 'ltr' | 'rtl'}
+                  />
+                </div>
+              ) : null}
+              {showS0QuickPick ? (
+                <div className={`flex w-full ${coachBubbleRowJustify}`}>
+                  <WorkspaceS0QuickPick
+                    disabled={loading || historyLoading || chatInputLocked}
+                    onPick={(msg) => void sendQuickPick(msg)}
+                  />
+                </div>
+              ) : null}
               {activeTool && (
                 <div ref={chatToolRef} className={`flex ${coachBubbleRowJustify}`}>
                   <div

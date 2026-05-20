@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useUser } from '@clerk/clerk-react';
 import type { Message, Conversation, ToolCall, StationCheckpointPayload } from '../types';
@@ -6,7 +6,20 @@ import { isChatBlockedByActiveTool } from '../utils/activeFormTools';
 import { apiClient, normalizeConversationId } from '../services/api';
 import { BSD_VERSION, getBsdEndpoint } from '../config';
 import { stripUndefined } from '../utils/messageContent';
-import { buildWelcomeMessage, type TraineeGender } from '../utils/welcomeMessage';
+import { getWorkspaceWelcomeBlocks, type TraineeGender } from '../utils/welcomeMessage';
+import {
+  STAGGERED_BLOCK_PAUSE_MS,
+  revealTypedBlock,
+  sleep,
+} from '../utils/staggeredTyping';
+
+function isWorkspaceWelcomeOnly(msgs: Message[]): boolean {
+  return (
+    msgs.length > 0 &&
+    msgs.length <= 3 &&
+    msgs.every((m) => m.role === 'assistant' && m.meta?.phase === 'S0')
+  );
+}
 
 export const useChat = (
   displayName?: string | null,
@@ -33,56 +46,117 @@ export const useChat = (
     stationGateRef.current = Boolean(stationCheckpoint);
   }, [stationCheckpoint]);
   const streamingMessageIdRef = useRef<number | null>(null); // Track current streaming message
+  const welcomeAbortRef = useRef<AbortController | null>(null);
+  const [welcomeOpeningBusy, setWelcomeOpeningBusy] = useState(false);
+  const [welcomeTypingText, setWelcomeTypingText] = useState<string | null>(null);
 
-  // Auto-send welcome message once profile is ready (avoid Clerk name before /users/me returns)
+  const playWelcomeSequence = useCallback(async () => {
+    welcomeAbortRef.current?.abort();
+    const ac = new AbortController();
+    welcomeAbortRef.current = ac;
+    setWelcomeOpeningBusy(true);
+    setWelcomeTypingText(null);
+    setMessages([]);
+    setLoading(false);
+
+    const blocks = getWorkspaceWelcomeBlocks(
+      displayName,
+      clerkUser?.firstName,
+      i18n.language,
+      t,
+      traineeGender,
+    );
+
+    try {
+      await sleep(300, ac.signal);
+      for (let bi = 0; bi < blocks.length; bi += 1) {
+        if (ac.signal.aborted) return;
+        setWelcomeTypingText('');
+        await revealTypedBlock(
+          blocks[bi],
+          (partial) => {
+            if (!ac.signal.aborted) setWelcomeTypingText(partial);
+          },
+          ac.signal,
+        );
+        if (ac.signal.aborted) return;
+        const msg: Message = {
+          id: Date.now() + bi,
+          role: 'assistant',
+          content: blocks[bi],
+          timestamp: new Date().toISOString(),
+          meta: { phase: 'S0' },
+        };
+        setMessages((prev) => [...prev, msg]);
+        setWelcomeTypingText(null);
+        if (bi < blocks.length - 1) {
+          await sleep(STAGGERED_BLOCK_PAUSE_MS, ac.signal);
+        }
+      }
+    } finally {
+      if (!ac.signal.aborted) {
+        setWelcomeOpeningBusy(false);
+        setWelcomeTypingText(null);
+      }
+    }
+  }, [displayName, clerkUser?.firstName, i18n.language, t, traineeGender]);
+
+  useEffect(() => {
+    return () => {
+      welcomeAbortRef.current?.abort();
+    };
+  }, []);
+
+  // Staggered workspace welcome once profile is ready (avoid Clerk name before /users/me returns)
   useEffect(() => {
     if (!chatProfileReady) return;
     if (!hasInitialized && messages.length === 0 && conversationId === null) {
       setHasInitialized(true);
-      setLoading(false); // Clear loading state on initial load
-
-      // Pre-warm when token exists (often after workspace mounts with Clerk)
       void apiClient.warmupCache(i18n.language);
-
-      // Add welcome message with animation delay
-      setTimeout(() => {
-        const greeting = buildWelcomeMessage(
-          displayName,
-          clerkUser?.firstName,
-          i18n.language,
-          t,
-          traineeGender,
-        );
-
-        const welcomeMessage: Message = {
-          id: Date.now(),
-          role: 'assistant',
-          content: greeting,
-          timestamp: new Date().toISOString(),
-          meta: { phase: 'S0' },
-        };
-        setMessages([welcomeMessage]);
-        setLoading(false); // Ensure loading is off after welcome message
-      }, 500); // Small delay for animation
+      void playWelcomeSequence();
     }
-  }, [hasInitialized, messages.length, conversationId, t, i18n.language, displayName, clerkUser?.firstName, chatProfileReady, traineeGender]);
+  }, [
+    hasInitialized,
+    messages.length,
+    conversationId,
+    chatProfileReady,
+    playWelcomeSequence,
+    i18n.language,
+  ]);
 
-  /** When display_name loads or changes (e.g. after Dashboard save), refresh lone welcome bubble */
+  /** When display_name loads or changes, refresh welcome-only bubbles (not mid-sequence). */
   useEffect(() => {
-    if (!chatProfileReady || conversationId !== null) return;
+    if (!chatProfileReady || conversationId !== null || welcomeOpeningBusy) return;
     setMessages((prev) => {
-      if (prev.length !== 1 || prev[0].role !== 'assistant') return prev;
-      const next = buildWelcomeMessage(
+      if (!isWorkspaceWelcomeOnly(prev)) return prev;
+      const blocks = getWorkspaceWelcomeBlocks(
         displayName,
         clerkUser?.firstName,
         i18n.language,
         t,
         traineeGender,
       );
-      if (prev[0].content === next) return prev;
-      return [{ ...prev[0], content: next }];
+      const prevJoined = prev.map((m) => m.content).join('\n\n');
+      const nextJoined = blocks.join('\n\n');
+      if (prevJoined === nextJoined) return prev;
+      return blocks.map((content, i) => ({
+        id: prev[i]?.id ?? Date.now() + i,
+        role: 'assistant' as const,
+        content,
+        timestamp: prev[i]?.timestamp ?? new Date().toISOString(),
+        meta: { phase: 'S0' as const },
+      }));
     });
-  }, [displayName, clerkUser?.firstName, chatProfileReady, conversationId, i18n.language, t, traineeGender]);
+  }, [
+    displayName,
+    clerkUser?.firstName,
+    chatProfileReady,
+    conversationId,
+    i18n.language,
+    t,
+    traineeGender,
+    welcomeOpeningBusy,
+  ]);
 
   useEffect(() => {
     activeToolRef.current = activeTool;
@@ -102,6 +176,9 @@ export const useChat = (
   };
 
   const loadConversation = async (convId: number) => {
+    welcomeAbortRef.current?.abort();
+    setWelcomeOpeningBusy(false);
+    setWelcomeTypingText(null);
     setHistoryLoading(true);
     setMessages([]);
     setConversationId(convId);
@@ -145,35 +222,15 @@ export const useChat = (
   };
 
   const startNewConversation = async () => {
-    setLoading(false); // Clear any loading state when starting new chat
+    setLoading(false);
     setHistoryLoading(false);
-
-    const greeting = buildWelcomeMessage(
-      displayName,
-      clerkUser?.firstName,
-      i18n.language,
-      t,
-      traineeGender,
-    );
-
-    // Add welcome message immediately to prevent visual "jump"
-    const welcomeMessage: Message = {
-      id: Date.now(),
-      role: 'assistant',
-      content: greeting,
-      timestamp: new Date().toISOString(),
-      meta: { phase: 'S0' },
-    };
-    
-    setMessages([welcomeMessage]);
     setConversationId(null);
     setCurrentPhase('S0');
     setStationCheckpoint(null);
-    commitActiveTool(null); // NEW: Clear active tool for new conversation
-    setHasInitialized(true); // Mark as initialized to prevent duplicate welcome
-    setLoading(false); // Ensure loading is off
-
+    commitActiveTool(null);
+    setHasInitialized(true);
     void apiClient.warmupCache(i18n.language);
+    await playWelcomeSequence();
   };
 
   const applyToolResponse = (result: any) => {
@@ -212,6 +269,10 @@ export const useChat = (
     }
 
     if (stationGateRef.current) {
+      return;
+    }
+
+    if (welcomeOpeningBusy) {
       return;
     }
 
@@ -549,6 +610,9 @@ export const useChat = (
   };
 
   const clearMessages = () => {
+    welcomeAbortRef.current?.abort();
+    setWelcomeOpeningBusy(false);
+    setWelcomeTypingText(null);
     setMessages([]);
     setConversationId(null);
     setHasInitialized(false);
@@ -558,6 +622,8 @@ export const useChat = (
     messages, 
     loading,
     historyLoading,
+    welcomeOpeningBusy,
+    welcomeTypingText,
     currentPhase,
     conversationId,
     activeTool,

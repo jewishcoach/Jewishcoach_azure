@@ -15,6 +15,8 @@ export function useChatScrollIntoLatest<T extends RoleMessage>(
   messages: T[],
   loading: boolean,
   stationGateActive = false,
+  /** Extra scroll trigger (e.g. staggered welcome partial text). */
+  scrollExtra: unknown = null,
 ) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
@@ -37,7 +39,7 @@ export function useChatScrollIntoLatest<T extends RoleMessage>(
       }
     };
     requestAnimationFrame(() => requestAnimationFrame(scroll));
-  }, [messages, loading, stationGateActive]);
+  }, [messages, loading, stationGateActive, scrollExtra]);
 
   return { messagesEndRef, lastMessageRef };
 }

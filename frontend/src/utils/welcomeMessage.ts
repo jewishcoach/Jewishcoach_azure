@@ -42,6 +42,58 @@ function workspaceWelcomeKey(lang: string, traineeGender: TraineeGender): string
   return 'welcome_message_he_neutral';
 }
 
+function workspaceWelcomeBlockKeys(lang: string, traineeGender: TraineeGender): string[] {
+  const he = (lang || 'he').toLowerCase().startsWith('he');
+  if (!he) {
+    return ['welcome_workspace_en_block1', 'welcome_workspace_en_block2', 'welcome_workspace_en_block3'];
+  }
+  const gender =
+    traineeGender === 'female' ? 'female' : traineeGender === 'male' ? 'male' : 'neutral';
+  return [
+    `welcome_workspace_he_${gender}_block1`,
+    `welcome_workspace_he_${gender}_block2`,
+    `welcome_workspace_he_${gender}_block3`,
+  ];
+}
+
+/** Three staggered workspace welcome bubbles (typing sequence). */
+export function getWorkspaceWelcomeBlocks(
+  displayName: string | null | undefined,
+  clerkFirstName: string | null | undefined,
+  lang: string,
+  t: I18nT,
+  traineeGender: TraineeGender = null,
+): string[] {
+  const fallback = lang === 'he' ? 'רב' : 'there';
+  const name = getNameForGreeting(displayName, clerkFirstName, lang) || fallback;
+  const keys = workspaceWelcomeBlockKeys(lang, traineeGender);
+  const blocks = keys
+    .map((key) => {
+      let text = String(t(key, { name }) ?? '');
+      if (!text.trim() || text === key) return '';
+      text = text.replace(/\bundefined\b/gi, fallback);
+      return stripUndefined(text);
+    })
+    .filter(Boolean);
+  if (blocks.length >= 3) return blocks;
+  const legacyKey = workspaceWelcomeKey(lang, traineeGender);
+  let legacy = String(t(legacyKey, { name }) ?? '');
+  if (!legacy.trim() || legacy === legacyKey) {
+    legacy = String(
+      (lang || 'he').toLowerCase().startsWith('he')
+        ? t('welcome_message_he_neutral', { name })
+        : t('welcome_message', { name }),
+    );
+  }
+  legacy = stripUndefined(legacy.replace(/\bundefined\b/gi, fallback));
+  const parts = legacy
+    .split(/\n\n+/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (parts.length >= 3) return parts.slice(0, 3);
+  return parts.length ? parts : [legacy];
+}
+
 /** Same welcome copy as workspace chat — English uses `welcome_message`; Hebrew picks gendered/neutral keys. */
 export function buildWelcomeMessage(
   displayName: string | null | undefined,
@@ -50,18 +102,9 @@ export function buildWelcomeMessage(
   t: I18nT,
   traineeGender: TraineeGender = null,
 ): string {
-  const fallback = lang === 'he' ? 'רב' : 'there';
-  const name = getNameForGreeting(displayName, clerkFirstName, lang) || fallback;
-  const key = workspaceWelcomeKey(lang, traineeGender);
-  const he = (lang || 'he').toLowerCase().startsWith('he');
-  let greeting = String(t(key, { name }) ?? '');
-  if (!greeting.trim() || greeting === key) {
-    greeting = String(
-      he ? t('welcome_message_he_neutral', { name }) : t('welcome_message', { name }),
-    );
-  }
-  greeting = greeting.replace(/\bundefined\b/gi, fallback);
-  return stripUndefined(greeting);
+  return getWorkspaceWelcomeBlocks(displayName, clerkFirstName, lang, t, traineeGender).join(
+    '\n\n',
+  );
 }
 
 /**
