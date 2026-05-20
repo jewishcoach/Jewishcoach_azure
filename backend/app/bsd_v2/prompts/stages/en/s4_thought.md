@@ -13,7 +13,8 @@
 
 1. **Recap:** Emotions from the event collected (3–4+).
 2. **This stage:** The **inner sentence** in the mind in that moment — not hindsight, not out-loud speech.
-3. **First question:** Open with something like:
+3. **What happens next (general):** We find together the inner line that ran through your mind in that moment — in your words.
+4. **First question:** Open with something like:
 
 ## Opening (from S3)
 

@@ -12,7 +12,8 @@
 
 1. **Recap:** Paradigm closed with “that’s how it is for me” — thought-behind-action behind the pattern.
 2. **This stage:** **Stance** (reality perception) — root that generates the paradigm; then trigger (separate).
-3. **First question:** Start with **Pre-Check** below (explain concept + verify understanding) — before personal stance questions.
+3. **What happens next (general):** We explain the concept, check understanding, then uncover stance and trigger — separately.
+4. **First question:** Start with **Pre-Check** below (explain concept + verify understanding) — before personal stance questions.
 
 ## Mandatory Pre-Check — before personal investigation
 

@@ -31,7 +31,8 @@ A suitable coaching topic must meet all five conditions:
 
 1. **Recap:** Explicit permission to start coaching.
 2. **This stage:** **General topic** only — not an event, not emotions, not actual/desired yet.
-3. **First question:** What would you like to coach on today? (natural wording)
+3. **What happens next (general):** We clarify together what the coaching is about — direction only, no event yet.
+4. **First question:** What would you like to coach on today? (natural wording)
 
 ---
 

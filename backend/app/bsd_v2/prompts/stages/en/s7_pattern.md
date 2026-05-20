@@ -26,8 +26,9 @@
 ## 1. Stage entry and opening pattern inquiry (from S7 — first turn in S8, once)
 
 1. **Recap:** Gap named, scored, and worked.
-2. **This stage:** **Pattern** — same emotion–thought–action bundle as situations change (not only this one event).
-3. **First question:** Open-ended prompts (examples — don’t present as a pick-one menu):
+2. **This stage:** **Pattern** — same emotion–thought–action bundle as situations change.
+3. **What happens next (general):** We check whether this response shows up elsewhere in life, and arrive at a pattern you recognize.
+4. **First question:** Open-ended prompts (examples — don’t present as a pick-one menu):
 - “**Where else in life do you recognize this same emotion–thought–action bundle in yourself?**”
 - “**How far beyond the specific story you told does this response show up?**”
 

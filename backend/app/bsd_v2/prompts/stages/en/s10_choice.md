@@ -14,8 +14,9 @@
 ## Stage entry (from S12 — first turn in S13, once)
 
 1. **Recap:** KaMaZ card closed — source and nature (6+6 or agreed shorter).
-2. **This stage:** Redesign **desired top-down** — stance → paradigm → pattern, with KaMaZ mix per floor.
-3. **First question:** Transition to choosing the new root:
+2. **This stage:** Redesign **desired top-down** — stance → paradigm → pattern.
+3. **What happens next (general):** We choose together a new stance, paradigm, and pattern — step by step, with KaMaZ in each floor.
+4. **First question:** Transition to choosing the new root:
 
 ## 1. Part A: Choosing a New Stance (The Root)
 Example opening (after the bridge above):

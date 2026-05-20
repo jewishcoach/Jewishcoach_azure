@@ -23,8 +23,9 @@ In this stage: short **KaMaZ tool explanation**, then **verbal recap** of what e
 ## Stage entry (from S11 — first turn in S12, once)
 
 1. **Recap:** At least 2 gains and 2 losses of the stance.
-2. **This stage:** **KaMaZ** — Source and Nature at **macro life** level (not only the coaching event).
-3. **First question:** Brief bridge from gains/losses, explain the forces card, then **one source** question.
+2. **This stage:** **KaMaZ** — Source and Nature at **macro life** level.
+3. **What happens next (general):** We map source and nature, build the forces card, then move to redesigning the desired.
+4. **First question:** Brief bridge from gains/losses, explain the forces card, then **one source** question.
 
 ## Exploring source (phase 1)
 Example questions (one per turn — **life-wide**, not tied to the coaching event):

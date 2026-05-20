@@ -37,8 +37,9 @@ If they label a pattern as paradigm or mix floors — **don’t agree to keep ra
 ## Stage entry (from S8 — first turn in S9, once)
 
 1. **Recap:** Pattern identified and confirmed — recurring response across situations.
-2. **This stage:** **Paradigm** (thought-behind-action) — the “autopilot” behind the pattern; not the same layer as pattern or stance.
-3. **First question:** Open with the paradigm explanation below.
+2. **This stage:** **Paradigm** (thought-behind-action) — the “autopilot” behind the pattern.
+3. **What happens next (general):** We look together for the “that’s how it is for me” — the hidden rule behind the pattern.
+4. **First question:** Open with the paradigm explanation below.
 
 ## 1. Opening
 “We’ve identified your pattern. Now step back to what’s hidden: every pattern has a **paradigm** — **thought-behind-action**, like autopilot. **What is the ‘that’s how it is for me’ from which this pattern comes?**”

@@ -10,7 +10,8 @@ Goal: re-enter the moment and explore emotions with depth.
 
 1. **Recap:** Specific event with when/where/who/what and interpersonal contact.
 2. **This stage:** **Emotions** in that moment (word “emotion”, not vague “feelings” as methodology substitute).
-3. **First question:** Per sections below (loop if emotion already named in the event).
+3. **What happens next (general):** We go through emotions from that moment together — one at a time, not all at once.
+4. **First question:** Per sections below (loop if emotion already named in the event).
 
 **Start (only when no emotion is named yet in that event description):**
 "Take yourself back to that moment. What did you feel there?"

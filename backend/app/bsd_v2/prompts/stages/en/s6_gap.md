@@ -14,8 +14,9 @@
 ## Stage entry (from S6 — first turn in S7, once)
 
 1. **Recap:** Actual and desired in the **same situation** — confirmed together.
-2. **This stage:** The **gap** — name + 1–10 score, then gap work via key questions (not “what stops you from outside” as default).
-3. **First question:** What would you call this gap — a 1–2 word title?
+2. **This stage:** The **gap** — distance between actual and desired.
+3. **What happens next (general):** We name and score the gap, then work it with focused questions — not “who’s blocking you from outside.”
+4. **First question:** What would you call this gap — a 1–2 word title?
 
 ## 1. Opening (name + score)
 * **Name:** “Now that we see actual versus desired, **what would you call this gap?** Give it a 1–2 word title.”

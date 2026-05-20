@@ -21,8 +21,9 @@
 ## Stage entry (from S10 — first turn in S11, once)
 
 1. **Recap:** Stance and trigger identified — reality perception that drives what we saw.
-2. **This stage:** **Gains and losses of the stance** (not the pattern as main topic) — gains first, then losses.
-3. **First question:** Short bridge, then an open gains question:
+2. **This stage:** **Gains and losses of the stance** (not the pattern as main topic).
+3. **What happens next (general):** We explore what the stance gives you and what it costs — gains first, then losses.
+4. **First question:** Short bridge, then an open gains question:
 
 ## 1. Gains (stance only)
 
