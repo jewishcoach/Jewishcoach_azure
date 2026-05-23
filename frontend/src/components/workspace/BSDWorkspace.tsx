@@ -90,8 +90,7 @@ export const BSDWorkspace = ({
     messages,
     loading || historyLoading || welcomeOpeningBusy,
     Boolean(stationCheckpoint),
-    welcomeTypingText,
-    welcomeTypingLayoutText,
+    [welcomeTypingText, welcomeTypingLayoutText],
   );
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isSendingRef = useRef(false);
