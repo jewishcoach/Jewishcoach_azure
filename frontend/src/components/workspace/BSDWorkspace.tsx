@@ -343,9 +343,28 @@ export const BSDWorkspace = ({
           }}
         />
       ) : null}
+      {isRecording ? (
+        <div
+          className="mb-1.5 flex items-center gap-2 px-0.5"
+          role="status"
+          aria-live="polite"
+        >
+          <motion.span
+            aria-hidden
+            animate={{ scale: [1, 1.3, 1], opacity: [0.65, 1, 0.65] }}
+            transition={{ duration: 1.1, repeat: Infinity, ease: 'easeInOut' }}
+            className="h-2 w-2 shrink-0 rounded-full bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.55)]"
+          />
+          <span className="text-[12px] font-medium text-red-600">{t('chat.recording')}</span>
+        </div>
+      ) : null}
       <form
         onSubmit={handleSubmit}
-        className="flex min-h-[48px] items-center gap-2 rounded-[11px] border border-[#e8e0cc] bg-white px-3 py-2 md:gap-3 md:px-4 md:py-2.5"
+        className={`flex min-h-[48px] items-center gap-2 rounded-[11px] border bg-white px-3 py-2 transition-colors md:gap-3 md:px-4 md:py-2.5 ${
+          isRecording
+            ? 'border-red-400/75 ring-1 ring-red-400/20'
+            : 'border-[#e8e0cc]'
+        }`}
       >
         <textarea
           ref={inputRef}
@@ -388,10 +407,11 @@ export const BSDWorkspace = ({
                 ? t('chat.stopRecording')
                 : t('chat.recordVoice')
           }
-          className={`flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[7px] border border-[rgba(255,255,255,0.11)] transition-colors ${
+          aria-pressed={isRecording}
+          className={`flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[7px] border transition-colors ${
             isRecording
-              ? 'bg-[#c8953a]/25 text-[#1e293b] border-[#c8953a]/35'
-              : 'bg-[#e8e0cc] text-[#2E3A56]/85 hover:bg-[#ded6c4]'
+              ? 'border-red-600/40 bg-red-500 text-white hover:bg-red-600'
+              : 'border-[rgba(255,255,255,0.11)] bg-[#e8e0cc] text-[#2E3A56]/85 hover:bg-[#ded6c4]'
           } disabled:opacity-50`}
         >
           {isRecording ? <Square size={13} strokeWidth={2} fill="currentColor" /> : <Mic size={13} strokeWidth={1.5} />}

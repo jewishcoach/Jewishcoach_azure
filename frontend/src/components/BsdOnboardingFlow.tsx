@@ -331,12 +331,15 @@ function ChoiceCard({
   selected,
   onClick,
   disabled,
+  compact = false,
 }: {
   icon: LucideIcon;
   label: string;
   selected?: boolean;
   onClick: () => void;
   disabled?: boolean;
+  /** Narrow 3-column topic grid on mobile — icon stays pinned above wrapped label */
+  compact?: boolean;
 }) {
   return (
     <button
@@ -344,7 +347,10 @@ function ChoiceCard({
       disabled={disabled}
       onClick={onClick}
       className={cx(
-        'flex h-[107px] w-full min-w-0 flex-col items-center justify-center gap-1 rounded-[18px] border bg-white px-2 py-3 text-center shadow-[0px_1px_8px_rgba(10,10,10,0.06)] transition-colors sm:px-3',
+        'flex w-full min-w-0 flex-col items-center rounded-[18px] border bg-white text-center shadow-[0px_1px_8px_rgba(10,10,10,0.06)] transition-colors',
+        compact
+          ? 'min-h-[96px] justify-start gap-1.5 px-1.5 pb-2.5 pt-2.5 sm:min-h-[107px] sm:gap-2 sm:px-2 sm:pb-3 sm:pt-3'
+          : 'h-[107px] justify-center gap-1 px-2 py-3 sm:px-3',
         selected
           ? 'border-[#C8953A] shadow-[0px_1px_28px_rgba(212,160,23,0.2)]'
           : 'border-[#E8E0CC] hover:border-[#d4c4a8]',
@@ -353,10 +359,23 @@ function ChoiceCard({
       style={{ fontFamily: WORKSPACE_CHAT_FONT }}
     >
       <Icon
-        className={cx('h-8 w-8', selected ? 'text-[#C8953A]' : 'text-[#6b7280]')}
+        className={cx(
+          'shrink-0',
+          compact ? 'h-6 w-6 sm:h-7 sm:w-7' : 'h-8 w-8',
+          selected ? 'text-[#C8953A]' : 'text-[#6b7280]',
+        )}
         strokeWidth={1.35}
       />
-      <span className="text-[14px] font-medium leading-[30px] text-[#393939]">{label}</span>
+      <span
+        className={cx(
+          'font-medium text-[#393939]',
+          compact
+            ? 'text-[11px] leading-[1.25] sm:text-[12px] sm:leading-snug'
+            : 'text-[14px] leading-snug',
+        )}
+      >
+        {label}
+      </span>
     </button>
   );
 }
@@ -1096,6 +1115,7 @@ export function BsdOnboardingFlow({
                           label={t(`bsdOnboarding.topic.${id}`)}
                           selected={draftTopicIds.includes(id)}
                           disabled={false}
+                          compact
                           onClick={() => toggleDraftTopic(id)}
                         />
                       ))}
