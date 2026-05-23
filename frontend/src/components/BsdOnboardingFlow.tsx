@@ -24,7 +24,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { WORKSPACE_CHAT_FONT } from '../constants/workspaceFonts';
-import { apiClient, type OnboardingKnownSlots } from '../services/api';
+import { apiClient, type OnboardingKnownSlots, runWithClerkToken } from '../services/api';
 import {
   buildAfterGenderCoachMessage,
   buildAfterNameCoachMessage,
@@ -65,26 +65,6 @@ function cx(...parts: (string | false | undefined | null)[]) {
 
 function uid() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
-
-/** Refresh Clerk JWT on apiClient; retry once on 401 (token often expires while user reads opening). */
-async function runWithClerkToken<T>(
-  getToken: () => Promise<string | null>,
-  fn: () => Promise<T>,
-): Promise<T> {
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    const token = await getToken();
-    if (!token) throw new Error('no_auth');
-    apiClient.setToken(token);
-    try {
-      return await fn();
-    } catch (error) {
-      const is401 = axios.isAxiosError(error) && error.response?.status === 401;
-      if (is401 && attempt === 0) continue;
-      throw error;
-    }
-  }
-  throw new Error('auth_failed');
 }
 
 function isTopicId(s: string): s is TopicId {

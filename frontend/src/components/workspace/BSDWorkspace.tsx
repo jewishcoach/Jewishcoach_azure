@@ -221,8 +221,17 @@ export const BSDWorkspace = ({
     await loadConversation(id);
   };
 
-  const handleNewChat = async () => {
+  const beginNewConversation = useCallback(async () => {
+    if (isRecording) {
+      await stopRecording();
+    }
+    setRecordingInputBase(null);
+    setInputValue('');
     await startNewConversation();
+  }, [isRecording, stopRecording, startNewConversation]);
+
+  const handleNewChat = async () => {
+    await beginNewConversation();
   };
 
   const lastHeaderNewChatTick = useRef(headerNewChatTick);
@@ -230,8 +239,8 @@ export const BSDWorkspace = ({
     if (headerNewChatTick <= 0) return;
     if (headerNewChatTick === lastHeaderNewChatTick.current) return;
     lastHeaderNewChatTick.current = headerNewChatTick;
-    void startNewConversation();
-  }, [headerNewChatTick, startNewConversation]);
+    void beginNewConversation();
+  }, [headerNewChatTick, beginNewConversation]);
 
   const handleMicClick = useCallback(async () => {
     if (chatInputLocked) return;
@@ -273,7 +282,7 @@ export const BSDWorkspace = ({
       await apiClient.deleteConversation(id);
       const convs = await apiClient.getConversations();
       setConversations(convs);
-      if (conversationId === id) await startNewConversation();
+      if (conversationId === id) await beginNewConversation();
     } catch (error) {
       console.error('Error deleting conversation:', error);
     }

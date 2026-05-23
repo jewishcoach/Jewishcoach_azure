@@ -6,7 +6,12 @@ import {
   persistUseAppServiceApiForSession,
 } from '../config';
 
-type AxiosConfigWithTlsFallback = InternalAxiosRequestConfig & { __tlsFallbackDone?: boolean };
+type AxiosConfigWithRetry = InternalAxiosRequestConfig & {
+  __tlsFallbackDone?: boolean;
+  __authRetryDone?: boolean;
+};
+
+type ClerkTokenGetter = () => Promise<string | null>;
 
 /** Once TLS to api.jewishcoacher.com fails, force all subsequent requests in this tab to *.azurewebsites.net (parallel-safe). */
 let tlsFallbackActiveBase: string | null = null;
@@ -108,6 +113,23 @@ export function normalizeConversationId(id: unknown): number | null {
 class ApiClient {
   private client: AxiosInstance;
   private token: string | null = null;
+  private clerkGetToken: ClerkTokenGetter | null = null;
+
+  /** Wire Clerk so axios can refresh JWT on 401 (e.g. after tab idle). */
+  bindClerkAuth(getToken: ClerkTokenGetter) {
+    this.clerkGetToken = getToken;
+  }
+
+  async refreshAuthToken(): Promise<string | null> {
+    if (this.clerkGetToken) {
+      const fresh = await this.clerkGetToken();
+      if (fresh) {
+        this.token = fresh;
+        return fresh;
+      }
+    }
+    return this.token;
+  }
 
   constructor(baseURL: string = getApiBase()) {
     console.log('🔧 [API CLIENT] Initializing with baseURL:', baseURL);
@@ -136,8 +158,20 @@ class ApiClient {
     this.client.interceptors.response.use(
       (r) => r,
       async (error: AxiosError) => {
-        const cfg = error.config as AxiosConfigWithTlsFallback | undefined;
-        if (!cfg || cfg.__tlsFallbackDone) return Promise.reject(error);
+        const cfg = error.config as AxiosConfigWithRetry | undefined;
+        if (!cfg) return Promise.reject(error);
+
+        if (error.response?.status === 401 && !cfg.__authRetryDone && this.clerkGetToken) {
+          const fresh = await this.refreshAuthToken();
+          if (fresh) {
+            cfg.__authRetryDone = true;
+            cfg.headers = cfg.headers ?? {};
+            cfg.headers.Authorization = `Bearer ${fresh}`;
+            return this.client.request(cfg);
+          }
+        }
+
+        if (cfg.__tlsFallbackDone) return Promise.reject(error);
 
         const msg = String(error.message || '');
         const transportFail =
@@ -626,4 +660,24 @@ class ApiClient {
 }
 
 export const apiClient = new ApiClient();
+
+/** Refresh Clerk JWT on apiClient; retry once on 401. */
+export async function runWithClerkToken<T>(
+  getToken: ClerkTokenGetter,
+  fn: () => Promise<T>,
+): Promise<T> {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const token = await getToken();
+    if (!token) throw new Error('no_auth');
+    apiClient.setToken(token);
+    try {
+      return await fn();
+    } catch (error) {
+      const is401 = axios.isAxiosError(error) && error.response?.status === 401;
+      if (is401 && attempt === 0) continue;
+      throw error;
+    }
+  }
+  throw new Error('auth_failed');
+}
 

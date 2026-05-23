@@ -126,6 +126,13 @@ function SignedInContent() {
   const isChatView = !showBilling && !showDashboard && !showAdmin;
 
   useEffect(() => {
+    if (!isLoaded) return;
+    if (isSignedIn) {
+      apiClient.bindClerkAuth(getToken);
+    }
+  }, [isLoaded, isSignedIn, getToken]);
+
+  useEffect(() => {
     if (!isLoaded || !isSignedIn) return;
 
     const checkAdminStatus = async (isRetry = false) => {

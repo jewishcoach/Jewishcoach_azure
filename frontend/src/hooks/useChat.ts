@@ -305,6 +305,7 @@ export const useChat = (
     } else {
       token = tokenOrGetter;
     }
+    apiClient.setToken(token);
 
     try {
       let currentConvId = conversationId;
