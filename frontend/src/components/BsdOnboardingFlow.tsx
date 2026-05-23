@@ -7,6 +7,8 @@ import {
   type ReactNode,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '@clerk/clerk-react';
+import axios from 'axios';
 import {
   Briefcase,
   Heart,
@@ -63,6 +65,26 @@ function cx(...parts: (string | false | undefined | null)[]) {
 
 function uid() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+/** Refresh Clerk JWT on apiClient; retry once on 401 (token often expires while user reads opening). */
+async function runWithClerkToken<T>(
+  getToken: () => Promise<string | null>,
+  fn: () => Promise<T>,
+): Promise<T> {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const token = await getToken();
+    if (!token) throw new Error('no_auth');
+    apiClient.setToken(token);
+    try {
+      return await fn();
+    } catch (error) {
+      const is401 = axios.isAxiosError(error) && error.response?.status === 401;
+      if (is401 && attempt === 0) continue;
+      throw error;
+    }
+  }
+  throw new Error('auth_failed');
 }
 
 function isTopicId(s: string): s is TopicId {
@@ -522,6 +544,7 @@ export function BsdOnboardingFlow({
   onDisplayNameUpdated,
 }: Props) {
   const { t, i18n } = useTranslation();
+  const { getToken } = useAuth();
   const titleId = useId();
   const isHe = i18n.language.startsWith('he');
   const dir: 'rtl' | 'ltr' = isHe ? 'rtl' : 'ltr';
@@ -578,7 +601,9 @@ export function BsdOnboardingFlow({
         setPreferredName(short);
         void (async () => {
           try {
-            await apiClient.updateProfile({ display_name: short });
+            await runWithClerkToken(getToken, () =>
+              apiClient.updateProfile({ display_name: short }),
+            );
             onDisplayNameUpdated?.(short);
           } catch {
             /* best-effort */
@@ -595,7 +620,9 @@ export function BsdOnboardingFlow({
         setGender(effectiveGender);
         void (async () => {
           try {
-            await apiClient.updateProfile({ gender: effectiveGender });
+            await runWithClerkToken(getToken, () =>
+              apiClient.updateProfile({ gender: effectiveGender }),
+            );
           } catch {
             /* best-effort */
           }
@@ -620,7 +647,7 @@ export function BsdOnboardingFlow({
       }
       setIntakeComplete(res.intake_complete);
     },
-    [onDisplayNameUpdated],
+    [onDisplayNameUpdated, getToken],
   );
 
   const buildKnownSlotsPayload = useCallback(
@@ -853,14 +880,16 @@ export function BsdOnboardingFlow({
           ]);
         }
 
-        const res = await apiClient.onboardingIntakeStep({
-          language: i18n.language,
-          messages: apiMsgs,
-          known_slots: buildKnownSlotsPayload(
-            slotHint,
-            resolvedName ? { display_name: resolvedName } : undefined,
-          ),
-        });
+        const res = await runWithClerkToken(getToken, () =>
+          apiClient.onboardingIntakeStep({
+            language: i18n.language,
+            messages: apiMsgs,
+            known_slots: buildKnownSlotsPayload(
+              slotHint,
+              resolvedName ? { display_name: resolvedName } : undefined,
+            ),
+          }),
+        );
 
         const serverText = res.assistant_message || '…';
         if (optimisticCoachId) {
@@ -881,8 +910,14 @@ export function BsdOnboardingFlow({
           ]);
         }
         void applyExtracted(res);
-      } catch {
-        setIntakeError(t('bsdOnboarding.intakeError'));
+      } catch (err) {
+        const authFailed =
+          (err instanceof Error &&
+            (err.message === 'no_auth' || err.message === 'auth_failed')) ||
+          (axios.isAxiosError(err) && err.response?.status === 401);
+        setIntakeError(
+          authFailed ? t('bsdOnboarding.authError') : t('bsdOnboarding.intakeError'),
+        );
         setGender(rollbackGender);
         setGenderSkipped(rollbackGenderSkipped);
         setTopicIds(rollbackTopicIds);
@@ -897,6 +932,7 @@ export function BsdOnboardingFlow({
       }
     },
     [
+      getToken,
       applyExtracted,
       bootLoading,
       openingBusy,
@@ -931,12 +967,12 @@ export function BsdOnboardingFlow({
         patch.bsd_onboard_topics = topicIds;
         if (topicIds[0]) patch.bsd_onboard_topic = topicIds[0];
       }
-      await apiClient.patchUserPreferences(patch);
+      await runWithClerkToken(getToken, () => apiClient.patchUserPreferences(patch));
     } catch {
       /* App.tsx retries completion */
     }
     onComplete();
-  }, [enteringWorkspace, onComplete, topicIds, topicsSkipped]);
+  }, [enteringWorkspace, getToken, onComplete, topicIds, topicsSkipped]);
 
   const showComposer = !intakeComplete && !openingBusy;
   const composerBusy = bootLoading || openingBusy || turnLoading;
