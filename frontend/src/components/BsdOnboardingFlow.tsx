@@ -1212,7 +1212,21 @@ export function BsdOnboardingFlow({
                       </dd>
                     </div>
                   </dl>
+                  <div className="mt-5 border-t border-[#E8E0CC]/80 pt-4">
+                    <h4
+                      className="text-[13px] font-semibold uppercase tracking-[0.06em] text-[#C9A96E]"
+                      style={{ fontFamily: WORKSPACE_CHAT_FONT }}
+                    >
+                      {t('bsdOnboarding.summaryPaceTitle')}
+                    </h4>
+                    <p className="mt-2 whitespace-pre-line text-[13px] leading-relaxed text-[#393939]/90">
+                      {t('bsdOnboarding.summaryPaceBody')}
+                    </p>
+                  </div>
                 </div>
+                <p className="w-full max-w-[432px] text-center text-[13px] text-[#4c5a70]/90 md:text-start">
+                  {t('bsdOnboarding.summaryEnterHint')}
+                </p>
                 <button
                   type="button"
                   disabled={enteringWorkspace}
