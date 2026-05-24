@@ -1237,9 +1237,6 @@ export function BsdOnboardingFlow({
                     </p>
                   </div>
                 </div>
-                <p className="w-full max-w-[432px] text-center text-[13px] text-[#4c5a70]/90 md:text-start">
-                  {t('bsdOnboarding.summaryEnterHint')}
-                </p>
                 <button
                   type="button"
                   disabled={enteringWorkspace}
