@@ -7,12 +7,14 @@ import { useAuth } from '@clerk/clerk-react';
 import { useChat } from '../../hooks/useChat';
 import { useChatScrollIntoLatest } from '../../hooks/useChatScrollIntoLatest';
 import { useVoiceRecord } from '../../hooks/useVoiceRecord';
+import { usePersistentVoiceInput } from '../../hooks/usePersistentVoiceInput';
 import { VisionLadder } from './VisionLadder';
 import { ArchiveDrawer } from './ArchiveDrawer';
 import { HudPanel } from './HudPanel';
 import { ShehiyaProgress } from './ShehiyaProgress';
 import { WorkspaceMessageBubble } from './WorkspaceMessageBubble';
 import { WorkspaceS0QuickPick } from './WorkspaceS0QuickPick';
+import { WorkspaceInputModeToggle, type WorkspaceInputMode } from './WorkspaceInputModeToggle';
 import { StationCheckpointBar } from './StationCheckpointBar';
 import { ActiveToolRenderer } from '../InsightHub/ActiveToolRenderer';
 import { Dashboard } from '../Dashboard';
@@ -22,6 +24,16 @@ import type { Conversation } from '../../types';
 import { WORKSPACE_CHAT_FONT } from '../../constants/workspaceFonts';
 import { isChatBlockedByActiveTool } from '../../utils/activeFormTools';
 import type { TraineeGender } from '../../utils/welcomeMessage';
+
+const INPUT_MODE_STORAGE_KEY = 'workspace-input-mode';
+
+function readStoredInputMode(): WorkspaceInputMode {
+  try {
+    return localStorage.getItem(INPUT_MODE_STORAGE_KEY) === 'voice' ? 'voice' : 'type';
+  } catch {
+    return 'type';
+  }
+}
 
 interface BSDWorkspaceProps {
   displayName?: string | null;
@@ -51,6 +63,7 @@ export const BSDWorkspace = ({
   const { t, i18n } = useTranslation();
   const { getToken, isLoaded, isSignedIn } = useAuth();
   const [inputValue, setInputValue] = useState('');
+  const [inputMode, setInputMode] = useState<WorkspaceInputMode>(() => readStoredInputMode());
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [conversationsLoading, setConversationsLoading] = useState(true);
   const [archiveOpenLocal, setArchiveOpenLocal] = useState(false);
@@ -80,6 +93,8 @@ export const BSDWorkspace = ({
   const chatLockedByForm = isChatBlockedByActiveTool(activeTool);
   const chatLockedByStation = Boolean(stationCheckpoint);
   const chatInputLocked = chatLockedByForm || chatLockedByStation || welcomeOpeningBusy;
+  const voiceSessionPaused = chatInputLocked || loading || historyLoading;
+  const isVoiceInputMode = inputMode === 'voice';
 
   useEffect(() => {
     if (!isRecording) setRecordingInputBase(null);
@@ -160,11 +175,56 @@ export const BSDWorkspace = ({
   }, [activeTool]);
 
   useEffect(() => {
-    if ((!chatLockedByForm && !chatLockedByStation) || !isRecording) return;
+    if ((!chatLockedByForm && !chatLockedByStation) || !isRecording || isVoiceInputMode) return;
     void (async () => {
       await stopRecording();
     })();
-  }, [chatLockedByForm, chatLockedByStation, isRecording, stopRecording]);
+  }, [chatLockedByForm, chatLockedByStation, isRecording, isVoiceInputMode, stopRecording]);
+
+  const sendTextMessage = useCallback(
+    async (messageToSend: string) => {
+      const trimmed = messageToSend.trim();
+      if (!trimmed || chatInputLocked || loading || historyLoading || isSendingRef.current) return;
+      isSendingRef.current = true;
+      try {
+        await sendMessage(trimmed, i18n.language, async () =>
+          (await getToken()) || apiClient.getToken() || null,
+        );
+        const convs = await apiClient.getConversations();
+        setConversations(convs);
+        if (!isVoiceInputMode) {
+          inputRef.current?.focus();
+        }
+      } catch (error) {
+        console.error('Error sending message:', error);
+        if (!isVoiceInputMode) {
+          inputRef.current?.focus();
+        }
+      } finally {
+        window.setTimeout(() => {
+          isSendingRef.current = false;
+        }, 300);
+      }
+    },
+    [
+      chatInputLocked,
+      getToken,
+      historyLoading,
+      i18n.language,
+      isVoiceInputMode,
+      loading,
+      sendMessage,
+    ],
+  );
+
+  const { isListening: voiceListening, livePreview: voiceLivePreview, error: voiceInputError } =
+    usePersistentVoiceInput({
+      language: i18n.language,
+      getClerkToken: getToken,
+      enabled: isVoiceInputMode,
+      paused: voiceSessionPaused,
+      onUtterance: sendTextMessage,
+    });
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -193,28 +253,10 @@ export const BSDWorkspace = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (
-      chatInputLocked ||
-      !inputValue.trim() ||
-      loading ||
-      historyLoading ||
-      isSendingRef.current
-    )
-      return;
+    if (chatInputLocked || !inputValue.trim() || loading || historyLoading || isSendingRef.current) return;
     const messageToSend = inputValue.trim();
     setInputValue('');
-    isSendingRef.current = true;
-    try {
-      await sendMessage(messageToSend, i18n.language, async () => (await getToken()) || apiClient.getToken() || null);
-      const convs = await apiClient.getConversations();
-      setConversations(convs);
-      inputRef.current?.focus();
-    } catch (error) {
-      console.error('Error sending message:', error);
-      inputRef.current?.focus();
-    } finally {
-      setTimeout(() => { isSendingRef.current = false; }, 300);
-    }
+    await sendTextMessage(messageToSend);
   };
 
   const handleSelectConversation = async (id: number) => {
@@ -242,8 +284,28 @@ export const BSDWorkspace = ({
     void beginNewConversation();
   }, [headerNewChatTick, beginNewConversation]);
 
+  const handleInputModeChange = useCallback(
+    async (mode: WorkspaceInputMode) => {
+      if (mode === inputMode) return;
+      if (mode === 'type' && isRecording) {
+        const transcript = await stopRecording();
+        if (transcript.trim()) {
+          setInputValue((prev) => (prev ? `${prev} ${transcript}` : transcript));
+        }
+        setRecordingInputBase(null);
+      }
+      setInputMode(mode);
+      try {
+        localStorage.setItem(INPUT_MODE_STORAGE_KEY, mode);
+      } catch {
+        /* ignore */
+      }
+    },
+    [inputMode, isRecording, stopRecording],
+  );
+
   const handleMicClick = useCallback(async () => {
-    if (chatInputLocked) return;
+    if (chatInputLocked || isVoiceInputMode) return;
     if (isRecording) {
       const transcript = await stopRecording();
       if (transcript.trim()) {
@@ -255,7 +317,7 @@ export const BSDWorkspace = ({
       const ok = await startRecording();
       if (ok) setRecordingInputBase(base);
     }
-  }, [chatInputLocked, isRecording, inputValue, startRecording, stopRecording]);
+  }, [chatInputLocked, isVoiceInputMode, isRecording, inputValue, startRecording, stopRecording]);
 
   const handleToolSubmit = async (submission: { tool_type: string; data: any }): Promise<void> => {
     if (!conversationId) return;
@@ -310,9 +372,14 @@ export const BSDWorkspace = ({
   };
 
   const displayValue =
-    recordingInputBase !== null && isRecording
+    !isVoiceInputMode && recordingInputBase !== null && isRecording
       ? `${recordingInputBase}${livePreview ? ' ' + livePreview : ''}`
-      : inputValue;
+      : isVoiceInputMode
+        ? voiceLivePreview
+        : inputValue;
+
+  const showVoiceListening = isVoiceInputMode && voiceListening && !voiceSessionPaused;
+  const showVoiceWaiting = isVoiceInputMode && voiceSessionPaused && !welcomeOpeningBusy;
 
   const isRTL = i18n.dir() === 'rtl';
   const onArchiveClick = useCallback(() => setArchiveOpen(true), []);
@@ -351,7 +418,12 @@ export const BSDWorkspace = ({
           }}
         />
       ) : null}
-      {isRecording ? (
+      <WorkspaceInputModeToggle
+        mode={inputMode}
+        onChange={handleInputModeChange}
+        disabled={welcomeOpeningBusy}
+      />
+      {showVoiceListening || (!isVoiceInputMode && isRecording) ? (
         <div
           className="mb-1.5 flex items-center gap-2 px-0.5"
           role="status"
@@ -363,13 +435,24 @@ export const BSDWorkspace = ({
             transition={{ duration: 1.1, repeat: Infinity, ease: 'easeInOut' }}
             className="h-2 w-2 shrink-0 rounded-full bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.55)]"
           />
-          <span className="text-[12px] font-medium text-red-600">{t('chat.recording')}</span>
+          <span className="text-[12px] font-medium text-red-600">
+            {isVoiceInputMode ? t('workspace.voiceListening') : t('chat.recording')}
+          </span>
         </div>
+      ) : showVoiceWaiting ? (
+        <div className="mb-1.5 px-0.5 text-[12px] font-medium text-[#4c5a70]/90" role="status">
+          {loading || historyLoading ? t('chat.thinkingCoach') : t('workspace.voiceWaitingCoach')}
+        </div>
+      ) : null}
+      {voiceInputError ? (
+        <p className="mb-1.5 px-0.5 text-[12px] text-red-600" role="alert">
+          {voiceInputError}
+        </p>
       ) : null}
       <form
         onSubmit={handleSubmit}
         className={`flex min-h-[48px] items-center gap-2 rounded-[11px] border bg-white px-3 py-2 transition-colors md:gap-3 md:px-4 md:py-2.5 ${
-          isRecording
+          showVoiceListening || (!isVoiceInputMode && isRecording)
             ? 'border-red-400/75 ring-1 ring-red-400/20'
             : 'border-[#e8e0cc]'
         }`}
@@ -378,19 +461,28 @@ export const BSDWorkspace = ({
           ref={inputRef}
           value={displayValue}
           onChange={(e) => {
-            if (!isRecording && !chatInputLocked) setInputValue(e.target.value);
+            if (!isVoiceInputMode && !isRecording && !chatInputLocked) {
+              setInputValue(e.target.value);
+            }
           }}
           onKeyDown={handleKeyDown}
+          readOnly={isVoiceInputMode}
           placeholder={
             welcomeOpeningBusy
               ? t('chat.welcomeOpening')
-              : chatLockedByStation
-                ? t('chat.stationBlocksTyping')
-                : chatLockedByForm
-                  ? t('chat.formBlocksTyping')
-                  : t('chat.placeholder')
+              : isVoiceInputMode
+                ? t('workspace.voiceInputPlaceholder')
+                : chatLockedByStation
+                  ? t('chat.stationBlocksTyping')
+                  : chatLockedByForm
+                    ? t('chat.formBlocksTyping')
+                    : t('chat.placeholder')
           }
-          disabled={loading || historyLoading || isRecording || chatInputLocked}
+          disabled={
+            isVoiceInputMode
+              ? voiceSessionPaused
+              : loading || historyLoading || isRecording || chatInputLocked
+          }
           className="min-h-[24px] max-h-28 flex-1 min-w-0 resize-none border-0 bg-transparent text-[14px] md:text-[16px] placeholder-[#4c5a70]/80 placeholder:text-[14px] focus:outline-none focus:ring-0 disabled:opacity-60"
           style={{
             fontFamily: WORKSPACE_CHAT_FONT,
@@ -400,38 +492,48 @@ export const BSDWorkspace = ({
           }}
           rows={1}
         />
-        <button
-          type="button"
-          onClick={handleMicClick}
-          disabled={loading || historyLoading || chatInputLocked}
-          title={
-            chatInputLocked
-              ? welcomeOpeningBusy
-                ? t('chat.welcomeOpening')
-                : chatLockedByStation
-                  ? t('chat.stationBlocksTyping')
-                  : t('chat.formBlocksTyping')
-              : isRecording
-                ? t('chat.stopRecording')
-                : t('chat.recordVoice')
-          }
-          aria-pressed={isRecording}
-          className={`flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[7px] border transition-colors ${
-            isRecording
-              ? 'border-red-600/40 bg-red-500 text-white hover:bg-red-600'
-              : 'border-[rgba(255,255,255,0.11)] bg-[#e8e0cc] text-[#2E3A56]/85 hover:bg-[#ded6c4]'
-          } disabled:opacity-50`}
-        >
-          {isRecording ? <Square size={13} strokeWidth={2} fill="currentColor" /> : <Mic size={13} strokeWidth={1.5} />}
-        </button>
-        <button
-          type="submit"
-          disabled={chatInputLocked || !displayValue.trim() || loading || historyLoading || isRecording}
-          className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[7px] bg-[#1e293b] text-white transition-opacity hover:opacity-90 disabled:opacity-40"
-          aria-label={t('chat.send')}
-        >
-          <Send size={13} strokeWidth={1.5} className="text-white" />
-        </button>
+        {!isVoiceInputMode ? (
+          <>
+            <button
+              type="button"
+              onClick={handleMicClick}
+              disabled={loading || historyLoading || chatInputLocked}
+              title={
+                chatInputLocked
+                  ? welcomeOpeningBusy
+                    ? t('chat.welcomeOpening')
+                    : chatLockedByStation
+                      ? t('chat.stationBlocksTyping')
+                      : t('chat.formBlocksTyping')
+                  : isRecording
+                    ? t('chat.stopRecording')
+                    : t('chat.recordVoice')
+              }
+              aria-pressed={isRecording}
+              className={`flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[7px] border transition-colors ${
+                isRecording
+                  ? 'border-red-600/40 bg-red-500 text-white hover:bg-red-600'
+                  : 'border-[rgba(255,255,255,0.11)] bg-[#e8e0cc] text-[#2E3A56]/85 hover:bg-[#ded6c4]'
+              } disabled:opacity-50`}
+            >
+              {isRecording ? (
+                <Square size={13} strokeWidth={2} fill="currentColor" />
+              ) : (
+                <Mic size={13} strokeWidth={1.5} />
+              )}
+            </button>
+            <button
+              type="submit"
+              disabled={
+                chatInputLocked || !displayValue.trim() || loading || historyLoading || isRecording
+              }
+              className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[7px] bg-[#1e293b] text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+              aria-label={t('chat.send')}
+            >
+              <Send size={13} strokeWidth={1.5} className="text-white" />
+            </button>
+          </>
+        ) : null}
       </form>
     </>
   );
