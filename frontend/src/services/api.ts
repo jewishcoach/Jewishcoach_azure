@@ -11,7 +11,7 @@ type AxiosConfigWithRetry = InternalAxiosRequestConfig & {
   __authRetryDone?: boolean;
 };
 
-type ClerkTokenGetter = () => Promise<string | null>;
+type ClerkTokenGetter = (options?: { skipCache?: boolean }) => Promise<string | null>;
 
 /** Once TLS to api.jewishcoacher.com fails, force all subsequent requests in this tab to *.azurewebsites.net (parallel-safe). */
 let tlsFallbackActiveBase: string | null = null;
@@ -120,9 +120,9 @@ class ApiClient {
     this.clerkGetToken = getToken;
   }
 
-  async refreshAuthToken(): Promise<string | null> {
+  async refreshAuthToken(skipCache = false): Promise<string | null> {
     if (this.clerkGetToken) {
-      const fresh = await this.clerkGetToken();
+      const fresh = await this.clerkGetToken(skipCache ? { skipCache: true } : undefined);
       if (fresh) {
         this.token = fresh;
         return fresh;
@@ -162,7 +162,7 @@ class ApiClient {
         if (!cfg) return Promise.reject(error);
 
         if (error.response?.status === 401 && !cfg.__authRetryDone && this.clerkGetToken) {
-          const fresh = await this.refreshAuthToken();
+          const fresh = await this.refreshAuthToken(true);
           if (fresh) {
             cfg.__authRetryDone = true;
             cfg.headers = cfg.headers ?? {};
@@ -661,13 +661,13 @@ class ApiClient {
 
 export const apiClient = new ApiClient();
 
-/** Refresh Clerk JWT on apiClient; retry once on 401. */
+/** Refresh Clerk JWT on apiClient; retry once on 401 with skipCache. */
 export async function runWithClerkToken<T>(
   getToken: ClerkTokenGetter,
   fn: () => Promise<T>,
 ): Promise<T> {
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    const token = await getToken();
+    const token = await getToken(attempt > 0 ? { skipCache: true } : undefined);
     if (!token) throw new Error('no_auth');
     apiClient.setToken(token);
     try {

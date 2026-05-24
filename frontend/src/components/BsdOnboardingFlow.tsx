@@ -550,6 +550,19 @@ export function BsdOnboardingFlow({
   const openingLangRef = useRef(i18n.language);
   const [bootKey, setBootKey] = useState(0);
 
+  useEffect(() => {
+    apiClient.bindClerkAuth(getToken);
+  }, [getToken]);
+
+  /** Refresh JWT when opening finishes — user often reads 1–2 min before typing their name. */
+  useEffect(() => {
+    if (openingBusy || bootLoading) return;
+    void (async () => {
+      const token = await getToken({ skipCache: true });
+      if (token) apiClient.setToken(token);
+    })();
+  }, [openingBusy, bootLoading, getToken]);
+
   const genderStepDone = Boolean(gender || genderSkipped);
   const prevGenderStepDoneRef = useRef(false);
   useEffect(() => {
@@ -962,7 +975,7 @@ export function BsdOnboardingFlow({
     messages.length > 0 &&
     messages[messages.length - 1]?.role === 'user';
   const showTyping = awaitingCoachReply;
-  const showQuickCards = !intakeComplete && !composerBusy;
+  const showQuickCards = !intakeComplete && !bootLoading && !openingBusy;
   /** Opening asks for name first; gender cards are step 2 only after at least one user reply. */
   const hasUserMessaged = messages.some((m) => m.role === 'user');
   const showGenderPick = hasUserMessaged && !gender && !genderSkipped;
@@ -1102,7 +1115,7 @@ export function BsdOnboardingFlow({
                           icon={GENDER_ICONS[id]}
                           label={t(`bsdOnboarding.gender.${id}`)}
                           selected={false}
-                          disabled={false}
+                          disabled={turnLoading}
                           onClick={() => void sendUserTurn(t(`bsdOnboarding.gender.${id}`), { gender: id })}
                         />
                       ))}
