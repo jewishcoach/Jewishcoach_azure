@@ -7,7 +7,7 @@ const resources = {
     translation: {
       "app.title": "Jewish Coach AI",
       "app.welcome": "Hello",
-      "app.headerTagline": "If heaven is within you, we give you wings.",
+      "app.headerTagline": "If you have the sky, we'll give you wings",
       "app.signOut": "Sign out",
       "chat.placeholder": "Type your message...",
       "chat.formBlocksTyping": "Complete the form above — chat is paused until you send it.",
@@ -262,7 +262,7 @@ const resources = {
       "bsdOnboarding.afterGenderCoach":
         "Great.\n\nIf you'd like, choose one or more focus areas — nothing here locks us into a path; it simply helps me know you a little better. You can also skip and continue without choosing.",
       "bsdOnboarding.chatSection": "Coach conversation",
-      "bsdOnboarding.tagline": "אם יש לך שמיים, נתן לך כנפיים",
+      "bsdOnboarding.tagline": "If you have the sky, we'll give you wings",
       "bsdOnboarding.headlineBefore": "Find your",
       "bsdOnboarding.headlineAccent": "True source",
       "bsdOnboarding.leftSubtitle":
