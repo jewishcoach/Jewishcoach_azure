@@ -1227,12 +1227,12 @@ export function BsdOnboardingFlow({
                   </dl>
                   <div className="mt-5 border-t border-[#E8E0CC]/80 pt-4">
                     <h4
-                      className="text-[13px] font-semibold uppercase tracking-[0.06em] text-[#C9A96E]"
+                      className="text-lg font-semibold text-[#1a1510]"
                       style={{ fontFamily: WORKSPACE_CHAT_FONT }}
                     >
                       {t('bsdOnboarding.summaryPaceTitle')}
                     </h4>
-                    <p className="mt-2 whitespace-pre-line text-[13px] leading-relaxed text-[#393939]/90">
+                    <p className="mt-1 whitespace-pre-line text-[14px] text-[#393939]/80">
                       {t('bsdOnboarding.summaryPaceBody')}
                     </p>
                   </div>
