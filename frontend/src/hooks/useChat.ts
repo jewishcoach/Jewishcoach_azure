@@ -7,12 +7,7 @@ import { apiClient, normalizeConversationId } from '../services/api';
 import { BSD_VERSION, getBsdEndpoint } from '../config';
 import { stripUndefined } from '../utils/messageContent';
 import { getWorkspaceWelcomeMessage, type TraineeGender } from '../utils/welcomeMessage';
-import {
-  WORKSPACE_WELCOME_CHAR_MS,
-  WORKSPACE_WELCOME_CHARS_PER_TICK,
-  revealTypedBlock,
-  sleep,
-} from '../utils/staggeredTyping';
+import { revealTypedBlock, sleep } from '../utils/staggeredTyping';
 
 function isWorkspaceWelcomeOnly(msgs: Message[]): boolean {
   if (msgs.length === 0 || msgs.length > 3) return false;
@@ -79,10 +74,6 @@ export const useChat = (
           if (!ac.signal.aborted) setWelcomeTypingText(partial);
         },
         ac.signal,
-        {
-          charMs: WORKSPACE_WELCOME_CHAR_MS,
-          charsPerTick: WORKSPACE_WELCOME_CHARS_PER_TICK,
-        },
       );
       if (ac.signal.aborted) return;
       setMessages([

@@ -4,10 +4,6 @@ export const STAGGERED_BLOCK_PAUSE_MS = 420;
 export const STAGGERED_CHAR_MS = 26;
 export const STAGGERED_CHARS_PER_TICK = 2;
 
-/** Workspace welcome — one bubble, slightly slower than onboarding blocks. */
-export const WORKSPACE_WELCOME_CHAR_MS = 38;
-export const WORKSPACE_WELCOME_CHARS_PER_TICK = 1;
-
 export type RevealTypedOptions = {
   charMs?: number;
   charsPerTick?: number;
