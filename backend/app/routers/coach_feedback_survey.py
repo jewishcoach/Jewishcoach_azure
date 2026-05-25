@@ -68,7 +68,7 @@ def _validate_responses(responses: dict[str, Any]) -> dict[str, Any]:
     return cleaned
 
 
-@router.post("")
+@router.post("/submit")
 @limiter.limit("10/minute")
 def submit_coach_feedback_survey(
     request: Request,
@@ -86,7 +86,7 @@ def submit_coach_feedback_survey(
     return {"ok": True, "id": row.id}
 
 
-@router.get("")
+@router.get("/submissions")
 def list_coach_feedback_surveys(
     db: Session = Depends(get_db),
     _admin: User = Depends(get_current_admin_user),

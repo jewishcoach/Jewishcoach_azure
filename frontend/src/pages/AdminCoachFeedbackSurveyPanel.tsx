@@ -86,7 +86,13 @@ export const AdminCoachFeedbackSurveyPanel: React.FC = () => {
           <p className="text-sm text-gray-600 mt-1">
             קישור לשיתוף:{' '}
             <code className="rounded bg-gray-100 px-2 py-1 text-xs">
-              {typeof window !== 'undefined' ? `${window.location.origin}/coach-feedback-survey` : '/coach-feedback-survey'}
+              {typeof window !== 'undefined'
+                ? `${window.location.protocol}//${
+                    window.location.hostname === 'jewishcoacher.com'
+                      ? 'www.jewishcoacher.com'
+                      : window.location.hostname
+                  }/coach-feedback-survey`
+                : 'https://www.jewishcoacher.com/coach-feedback-survey'}
             </code>
           </p>
         </div>

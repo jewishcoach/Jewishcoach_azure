@@ -97,7 +97,9 @@ export function CoachFeedbackSurveyPage() {
 
   const shareUrl = useMemo(() => {
     if (typeof window === 'undefined') return '';
-    return `${window.location.origin}/coach-feedback-survey`;
+    const { protocol, hostname } = window.location;
+    const host = hostname === 'jewishcoacher.com' ? 'www.jewishcoacher.com' : hostname;
+    return `${protocol}//${host}/coach-feedback-survey`;
   }, []);
 
   const setChoice = (key: string, value: string) => {
