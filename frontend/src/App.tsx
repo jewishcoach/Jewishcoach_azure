@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { SignedIn, SignedOut, useUser, useClerk, useAuth } from '@clerk/clerk-react';
-import { Shield, LayoutDashboard, MessageCircle, MessageSquarePlus } from 'lucide-react';
+import { Shield, LayoutDashboard, MessageCircle, MessageSquarePlus, Archive } from 'lucide-react';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { BSDWorkspace } from './components/workspace/BSDWorkspace';
 import { LandingPage } from './components/LandingPage';
@@ -28,6 +28,7 @@ type ChatHeaderMobileControlsProps = {
   isChatView: boolean;
   showDashboard: boolean;
   onNewConversation: () => void;
+  onOpenArchive: () => void;
   onToggleDashboard: () => void;
   /** Workspace TOPBAR (Figma BSD frame): slate pills instead of white tiles */
   headerTheme?: 'light' | 'dark';
@@ -38,6 +39,7 @@ function ChatHeaderMobileControls({
   isChatView,
   showDashboard,
   onNewConversation,
+  onOpenArchive,
   onToggleDashboard,
   headerTheme = 'light',
 }: ChatHeaderMobileControlsProps) {
@@ -49,10 +51,32 @@ function ChatHeaderMobileControls({
       ? 'inline-flex flex-col md:flex-row items-center justify-center gap-0.5 md:gap-2 px-1 md:px-4 py-1 md:py-2 rounded-xl border border-white/[0.11] bg-[#1c2333] text-[#e8e4dc] min-h-[52px] min-w-[58px] max-w-[76px] md:max-w-none md:min-h-[44px] md:min-w-0 text-xs md:text-sm font-light hover:bg-[#252d42] transition-colors'
       : 'inline-flex flex-col md:flex-row items-center justify-center gap-0.5 md:gap-2 px-1 md:px-4 py-1 md:py-2 rounded-xl bg-white border border-[#E2E4E8] text-[#2E3A56] shadow-sm hover:bg-[#F4F6F9] hover:border-[#CCD6E0] transition-colors min-h-[52px] min-w-[58px] max-w-[76px] md:max-w-none md:min-h-[44px] md:min-w-0 text-xs md:text-sm font-medium';
 
+  const archiveTile =
+    headerTheme === 'dark'
+      ? `${tile} border border-white/[0.11] bg-[#1c2333] text-[#e8e4dc] hover:bg-[#252d42]`
+      : `${tile} border border-[#E2E4E8] bg-white text-[#2E3A56] shadow-sm hover:bg-[#F4F6F9]`;
+
   return (
     <>
       {isChatView && (
         <>
+          <button
+            type="button"
+            onClick={onOpenArchive}
+            title={t('chat.previousConversationsHint')}
+            aria-label={t('chat.archiveTitle')}
+            className={`${archiveTile} md:hidden`}
+          >
+            <Archive
+              className={`w-[18px] h-[18px] flex-shrink-0 ${headerTheme === 'dark' ? 'text-[#e8e4dc]' : 'text-[#2E3A56]'}`}
+              strokeWidth={2}
+            />
+            <span
+              className={`text-[8px] font-semibold leading-[1.15] text-center px-0.5 ${headerTheme === 'dark' ? 'text-[#e8e4dc]' : 'text-[#2E3A56]'}`}
+            >
+              {t('chat.mobileHeader.archive')}
+            </span>
+          </button>
           <button
             type="button"
             onClick={onNewConversation}
@@ -307,6 +331,7 @@ function SignedInContent() {
             showDashboard={showDashboard}
             headerTheme="dark"
             onNewConversation={() => setWorkspaceNewChatTick((n) => n + 1)}
+            onOpenArchive={() => setArchiveOpen(true)}
             onToggleDashboard={() => {
               setShowDashboard(!showDashboard);
               setShowBilling(false);
@@ -409,6 +434,7 @@ function DemoModeContent() {
             showDashboard={showDashboard}
             headerTheme="dark"
             onNewConversation={() => setWorkspaceNewChatTick((n) => n + 1)}
+            onOpenArchive={() => setArchiveOpen(true)}
             onToggleDashboard={() => {
               setShowDashboard(!showDashboard);
               setShowBilling(false);
