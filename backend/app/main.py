@@ -19,7 +19,6 @@ from .routers import (
     calendar,
     onboarding_email_cron,
     onboarding_intake,
-    coach_feedback_survey,
 )
 from .routers.support_email_inbound import router as support_email_inbound_router
 from .routers.support_user_contact import router as support_user_contact_router
@@ -176,7 +175,7 @@ app.include_router(billing.router)
 app.include_router(profile.router)
 app.include_router(calendar.router)
 app.include_router(onboarding_intake.router)
-app.include_router(coach_feedback_survey.router)
+app.include_router(onboarding_intake.coach_feedback_survey_router)
 
 @app.get("/")
 def root():
