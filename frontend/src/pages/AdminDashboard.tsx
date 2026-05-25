@@ -4,6 +4,7 @@ import { useAuth } from '@clerk/clerk-react';
 import { AdminUsersPanel } from './AdminUsersPanel';
 import { AdminOnboardingEmailPanel } from './AdminOnboardingEmailPanel';
 import { AdminSupportServicePanel } from './AdminSupportServicePanel';
+import { AdminCoachFeedbackSurveyPanel } from './AdminCoachFeedbackSurveyPanel';
 
 interface Flag {
   id: number;
@@ -39,7 +40,7 @@ interface Stats {
 
 export const AdminDashboard: React.FC = () => {
   const { getToken } = useAuth();
-  const [adminTab, setAdminTab] = useState<'flags' | 'users' | 'onboarding-email' | 'support-service'>('flags');
+  const [adminTab, setAdminTab] = useState<'flags' | 'users' | 'onboarding-email' | 'support-service' | 'coach-feedback'>('flags');
   const [flags, setFlags] = useState<Flag[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -182,6 +183,17 @@ export const AdminDashboard: React.FC = () => {
           >
             Customer support
           </button>
+          <button
+            type="button"
+            onClick={() => setAdminTab('coach-feedback')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              adminTab === 'coach-feedback'
+                ? 'bg-slate-800 text-white'
+                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            Coach feedback
+          </button>
         </div>
 
         {adminTab === 'users' ? (
@@ -190,6 +202,8 @@ export const AdminDashboard: React.FC = () => {
           <AdminOnboardingEmailPanel />
         ) : adminTab === 'support-service' ? (
           <AdminSupportServicePanel />
+        ) : adminTab === 'coach-feedback' ? (
+          <AdminCoachFeedbackSurveyPanel />
         ) : (
           <>
         {/* Stats Cards */}

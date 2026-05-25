@@ -401,3 +401,19 @@ class SupportEmailLog(Base):
 
     user = relationship("User", backref="support_email_logs")
 
+
+# ============================================================================
+# COACH FEEDBACK SURVEY (public shareable form for trainer beta feedback)
+# ============================================================================
+
+
+class CoachFeedbackSurveySubmission(Base):
+    """Responses from the public coach feedback survey (תהליך השיבה)."""
+
+    __tablename__ = "coach_feedback_survey_submissions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    respondent_name = Column(String(200), nullable=False)
+    responses = Column(JSON, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False, index=True)
+

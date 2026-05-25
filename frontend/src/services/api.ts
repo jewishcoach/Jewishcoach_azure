@@ -657,6 +657,29 @@ class ApiClient {
       }>;
     };
   }
+
+  /** Public coach feedback survey — no auth required. */
+  async submitCoachFeedbackSurvey(payload: {
+    respondent_name: string;
+    responses: Record<string, string>;
+  }) {
+    const response = await this.client.post('/coach-feedback-survey', payload);
+    return response.data as { ok: boolean; id: number };
+  }
+
+  /** Admin: list coach feedback survey submissions. */
+  async listCoachFeedbackSurveys(params?: { skip?: number; limit?: number }) {
+    const response = await this.client.get('/coach-feedback-survey', { params: params || {} });
+    return response.data as {
+      total: number;
+      items: Array<{
+        id: number;
+        respondent_name: string;
+        responses: Record<string, string>;
+        created_at: string | null;
+      }>;
+    };
+  }
 }
 
 export const apiClient = new ApiClient();
