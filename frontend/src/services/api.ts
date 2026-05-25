@@ -663,13 +663,13 @@ class ApiClient {
     respondent_name: string;
     responses: Record<string, string>;
   }) {
-    const response = await this.client.post('/coach-feedback-survey/submit', payload);
+    const response = await this.client.post('/feedback/coach-survey/submit', payload);
     return response.data as { ok: boolean; id: number };
   }
 
   /** Admin: list coach feedback survey submissions. */
   async listCoachFeedbackSurveys(params?: { skip?: number; limit?: number }) {
-    const response = await this.client.get('/coach-feedback-survey/submissions', { params: params || {} });
+    const response = await this.client.get('/feedback/coach-survey/submissions', { params: params || {} });
     return response.data as {
       total: number;
       items: Array<{

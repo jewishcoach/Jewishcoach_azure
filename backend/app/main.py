@@ -175,7 +175,6 @@ app.include_router(billing.router)
 app.include_router(profile.router)
 app.include_router(calendar.router)
 app.include_router(onboarding_intake.router)
-app.include_router(onboarding_intake.coach_feedback_survey_router)
 
 @app.get("/")
 def root():
