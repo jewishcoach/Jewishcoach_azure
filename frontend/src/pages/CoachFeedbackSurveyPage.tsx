@@ -4,9 +4,15 @@ import { CheckCircle2, Loader2 } from 'lucide-react';
 import {
   COACH_FEEDBACK_SURVEY_INTRO,
   COACH_FEEDBACK_SURVEY_SECTIONS,
+  COACH_FEEDBACK_SURVEY_THANK_YOU,
   COACH_FEEDBACK_SURVEY_TITLE,
+  QUESTION_QUALITY_PROMPT,
+  RECOMMEND_REASON_PROMPT,
   RECOMMEND_TRAINEES_OPTIONS,
+  RECOMMEND_TRAINEES_PROMPT,
   REQUIRED_CHOICE_KEYS,
+  UPGRADE_SUGGESTION_HINT,
+  UPGRADE_SUGGESTION_PROMPT,
   type SurveyQuestion,
 } from '../data/coachFeedbackSurveyQuestions';
 import { apiClient } from '../services/api';
@@ -50,7 +56,13 @@ function ChoiceGroup({
 
   return (
     <fieldset className="space-y-3" disabled={disabled}>
-      <legend className="text-base font-semibold text-[#2E3A56] mb-1">{question.title}</legend>
+      <legend className="text-base font-semibold text-[#2E3A56] mb-1">
+        {question.number != null ? `${question.number}. ` : ''}
+        {question.title}
+      </legend>
+      {question.description && (
+        <p className="text-sm leading-relaxed text-[#4c5a70] -mt-1">{question.description}</p>
+      )}
       <div className="space-y-2">
         {options.map((option) => {
           const checked = value === option.value;
@@ -191,9 +203,8 @@ export function CoachFeedbackSurveyPage() {
         <div className="mx-auto max-w-2xl rounded-2xl border border-[#E2E4E8] bg-white p-8 shadow-sm text-center">
           <CheckCircle2 className="mx-auto mb-4 h-14 w-14 text-[#C9A96E]" />
           <h1 className="text-2xl font-semibold text-[#2E3A56] mb-3">תודה רבה!</h1>
-          <p className="text-[#4c5a70] leading-relaxed">
-            המשוב שלכם נשמר בהצלחה. מספר הגשה: {submittedId}
-          </p>
+          <p className="text-[#4c5a70] leading-relaxed">{COACH_FEEDBACK_SURVEY_THANK_YOU}</p>
+          <p className="text-sm text-[#8b97ae] mt-3">מספר הגשה: {submittedId}</p>
         </div>
       </div>
     );
@@ -246,23 +257,29 @@ export function CoachFeedbackSurveyPage() {
             >
               <h2 className="text-xl font-semibold text-[#2E3A56]">{section.title}</h2>
               {section.questions.map((question) => (
-                <ChoiceGroup
-                  key={question.key}
-                  question={question}
-                  value={form.choices[question.key] ?? ''}
-                  otherValue={form.otherTexts[question.key] ?? ''}
-                  onChange={(value) => setChoice(question.key, value)}
-                  onOtherChange={(value) => setOtherText(question.key, value)}
-                  disabled={submitting}
-                />
+                <div key={question.key} className="space-y-4">
+                  {question.subsection && (
+                    <h3 className="text-lg font-semibold text-[#2E3A56] pt-2 border-t border-[#EEF0F3]">
+                      {question.subsection}
+                    </h3>
+                  )}
+                  <ChoiceGroup
+                    question={question}
+                    value={form.choices[question.key] ?? ''}
+                    otherValue={form.otherTexts[question.key] ?? ''}
+                    onChange={(value) => setChoice(question.key, value)}
+                    onOtherChange={(value) => setOtherText(question.key, value)}
+                    disabled={submitting}
+                  />
+                </div>
               ))}
 
               {section.id === 'experience' && (
                 <div className="space-y-3">
                   <label htmlFor="question-quality" className="block text-base font-semibold text-[#2E3A56]">
-                    איכות השאלות וההכוונה
+                    14. איכות השאלות וההכוונה
                   </label>
-                  <p className="text-sm text-[#4c5a70]">שאלה מצוינת או כזו שפספסה את המטרה?</p>
+                  <p className="text-sm text-[#4c5a70]">{QUESTION_QUALITY_PROMPT}</p>
                   <textarea
                     id="question-quality"
                     value={form.questionQuality}
@@ -281,9 +298,10 @@ export function CoachFeedbackSurveyPage() {
 
             <div className="space-y-3">
               <label htmlFor="upgrade-suggestion" className="block text-base font-semibold text-[#2E3A56]">
-                שאלת שדרוג
+                15. שאלת שדרוג
               </label>
-              <p className="text-sm text-[#4c5a70]">דבר אחד שהיה מקפיץ דרמטית את ערך האפליקציה.</p>
+              <p className="text-sm text-[#4c5a70]">{UPGRADE_SUGGESTION_PROMPT}</p>
+              <p className="text-sm text-[#8b97ae]">{UPGRADE_SUGGESTION_HINT}</p>
               <textarea
                 id="upgrade-suggestion"
                 value={form.upgradeSuggestion}
@@ -297,7 +315,9 @@ export function CoachFeedbackSurveyPage() {
             <ChoiceGroup
               question={{
                 key: 'recommend_trainees',
+                number: 16,
                 title: 'המלצה למתאמנים',
+                description: RECOMMEND_TRAINEES_PROMPT,
                 options: RECOMMEND_TRAINEES_OPTIONS,
                 allowOther: false,
               }}
@@ -310,7 +330,7 @@ export function CoachFeedbackSurveyPage() {
 
             <div className="space-y-3">
               <label htmlFor="recommend-reason" className="block text-base font-semibold text-[#2E3A56]">
-                מדוע?
+                {RECOMMEND_REASON_PROMPT}
               </label>
               <p className="text-sm text-[#4c5a70]">הסבר לתשובת ההמלצה.</p>
               <textarea
