@@ -15,6 +15,7 @@ from .client_safe import client_error_detail
 import json
 import logging
 import os
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -114,6 +115,36 @@ def _extract_email(payload: dict) -> str | None:
 
 
 _CLERK_PRIMARY_EMAIL_CACHE: dict[str, str] = {}
+# clerk_id -> monotonic expiry; skips repeated Clerk API calls after 403/rate-limit/errors.
+_CLERK_NEGATIVE_CACHE: dict[str, float] = {}
+_CLERK_NEGATIVE_TTL_DEFAULT_SEC = 300
+_CLERK_NEGATIVE_TTL_403_SEC = 3600
+
+
+def _clerk_negative_ttl_sec(http_code: int | None) -> float:
+    if http_code == 403:
+        return float(os.getenv("CLERK_NEGATIVE_CACHE_403_SEC", str(_CLERK_NEGATIVE_TTL_403_SEC)))
+    return float(os.getenv("CLERK_NEGATIVE_CACHE_SEC", str(_CLERK_NEGATIVE_TTL_DEFAULT_SEC)))
+
+
+def _clerk_lookup_in_backoff(clerk_id: str) -> bool:
+    expiry = _CLERK_NEGATIVE_CACHE.get(clerk_id)
+    if expiry is None:
+        return False
+    if time.monotonic() < expiry:
+        return True
+    _CLERK_NEGATIVE_CACHE.pop(clerk_id, None)
+    return False
+
+
+def _mark_clerk_lookup_failed(clerk_id: str, http_code: int | None = None) -> None:
+    _CLERK_NEGATIVE_CACHE[clerk_id] = time.monotonic() + _clerk_negative_ttl_sec(http_code)
+
+
+def clear_clerk_email_caches() -> None:
+    """Test helper: reset in-process Clerk email caches."""
+    _CLERK_PRIMARY_EMAIL_CACHE.clear()
+    _CLERK_NEGATIVE_CACHE.clear()
 
 
 def _normalized_email_for_admin_match(email: str | None) -> str | None:
@@ -187,6 +218,8 @@ def _fetch_clerk_primary_email(clerk_id: str) -> str | None:
     """Backend API: needs CLERK_SECRET_KEY (sk_live_ / sk_test_). Cached per process."""
     if clerk_id in _CLERK_PRIMARY_EMAIL_CACHE:
         return _CLERK_PRIMARY_EMAIL_CACHE[clerk_id]
+    if _clerk_lookup_in_backoff(clerk_id):
+        return None
     secret = os.getenv("CLERK_SECRET_KEY", "").strip()
     if not secret or not clerk_id:
         return None
@@ -202,6 +235,7 @@ def _fetch_clerk_primary_email(clerk_id: str) -> str | None:
             detail = e.read().decode(errors="replace")[:400]
         except Exception:
             pass
+        _mark_clerk_lookup_failed(clerk_id, e.code)
         if _verbose_http_logs():
             logger.warning(
                 "Clerk user lookup HTTP %s for clerk user: %s",
@@ -212,16 +246,20 @@ def _fetch_clerk_primary_email(clerk_id: str) -> str | None:
             logger.warning("Clerk user lookup failed with HTTP %s", e.code)
         return None
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, ValueError) as e:
+        _mark_clerk_lookup_failed(clerk_id)
         logger.warning("Clerk user lookup failed: %s", type(e).__name__)
         return None
     if not isinstance(body, dict):
+        _mark_clerk_lookup_failed(clerk_id)
         return None
     chosen = _pick_email_from_clerk_user_body(body)
     if chosen:
         _CLERK_PRIMARY_EMAIL_CACHE[clerk_id] = chosen
+        _CLERK_NEGATIVE_CACHE.pop(clerk_id, None)
         if _verbose_http_logs():
             logger.info("Resolved primary email from Clerk API (clerk user)")
         return chosen
+    _mark_clerk_lookup_failed(clerk_id)
     return None
 
 

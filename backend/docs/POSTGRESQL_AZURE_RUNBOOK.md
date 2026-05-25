@@ -119,11 +119,45 @@ PYTHONPATH=. python3 scripts/sqlite_to_postgres.py -v           # ביצוע
 |--------|-------------|
 | שגיאת SSL | וודאו `sslmode=require` וששרת Postgres מאפשר חיבור מהכתובת שלכם. |
 | Timeout / סירוב חיבור | Firewall של Postgres, או יותר מדי חיבורים — הגדילו SKU או כווננו pool. |
+| `remaining connection slots are reserved for SUPERUSER` | יותר מדי חיבורים מהאפליקציה — הורידו `GUNICORN_WORKERS`, `DB_POOL_SIZE`, `DB_MAX_OVERFLOW`; או שדרגו SKU (ראו סעיף 12). |
 | שגיאות הרשאה | משתמש שגוי או סיסמה לא מקודדת נכון ב־URL. |
 
 ---
 
-## 11. קישורים פנימיים בריפו
+## 12. תקציב חיבורים (Connection budget)
+
+Azure PostgreSQL Flexible Server **Burstable B1ms** מגביל בדרך כלל ל־~50 חיבורים (`max_connections`). חלק מהם שמורים ל־superuser.
+
+**נוסחה מומלצת:**
+
+```text
+GUNICORN_WORKERS × (DB_POOL_SIZE + DB_MAX_OVERFLOW) + מרווח ≥ 15 < max_connections
+```
+
+ברירות מחדל בשירות (לאחר סקריפט `azure_enable_postgres_for_multiuser.sh`):
+
+| משתנה | ערך | הערה |
+|--------|-----|------|
+| `GUNICORN_WORKERS` | 2 | רק עם Postgres (לא SQLite) |
+| `DB_POOL_SIZE` | 3 | לכל worker |
+| `DB_MAX_OVERFLOW` | 5 | בשיא עומס |
+
+→ **2 × (3 + 5) = 16** חיבורים מהאפליקציה — מרווח בטוח ל־B1ms.
+
+**מתי לשדרג SKU:** עומס מקבילי גבוה, שגיאות `connection slots`, או צורך ב־>2 workers — שקלו **Standard_B2s** או **General Purpose** עם `max_connections` גבוה יותר.
+
+```bash
+# דוגמה: שדרוג SKU (דורש חלון תחזוקה קצר)
+az postgres flexible-server update \
+  --resource-group jewish-coach-rg \
+  --name jewishcoach-pg \
+  --sku-name Standard_B2s \
+  --tier Burstable
+```
+
+---
+
+## 13. קישורים פנימיים בריפו
 
 - `scripts/azure_enable_postgres_for_multiuser.sh` — הקמת Postgres + חיבור ל־Web App + workers (יציבות ריבוי משתמשים).
 - `backend/docs/MULTIUSER_SETUP_HE.md` — מדריך בעברית בלי תשתית.

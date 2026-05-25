@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Brain } from 'lucide-react';
 import { useAuth } from '@clerk/clerk-react';
 import { apiClient } from '../../services/api';
+import { INSIGHTS_POLL_INTERVAL_MS, refreshInsightsAuthToken } from '../../constants/insightsPolling';
 import { ReflectionCard } from './ReflectionCard';
 import { GapWidget } from './widgets/GapWidget';
 import { PatternWidget } from './widgets/PatternWidget';
@@ -91,8 +92,7 @@ export const SmartInsightsPanel = ({ conversationId, currentPhase }: SmartInsigh
     
     const fetchInsights = async () => {
       try {
-        const token = await getToken();
-        if (token) apiClient.setToken(token);
+        await refreshInsightsAuthToken(getToken, (t) => apiClient.setToken(t));
         const data = await apiClient.getConversationInsights(conversationId);
         
         // Check if conversation exists
@@ -117,8 +117,7 @@ export const SmartInsightsPanel = ({ conversationId, currentPhase }: SmartInsigh
     };
 
     fetchInsights();
-    // Refresh every 3 seconds while conversation is active
-    interval = setInterval(fetchInsights, 3000);
+    interval = setInterval(fetchInsights, INSIGHTS_POLL_INTERVAL_MS);
     
     return () => {
       if (interval) {

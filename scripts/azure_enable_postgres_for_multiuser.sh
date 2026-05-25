@@ -193,6 +193,8 @@ db_url = os.environ["_JC_DATABASE_URL"]
 payload = [
     {"name": "DATABASE_URL", "value": db_url, "slotSetting": False},
     {"name": "GUNICORN_WORKERS", "value": "2", "slotSetting": False},
+    {"name": "DB_POOL_SIZE", "value": "3", "slotSetting": False},
+    {"name": "DB_MAX_OVERFLOW", "value": "5", "slotSetting": False},
 ]
 with open(path, "w", encoding="utf-8") as f:
     json.dump(payload, f)

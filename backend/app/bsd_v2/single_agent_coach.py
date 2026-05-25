@@ -36,7 +36,12 @@ BSD_DEBUG = os.getenv("BSD_DEBUG", "0").strip() in ("1", "true", "yes")
 # Temporary: set BSD_V2_SAFETY_NET_DISABLED=1 to bypass all Safety Net logic
 SAFETY_NET_DISABLED = os.getenv("BSD_V2_SAFETY_NET_DISABLED", "0").strip() in ("1", "true", "yes")
 
-
+from ..azure_openai_content_filter import (
+    ContentFilterBlockedError,
+    content_filter_user_message,
+    invoke_structured_coach_llm,
+    is_content_filter_error,
+)
 def _bsd_log(tag: str, **kwargs: Any) -> None:
     """Structured log for debugging repetition and stage transitions. Always on."""
     parts = [f"[BSD] {tag}"]
@@ -2472,7 +2477,13 @@ async def handle_conversation(
             method="function_calling",
             include_raw=True,
         )
-        response_dict = await structured_llm.ainvoke(messages)
+        response_dict = await invoke_structured_coach_llm(
+            structured_llm,
+            messages,
+            context=context,
+            system_prompt=system_prompt,
+            language=language,
+        )
         raw_message = response_dict.get("raw")
         raw_text = (raw_message.content if raw_message else "") or ""
         parsed_obj = response_dict.get("parsed")
@@ -2685,6 +2696,9 @@ async def handle_conversation(
 
         return coach_message, state
         
+    except ContentFilterBlockedError:
+        logger.warning("[BSD V2] Content filter blocked coach response after retry")
+        return content_filter_user_message(language), state
     except Exception as e:
         logger.error(f"[BSD V2] Error handling conversation: {e}")
         import traceback
@@ -2701,6 +2715,9 @@ async def handle_conversation(
             if language == "he":
                 return "יש כרגע עומס רגעי במערכת. ננסה שוב בעוד כמה שניות ונמשיך מאותה נקודה.", state
             return "There is temporary load on the model right now. Please retry in a few seconds and we will continue from the same point.", state
+
+        if is_content_filter_error(e):
+            return content_filter_user_message(language), state
 
         # Generic fallback
         if language == "he":

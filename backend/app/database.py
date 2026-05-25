@@ -63,10 +63,12 @@ def _sqlite_engine_kwargs() -> dict:
 
 
 def _postgres_engine_kwargs() -> dict:
+    # Conservative defaults for Azure Flexible Server (B1ms ≈ 50 max_connections):
+    # 2 Gunicorn workers × (pool_size + max_overflow) should stay well under the limit.
     return {
         "pool_pre_ping": True,
-        "pool_size": _int_env("DB_POOL_SIZE", 5, minimum=1),
-        "max_overflow": _int_env("DB_MAX_OVERFLOW", 10, minimum=0),
+        "pool_size": _int_env("DB_POOL_SIZE", 3, minimum=1),
+        "max_overflow": _int_env("DB_MAX_OVERFLOW", 5, minimum=0),
         "pool_timeout": _int_env("DB_POOL_TIMEOUT", 30, minimum=1),
         "pool_recycle": _int_env("DB_POOL_RECYCLE_SEC", 280, minimum=-1),
     }

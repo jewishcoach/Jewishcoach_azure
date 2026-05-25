@@ -4,6 +4,7 @@ import { Sparkles, Archive, MessageSquarePlus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@clerk/clerk-react';
 import { apiClient } from '../../services/api';
+import { INSIGHTS_POLL_INTERVAL_MS, refreshInsightsAuthToken } from '../../constants/insightsPolling';
 import { EnrichmentVideos } from './EnrichmentVideos';
 import { WORKSPACE_CHAT_FONT } from '../../constants/workspaceFonts';
 import { buildActualInsightSections, buildDesiredInsightSections } from '../../utils/formatMezuyDesiredInsights';
@@ -105,8 +106,7 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
     if (wasLoading && !loading && conversationId && isLoaded && isSignedIn) {
       setWasLoading(false);
       (async () => {
-        const token = await getToken();
-        if (token) apiClient.setToken(token);
+        await refreshInsightsAuthToken(getToken, (t) => apiClient.setToken(t));
         try {
           const res = await apiClient.getConversationInsights(conversationId);
           if (res.exists !== false && res.cognitive_data) {
@@ -133,8 +133,7 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
     let interval: NodeJS.Timeout | null = null;
     const fetchData = async () => {
       try {
-        const token = await getToken();
-        if (token) apiClient.setToken(token);
+        await refreshInsightsAuthToken(getToken, (t) => apiClient.setToken(t));
         const res = await apiClient.getConversationInsights(conversationId);
         if (res.exists === false) return;
         const next = res.cognitive_data || {};
@@ -151,7 +150,7 @@ export const HudPanel = memo(({ conversationId, currentPhase = 'S0', loading = f
       }
     };
     fetchData();
-    interval = setInterval(fetchData, 3000);
+    interval = setInterval(fetchData, INSIGHTS_POLL_INTERVAL_MS);
     return () => { if (interval) clearInterval(interval); };
   }, [conversationId, isLoaded, isSignedIn, getToken]);
 

@@ -17,6 +17,7 @@ bind = f"0.0.0.0:{os.getenv('PORT', '8000')}"
 backlog = 2048
 
 # Worker processes - 2 for Azure (avoids OOM on B1/S1); override with GUNICORN_WORKERS.
+# Connection budget (Postgres): workers × (DB_POOL_SIZE + DB_MAX_OVERFLOW) — keep under server max_connections.
 # SQLite file DB + multiple Gunicorn workers often loses writes or shows stale reads on App Service
 # (webhook hits worker A, admin list hits worker B). Postgres can safely use multiple workers.
 _database_url = (os.getenv("DATABASE_URL") or "").lower()  # match app.database._IS_SQLITE
