@@ -58,12 +58,10 @@ def _validate_responses(responses: dict[str, Any]) -> dict[str, Any]:
         else:
             cleaned[key] = value
 
-    for key in _REQUIRED_CHOICE_KEYS:
-        val = cleaned.get(key)
-        if not val or not isinstance(val, str):
-            raise HTTPException(status_code=422, detail=f"Missing required answer: {key}")
-        if val == "other" and not str(cleaned.get(f"{key}_other", "")).strip():
-            raise HTTPException(status_code=422, detail=f"Please specify 'other' for: {key}")
+    for key, val in list(cleaned.items()):
+        if key in _REQUIRED_CHOICE_KEYS and val == "other":
+            if not str(cleaned.get(f"{key}_other", "")).strip():
+                raise HTTPException(status_code=422, detail=f"Please specify 'other' for: {key}")
 
     return cleaned
 

@@ -122,7 +122,6 @@ export function CoachFeedbackSurveyPage() {
 
     for (const key of REQUIRED_CHOICE_KEYS) {
       const choice = form.choices[key];
-      if (!choice) return 'נא לענות על כל שאלות הבחירה.';
       if (choice === 'other' && !form.otherTexts[key]?.trim()) {
         return 'נא לפרט את תשובת "אחר".';
       }
@@ -143,8 +142,10 @@ export function CoachFeedbackSurveyPage() {
 
     const responses: Record<string, string> = {};
     for (const key of REQUIRED_CHOICE_KEYS) {
-      responses[key] = form.choices[key];
-      if (form.choices[key] === 'other') {
+      const choice = form.choices[key];
+      if (!choice) continue;
+      responses[key] = choice;
+      if (choice === 'other') {
         responses[`${key}_other`] = form.otherTexts[key].trim();
       }
     }
