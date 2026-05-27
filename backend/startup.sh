@@ -67,10 +67,10 @@ echo "🐍 Python: $PYTHON"
 # Default billing coupons (BSD100, etc.) — runs once per instance boot before workers fork.
 "$PYTHON" -c "
 from app.database import SessionLocal
-from app.services.coupon_bootstrap import ensure_bsd100_coupon
+from app.services.coupon_bootstrap import ensure_default_coupons
 _db = SessionLocal()
 try:
-    ensure_bsd100_coupon(_db)
+    ensure_default_coupons(_db)
 finally:
     _db.close()
 " 2>&1 || true
@@ -154,6 +154,27 @@ try:
             print('✓ smtp_message_id already present')
 except Exception as e:
     print(f'⚠️  support email column migration: {e}')
+" 2>&1 || true
+
+# Coupons: optional per-code message cap (e.g. SHELA001 → 2000)
+"$PYTHON" -c "
+from app.database import engine
+from sqlalchemy import text, inspect as sa_inspect
+try:
+    insp = sa_inspect(engine)
+    if 'coupons' not in insp.get_table_names():
+        print('⚠️  coupons table missing — bootstrap will create it')
+    else:
+        cols = [c['name'] for c in insp.get_columns('coupons')]
+        if 'messages_limit' not in cols:
+            with engine.connect() as conn:
+                conn.execute(text('ALTER TABLE coupons ADD COLUMN messages_limit INTEGER'))
+                conn.commit()
+            print('✓ Added messages_limit to coupons')
+        else:
+            print('✓ messages_limit already present on coupons')
+except Exception as e:
+    print(f'⚠️  coupons.messages_limit migration: {e}')
 " 2>&1 || true
 
 echo "🚀 Launching Gunicorn..."

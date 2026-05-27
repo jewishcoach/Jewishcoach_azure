@@ -101,9 +101,15 @@ def quota_email_key(email: Optional[str]) -> str:
 
 
 def effective_messages_per_month(
-    *, email: Optional[str], plan_key: str, clerk_id: Optional[str] = None
+    *,
+    email: Optional[str],
+    plan_key: str,
+    clerk_id: Optional[str] = None,
+    coupon_messages_limit: Optional[int] = None,
 ) -> int:
     """Resolved total message quota (all-time user messages). Name kept for API/helpers compatibility."""
+    if coupon_messages_limit is not None:
+        return coupon_messages_limit
     plan_limits = PLAN_LIMITS.get(plan_key, PLAN_LIMITS["basic"])
     plan_cap = plan_limits["messages_per_month"]
     if plan_cap == -1:

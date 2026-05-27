@@ -171,6 +171,8 @@ class Coupon(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     expires_at = Column(DateTime, nullable=True)  # Coupon expiration
     created_at = Column(DateTime, default=utc_now, nullable=False)
+    # When set, caps total user messages for redeemers (overrides plan unlimited tiers).
+    messages_limit = Column(Integer, nullable=True)
     
     # Metadata
     description = Column(Text, nullable=True)  # e.g., "BSD special launch offer"

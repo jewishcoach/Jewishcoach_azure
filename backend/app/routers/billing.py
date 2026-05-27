@@ -112,7 +112,10 @@ def check_usage_limit(db: Session, user: User, usage_type: str = "message") -> b
 
     if usage_type == "message":
         limit = effective_messages_per_month(
-            email=user.email, plan_key=user.current_plan, clerk_id=user.clerk_id
+            email=user.email,
+            plan_key=user.current_plan,
+            clerk_id=user.clerk_id,
+            coupon_messages_limit=active_coupon_messages_limit(db, user),
         )
         if limit == -1:  # Unlimited
             return True
@@ -148,6 +151,14 @@ def get_active_coupon(db: Session, user: User) -> CouponRedemption | None:
         CouponRedemption.is_active == True,
         (CouponRedemption.expires_at.is_(None)) | (CouponRedemption.expires_at > now)
     ).first()
+
+
+def active_coupon_messages_limit(db: Session, user: User) -> int | None:
+    """Per-coupon message cap when set (e.g. SHELA001 → 2000)."""
+    redemption = get_active_coupon(db, user)
+    if not redemption or not redemption.coupon:
+        return None
+    return redemption.coupon.messages_limit
 
 
 def _payme_plan_rank(plan_key: str) -> int:
@@ -385,12 +396,18 @@ def get_billing_overview(
     usage_record = get_or_create_current_usage(db, user)
     plan_limits = PLAN_LIMITS.get(user.current_plan, PLAN_LIMITS["basic"])
     
+    active_coupon = get_active_coupon(db, user)
+    coupon_msg_cap = active_coupon_messages_limit(db, user)
+
     usage = UsageResponse(
         period_start=usage_record.period_start,
         period_end=usage_record.period_end,
         messages_used=count_user_messages_quota_usage(db, user.id),
         messages_limit=effective_messages_per_month(
-            email=user.email, plan_key=user.current_plan, clerk_id=user.clerk_id
+            email=user.email,
+            plan_key=user.current_plan,
+            clerk_id=user.clerk_id,
+            coupon_messages_limit=coupon_msg_cap,
         ),
         speech_minutes_used=usage_record.speech_minutes_used,
         speech_minutes_limit=plan_limits["speech_minutes_per_month"],
@@ -401,9 +418,6 @@ def get_billing_overview(
         PlanInfo(id=plan_id, **PLAN_LIMITS[plan_id])
         for plan_id in BILLING_PLANS_IN_CATALOG
     ]
-    
-    # Check for active coupon
-    active_coupon = get_active_coupon(db, user)
 
     payme_checkout: PayMeCheckoutClientConfig | None = None
     if payme_is_ready_for_requests():
@@ -432,10 +446,10 @@ def redeem_coupon(
     db: Session = Depends(get_db)
 ):
     """Redeem a promotional coupon"""
-    from ..services.coupon_bootstrap import ensure_bsd100_coupon
+    from ..services.coupon_bootstrap import ensure_default_coupons
 
     # Lazily ensure default coupons exist even if worker lifespan missed or table was created late.
-    ensure_bsd100_coupon(db)
+    ensure_default_coupons(db)
 
     code_norm = (request.code or "").strip().upper()
     if not code_norm:
@@ -530,7 +544,10 @@ def get_current_usage(
         period_end=usage_record.period_end,
         messages_used=count_user_messages_quota_usage(db, user.id),
         messages_limit=effective_messages_per_month(
-            email=user.email, plan_key=user.current_plan, clerk_id=user.clerk_id
+            email=user.email,
+            plan_key=user.current_plan,
+            clerk_id=user.clerk_id,
+            coupon_messages_limit=active_coupon_messages_limit(db, user),
         ),
         speech_minutes_used=usage_record.speech_minutes_used,
         speech_minutes_limit=plan_limits["speech_minutes_per_month"],

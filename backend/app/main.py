@@ -50,11 +50,11 @@ async def lifespan(app: FastAPI):
     """Startup/shutdown hooks (runs once per worker process)."""
     try:
         from .database import SessionLocal
-        from .services.coupon_bootstrap import ensure_bsd100_coupon
+        from .services.coupon_bootstrap import ensure_default_coupons
 
         db = SessionLocal()
         try:
-            ensure_bsd100_coupon(db)
+            ensure_default_coupons(db)
         finally:
             db.close()
     except Exception:
