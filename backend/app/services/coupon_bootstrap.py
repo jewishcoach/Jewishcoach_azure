@@ -26,6 +26,9 @@ SHELA000_DESCRIPTION = (
 SHELA001_DESCRIPTION = (
     "Shela offer — Premium features with 2000 message quota"
 )
+NOAM000_DESCRIPTION = (
+    "Noam offer — lifetime Premium access (unlimited messages catalog tier)"
+)
 
 
 @dataclass(frozen=True)
@@ -41,6 +44,7 @@ DEFAULT_COUPONS: tuple[_CouponSpec, ...] = (
     _CouponSpec("BSD100", BSD100_DESCRIPTION),
     _CouponSpec("SHELA000", SHELA000_DESCRIPTION, max_uses=1),
     _CouponSpec("SHELA001", SHELA001_DESCRIPTION, messages_limit=2000, max_uses=1),
+    _CouponSpec("NOAM000", NOAM000_DESCRIPTION, max_uses=1),
 )
 
 # Backward-compatible alias for tests/scripts
