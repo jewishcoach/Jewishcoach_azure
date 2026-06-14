@@ -16,7 +16,7 @@ from app.schemas.billing import effective_messages_per_month
 
 def test_default_coupon_codes():
     codes = {spec.code for spec in DEFAULT_COUPONS}
-    assert codes == {"BSD100", "SHELA000", "SHELA001", "NOAM000"}
+    assert codes == {"BSD100", "SHELA000", "SHELA001", "NOAM000", "EVA000"}
 
 
 def test_shela001_has_2000_message_limit():
@@ -26,7 +26,7 @@ def test_shela001_has_2000_message_limit():
 
 
 def test_single_use_coupons_limited_to_one_global_redemption():
-    for code in ("SHELA000", "SHELA001", "NOAM000"):
+    for code in ("SHELA000", "SHELA001", "NOAM000", "EVA000"):
         assert next(s for s in DEFAULT_COUPONS if s.code == code).max_uses == 1
     assert next(s for s in DEFAULT_COUPONS if s.code == "BSD100").max_uses is None
 
@@ -64,4 +64,4 @@ def test_ensure_default_coupons_iterates_all_specs():
         ensure_default_coupons(db)
     assert mock_ensure.call_count == len(DEFAULT_COUPONS)
     called_codes = {call.args[1].code for call in mock_ensure.call_args_list}
-    assert called_codes == {"BSD100", "SHELA000", "SHELA001", "NOAM000"}
+    assert called_codes == {"BSD100", "SHELA000", "SHELA001", "NOAM000", "EVA000"}
