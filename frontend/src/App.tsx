@@ -491,9 +491,18 @@ function App() {
     return <DemoModeContent />;
   }
 
-  // V2 standalone preview: access via ?v2=1 in URL (no auth required)
+  // V2 mode: access via ?v2=1 in URL — uses Clerk auth (SignedIn/SignedOut)
   if (new URLSearchParams(window.location.search).has('v2')) {
-    return <V2App language="he" />;
+    return (
+      <>
+        <SignedOut>
+          <V2App language="he" />
+        </SignedOut>
+        <SignedIn>
+          <V2App language="he" />
+        </SignedIn>
+      </>
+    );
   }
 
   return (

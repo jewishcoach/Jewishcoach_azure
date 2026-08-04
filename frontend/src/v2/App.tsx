@@ -1,4 +1,5 @@
 import { Heart, Menu } from 'lucide-react';
+import { useAuth } from '@clerk/clerk-react';
 import { MACRO_STAGES } from './types';
 import { useStageFlow } from './hooks/useStageFlow';
 import { JourneySidebar } from './components/JourneySidebar';
@@ -6,12 +7,26 @@ import { ChatScreen } from './screens/ChatScreen';
 import { StageCompleteScreen } from './screens/StageCompleteScreen';
 import { StageIntroScreen } from './screens/StageIntroScreen';
 import { OnboardingScreen } from './screens/OnboardingScreen';
+import { LoginScreen } from './screens/LoginScreen';
 
 interface V2AppProps {
   language?: string;
 }
 
 export function V2App({ language = 'he' }: V2AppProps) {
+  const { isSignedIn, isLoaded } = useAuth();
+
+  if (!isLoaded) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-[#faf8f3]">
+        <div className="h-9 w-9 animate-spin rounded-full border-2 border-teal-500 border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!isSignedIn) {
+    return <LoginScreen />;
+  }
   const {
     flowState,
     messages,

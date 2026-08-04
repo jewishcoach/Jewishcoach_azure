@@ -85,7 +85,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             {EMOTION_OPTIONS.map((emotion) => {
               const isSelected = selectedEmotions.includes(emotion);
               return (
@@ -94,12 +94,12 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
                   type="button"
                   onClick={() => toggleEmotion(emotion)}
                   className={`
-                    py-5 px-4 rounded-3xl border text-base font-medium text-center shadow-sm
+                    py-4 px-4 rounded-xl border text-sm font-medium text-center
                     transition-all duration-200
                     ${
                       isSelected
-                        ? 'border-teal-400 bg-teal-100 text-teal-900'
-                        : 'border-gray-100 bg-white text-gray-700 hover:border-gray-300 hover:shadow-md'
+                        ? 'border-teal-300 bg-teal-50 text-teal-800'
+                        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
                     }
                   `}
                 >
@@ -117,7 +117,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
               באיזה תחום זה מורגש לך הכי הרבה?
             </h2>
 
-            <div className="flex flex-wrap gap-3 justify-center">
+            <div className="grid grid-cols-4 gap-3">
               {DOMAIN_OPTIONS.map((domain) => {
                 const isSelected = selectedDomain === domain;
                 return (
@@ -126,11 +126,11 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
                     type="button"
                     onClick={() => selectDomain(domain)}
                     className={`
-                      px-6 py-3.5 rounded-2xl border text-sm sm:text-base font-medium
+                      py-3.5 px-3 rounded-xl border text-sm font-medium text-center
                       transition-all duration-200
                       ${
                         isSelected
-                          ? 'border-teal-400 bg-teal-100 text-teal-900'
+                          ? 'border-teal-300 bg-teal-50 text-teal-800'
                           : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
                       }
                     `}
@@ -149,9 +149,9 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
             type="button"
             onClick={handleContinue}
             disabled={!canContinue}
-            className="w-full max-w-lg py-5 rounded-full bg-purple-300 text-white font-semibold text-lg
+            className="px-16 py-3.5 rounded-full bg-purple-500 text-white font-semibold text-base
                        disabled:opacity-40 disabled:cursor-not-allowed
-                       hover:bg-purple-400 transition-colors shadow-md"
+                       hover:bg-purple-600 transition-colors"
           >
             המשך לצעד הבא
           </button>
