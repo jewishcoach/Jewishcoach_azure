@@ -13,7 +13,8 @@ import { BillingPage } from './components/BillingPage';
 import { apiClient } from './services/api';
 import './i18n';
 import { isClerkSyntheticEmail } from './lib/clerkEmail';
-import { isClerkUiAdminAllowlisted } from './config';
+import { isClerkUiAdminAllowlisted, UX_V2_ENABLED } from './config';
+import { V2App } from './v2/App';
 import { normalizeTraineeGender } from './utils/welcomeMessage';
 
 // Check if running on tunnel domain (Demo Mode)
@@ -264,6 +265,10 @@ function SignedInContent() {
     );
   }
 
+  if (UX_V2_ENABLED) {
+    return <V2App language={i18n.language} />;
+  }
+
   if (showIntroScreens) {
     return (
       <div className="h-screen flex flex-col bg-[#faf8f3] workspace-root overflow-x-hidden">
@@ -484,6 +489,11 @@ function App() {
 
   if (demoMode) {
     return <DemoModeContent />;
+  }
+
+  // V2 standalone preview: access via ?v2=1 in URL (no auth required)
+  if (new URLSearchParams(window.location.search).has('v2')) {
+    return <V2App language="he" />;
   }
 
   return (

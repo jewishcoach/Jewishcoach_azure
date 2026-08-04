@@ -42,3 +42,5 @@ Example wording (after the bridge above):
 → One loss: “**What else do you lose by holding this stance? Where does it hit you hardest?**”
 
 **Gate:** At least **2 gains and 2 losses** anchored in **stance / reality-perception** (not replacing the focus with pattern-as-topic), including **at least one deepening loss question** as above → transition to **S12**.
+
+**⚡ End of Discovery floor:** S11 is the last step in the Discovery floor. When Gate is satisfied, set `stage_ready_to_complete: true` in `internal_state`. In `coach_message` write a warm summary of what was discovered in this floor (paradigm, stance, trigger, gains and losses) — **no** discovery question at the end. The system will handle the transition to the next floor.

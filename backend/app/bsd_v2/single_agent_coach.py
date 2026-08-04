@@ -2207,6 +2207,19 @@ def build_conversation_context(
                 safe_msg = msg.replace('"', "'")
                 context_parts.append(f"{label}: {safe_msg}")
 
+    # Stage intro context (structured answers from macro-stage entry)
+    stage_intro_ctx = state.get("stage_intro_context", {})
+    current_macro = None
+    from .stage_intro_schema import step_to_macro_stage
+    current_macro = step_to_macro_stage(state.get("current_step", "S0"))
+    intro_ctx_str = stage_intro_ctx.get(current_macro, "") if current_macro else ""
+    if intro_ctx_str:
+        context_parts.append(
+            "\n# תשובות מובנות בכניסה לקומה" if language == "he"
+            else "\n# Structured Entry Answers"
+        )
+        context_parts.append(intro_ctx_str)
+
     # Collected data (non-null only, excluding entities which are shown above)
     collected = {
         k: v for k, v in state['collected_data'].items()

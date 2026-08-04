@@ -54,3 +54,5 @@ When you have 1–2 extra examples, summarize and invite refinement in open form
 “Good that you see it — important step. Now step back to what’s hidden: every pattern has a **paradigm** — automatic thought-behind-action, like autopilot. What is the **‘that’s how it is for me’** from which this pattern comes?” (set `current_step` to `"S9"`).
 
 **Gate:** 1–2 extra examples, pattern summarized, explicit user confirmation → transition to S9.
+
+**⚡ End of Identification floor:** S8 is the last step in the Identification floor. When Gate is satisfied, set `stage_ready_to_complete: true` in `internal_state`. In `coach_message` write a warm summary of what was discovered in this floor (topic, event, emotions, thought, action, gap, pattern) — **no** discovery question at the end. The system will handle the transition to the next floor.

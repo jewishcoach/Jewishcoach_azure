@@ -13,12 +13,20 @@
     },
     "reflection": "משפט פנימי קצר",
     "shehiya_mission_title": null,
-    "shehiya_mission_body": null
+    "shehiya_mission_body": null,
+    "stage_ready_to_complete": false
   }
 }
 ```
 
 (כאשר המערכת מבקשת נקודת תחנה — מלאו את `shehiya_mission_title` ו־`shehiya_mission_body`; אחרת השאירו null. **בתור תחנה:** ב־`coach_message` רק סיכום והפניה לכרטיס המשימה שמתחת לצ'אט — **בלי** שאלת חקירה בסוף שמחכה להקלדה.)
+
+**`stage_ready_to_complete`** — סימן סיום קומה:
+- **true** רק כשתנאי ה-Gate של השלב האחרון בקומה הנוכחית מתקיימים ואתה מוכן לסכם.
+- קומות: זיהוי (S0-S8), גילוי (S9-S11), כמ"ז (S12), בחירה (S13), חזון (S14-S15).
+- כש-true: ב-`coach_message` כתוב סיכום חם של מה שגילינו בקומה הזו — **בלי** שאלת חקירה בסוף.
+- **אל תקדם** את `current_step` מעבר לגבול הקומה — המערכת תנהל את המעבר.
+- בכל תור אחר: false.
 
 
 **חובה:**

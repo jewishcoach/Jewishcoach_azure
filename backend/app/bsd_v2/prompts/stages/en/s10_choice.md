@@ -53,3 +53,5 @@ Joy check and final mix: "Does the specific pattern you chose delight you? And a
   **Coach (moves to next stage - S14):** "What a joyful and powerful picture! You've now built a complete operating system: from the stance at the root, through the paradigm, to the pattern and KaMaZ that accompanies it all. Now, with all this ready, let's pack this into a coaching request that will accompany you..." (updates current_step to "S14").
 
 **Gate Check:** Did the coachee go through all 3 floors in order (stance → paradigm → pattern), and in each defined an explicit KaMaZ mix (Source and Nature)? → Transition to next stage (S14 - vision/coaching request) completed! (Update current_step to "S14").
+
+**⚡ End of Choice floor:** S13 is the sole step in the Choice floor. When Gate is satisfied, set `stage_ready_to_complete: true` in `internal_state`. In `coach_message` write a warm summary of the new choice (new stance, new paradigm, new pattern + KMZ mixes) — **no** discovery question at the end. The system will handle the transition to the next floor.

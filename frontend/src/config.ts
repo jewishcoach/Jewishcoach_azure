@@ -13,6 +13,9 @@
  */
 export const BSD_VERSION = (localStorage.getItem('bsd_version') || 'v2') as 'v1' | 'v2';
 
+/** UX V2: Structured macro-stage flow with intro questions and explicit transitions. */
+export const UX_V2_ENABLED = (localStorage.getItem('ux_v2') || 'false') === 'true';
+
 /** Free (basic) plan total message quota — keep in sync with backend PLAN_LIMITS["basic"].messages_per_month */
 export const BASIC_PLAN_MESSAGES_PER_MONTH = 150;
 
@@ -133,10 +136,18 @@ export function setBsdVersion(version: 'v1' | 'v2') {
   window.location.reload();  // Reload to apply changes
 }
 
+export function setUxV2(enabled: boolean) {
+  localStorage.setItem('ux_v2', enabled ? 'true' : 'false');
+  window.location.reload();
+}
+
 // Export for debugging
 if (import.meta.env.DEV) {
   (window as any).setBsdVersion = setBsdVersion;
+  (window as any).setUxV2 = setUxV2;
   console.log('🔧 [CONFIG] BSD Version:', BSD_VERSION);
+  console.log('🔧 [CONFIG] UX V2:', UX_V2_ENABLED);
   console.log('🔧 [CONFIG] To switch to V1: window.setBsdVersion("v1")');
   console.log('🔧 [CONFIG] To switch to V2: window.setBsdVersion("v2")');
+  console.log('🔧 [CONFIG] To enable UX V2: window.setUxV2(true)');
 }

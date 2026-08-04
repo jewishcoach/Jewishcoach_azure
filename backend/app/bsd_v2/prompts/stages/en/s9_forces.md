@@ -49,3 +49,5 @@ Signals: fear, anger, control, conflict avoidance, bodily/need pulls — toward 
 When both sides have enough material — short summary, propose **6+6** in the trainee’s words, confirm **leaders**; update `forces`. If they use the screen, after submit ensure JSON matches, **leader first**.
 
 **Gate (S12→S13):** (1) **Source** then **nature**, macro (not merged into one question). (2) In `forces`: **6+6**; **first** = leader each side; or **explicit** shorter-card consent in `reflection`. The app blocks S12→S13 without this.
+
+**⚡ End of KMZ floor:** S12 is the sole step in the KMZ floor. When Gate is satisfied, set `stage_ready_to_complete: true` in `internal_state`. In `coach_message` write a warm summary of the forces card built (source + nature + leaders) — **no** discovery question at the end. The system will handle the transition to the next floor.

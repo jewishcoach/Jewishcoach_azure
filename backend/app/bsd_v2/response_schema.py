@@ -149,6 +149,15 @@ class InternalStateSchema(BaseModel):
         default=None,
         description="גוף משימת ההשהיה (2–4 משפטים); null אם אין תחנה בתור זה.",
     )
+    stage_ready_to_complete: bool = Field(
+        default=False,
+        description=(
+            "true רק כשתנאי ה-Gate של השלב האחרון בקומה הנוכחית מתקיימים "
+            "ואתה מוכן לסכם ולסגור את הקומה. "
+            "כש-true: אל תקדם את current_step מעבר לגבול הקומה — המערכת תנהל את המעבר. "
+            "בכל תור אחר false."
+        ),
+    )
     collected_data: CollectedDataSchema = Field(
         default_factory=CollectedDataSchema,
         description="נתונים שנאספו בשלב הנוכחי. עדכן רק שדות רלוונטיים לשלב הנוכחי.",

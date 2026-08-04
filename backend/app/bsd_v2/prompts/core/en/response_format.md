@@ -13,12 +13,20 @@
     },
     "reflection": "short internal note",
     "shehiya_mission_title": null,
-    "shehiya_mission_body": null
+    "shehiya_mission_body": null,
+    "stage_ready_to_complete": false
   }
 }
 ```
 
 (When the system requests a station checkpoint, fill `shehiya_mission_title` and `shehiya_mission_body`; otherwise keep them null.)
+
+**`stage_ready_to_complete`** — floor completion signal:
+- **true** only when the Gate condition of the last step in the current floor is satisfied and you are ready to wrap up.
+- Floors: Identification (S0-S8), Discovery (S9-S11), KMZ (S12), Choice (S13), Vision (S14-S15).
+- When true: in `coach_message` write a warm summary of what was discovered in this floor — **no** discovery question at the end.
+- **Do NOT** advance `current_step` beyond the floor boundary — the system handles the transition.
+- All other turns: false.
 
 **Required:**
 - The entire response is one JSON object. No text before or after.

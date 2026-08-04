@@ -26,6 +26,19 @@ from ..bsd_v2.stage_tool_triggers import resolve_post_turn_tool_call, mark_trait
 from ..bsd_v2.state_schema_v2 import create_initial_state
 from ..bsd_v2.station_checkpoint import ensure_training_started_at, apply_station_intent
 from ..bsd_v2.onboarding_topics_context import inject_onboarding_topics_into_state
+from ..bsd_v2.stage_intro_schema import (
+    MACRO_STAGE_IDS,
+    MACRO_STAGE_END_STEPS,
+    MACRO_STAGE_START_STEPS,
+    get_macro_stage,
+    next_macro_stage,
+    step_to_macro_stage,
+)
+from ..bsd_v2.stage_intro_generator import (
+    generate_stage_intro,
+    generate_stage_summary,
+    format_intro_answers_as_context,
+)
 from ..database import get_db
 from ..limiter import limiter
 from ..models import User, Conversation as ConversationModel, Message
@@ -54,6 +67,7 @@ class ChatResponse(BaseModel):
     saturation_score: float
     tool_call: dict | None = None  # Interactive tool to activate in InsightHub
     station_checkpoint: dict | None = None  # Sticky mission card + Insights (V2 stations)
+    stage_complete: dict | None = None  # Macro-stage completion signal (UX V2)
 
 
 class StationIntentRequest(BaseModel):
@@ -305,6 +319,28 @@ async def send_message_v2(
                 updated_state.get("current_step"),
             )
 
+        # UX V2: detect macro-stage completion signal
+        stage_complete_payload = None
+        ux_v2 = request.headers.get("x-ux-version") == "2"
+        if ux_v2:
+            last_msg = updated_state.get("messages", [{}])[-1] if updated_state.get("messages") else {}
+            last_internal = last_msg.get("internal_state") or {}
+            if last_internal.get("stage_ready_to_complete"):
+                current_step = updated_state.get("current_step", "S0")
+                current_macro_id = step_to_macro_stage(current_step)
+                if current_macro_id:
+                    end_step = MACRO_STAGE_END_STEPS.get(current_macro_id)
+                    step_num = int(current_step.replace("S", ""))
+                    end_num = int(end_step.replace("S", "")) if end_step else -1
+                    if step_num >= end_num:
+                        try:
+                            summary = generate_stage_summary(
+                                updated_state, current_macro_id, body.language
+                            )
+                            stage_complete_payload = summary.model_dump()
+                        except Exception:
+                            logger.exception("[BSD V2 API] Failed to generate stage summary on completion")
+
         response = ChatResponse(
             coach_message=coach_message,
             conversation_id=body.conversation_id,
@@ -312,6 +348,7 @@ async def send_message_v2(
             saturation_score=updated_state["saturation_score"],
             tool_call=tool_call,
             station_checkpoint=station_checkpoint,
+            stage_complete=stage_complete_payload,
         )
         
         api_end = time.time()
@@ -551,4 +588,138 @@ async def get_conversation_insights_v2(
             status_code=500,
             detail=client_error_detail("Unable to load insights", e),
         )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# STAGE INTRO (UX V2 — structured macro-stage transitions)
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+class StageIntroRequest(BaseModel):
+    conversation_id: int
+    target_macro_stage: str = Field(..., description="Target macro-stage id: identification, discovery, kamaz, choice, vision")
+    language: str = "he"
+
+
+class StageIntroAnswerRequest(BaseModel):
+    conversation_id: int
+    macro_stage: str
+    answers: Dict[str, list] = Field(..., description="question_id -> list of selected option_ids")
+    language: str = "he"
+
+
+@router.post("/stage-intro")
+@limiter.limit("20/minute")
+async def get_stage_intro(
+    request: Request,
+    body: StageIntroRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Generate contextual intro questions for the next macro-stage.
+    Called after user sees stage-complete card and taps "Continue".
+
+    Returns LLM-generated questions with contextual answer options.
+    """
+    if body.target_macro_stage not in MACRO_STAGE_IDS:
+        raise HTTPException(status_code=400, detail=f"Invalid macro-stage: {body.target_macro_stage}")
+
+    _get_conversation_or_404(body.conversation_id, current_user.id, db)
+    state = load_v2_state(body.conversation_id, db)
+
+    try:
+        intro_payload = await generate_stage_intro(
+            state=state,
+            target_macro_id=body.target_macro_stage,
+            language=body.language,
+        )
+    except Exception as e:
+        logger.exception("[BSD V2 API] Failed to generate stage intro for %s", body.target_macro_stage)
+        raise HTTPException(
+            status_code=500,
+            detail=client_error_detail("Failed to generate intro questions", e),
+        )
+
+    state["pending_stage_intro"] = intro_payload.model_dump()
+    save_v2_state(body.conversation_id, state, db)
+
+    return intro_payload.model_dump()
+
+
+@router.post("/stage-intro-answers")
+@limiter.limit("20/minute")
+async def submit_stage_intro_answers(
+    request: Request,
+    body: StageIntroAnswerRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Submit user's answers to the structured intro questions.
+    Advances the conversation to the new macro-stage and injects
+    the answers as context for the next free-chat phase.
+    """
+    if body.macro_stage not in MACRO_STAGE_IDS:
+        raise HTTPException(status_code=400, detail=f"Invalid macro-stage: {body.macro_stage}")
+
+    _get_conversation_or_404(body.conversation_id, current_user.id, db)
+    state = load_v2_state(body.conversation_id, db)
+
+    pending = state.get("pending_stage_intro")
+    if not pending:
+        raise HTTPException(status_code=400, detail="No pending stage intro to answer")
+
+    questions = pending.get("questions", [])
+    context_str = format_intro_answers_as_context(
+        answers=body.answers,
+        questions=[q if isinstance(q, dict) else q for q in questions],
+        language=body.language,
+    )
+
+    if "stage_intro_context" not in state:
+        state["stage_intro_context"] = {}
+    state["stage_intro_context"][body.macro_stage] = context_str
+
+    first_step = MACRO_STAGE_START_STEPS.get(body.macro_stage, "S0")
+    state["current_step"] = first_step
+    state["saturation_score"] = 0.0
+
+    state.pop("pending_stage_intro", None)
+
+    save_v2_state(body.conversation_id, state, db)
+
+    return {"ok": True, "stage": body.macro_stage, "current_step": first_step}
+
+
+@router.post("/stage-summary")
+@limiter.limit("20/minute")
+async def get_stage_summary(
+    request: Request,
+    body: StageIntroRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get the summary for a completed macro-stage.
+    Called when stage_complete signal is received, to populate the completion card.
+    (target_macro_stage here means the stage that just completed)
+    """
+    _get_conversation_or_404(body.conversation_id, current_user.id, db)
+    state = load_v2_state(body.conversation_id, db)
+
+    try:
+        summary = generate_stage_summary(
+            state=state,
+            completed_macro_id=body.target_macro_stage,
+            language=body.language,
+        )
+    except Exception as e:
+        logger.exception("[BSD V2 API] Failed to generate stage summary for %s", body.target_macro_stage)
+        raise HTTPException(
+            status_code=500,
+            detail=client_error_detail("Failed to generate stage summary", e),
+        )
+
+    return summary.model_dump()
 

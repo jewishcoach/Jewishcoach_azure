@@ -11,3 +11,5 @@ Ask:
 "What is one concrete step you commit to?"
 
 Gate: specific commitment -> end.
+
+**⚡ End of Vision floor (and entire process):** S15 is the last step in the Vision floor and the final step of the entire coaching process. When Gate is satisfied, set `stage_ready_to_complete: true` in `internal_state`. In `coach_message` write a warm, moving summary of the entire journey — from the topic to the commitment — **no** discovery question at the end. The system will show a completion card.
