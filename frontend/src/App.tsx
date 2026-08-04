@@ -265,10 +265,6 @@ function SignedInContent() {
     );
   }
 
-  if (UX_V2_ENABLED) {
-    return <V2App language={i18n.language} />;
-  }
-
   if (showIntroScreens) {
     return (
       <div className="h-screen flex flex-col bg-[#faf8f3] workspace-root overflow-x-hidden">
@@ -491,18 +487,9 @@ function App() {
     return <DemoModeContent />;
   }
 
-  // V2 mode: access via ?v2=1 in URL — uses Clerk auth (SignedIn/SignedOut)
-  if (new URLSearchParams(window.location.search).has('v2')) {
-    return (
-      <>
-        <SignedOut>
-          <V2App language="he" />
-        </SignedOut>
-        <SignedIn>
-          <V2App language="he" />
-        </SignedIn>
-      </>
-    );
+  // V2 mode: ?v2=1 or localStorage ux_v2=true — V2App handles its own auth
+  if (UX_V2_ENABLED) {
+    return <V2App language="he" />;
   }
 
   return (

@@ -14,6 +14,8 @@
 export const BSD_VERSION = (localStorage.getItem('bsd_version') || 'v2') as 'v1' | 'v2';
 
 /** UX V2: Structured macro-stage flow with intro questions and explicit transitions. */
+const _uxV2Param = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('v2');
+if (_uxV2Param) localStorage.setItem('ux_v2', 'true');
 export const UX_V2_ENABLED = (localStorage.getItem('ux_v2') || 'false') === 'true';
 
 /** Free (basic) plan total message quota — keep in sync with backend PLAN_LIMITS["basic"].messages_per_month */
