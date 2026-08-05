@@ -37,20 +37,22 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle }: ChatScre
   if (isInitialState) {
     return (
       <div className="flex-1 flex flex-col min-h-0 pb-10 lg:pb-0">
-        {/* Stage title — aligned right */}
+        {/* Stage title — centered */}
         {stageTitle && (
-          <div className="pt-8 pe-6">
-            <h2
-              className="text-[40px] text-[#2d4658] text-right"
-              style={{ fontFamily: "'Karantina', cursive", lineHeight: '77px' }}
-            >
-              שלב ראשון - {stageTitle}
-            </h2>
+          <div className="pt-8 flex justify-center">
+            <div className="w-full max-w-[662px]">
+              <h2
+                className="text-[40px] text-[#2d4658] text-right"
+                style={{ fontFamily: "'Karantina', cursive", lineHeight: '77px' }}
+              >
+                שלב ראשון - {stageTitle}
+              </h2>
+            </div>
           </div>
         )}
 
-        {/* Content aligned to end (right in RTL) */}
-        <div className="flex-1 flex flex-col items-end px-6 pt-6">
+        {/* Content centered in main area */}
+        <div className="flex-1 flex flex-col items-center px-6 pt-6">
           <div className="w-full max-w-[662px] space-y-5">
             {/* Coach label */}
             <div className="flex items-center gap-2 justify-end">
@@ -59,16 +61,16 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle }: ChatScre
             </div>
 
             {/* Coach question bubble */}
-            <div className="w-full bg-white rounded-xl py-4 px-3 shadow-[0px_0px_3.35px_rgba(0,0,0,0.08)] flex items-center justify-end">
+            <div className="w-full bg-white rounded-xl py-4 px-4 shadow-[0px_0px_3.35px_rgba(0,0,0,0.08)]">
               <p
-                className="text-base font-semibold text-[#2d4658] text-right w-[373px] leading-[22.5px]"
-                style={{ fontFamily: "'Assistant', sans-serif" }}
+                className="text-base font-semibold text-[#2d4658] text-right leading-[22.5px]"
+                style={{ fontFamily: "'Heebo', sans-serif" }}
               >
                 {messages[0].content}
               </p>
             </div>
 
-            {/* Quick-reply chips — 4 in a row */}
+            {/* Quick-reply chips — single row, equal width, no wrap */}
             {quickReplies && (
               <div className="flex gap-3">
                 {quickReplies.map((reply) => (
@@ -76,9 +78,9 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle }: ChatScre
                     key={reply}
                     type="button"
                     onClick={() => onSend(reply)}
-                    className="flex-1 h-[34px] rounded-xl border border-[#03ffe6] bg-[rgba(3,255,230,0.05)]
-                               text-base font-semibold text-[#2d4658] text-center
-                               hover:bg-[rgba(3,255,230,0.15)] transition-colors"
+                    className="flex-1 min-h-[34px] py-1.5 px-2 rounded-xl border border-[#03ffe6] bg-[rgba(3,255,230,0.05)]
+                               text-sm font-semibold text-[#2d4658] text-center
+                               hover:bg-[rgba(3,255,230,0.15)] transition-colors whitespace-nowrap overflow-hidden text-ellipsis"
                     style={{ fontFamily: "'Assistant', sans-serif" }}
                   >
                     {reply}
@@ -98,14 +100,14 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle }: ChatScre
               >
                 <Send size={16} className="rtl:-scale-x-100" />
               </button>
-              <div className="flex-1 relative">
+              <div className="flex-1">
                 <input
                   type="text"
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                   placeholder="כתוב את תשובתך כאן, או בחר מהאפשרויות למעלה..."
-                  className="w-full px-3 py-3 rounded-xl bg-white text-base text-[#2d4658]
+                  className="w-full px-4 py-3 rounded-xl bg-white text-base text-[#2d4658]
                              placeholder:text-[rgba(45,70,88,0.4)] focus:outline-none
                              shadow-[0px_0px_6.7px_0px_rgba(0,0,0,0.08)] text-right"
                   style={{ fontFamily: "'Heebo', sans-serif" }}
@@ -121,52 +123,56 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle }: ChatScre
   // Regular chat flow
   return (
     <div className="flex-1 flex flex-col min-h-0 pb-10 lg:pb-0">
-      {/* Stage title banner */}
+      {/* Stage title */}
       {stageTitle && (
-        <div className="py-3 pe-6">
-          <h2
-            className="text-[40px] text-[#2d4658] text-right"
-            style={{ fontFamily: "'Karantina', cursive", lineHeight: '77px' }}
-          >
-            שלב ראשון - {stageTitle}
-          </h2>
+        <div className="pt-4 flex justify-center">
+          <div className="w-full max-w-[662px]">
+            <h2
+              className="text-[40px] text-[#2d4658] text-right"
+              style={{ fontFamily: "'Karantina', cursive", lineHeight: '77px' }}
+            >
+              שלב ראשון - {stageTitle}
+            </h2>
+          </div>
         </div>
       )}
 
       {/* Messages area */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4"
+        className="flex-1 overflow-y-auto py-4 flex flex-col items-center"
       >
-        {messages.map((msg, idx) => {
-          const isLastAssistant = showQuickReplies && idx === messages.length - 1 && msg.role === 'assistant';
+        <div className="w-full max-w-[662px] px-4 space-y-4">
+          {messages.map((msg, idx) => {
+            const isLastAssistant = showQuickReplies && idx === messages.length - 1 && msg.role === 'assistant';
 
-          return (
-            <MessageBubble
-              key={msg.id}
-              message={msg}
-              quickReplies={isLastAssistant ? getQuickRepliesForMessage(msg) : undefined}
-              onQuickReply={onSend}
-            />
-          );
-        })}
+            return (
+              <MessageBubble
+                key={msg.id}
+                message={msg}
+                quickReplies={isLastAssistant ? getQuickRepliesForMessage(msg) : undefined}
+                onQuickReply={onSend}
+              />
+            );
+          })}
 
-        {/* Loading indicator */}
-        {isLoading && (
-          <div className="flex flex-col items-end gap-1">
-            <div className="flex items-center gap-1.5 pe-1">
-              <span className="text-xs font-semibold text-[#2d4658]" style={{ fontFamily: "'Heebo', sans-serif" }}>בני</span>
-              <Heart size={12} className="text-[#03ffe6]" />
+          {/* Loading indicator */}
+          {isLoading && (
+            <div className="flex flex-col items-end gap-1">
+              <div className="flex items-center gap-1.5 pe-1">
+                <span className="text-xs font-semibold text-[#2d4658]" style={{ fontFamily: "'Heebo', sans-serif" }}>בני</span>
+                <Heart size={12} className="text-[#03ffe6]" />
+              </div>
+              <div className="px-4 py-3 rounded-xl bg-white text-sm text-gray-400 shadow-[0px_0px_3.35px_rgba(0,0,0,0.08)]">
+                <span className="inline-flex gap-1">
+                  <span className="animate-bounce" style={{ animationDelay: '0ms' }}>.</span>
+                  <span className="animate-bounce" style={{ animationDelay: '150ms' }}>.</span>
+                  <span className="animate-bounce" style={{ animationDelay: '300ms' }}>.</span>
+                </span>
+              </div>
             </div>
-            <div className="px-4 py-3 rounded-xl bg-white text-sm text-gray-400 shadow-[0px_0px_3.35px_rgba(0,0,0,0.08)]">
-              <span className="inline-flex gap-1">
-                <span className="animate-bounce" style={{ animationDelay: '0ms' }}>.</span>
-                <span className="animate-bounce" style={{ animationDelay: '150ms' }}>.</span>
-                <span className="animate-bounce" style={{ animationDelay: '300ms' }}>.</span>
-              </span>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Input bar */}

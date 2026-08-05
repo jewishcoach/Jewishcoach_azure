@@ -75,6 +75,14 @@ export function useStageFlow(language: string = 'he') {
             summary: response.stage_complete as StageSummaryPayload,
           }));
         }
+      } catch (err) {
+        console.error('[V2 Chat] sendMessage error:', err);
+        const errorMsg: ChatMessage = {
+          id: `e-${Date.now()}`,
+          role: 'assistant',
+          content: 'סליחה, משהו השתבש. נסה שוב בבקשה.',
+        };
+        setMessages((prev) => [...prev, errorMsg]);
       } finally {
         setIsLoading(false);
       }
