@@ -1,9 +1,8 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { Heart, Send } from 'lucide-react';
 import type { ChatMessage } from '../types';
 import { MessageBubble } from '../components/MessageBubble';
 import { ChatInput } from '../components/ChatInput';
-import { useState } from 'react';
 
 interface ChatScreenProps {
   messages: ChatMessage[];
@@ -27,7 +26,6 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle }: ChatScre
   const showQuickReplies = lastMessage?.role === 'assistant' && !isLoading;
   const quickReplies = showQuickReplies ? getQuickRepliesForMessage(lastMessage) : undefined;
 
-  // Initial state: only opening message — show centered card layout
   const isInitialState = messages.length === 1 && messages[0]?.role === 'assistant' && messages[0]?.id.startsWith('a-opening-');
 
   const handleSend = () => {
@@ -41,30 +39,36 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle }: ChatScre
       <div className="flex-1 flex flex-col min-h-0 pb-10 lg:pb-0">
         {/* Stage title */}
         {stageTitle && (
-          <div className="py-6 text-center">
-            <h2 className="text-2xl sm:text-3xl font-bold text-teal-800" style={{ fontFamily: "'Karantina', cursive" }}>
+          <div className="py-6 text-end pe-6">
+            <h2
+              className="text-[40px] text-[#2d4658]"
+              style={{ fontFamily: "'Karantina', cursive", lineHeight: '77px' }}
+            >
               שלב ראשון - {stageTitle}
             </h2>
           </div>
         )}
 
-        {/* Centered elements — separate, not in a card */}
+        {/* Centered content */}
         <div className="flex-1 flex flex-col items-center px-4 sm:px-6 pt-4">
-          <div className="w-full max-w-2xl space-y-4">
+          <div className="w-full max-w-[662px] space-y-6">
             {/* Coach label */}
-            <div className="flex items-center gap-1.5 justify-end">
-              <span className="text-sm font-semibold text-teal-700">בני</span>
-              <Heart size={16} className="text-teal-400" />
+            <div className="flex items-center gap-2 justify-end">
+              <span className="text-sm text-[#2d4658]" style={{ fontFamily: "'Heebo', sans-serif" }}>בני</span>
+              <Heart size={16} className="text-[#03ffe6]" />
             </div>
 
             {/* Coach question bubble */}
-            <div className="w-full bg-white rounded-2xl py-5 px-6 shadow-sm">
-              <p className="text-base text-gray-800 text-end leading-relaxed">
+            <div className="w-full bg-white rounded-xl py-5 px-4 shadow-[0px_0px_3.35px_rgba(0,0,0,0.08)]">
+              <p
+                className="text-base text-[#2d4658] text-end leading-[22.75px]"
+                style={{ fontFamily: "'Heebo', sans-serif" }}
+              >
                 {messages[0].content}
               </p>
             </div>
 
-            {/* Quick-reply chips — 4 in a row, equal width */}
+            {/* Quick-reply chips */}
             {quickReplies && (
               <div className="grid grid-cols-4 gap-3">
                 {quickReplies.map((reply) => (
@@ -72,34 +76,42 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle }: ChatScre
                     key={reply}
                     type="button"
                     onClick={() => onSend(reply)}
-                    className="py-3 px-2 rounded-2xl border border-teal-200 bg-teal-50/50 text-sm text-teal-800
-                               hover:bg-teal-100 hover:border-teal-300 transition-colors text-center"
+                    className="py-3 px-2 rounded-xl border border-[#d2d2d2] bg-[rgba(255,255,255,0.3)]
+                               text-sm text-[#2d4658] hover:border-[#04c4b1] hover:bg-[rgba(3,255,230,0.1)]
+                               transition-colors text-center"
+                    style={{ fontFamily: "'Heebo', sans-serif" }}
                   >
                     {reply}
                   </button>
                 ))}
               </div>
             )}
+          </div>
+        </div>
 
-            {/* Input row — send on left (start), input on right */}
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={handleSend}
-                disabled={isLoading || !inputText.trim()}
-                className="flex-shrink-0 w-10 h-10 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center
-                           disabled:opacity-40 hover:bg-teal-200 transition-colors"
-              >
-                <Send size={18} className="rtl:-scale-x-100" />
-              </button>
+        {/* Input bar */}
+        <div className="bg-white p-3 flex items-center justify-center">
+          <div className="flex items-center gap-3 w-full max-w-[663px]">
+            <button
+              type="button"
+              onClick={handleSend}
+              disabled={isLoading || !inputText.trim()}
+              className="flex-shrink-0 w-10 h-10 rounded-xl bg-[#03ffe6] text-[#2d4658] flex items-center justify-center
+                         disabled:opacity-40 hover:bg-[#02e6d0] transition-colors"
+            >
+              <Send size={16} className="rtl:-scale-x-100" />
+            </button>
+            <div className="flex-1 relative">
               <input
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                 placeholder="כתוב את תשובתך כאן, או בחר מהאפשרויות למעלה..."
-                className="flex-1 px-5 py-3 rounded-full border border-gray-200 bg-white text-sm text-gray-700
-                           placeholder:text-gray-400 focus:outline-none focus:border-teal-400"
+                className="w-full px-4 py-3 rounded-xl border border-[#03ffe6] bg-white text-base text-[#2d4658]
+                           placeholder:text-[rgba(45,70,88,0.4)] focus:outline-none
+                           shadow-[0px_0px_6.7px_0px_rgba(0,0,0,0.08)] text-end"
+                style={{ fontFamily: "'Heebo', sans-serif" }}
               />
             </div>
           </div>
@@ -108,13 +120,16 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle }: ChatScre
     );
   }
 
-  // Regular chat flow (after user responds)
+  // Regular chat flow
   return (
     <div className="flex-1 flex flex-col min-h-0 pb-10 lg:pb-0">
       {/* Stage title banner */}
       {stageTitle && (
         <div className="py-3 border-b border-gray-100 bg-white/60">
-          <h2 className="text-xl sm:text-2xl font-bold text-teal-800 text-center" style={{ fontFamily: "'Karantina', cursive" }}>
+          <h2
+            className="text-[40px] text-[#2d4658] text-center"
+            style={{ fontFamily: "'Karantina', cursive", lineHeight: '77px' }}
+          >
             שלב ראשון - {stageTitle}
           </h2>
         </div>
@@ -142,10 +157,10 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle }: ChatScre
         {isLoading && (
           <div className="flex flex-col items-end gap-1">
             <div className="flex items-center gap-1.5 pe-1">
-              <span className="text-xs font-semibold text-teal-700">בני</span>
-              <Heart size={12} className="text-teal-500 fill-teal-500" />
+              <span className="text-xs font-semibold text-[#2d4658]" style={{ fontFamily: "'Heebo', sans-serif" }}>בני</span>
+              <Heart size={12} className="text-[#03ffe6]" />
             </div>
-            <div className="px-4 py-3 rounded-2xl rounded-ee-sm bg-white border border-gray-200 text-sm text-gray-400 shadow-sm">
+            <div className="px-4 py-3 rounded-xl bg-white border border-gray-200 text-sm text-gray-400 shadow-[0px_0px_3.35px_rgba(0,0,0,0.08)]">
               <span className="inline-flex gap-1">
                 <span className="animate-bounce" style={{ animationDelay: '0ms' }}>.</span>
                 <span className="animate-bounce" style={{ animationDelay: '150ms' }}>.</span>

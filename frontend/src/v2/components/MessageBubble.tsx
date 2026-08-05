@@ -13,28 +13,33 @@ export function MessageBubble({ message, quickReplies, onQuickReply }: MessageBu
   if (isUser) {
     return (
       <div className="flex justify-start">
-        <div className="max-w-[75%] px-4 py-3 rounded-2xl rounded-es-sm bg-teal-500 text-white text-sm leading-relaxed shadow-sm">
+        <div
+          className="max-w-[75%] px-4 py-3 rounded-xl bg-[#03ffe6] text-[#2d4658] text-base leading-[22.75px] shadow-sm"
+          style={{ fontFamily: "'Heebo', sans-serif" }}
+        >
           {message.content}
         </div>
       </div>
     );
   }
 
-  // Coach (assistant) message
   return (
     <div className="flex flex-col items-end gap-1">
       {/* Coach label */}
       <div className="flex items-center gap-1.5 pe-1">
-        <span className="text-xs font-semibold text-teal-700">בני</span>
-        <Heart size={12} className="text-teal-500 fill-teal-500" />
+        <span className="text-sm text-[#2d4658]" style={{ fontFamily: "'Heebo', sans-serif" }}>בני</span>
+        <Heart size={14} className="text-[#03ffe6]" />
       </div>
 
       {/* Message bubble */}
-      <div className="max-w-[75%] px-4 py-3 rounded-2xl rounded-ee-sm bg-white border border-gray-200 text-sm leading-relaxed text-gray-800 shadow-sm">
+      <div
+        className="max-w-[75%] px-4 py-3 rounded-xl bg-white text-base leading-[22.75px] text-[#2d4658] shadow-[0px_0px_3.35px_rgba(0,0,0,0.08)]"
+        style={{ fontFamily: "'Heebo', sans-serif" }}
+      >
         {message.content}
       </div>
 
-      {/* Quick-reply chips (shown below the coach message) */}
+      {/* Quick-reply chips */}
       {quickReplies && quickReplies.length > 0 && (
         <div className="flex flex-wrap gap-2 mt-2 justify-end max-w-[90%]">
           {quickReplies.map((reply) => (
@@ -42,8 +47,10 @@ export function MessageBubble({ message, quickReplies, onQuickReply }: MessageBu
               key={reply}
               type="button"
               onClick={() => onQuickReply?.(reply)}
-              className="px-4 py-2 rounded-full border border-teal-400 text-sm text-teal-700
-                         bg-white hover:bg-teal-50 hover:border-teal-500 transition-colors"
+              className="px-4 py-2 rounded-xl border border-[#d2d2d2] text-sm text-[#2d4658]
+                         bg-[rgba(255,255,255,0.3)] hover:border-[#04c4b1] hover:bg-[rgba(3,255,230,0.1)]
+                         transition-colors"
+              style={{ fontFamily: "'Heebo', sans-serif" }}
             >
               {reply}
             </button>

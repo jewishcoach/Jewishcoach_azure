@@ -7,8 +7,8 @@ interface OnboardingScreenProps {
 const EMOTION_OPTIONS = [
   'אני מרגיש תקוע',
   'אני מרגיש מבולבל',
-  'אני מרגיש רחוק מעצמי',
   'אני מרגיש שחוק',
+  'אני מרגיש רחוק מעצמי',
   'אני מרגיש שאני לא ממש את עצמי',
   'אני מרגיש שאני מגיב במקום לבחור',
   'אני מרגיש שהחיים שלי יכולים להיות אחרת',
@@ -54,13 +54,19 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="max-w-3xl mx-auto px-6 py-10 sm:py-14 space-y-10">
+      <div className="max-w-[832px] mx-auto px-6 py-10 sm:py-14 space-y-10">
         {/* Heading */}
         <div className="text-center space-y-3">
-          <h1 className="text-4xl sm:text-5xl font-bold text-teal-800 leading-snug" style={{ fontFamily: "'Karantina', cursive" }}>
+          <h1
+            className="text-[40px] text-[#2d4658] leading-[77px]"
+            style={{ fontFamily: "'Karantina', cursive" }}
+          >
             בוא נפגוש את המקום שבו אתה נמצא היום.
           </h1>
-          <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
+          <p
+            className="text-base text-[#2d4658] leading-[29px]"
+            style={{ fontFamily: "'Heebo', sans-serif" }}
+          >
             לפעמים אנחנו רצים כל כך מהר, שאנחנו כבר לא שמים לב למה שעובר עלינו.
             <br />
             לפני שנחפש לאן ללכת, נעצור לרגע ונראה איפה אנחנו נמצאים.
@@ -69,23 +75,32 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
 
         {/* Helper chip */}
         <div className="flex justify-center">
-          <div className="px-6 py-3 rounded-full border border-gray-300 text-gray-600 text-sm">
+          <div
+            className="px-6 py-3 rounded-xl border border-[#01897b] text-[#2d4658] text-lg"
+            style={{ fontFamily: "'Heebo', sans-serif" }}
+          >
             למה מתחילים מהמקום שבו אני נמצא?
           </div>
         </div>
 
-        {/* Emotions section (always visible) */}
-        <div className="space-y-3">
-          <div className="text-center space-y-1.5">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-800">
+        {/* Emotions section */}
+        <div className="space-y-6">
+          <div className="text-end space-y-1">
+            <h2
+              className="text-[25px] font-semibold text-[#2d4658] tracking-[-1px]"
+              style={{ fontFamily: "'Heebo', sans-serif" }}
+            >
               מה הכי מתאר את מה שאתה מרגיש בתקופה הזו?
             </h2>
-            <p className="text-sm text-gray-500">
+            <p
+              className="text-base text-[#2d4658]"
+              style={{ fontFamily: "'Heebo', sans-serif" }}
+            >
               אין צורך לדייק עכשיו. מספיק לבחור את מה שהכי קרוב למה שאתה מרגיש
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             {EMOTION_OPTIONS.map((emotion) => {
               const isSelected = selectedEmotions.includes(emotion);
               return (
@@ -94,14 +109,15 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
                   type="button"
                   onClick={() => toggleEmotion(emotion)}
                   className={`
-                    py-4 px-4 rounded-xl border text-sm font-medium text-center
+                    h-[68px] px-6 rounded-xl border text-base text-center
                     transition-all duration-200
                     ${
                       isSelected
-                        ? 'border-teal-300 bg-teal-50 text-teal-800'
-                        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                        ? 'border-[#04c4b1] bg-[rgba(3,255,230,0.3)] text-[#2d4658]'
+                        : 'border-[#d2d2d2] bg-[rgba(255,255,255,0.3)] text-[#2d4658] hover:border-[#04c4b1]'
                     }
                   `}
+                  style={{ fontFamily: "'Heebo', sans-serif" }}
                 >
                   {emotion}
                 </button>
@@ -110,10 +126,13 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
           </div>
         </div>
 
-        {/* Domain section — appears after clicking continue on step 1 */}
+        {/* Domain section */}
         {step === 2 && (
-          <div className="space-y-3 animate-[fadeIn_0.3s_ease-out]">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-800 text-center">
+          <div className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
+            <h2
+              className="text-[25px] font-semibold text-[#2d4658] text-end tracking-[-1px]"
+              style={{ fontFamily: "'Heebo', sans-serif" }}
+            >
               באיזה תחום זה מורגש לך הכי הרבה?
             </h2>
 
@@ -126,14 +145,15 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
                     type="button"
                     onClick={() => selectDomain(domain)}
                     className={`
-                      py-3.5 px-3 rounded-xl border text-sm font-medium text-center
+                      h-[68px] px-3 rounded-xl border text-base text-center
                       transition-all duration-200
                       ${
                         isSelected
-                          ? 'border-teal-300 bg-teal-50 text-teal-800'
-                          : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                          ? 'border-[#04c4b1] bg-[rgba(3,255,230,0.3)] text-[#2d4658]'
+                          : 'border-[#d2d2d2] bg-[rgba(255,255,255,0.3)] text-[#2d4658] hover:border-[#04c4b1]'
                       }
                     `}
+                    style={{ fontFamily: "'Heebo', sans-serif" }}
                   >
                     {domain}
                   </button>
@@ -143,21 +163,29 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
           </div>
         )}
 
-        {/* Continue button + footer */}
+        {/* Continue button */}
         <div className="flex justify-center pt-2">
           <button
             type="button"
             onClick={handleContinue}
             disabled={!canContinue}
-            className="px-16 py-3.5 rounded-full bg-purple-500 text-white font-semibold text-base
-                       disabled:opacity-40 disabled:cursor-not-allowed
-                       hover:bg-purple-600 transition-colors"
+            className={`
+              w-[239px] h-[53px] rounded-xl text-base font-normal
+              drop-shadow-[0px_8px_2.9px_rgba(0,0,0,0.12)]
+              transition-colors
+              ${
+                canContinue
+                  ? 'bg-[#9747ff] text-white hover:bg-[#8035e6]'
+                  : 'bg-[#d9d9d9] text-[#999] cursor-not-allowed'
+              }
+            `}
+            style={{ fontFamily: "'Heebo', sans-serif" }}
           >
             המשך לצעד הבא
           </button>
         </div>
 
-        <p className="text-center text-sm text-gray-500">
+        <p className="text-center text-sm text-[#2d4658]" style={{ fontFamily: "'Heebo', sans-serif" }}>
           עצם זה שעצרת לרגע והתבוננת, כבר יוצר תנועה חדשה.
         </p>
       </div>

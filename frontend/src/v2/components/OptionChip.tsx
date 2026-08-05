@@ -11,13 +11,14 @@ export function OptionChip({ label, emoji, selected, onToggle }: OptionChipProps
       type="button"
       onClick={onToggle}
       className={`
-        px-4 py-3 rounded-2xl border-2 text-sm font-medium transition-all duration-200
+        px-4 py-3 rounded-xl border text-base transition-all duration-200
         ${
           selected
-            ? 'border-teal-400 bg-teal-50 text-teal-800 shadow-sm'
-            : 'border-gray-200 bg-white text-gray-700 hover:border-teal-200 hover:bg-teal-50/30'
+            ? 'border-[#04c4b1] bg-[rgba(3,255,230,0.3)] text-[#2d4658]'
+            : 'border-[#d2d2d2] bg-[rgba(255,255,255,0.3)] text-[#2d4658] hover:border-[#04c4b1]'
         }
       `}
+      style={{ fontFamily: "'Heebo', sans-serif" }}
     >
       {emoji && <span className="me-1.5">{emoji}</span>}
       {label}

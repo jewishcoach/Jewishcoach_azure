@@ -18,8 +18,8 @@ export function V2App({ language = 'he' }: V2AppProps) {
 
   if (!isLoaded) {
     return (
-      <div className="h-screen flex items-center justify-center bg-[#faf8f3]">
-        <div className="h-9 w-9 animate-spin rounded-full border-2 border-teal-500 border-t-transparent" />
+      <div className="h-screen flex items-center justify-center bg-[#f6f4f0]">
+        <div className="h-9 w-9 animate-spin rounded-full border-2 border-[#03ffe6] border-t-transparent" />
       </div>
     );
   }
@@ -50,30 +50,34 @@ export function V2App({ language = 'he' }: V2AppProps) {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-[#faf8f3]" dir={isHe ? 'rtl' : 'ltr'}>
-      {/* Header — dark background like Figma */}
-      <header className="h-14 sm:h-16 flex items-center justify-between px-4 sm:px-6 bg-slate-800 flex-shrink-0">
+    <div className="h-screen flex flex-col bg-[#f6f4f0]" dir={isHe ? 'rtl' : 'ltr'}>
+      {/* Header */}
+      <header className="h-[64px] sm:h-[80px] flex items-center justify-between px-6 sm:px-9 bg-[#2d4658] flex-shrink-0">
         {/* START side (visually RIGHT in RTL): hamburger + avatar + name */}
-        <div className="flex items-center gap-3">
-          <button type="button" className="p-1.5 rounded-lg hover:bg-slate-700 transition-colors">
-            <Menu size={20} className="text-gray-300" />
+        <div className="flex items-center gap-4">
+          <button type="button" className="p-2 rounded-lg hover:bg-white/10 transition-colors">
+            <Menu size={24} className="text-gray-300" />
           </button>
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-teal-600 flex items-center justify-center overflow-hidden">
-            <span className="text-white text-xs sm:text-sm font-bold">
-              {isHe ? 'א' : 'E'}
+          <div className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-white/10 transition-colors cursor-pointer">
+            <div className="w-8 h-8 rounded-full bg-teal-600 flex items-center justify-center overflow-hidden">
+              <span className="text-white text-xs font-bold">
+                {isHe ? 'א' : 'E'}
+              </span>
+            </div>
+            <span className="text-base font-medium text-[#03ffe6]" style={{ fontFamily: "'Heebo', sans-serif" }}>
+              {isHe ? 'אלי' : 'Eli'}
             </span>
           </div>
-          <span className="text-sm font-medium text-white">
-            {isHe ? 'אלי' : 'Eli'}
-          </span>
         </div>
 
-        {/* END side (visually LEFT in RTL): branding text + heart */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs sm:text-sm font-medium text-teal-300">
+        {/* END side (visually LEFT in RTL): branding text + icon */}
+        <div className="flex items-center gap-3">
+          <span className="text-sm sm:text-base font-medium text-[#03ffe6]" style={{ fontFamily: "'Heebo', sans-serif" }}>
             {isHe ? 'בני כאן בשבילך, בכל שלב במסע' : 'Benny is here for you, every step of the way'}
           </span>
-          <Heart size={18} className="text-teal-400 fill-teal-400" />
+          <div className="w-10 h-10 rounded bg-[rgba(151,71,255,0.33)] flex items-center justify-center">
+            <Heart size={20} className="text-[#03ffe6]" />
+          </div>
         </div>
       </header>
 
@@ -111,8 +115,8 @@ export function V2App({ language = 'he' }: V2AppProps) {
           {flowState.phase === 'loading_intro' && (
             <div className="flex-1 flex items-center justify-center animate-[fadeIn_0.3s_ease-out]">
               <div className="text-center space-y-3">
-                <div className="animate-spin w-8 h-8 border-3 border-teal-400 border-t-transparent rounded-full mx-auto" />
-                <p className="text-sm text-gray-500">
+                <div className="animate-spin w-8 h-8 border-3 border-[#03ffe6] border-t-transparent rounded-full mx-auto" />
+                <p className="text-sm text-[#2d4658]" style={{ fontFamily: "'Heebo', sans-serif" }}>
                   {isHe ? 'מכין את השלב הבא...' : 'Preparing next stage...'}
                 </p>
               </div>
@@ -131,7 +135,7 @@ export function V2App({ language = 'he' }: V2AppProps) {
 
           {flowState.phase === 'submitting_answers' && (
             <div className="flex-1 flex items-center justify-center animate-[fadeIn_0.3s_ease-out]">
-              <div className="animate-spin w-8 h-8 border-3 border-teal-400 border-t-transparent rounded-full" />
+              <div className="animate-spin w-8 h-8 border-3 border-[#03ffe6] border-t-transparent rounded-full" />
             </div>
           )}
         </main>

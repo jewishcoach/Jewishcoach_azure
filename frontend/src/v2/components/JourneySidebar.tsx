@@ -1,5 +1,6 @@
 import { Heart, Lightbulb, Sparkles } from 'lucide-react';
 import { MACRO_STAGES } from '../types';
+import { useState } from 'react';
 
 interface JourneySidebarProps {
   currentMacroStage: string;
@@ -9,68 +10,108 @@ interface JourneySidebarProps {
 export function JourneySidebar({ currentMacroStage, language }: JourneySidebarProps) {
   const isHe = language.startsWith('he');
   const currentIdx = MACRO_STAGES.findIndex((s) => s.id === currentMacroStage);
+  const [activeTab, setActiveTab] = useState<'journey' | 'insights'>('journey');
 
   return (
     <>
-      {/* Desktop sidebar — dark background, right side (start in RTL) */}
-      <aside className="w-[280px] bg-slate-700 hidden lg:flex lg:flex-col flex-shrink-0 order-first">
+      {/* Desktop sidebar */}
+      <aside className="w-[330px] bg-[#3c5465] hidden lg:flex lg:flex-col flex-shrink-0 order-first">
+        {/* Tabs */}
+        <div className="flex border-b border-[#4a4440]">
+          <button
+            type="button"
+            onClick={() => setActiveTab('insights')}
+            className={`flex-1 flex flex-col items-center gap-2 py-4 text-xs font-semibold transition-colors
+              ${activeTab === 'insights' ? 'text-[#03ffe6]' : 'text-[rgba(3,255,230,0.4)]'}`}
+            style={{ fontFamily: "'Heebo', sans-serif" }}
+          >
+            <Lightbulb size={20} />
+            <span>{isHe ? 'התובנות שלי (7)' : 'My Insights (7)'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('journey')}
+            className={`flex-1 flex flex-col items-center gap-2 py-4 text-xs font-semibold transition-colors relative
+              ${activeTab === 'journey' ? 'text-[#03ffe6] bg-[#2d4658]' : 'text-[rgba(3,255,230,0.4)]'}`}
+            style={{ fontFamily: "'Heebo', sans-serif" }}
+          >
+            <Sparkles size={20} />
+            <span>{isHe ? 'המסע שלי' : 'My Journey'}</span>
+            {activeTab === 'journey' && (
+              <div className="absolute bottom-0 inset-x-0 h-0.5 bg-[#03ffe6]" />
+            )}
+          </button>
+        </div>
+
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-5 space-y-6">
-          {/* Section title */}
-          <h3 className="text-sm font-bold text-teal-300">
-            {isHe ? 'איפה אני במסע' : 'Where am I'}
+          {activeTab === 'journey' && (
+            <>
+              {/* Section title */}
+              <div className="flex items-center justify-center h-[50px]">
+                <h3 className="text-base font-semibold text-[#03ffe6]" style={{ fontFamily: "'Heebo', sans-serif" }}>
+                  {isHe ? 'איפה אני במסע' : 'Where am I'}
+                </h3>
+              </div>
+
+              {/* Stage list */}
+              <div className="space-y-6">
+                {MACRO_STAGES.map((stage, idx) => {
+                  const isActive = idx === currentIdx;
+                  const isCompleted = idx < currentIdx;
+                  const isFuture = idx > currentIdx;
+
+                  return (
+                    <div
+                      key={stage.id}
+                      className={`flex items-center gap-6 justify-end pe-7 ${isFuture ? 'opacity-50' : ''}`}
+                    >
+                      {/* Stage text */}
+                      <div className="flex-1 min-w-0 text-end">
+                        <p
+                          className="text-sm font-semibold text-[#03ffe6]"
+                          style={{ fontFamily: "'Heebo', sans-serif" }}
+                        >
+                          {isHe ? stage.title_he : stage.title_en}
+                        </p>
+                        <p
+                          className="text-xs mt-0.5 text-white"
+                          style={{ fontFamily: "'Heebo', sans-serif" }}
+                        >
+                          {isHe ? stage.description_he : stage.description_en}
+                        </p>
+                      </div>
+
+                      {/* Circle */}
+                      <div
+                        className={`
+                          w-6 h-6 rounded-full flex-shrink-0
+                          ${isCompleted ? 'bg-[#03ffe6]' : ''}
+                          ${isActive ? 'bg-[#03ffe6] ring-4 ring-[#01897b]' : ''}
+                          ${isFuture ? 'bg-[#03ffe6]' : ''}
+                        `}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Bottom stats section */}
+        <div className="border-t border-[rgba(3,255,230,0.47)] p-5 pt-8 space-y-6">
+          <h3 className="text-sm font-semibold text-[#03ffe6] text-end pe-2" style={{ fontFamily: "'Heebo', sans-serif" }}>
+            {isHe ? 'מה שגיליתי בדרך' : 'What I discovered'}
           </h3>
-
-          {/* Stage list */}
-          <div className="space-y-5">
-            {MACRO_STAGES.map((stage, idx) => {
-              const isActive = idx === currentIdx;
-              const isCompleted = idx < currentIdx;
-              const isFuture = idx > currentIdx;
-
-              return (
-                <div key={stage.id} className="flex items-start gap-3">
-                  {/* Stage text (right side in RTL) */}
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-semibold ${isActive || isCompleted ? 'text-white' : 'text-gray-400'}`}>
-                      {isHe ? stage.title_he : stage.title_en}
-                    </p>
-                    <p className={`text-xs mt-0.5 ${isActive || isCompleted ? 'text-gray-300' : 'text-gray-500'}`}>
-                      {isHe ? stage.description_he : stage.description_en}
-                    </p>
-                  </div>
-
-                  {/* Circle (left side in RTL = end) */}
-                  <div
-                    className={`
-                      w-7 h-7 rounded-full flex-shrink-0 mt-0.5
-                      ${isCompleted ? 'bg-teal-400' : ''}
-                      ${isActive ? 'bg-teal-400 ring-4 ring-teal-400/30' : ''}
-                      ${isFuture ? 'border-2 border-slate-400 bg-slate-600' : ''}
-                    `}
-                  />
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Divider */}
-          <div className="border-t border-slate-600" />
-
-          {/* Discovery counters */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-bold text-teal-300">
-              {isHe ? 'מה שגיליתי בדרך' : 'What I discovered'}
-            </h3>
-            <DiscoveryCounter icon={<Lightbulb size={16} />} count={0} label={isHe ? 'תובנות שהתגלו' : 'Insights'} />
-            <DiscoveryCounter icon={<Sparkles size={16} />} count={0} label={isHe ? 'דפוסים שזיהיתי' : 'Patterns'} />
-            <DiscoveryCounter icon={<Heart size={16} />} count={0} label={isHe ? 'החלטות שקיבלתי' : 'Decisions'} />
-          </div>
+          <DiscoveryCounter icon={<Lightbulb size={16} />} count={0} label={isHe ? 'תובנות שהתגלו' : 'Insights'} />
+          <DiscoveryCounter icon={<Sparkles size={16} />} count={0} label={isHe ? 'דפוסים שזיהיתי' : 'Patterns'} />
+          <DiscoveryCounter icon={<Heart size={16} />} count={0} label={isHe ? 'החלטות שקיבלתי' : 'Decisions'} />
         </div>
       </aside>
 
       {/* Mobile bottom bar */}
-      <div className="fixed bottom-0 inset-x-0 lg:hidden bg-slate-800/95 backdrop-blur-sm border-t border-slate-700 z-10">
+      <div className="fixed bottom-0 inset-x-0 lg:hidden bg-[#2d4658]/95 backdrop-blur-sm border-t border-[#3c5465] z-10">
         <div className="flex items-center justify-center gap-3 py-2.5 px-4">
           {MACRO_STAGES.map((stage, idx) => {
             const isActive = idx === currentIdx;
@@ -81,13 +122,13 @@ export function JourneySidebar({ currentMacroStage, language }: JourneySidebarPr
                 <div
                   className={`
                     w-3 h-3 rounded-full transition-all duration-300
-                    ${isCompleted ? 'bg-teal-400' : ''}
-                    ${isActive ? 'bg-teal-400 ring-2 ring-teal-400/40 scale-125' : ''}
-                    ${!isActive && !isCompleted ? 'bg-slate-500' : ''}
+                    ${isCompleted ? 'bg-[#03ffe6]' : ''}
+                    ${isActive ? 'bg-[#03ffe6] ring-2 ring-[#03ffe6]/40 scale-125' : ''}
+                    ${!isActive && !isCompleted ? 'bg-[#3c5465]' : ''}
                   `}
                 />
                 {isActive && (
-                  <span className="text-[10px] text-teal-300 font-medium">
+                  <span className="text-[10px] text-[#03ffe6] font-medium" style={{ fontFamily: "'Heebo', sans-serif" }}>
                     {isHe ? stage.title_he : stage.title_en}
                   </span>
                 )}
@@ -102,13 +143,13 @@ export function JourneySidebar({ currentMacroStage, language }: JourneySidebarPr
 
 function DiscoveryCounter({ icon, count, label }: { icon: React.ReactNode; count: number; label: string }) {
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-xs text-gray-400">{label}</span>
-      <div className="flex items-center gap-2">
-        <span className="text-lg font-bold text-teal-300">{count}</span>
-        <div className="w-7 h-7 rounded-lg bg-teal-600/30 flex items-center justify-center text-teal-300">
-          {icon}
-        </div>
+    <div className="flex items-center justify-end gap-6 pe-2">
+      <div className="flex flex-col items-end">
+        <span className="text-2xl font-semibold text-[#03ffe6]" style={{ fontFamily: "'Heebo', sans-serif" }}>{count}</span>
+        <span className="text-xs text-[rgba(255,255,255,0.33)]" style={{ fontFamily: "'Heebo', sans-serif" }}>{label}</span>
+      </div>
+      <div className="w-8 h-8 rounded-lg bg-[rgba(3,255,230,0.2)] flex items-center justify-center text-[#03ffe6]">
+        {icon}
       </div>
     </div>
   );

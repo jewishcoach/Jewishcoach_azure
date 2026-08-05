@@ -37,7 +37,10 @@ export function IntroQuestionCard({
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-gray-800 text-center">
+      <h3
+        className="text-[25px] font-semibold text-[#2d4658] text-end tracking-[-1px]"
+        style={{ fontFamily: "'Heebo', sans-serif" }}
+      >
         {question.prompt}
       </h3>
       <div className="flex flex-wrap gap-3 justify-center">
@@ -59,7 +62,10 @@ export function IntroQuestionCard({
             onChange={(e) => setFreeText(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleFreeTextSubmit()}
             placeholder="משהו אחר..."
-            className="flex-1 px-4 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-teal-400"
+            className="flex-1 px-4 py-3 rounded-xl border border-[#03ffe6] text-base text-[#2d4658]
+                       placeholder:text-[rgba(45,70,88,0.4)] focus:outline-none
+                       shadow-[0px_0px_6.7px_0px_rgba(0,0,0,0.08)] text-end"
+            style={{ fontFamily: "'Heebo', sans-serif" }}
             dir="rtl"
           />
         </div>
