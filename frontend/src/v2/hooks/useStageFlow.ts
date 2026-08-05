@@ -59,6 +59,7 @@ export function useStageFlow(language: string = 'he') {
           role: 'assistant',
           content: response.coach_message,
           phase: response.current_step,
+          suggestions: response.suggestions,
         };
         setMessages((prev) => [...prev, assistantMsg]);
         setSaturationScore(response.saturation_score);
@@ -95,11 +96,16 @@ export function useStageFlow(language: string = 'he') {
       ? `איך ה${domain === 'עבודה' ? 'תקיעות בעבודה' : domain === 'זוגיות' ? 'קושי בזוגיות' : domain === 'משפחה' ? 'מתח במשפחה' : 'מה שמטריד אותך'} בא לידי ביטוי ביום-יום שלך?`
       : 'ספר לי קצת על מה שעובר עליך בתקופה הזו?';
 
+    const openingSuggestions = domain
+      ? ['עבודה', 'משפחה וקשרים', 'בריאות ורווחה', 'אחר']
+      : ['עבודה', 'זוגיות', 'משפחה', 'אחר'];
+
     const openingMsg: ChatMessage = {
       id: `a-opening-${Date.now()}`,
       role: 'assistant',
       content: openingQuestion,
       phase: 'S1',
+      suggestions: openingSuggestions,
     };
     setMessages([openingMsg]);
 

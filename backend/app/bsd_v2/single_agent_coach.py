@@ -2479,6 +2479,7 @@ async def handle_conversation(
         # 3. Call LLM (gpt-4o-mini, strict structured output)
         t3 = time.time()
         coach_message = ""
+        suggestions: List[str] = []
         internal_state: Dict[str, Any] = {}
 
         llm = get_azure_chat_llm_4o_mini()
@@ -2505,6 +2506,7 @@ async def handle_conversation(
 
         if parsed_obj:
             coach_message = (parsed_obj.coach_message or "").strip()
+            suggestions = parsed_obj.suggestions or []
             internal_state = parsed_obj.internal_state.model_dump()
         else:
             logger.error("[BSD V2] Model failed to return matching JSON Schema.")
@@ -2700,13 +2702,14 @@ async def handle_conversation(
 
         end_time = time.time()
         total_ms = (end_time - start_time) * 1000
-        
+
         logger.info(f"[BSD V2] Updated to step: {state['current_step']}, saturation: {state['saturation_score']:.2f}")
         logger.info(f"[BSD V2] Total messages now: {len(state['messages'])}")
         logger.info(f"[PERF] ⏱️  TOTAL TIME: {total_ms:.0f}ms ({total_ms/1000:.1f}s)")
         _bsd_log("TURN_END", final_step=state['current_step'], overrides=overrides_applied,
                  collected_data_keys=[k for k, v in _safe_collected_dict(state.get('collected_data')).items() if v])
 
+        state["_suggestions"] = suggestions
         return coach_message, state
         
     except ContentFilterBlockedError:

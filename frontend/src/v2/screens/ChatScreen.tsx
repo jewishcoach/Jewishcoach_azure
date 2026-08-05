@@ -23,7 +23,7 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle }: ChatScre
 
   const lastMessage = messages[messages.length - 1];
   const showQuickReplies = lastMessage?.role === 'assistant' && !isLoading;
-  const quickReplies = showQuickReplies ? getQuickRepliesForMessage(lastMessage) : undefined;
+  const quickReplies = showQuickReplies ? (lastMessage.suggestions?.length ? lastMessage.suggestions : getQuickRepliesForMessage(lastMessage)) : undefined;
 
   const handleSend = () => {
     if (!inputText.trim() || isLoading) return;
@@ -56,15 +56,17 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle }: ChatScre
           {messages.map((msg, idx) => {
             const isLastAssistant = showQuickReplies && idx === messages.length - 1 && msg.role === 'assistant';
 
-            // For user messages following an assistant with quick replies,
+            // For user messages following an assistant with suggestions,
             // the user message is the "selected reply" shown as a teal chip
             const prevMsg = idx > 0 ? messages[idx - 1] : null;
-            const isSelectedReply = msg.role === 'user' && prevMsg?.role === 'assistant' && getQuickRepliesForMessage(prevMsg);
+            const prevHadSuggestions = prevMsg?.role === 'assistant' && (prevMsg.suggestions?.length || getQuickRepliesForMessage(prevMsg));
+            const isSelectedReply = msg.role === 'user' && prevHadSuggestions;
 
             // Show chips on the assistant message that preceded a user selection
             const nextMsg = idx < messages.length - 1 ? messages[idx + 1] : null;
             const hasUserReply = msg.role === 'assistant' && nextMsg?.role === 'user';
-            const repliesForCompleted = hasUserReply ? getQuickRepliesForMessage(msg) : undefined;
+            const msgSuggestions = msg.suggestions?.length ? msg.suggestions : getQuickRepliesForMessage(msg);
+            const repliesForCompleted = hasUserReply ? msgSuggestions : undefined;
 
             if (isSelectedReply) {
               // User's reply as a selected chip (teal background)

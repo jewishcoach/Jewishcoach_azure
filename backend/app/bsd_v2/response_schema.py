@@ -174,6 +174,18 @@ class CoachResponseSchema(BaseModel):
             "רק סיכום קומה + הפניה רכה לכרטיס המשימה בממשק."
         )
     )
+    suggestions: List[str] = Field(
+        default_factory=list,
+        description=(
+            "2-4 תשובות מובנות קצרות שהמשתמש יכול לבחור מהן במקום לכתוב חופשי. "
+            "חובה לספק suggestions בכל תור שבו שואלים שאלה. "
+            "כל suggestion היא ביטוי קצר (2-6 מילים) שעונה ישירות על השאלה ב-coach_message. "
+            "הsuggestions צריכות לכסות מגוון תשובות אפשריות כולל אופציה פתוחה כמו 'משהו אחר' או 'אני לא בטוח'. "
+            "דוגמאות: לשאלה 'איך זה בא לידי ביטוי?' → ['בעבודה', 'במשפחה', 'בזוגיות', 'אחר']. "
+            "לשאלה 'מה הרגשת?' → ['כעס', 'תסכול', 'עצב', 'אני לא בטוח']. "
+            "רשימה ריקה רק כשהתגובה היא סיכום/אמירה שלא מצפה לתשובה."
+        )
+    )
     internal_state: InternalStateSchema = Field(
         description="מצב פנימי: current_step, saturation_score, reflection, collected_data"
     )

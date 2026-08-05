@@ -95,6 +95,7 @@ export interface ChatMessage {
   content: string;
   timestamp?: string;
   phase?: string;
+  suggestions?: string[];
 }
 
 export interface ChatResponseV2 {
@@ -102,6 +103,7 @@ export interface ChatResponseV2 {
   conversation_id: number;
   current_step: string;
   saturation_score: number;
+  suggestions?: string[];
   tool_call?: Record<string, unknown> | null;
   station_checkpoint?: Record<string, unknown> | null;
   stage_complete?: StageSummaryPayload | null;
