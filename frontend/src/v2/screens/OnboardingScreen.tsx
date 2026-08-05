@@ -85,15 +85,15 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
 
         {/* Emotions section */}
         <div className="space-y-6">
-          <div className="text-end space-y-1">
+          <div className="text-right space-y-1">
             <h2
-              className="text-[25px] font-semibold text-[#2d4658] tracking-[-1px]"
+              className="text-[25px] font-semibold text-[#2d4658] tracking-[-1px] text-right"
               style={{ fontFamily: "'Heebo', sans-serif" }}
             >
               מה הכי מתאר את מה שאתה מרגיש בתקופה הזו?
             </h2>
             <p
-              className="text-base text-[#2d4658]"
+              className="text-base text-[#2d4658] text-right"
               style={{ fontFamily: "'Heebo', sans-serif" }}
             >
               אין צורך לדייק עכשיו. מספיק לבחור את מה שהכי קרוב למה שאתה מרגיש
@@ -130,7 +130,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
         {step === 2 && (
           <div className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
             <h2
-              className="text-[25px] font-semibold text-[#2d4658] text-end tracking-[-1px]"
+              className="text-[25px] font-semibold text-[#2d4658] text-right tracking-[-1px]"
               style={{ fontFamily: "'Heebo', sans-serif" }}
             >
               באיזה תחום זה מורגש לך הכי הרבה?
