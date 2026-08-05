@@ -52,8 +52,8 @@ export function V2App({ language = 'he' }: V2AppProps) {
   return (
     <div className="h-screen flex flex-col bg-[#f6f4f0]" dir={isHe ? 'rtl' : 'ltr'}>
       {/* Header */}
-      <header className="h-[64px] sm:h-[80px] flex items-center justify-between px-6 sm:px-9 bg-[#2d4658] flex-shrink-0">
-        {/* START side (visually RIGHT in RTL): hamburger + avatar + name */}
+      <header className="h-[64px] sm:h-[80px] flex items-center justify-between px-6 sm:px-9 bg-[#2d4658] flex-shrink-0" dir="ltr">
+        {/* Left side: hamburger + avatar + name */}
         <div className="flex items-center gap-4">
           <button type="button" className="p-2 rounded-lg hover:bg-white/10 transition-colors">
             <Menu size={24} className="text-gray-300" />
@@ -70,7 +70,7 @@ export function V2App({ language = 'he' }: V2AppProps) {
           </div>
         </div>
 
-        {/* END side (visually LEFT in RTL): branding text + icon */}
+        {/* Right side: branding text + icon */}
         <div className="flex items-center gap-3">
           <span className="text-sm sm:text-base font-medium text-[#03ffe6]" style={{ fontFamily: "'Heebo', sans-serif" }}>
             {isHe ? 'בני כאן בשבילך, בכל שלב במסע' : 'Benny is here for you, every step of the way'}
