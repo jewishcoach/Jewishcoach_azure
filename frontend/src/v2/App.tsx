@@ -15,6 +15,15 @@ interface V2AppProps {
 
 export function V2App({ language = 'he' }: V2AppProps) {
   const { isSignedIn, isLoaded } = useAuth();
+  const {
+    flowState,
+    messages,
+    isLoading,
+    sendMessage,
+    startOnboarding,
+    requestNextStageIntro,
+    submitIntroAnswers,
+  } = useStageFlow(language);
 
   if (!isLoaded) {
     return (
@@ -27,15 +36,6 @@ export function V2App({ language = 'he' }: V2AppProps) {
   if (!isSignedIn) {
     return <LoginScreen />;
   }
-  const {
-    flowState,
-    messages,
-    isLoading,
-    sendMessage,
-    startOnboarding,
-    requestNextStageIntro,
-    submitIntroAnswers,
-  } = useStageFlow(language);
 
   const isHe = language.startsWith('he');
   const currentMacro = MACRO_STAGES.find((s) => s.id === flowState.currentMacroStage);
