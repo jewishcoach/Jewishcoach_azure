@@ -5,17 +5,18 @@ interface MessageBubbleProps {
   message: ChatMessage;
   quickReplies?: string[];
   onQuickReply?: (text: string) => void;
+  selectedReply?: string;
 }
 
-export function MessageBubble({ message, quickReplies, onQuickReply }: MessageBubbleProps) {
+export function MessageBubble({ message, quickReplies, onQuickReply, selectedReply }: MessageBubbleProps) {
   const isUser = message.role === 'user';
 
   if (isUser) {
     return (
-      <div className="flex justify-start">
+      <div className="flex justify-end">
         <div
-          className="max-w-[75%] px-4 py-3 rounded-xl bg-[rgba(3,255,230,0.15)] border border-[#03ffe6] text-base text-[#2d4658] leading-[22.75px] text-right"
-          style={{ fontFamily: "'Heebo', sans-serif" }}
+          className="px-6 h-[34px] flex items-center justify-center rounded-tl-xl rounded-tr-xl rounded-bl-xl bg-[#03ffe6] border border-[#03ffe6] text-base font-semibold text-[#2d4658]"
+          style={{ fontFamily: "'Assistant', sans-serif" }}
         >
           {message.content}
         </div>
@@ -24,37 +25,51 @@ export function MessageBubble({ message, quickReplies, onQuickReply }: MessageBu
   }
 
   return (
-    <div className="flex flex-col items-end gap-2">
-      {/* Coach label */}
-      <div className="flex items-center gap-2 pe-1">
+    <div className="flex flex-col gap-3">
+      {/* Coach label — right aligned */}
+      <div className="flex items-center gap-2 justify-end">
         <span className="text-sm text-[#2d4658]" style={{ fontFamily: "'Heebo', sans-serif" }}>בני</span>
-        <Heart size={14} className="text-[#03ffe6]" />
+        <Heart size={16} className="text-[#03ffe6]" />
       </div>
 
-      {/* Message bubble */}
-      <div
-        className="max-w-[75%] px-4 py-3 rounded-xl bg-white text-base leading-[22.75px] text-[#2d4658] text-right shadow-[0px_0px_3.35px_rgba(0,0,0,0.08)]"
-        style={{ fontFamily: "'Heebo', sans-serif" }}
-      >
-        {message.content}
+      {/* Message bubble — full width */}
+      <div className="w-full bg-white rounded-xl py-4 px-4 shadow-[0px_0px_3.35px_rgba(0,0,0,0.08)]">
+        <p
+          className="text-base text-[#2d4658] text-right leading-[22.75px]"
+          style={{ fontFamily: "'Heebo', sans-serif" }}
+        >
+          {message.content}
+        </p>
       </div>
 
       {/* Quick-reply chips */}
       {quickReplies && quickReplies.length > 0 && (
-        <div className="flex gap-3 mt-1 w-full">
+        <div className="flex gap-3 flex-wrap justify-end w-full">
           {quickReplies.map((reply) => (
             <button
               key={reply}
               type="button"
               onClick={() => onQuickReply?.(reply)}
-              className="flex-1 h-[34px] rounded-xl border border-[#03ffe6] bg-[rgba(3,255,230,0.05)]
-                         text-base font-semibold text-[#2d4658] text-center
+              className="h-[34px] px-4 rounded-xl border-[0.8px] border-[#03ffe6] bg-[rgba(3,255,230,0.05)]
+                         text-base font-semibold text-[#2d4658] text-center whitespace-nowrap
                          hover:bg-[rgba(3,255,230,0.15)] transition-colors"
               style={{ fontFamily: "'Assistant', sans-serif" }}
             >
               {reply}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Selected reply shown below chips */}
+      {selectedReply && (
+        <div className="flex justify-end w-full">
+          <div
+            className="px-6 h-[34px] flex items-center justify-center rounded-tl-xl rounded-tr-xl rounded-bl-xl bg-[#03ffe6] border border-[#03ffe6] text-base font-semibold text-[#2d4658]"
+            style={{ fontFamily: "'Assistant', sans-serif" }}
+          >
+            {selectedReply}
+          </div>
         </div>
       )}
     </div>

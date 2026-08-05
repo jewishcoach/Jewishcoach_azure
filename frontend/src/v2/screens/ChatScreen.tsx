@@ -2,7 +2,6 @@ import { useRef, useEffect, useState } from 'react';
 import { Heart, Send } from 'lucide-react';
 import type { ChatMessage } from '../types';
 import { MessageBubble } from '../components/MessageBubble';
-import { ChatInput } from '../components/ChatInput';
 
 interface ChatScreenProps {
   messages: ChatMessage[];
@@ -26,109 +25,20 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle }: ChatScre
   const showQuickReplies = lastMessage?.role === 'assistant' && !isLoading;
   const quickReplies = showQuickReplies ? getQuickRepliesForMessage(lastMessage) : undefined;
 
-  const isInitialState = messages.length === 1 && messages[0]?.role === 'assistant' && messages[0]?.id.startsWith('a-opening-');
-
   const handleSend = () => {
     if (!inputText.trim() || isLoading) return;
     onSend(inputText.trim());
     setInputText('');
   };
 
-  if (isInitialState) {
-    return (
-      <div className="flex-1 flex flex-col min-h-0 pb-10 lg:pb-0">
-        {/* Stage title — centered */}
-        {stageTitle && (
-          <div className="pt-8 flex justify-center">
-            <div className="w-full max-w-[662px]">
-              <h2
-                className="text-[40px] text-[#2d4658] text-right"
-                style={{ fontFamily: "'Karantina', cursive", lineHeight: '77px' }}
-              >
-                שלב ראשון - {stageTitle}
-              </h2>
-            </div>
-          </div>
-        )}
-
-        {/* Content centered in main area */}
-        <div className="flex-1 flex flex-col items-center px-6 pt-6">
-          <div className="w-full max-w-[662px] space-y-5">
-            {/* Coach label */}
-            <div className="flex items-center gap-2 justify-end">
-              <span className="text-sm text-[#2d4658]" style={{ fontFamily: "'Heebo', sans-serif" }}>בני</span>
-              <Heart size={16} className="text-[#03ffe6]" />
-            </div>
-
-            {/* Coach question bubble */}
-            <div className="w-full bg-white rounded-xl py-4 px-4 shadow-[0px_0px_3.35px_rgba(0,0,0,0.08)]">
-              <p
-                className="text-base font-semibold text-[#2d4658] text-right leading-[22.5px]"
-                style={{ fontFamily: "'Heebo', sans-serif" }}
-              >
-                {messages[0].content}
-              </p>
-            </div>
-
-            {/* Quick-reply chips — single row, equal width, no wrap */}
-            {quickReplies && (
-              <div className="flex gap-3">
-                {quickReplies.map((reply) => (
-                  <button
-                    key={reply}
-                    type="button"
-                    onClick={() => onSend(reply)}
-                    className="flex-1 min-h-[34px] py-1.5 px-2 rounded-xl border border-[#03ffe6] bg-[rgba(3,255,230,0.05)]
-                               text-sm font-semibold text-[#2d4658] text-center
-                               hover:bg-[rgba(3,255,230,0.15)] transition-colors whitespace-nowrap overflow-hidden text-ellipsis"
-                    style={{ fontFamily: "'Assistant', sans-serif" }}
-                  >
-                    {reply}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Input row */}
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={handleSend}
-                disabled={isLoading || !inputText.trim()}
-                className="flex-shrink-0 w-10 h-10 rounded-xl bg-[#03ffe6] text-[#2d4658] flex items-center justify-center
-                           disabled:opacity-40 hover:bg-[#02e6d0] transition-colors"
-              >
-                <Send size={16} className="rtl:-scale-x-100" />
-              </button>
-              <div className="flex-1">
-                <input
-                  type="text"
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                  placeholder="כתוב את תשובתך כאן, או בחר מהאפשרויות למעלה..."
-                  className="w-full px-4 py-3 rounded-xl bg-white text-base text-[#2d4658]
-                             placeholder:text-[rgba(45,70,88,0.4)] focus:outline-none
-                             shadow-[0px_0px_6.7px_0px_rgba(0,0,0,0.08)] text-right"
-                  style={{ fontFamily: "'Heebo', sans-serif" }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Regular chat flow
   return (
     <div className="flex-1 flex flex-col min-h-0 pb-10 lg:pb-0">
       {/* Stage title */}
       {stageTitle && (
-        <div className="pt-4 flex justify-center">
-          <div className="w-full max-w-[662px]">
+        <div className="pt-6 flex justify-center">
+          <div className="w-full max-w-[662px] px-4">
             <h2
-              className="text-[40px] text-[#2d4658] text-right"
+              className="text-[40px] text-[#2d4658] text-center"
               style={{ fontFamily: "'Karantina', cursive", lineHeight: '77px' }}
             >
               שלב ראשון - {stageTitle}
@@ -142,26 +52,47 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle }: ChatScre
         ref={scrollRef}
         className="flex-1 overflow-y-auto py-4 flex flex-col items-center"
       >
-        <div className="w-full max-w-[662px] px-4 space-y-4">
+        <div className="w-full max-w-[662px] px-4 space-y-6">
           {messages.map((msg, idx) => {
             const isLastAssistant = showQuickReplies && idx === messages.length - 1 && msg.role === 'assistant';
+
+            // For user messages following an assistant with quick replies,
+            // the user message is the "selected reply" shown as a teal chip
+            const prevMsg = idx > 0 ? messages[idx - 1] : null;
+            const isSelectedReply = msg.role === 'user' && prevMsg?.role === 'assistant' && getQuickRepliesForMessage(prevMsg);
+
+            // Show chips on the assistant message that preceded a user selection
+            const nextMsg = idx < messages.length - 1 ? messages[idx + 1] : null;
+            const hasUserReply = msg.role === 'assistant' && nextMsg?.role === 'user';
+            const repliesForCompleted = hasUserReply ? getQuickRepliesForMessage(msg) : undefined;
+
+            if (isSelectedReply) {
+              // User's reply as a selected chip (teal background)
+              return (
+                <MessageBubble
+                  key={msg.id}
+                  message={msg}
+                />
+              );
+            }
 
             return (
               <MessageBubble
                 key={msg.id}
                 message={msg}
-                quickReplies={isLastAssistant ? getQuickRepliesForMessage(msg) : undefined}
-                onQuickReply={onSend}
+                quickReplies={isLastAssistant ? quickReplies : repliesForCompleted}
+                onQuickReply={isLastAssistant ? onSend : undefined}
+                selectedReply={hasUserReply && repliesForCompleted ? nextMsg!.content : undefined}
               />
             );
           })}
 
           {/* Loading indicator */}
           {isLoading && (
-            <div className="flex flex-col items-end gap-1">
-              <div className="flex items-center gap-1.5 pe-1">
-                <span className="text-xs font-semibold text-[#2d4658]" style={{ fontFamily: "'Heebo', sans-serif" }}>בני</span>
-                <Heart size={12} className="text-[#03ffe6]" />
+            <div className="flex flex-col items-end gap-2">
+              <div className="flex items-center gap-2 pe-1">
+                <span className="text-sm text-[#2d4658]" style={{ fontFamily: "'Heebo', sans-serif" }}>בני</span>
+                <Heart size={16} className="text-[#03ffe6]" />
               </div>
               <div className="px-4 py-3 rounded-xl bg-white text-sm text-gray-400 shadow-[0px_0px_3.35px_rgba(0,0,0,0.08)]">
                 <span className="inline-flex gap-1">
@@ -175,15 +106,40 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle }: ChatScre
         </div>
       </div>
 
-      {/* Input bar */}
-      <ChatInput onSend={onSend} disabled={isLoading} />
+      {/* Input bar — fixed at bottom */}
+      <div className="bg-white p-3 flex items-center justify-center">
+        <div className="flex items-center gap-3 w-full max-w-[663px]">
+          <button
+            type="button"
+            onClick={handleSend}
+            disabled={isLoading || !inputText.trim()}
+            className="flex-shrink-0 w-10 h-10 rounded-xl bg-[#03ffe6] text-[#2d4658] flex items-center justify-center
+                       disabled:opacity-40 hover:bg-[#02e6d0] transition-colors"
+          >
+            <Send size={16} className="rtl:-scale-x-100" />
+          </button>
+          <div className="flex-1">
+            <input
+              type="text"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+              placeholder="כתוב את תשובתך כאן, או בחר מהאפשרויות למעלה..."
+              className="w-full px-4 py-3 rounded-xl border-[0.8px] border-[#03ffe6] bg-white text-base text-[#2d4658]
+                         placeholder:text-[rgba(45,70,88,0.4)] focus:outline-none
+                         shadow-[0px_0px_6.7px_0px_rgba(0,0,0,0.08)] text-right"
+              style={{ fontFamily: "'Heebo', sans-serif" }}
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
 function getQuickRepliesForMessage(msg: ChatMessage): string[] | undefined {
   if (msg.id.startsWith('a-opening-')) {
-    return ['זה משפיע על הביטחון שלי', 'אני מרגיש שאני נתקע', 'קשה לי עם אנשים מסוימים', 'משהו אחר'];
+    return ['עבודה', 'משפחה וקשרים', 'בריאות ורווחה', 'אחר'];
   }
   return undefined;
 }
