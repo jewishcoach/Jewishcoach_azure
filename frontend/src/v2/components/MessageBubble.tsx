@@ -25,9 +25,9 @@ export function MessageBubble({ message, quickReplies, onQuickReply, selectedRep
   }
 
   return (
-    <div className="flex flex-col gap-3" dir="rtl">
+    <div className="flex flex-col gap-3 w-full" dir="rtl">
       {/* Coach label */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 justify-start">
         <Heart size={16} className="text-[#03ffe6]" />
         <span className="text-sm text-[#2d4658]" style={{ fontFamily: "'Heebo', sans-serif" }}>בני</span>
       </div>
