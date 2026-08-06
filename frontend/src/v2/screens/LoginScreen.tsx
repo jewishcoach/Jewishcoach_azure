@@ -10,8 +10,11 @@ export function LoginScreen({ onSignedIn: _onSignedIn }: LoginScreenProps) {
 
   return (
     <div className="h-screen flex" dir="rtl">
-      {/* Right side — video + text (dark) */}
-      <div className="hidden lg:flex lg:w-1/2 flex-col justify-between bg-[#2d4658] p-10 text-white relative overflow-hidden">
+      {/* Right side — video + text */}
+      <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-10 text-white relative overflow-hidden">
+        {/* Background gradient */}
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-600 to-slate-800" />
+
         <div className="space-y-4 relative z-10">
           <p
             className="text-[25px] text-[#2d4658] text-center tracking-[-1px]"
@@ -20,7 +23,7 @@ export function LoginScreen({ onSignedIn: _onSignedIn }: LoginScreenProps) {
             כמה מילים אישיות עבורך מבני גל לפני שמתחילים
           </p>
           {/* Video placeholder */}
-          <div className="aspect-video bg-slate-700 rounded-xl flex items-center justify-center overflow-hidden relative shadow-[0px_27px_14.2px_rgba(0,0,0,0.25)]">
+          <div className="aspect-video bg-[#fffdfb] rounded-xl flex items-center justify-center overflow-hidden relative shadow-[0px_27px_14.2px_rgba(0,0,0,0.25)]">
             <div className="absolute inset-0 bg-slate-700" />
             <div className="relative z-10 flex flex-col items-center gap-2">
               <div className="w-11 h-11 rounded-full bg-[rgba(150,150,150,0.69)] flex items-center justify-center">
@@ -62,7 +65,7 @@ export function LoginScreen({ onSignedIn: _onSignedIn }: LoginScreenProps) {
 
       {/* Left side — auth form (dark background) */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 bg-[#2d4658]">
-        <div className="w-full max-w-[384px] space-y-6">
+        <div className="w-full max-w-[483px] space-y-4">
           {/* Title */}
           <div className="text-center">
             <h1
@@ -71,6 +74,11 @@ export function LoginScreen({ onSignedIn: _onSignedIn }: LoginScreenProps) {
             >
               {mode === 'signup' ? 'נפגשים בפעם הראשונה' : 'ברוך הבא למסע שלך'}
             </h1>
+            {mode === 'signin' && (
+              <p className="text-[17px] text-[#fff3f3] mt-2" style={{ fontFamily: "'Heebo', sans-serif" }}>
+                איך תרצה להמשיך?
+              </p>
+            )}
           </div>
 
           {/* Clerk component */}
@@ -83,11 +91,13 @@ export function LoginScreen({ onSignedIn: _onSignedIn }: LoginScreenProps) {
                     card: 'shadow-none border-none w-full bg-transparent',
                     headerTitle: 'hidden',
                     headerSubtitle: 'hidden',
-                    socialButtonsBlockButton: 'rounded-xl border border-[#e0ddd8] py-3 bg-white',
-                    formFieldInput: 'rounded-xl border-[#e0ddd8] bg-white',
+                    socialButtonsBlockButton: 'rounded-2xl border-2 border-[#e0ddd8] py-4 bg-white text-[17px] font-semibold shadow-[0px_1px_2px_rgba(0,0,0,0.1)]',
+                    formFieldInput: 'rounded-2xl border-[#e0ddd8] bg-white',
                     formFieldLabel: 'text-white text-xs',
                     formButtonPrimary: 'rounded-xl bg-[#9747ff] hover:bg-[#8035e6] drop-shadow-[0px_8px_2.9px_rgba(0,0,0,0.12)]',
                     footerAction: 'hidden',
+                    dividerLine: 'bg-[#e0ddd8]',
+                    dividerText: 'text-white',
                   },
                 }}
               />
@@ -99,43 +109,45 @@ export function LoginScreen({ onSignedIn: _onSignedIn }: LoginScreenProps) {
                     card: 'shadow-none border-none w-full bg-transparent',
                     headerTitle: 'hidden',
                     headerSubtitle: 'hidden',
-                    socialButtonsBlockButton: 'rounded-xl border border-[#e0ddd8] py-3 bg-white',
-                    formFieldInput: 'rounded-xl border-[#e0ddd8] bg-white',
+                    socialButtonsBlockButton: 'rounded-2xl border-2 border-[#e0ddd8] py-4 bg-white text-[17px] font-semibold shadow-[0px_1px_2px_rgba(0,0,0,0.1)]',
+                    formFieldInput: 'rounded-2xl border-[#e0ddd8] bg-white',
                     formFieldLabel: 'text-white text-xs',
                     formButtonPrimary: 'rounded-xl bg-[#9747ff] hover:bg-[#8035e6] drop-shadow-[0px_8px_2.9px_rgba(0,0,0,0.12)]',
                     footerAction: 'hidden',
+                    dividerLine: 'bg-[#e0ddd8]',
+                    dividerText: 'text-white',
                   },
                 }}
               />
             )}
           </div>
 
-          {/* Toggle mode + terms */}
-          <div className="text-center space-y-2">
-            <p className="text-base" style={{ fontFamily: "'Assistant', sans-serif" }}>
-              <span className="text-[#03ffe6] font-semibold">
-                {' '}בהרשמה אתה מסכים ל
-              </span>
+          {/* Toggle mode */}
+          <p className="text-center text-base" style={{ fontFamily: "'Assistant', sans-serif" }}>
+            {mode === 'signup' ? (
+              <>
+                <span className="text-white">כבר יש לך חשבון? </span>
+                <button type="button" onClick={() => setMode('signin')} className="text-[#03ffe6] font-semibold hover:underline">
+                  כניסה
+                </button>
+              </>
+            ) : (
+              <>
+                <span className="text-white">משתמש חדש? </span>
+                <button type="button" onClick={() => setMode('signup')} className="text-[#03ffe6] font-semibold hover:underline">
+                  צור חשבון
+                </button>
+              </>
+            )}
+          </p>
+
+          {/* Terms */}
+          {mode === 'signup' && (
+            <p className="text-center text-sm" style={{ fontFamily: "'Assistant', sans-serif" }}>
+              <span className="text-[#03ffe6]">בהרשמה אתה מסכים ל</span>
               <span className="text-[#03ffe6] font-semibold">תנאי השימוש ולמדיניות הפרטיות</span>
             </p>
-            <p className="text-sm" style={{ fontFamily: "'Assistant', sans-serif" }}>
-              {mode === 'signup' ? (
-                <>
-                  <span className="text-white">כבר יש לך חשבון? </span>
-                  <button type="button" onClick={() => setMode('signin')} className="text-[#03ffe6] font-semibold hover:underline">
-                    כניסה
-                  </button>
-                </>
-              ) : (
-                <>
-                  <span className="text-white">משתמש חדש? </span>
-                  <button type="button" onClick={() => setMode('signup')} className="text-[#03ffe6] font-semibold hover:underline">
-                    צור חשבון
-                  </button>
-                </>
-              )}
-            </p>
-          </div>
+          )}
         </div>
       </div>
     </div>
