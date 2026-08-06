@@ -144,6 +144,7 @@ export function V2App({ language = 'he' }: V2AppProps) {
         {flowState.phase !== 'onboarding' && (
           <JourneySidebar
             currentMacroStage={flowState.currentMacroStage}
+            currentStep={flowState.currentStep}
             language={language}
           />
         )}

@@ -15,7 +15,7 @@ export function MessageBubble({ message, quickReplies, onQuickReply, selectedRep
     return (
       <div className="flex justify-start" dir="rtl">
         <div
-          className="px-6 h-[34px] flex items-center justify-center rounded-tl-xl rounded-tr-xl rounded-bl-xl bg-[#03ffe6] border border-[#03ffe6] text-base font-semibold text-[#2d4658]"
+          className="max-w-[75%] px-5 py-2.5 rounded-tl-xl rounded-tr-xl rounded-bl-xl bg-[#03ffe6] border border-[#03ffe6] text-base font-semibold text-[#2d4658] text-right leading-[22.5px]"
           style={{ fontFamily: "'Assistant', sans-serif" }}
         >
           {message.content}

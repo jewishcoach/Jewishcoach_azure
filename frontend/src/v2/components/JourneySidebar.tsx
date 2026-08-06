@@ -2,15 +2,26 @@ import { Heart, Lightbulb, Sparkles } from 'lucide-react';
 import { MACRO_STAGES } from '../types';
 import { useState } from 'react';
 
+const STAGE_STEP_RANGES: Record<string, { start: number; end: number }> = {
+  identification: { start: 0, end: 8 },
+  discovery: { start: 9, end: 11 },
+  kamaz: { start: 12, end: 12 },
+  choice: { start: 13, end: 13 },
+  vision: { start: 14, end: 15 },
+};
+
 interface JourneySidebarProps {
   currentMacroStage: string;
+  currentStep: string;
   language: string;
 }
 
-export function JourneySidebar({ currentMacroStage, language }: JourneySidebarProps) {
+export function JourneySidebar({ currentMacroStage, currentStep, language }: JourneySidebarProps) {
   const isHe = language.startsWith('he');
   const currentIdx = MACRO_STAGES.findIndex((s) => s.id === currentMacroStage);
   const [activeTab, setActiveTab] = useState<'journey' | 'insights'>('journey');
+
+  const currentStepNum = parseInt(currentStep.replace('S', ''), 10) || 0;
 
   return (
     <>
@@ -66,14 +77,12 @@ export function JourneySidebar({ currentMacroStage, language }: JourneySidebarPr
                       key={stage.id}
                       className={`flex items-center gap-6 ${isFuture ? 'opacity-50' : ''}`}
                     >
-                      {/* Circle — right side (start in RTL) */}
-                      <div
-                        className={`
-                          w-6 h-6 rounded-full flex-shrink-0
-                          ${isCompleted ? 'bg-[#03ffe6]' : ''}
-                          ${isActive ? 'bg-[#03ffe6] ring-4 ring-[#01897b]' : ''}
-                          ${isFuture ? 'bg-[#03ffe6]' : ''}
-                        `}
+                      {/* Progress circle */}
+                      <StageProgressCircle
+                        stageId={stage.id}
+                        isActive={isActive}
+                        isCompleted={isCompleted}
+                        currentStepNum={currentStepNum}
                       />
 
                       {/* Stage text — left of circle (end in RTL) */}
@@ -138,6 +147,57 @@ export function JourneySidebar({ currentMacroStage, language }: JourneySidebarPr
         </div>
       </div>
     </>
+  );
+}
+
+function StageProgressCircle({ stageId, isActive, isCompleted, currentStepNum }: {
+  stageId: string; isActive: boolean; isCompleted: boolean; currentStepNum: number;
+}) {
+  const range = STAGE_STEP_RANGES[stageId];
+  const totalSteps = range ? range.end - range.start + 1 : 1;
+
+  let progress = 0;
+  if (isCompleted) {
+    progress = 1;
+  } else if (isActive && range) {
+    const stepsCompleted = Math.max(0, currentStepNum - range.start);
+    progress = Math.min(stepsCompleted / totalSteps, 1);
+  }
+
+  const size = 24;
+  const strokeWidth = 3;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const dashOffset = circumference * (1 - progress);
+
+  return (
+    <div className="relative flex-shrink-0 w-6 h-6">
+      {/* Background ring (white/transparent) */}
+      <svg className="absolute inset-0" width={size} height={size}>
+        <circle
+          cx={size / 2} cy={size / 2} r={radius}
+          fill="none"
+          stroke="rgba(255,255,255,0.3)"
+          strokeWidth={strokeWidth}
+        />
+        {/* Progress arc */}
+        {(isActive || isCompleted) && (
+          <circle
+            cx={size / 2} cy={size / 2} r={radius}
+            fill="none"
+            stroke="#03ffe6"
+            strokeWidth={strokeWidth}
+            strokeDasharray={circumference}
+            strokeDashoffset={dashOffset}
+            strokeLinecap="round"
+            transform={`rotate(-90 ${size / 2} ${size / 2})`}
+            className="transition-all duration-500"
+          />
+        )}
+      </svg>
+      {/* Inner dot */}
+      <div className={`absolute inset-[5px] rounded-full ${isCompleted || isActive ? 'bg-[#03ffe6]' : 'bg-[rgba(3,255,230,0.4)]'}`} />
+    </div>
   );
 }
 
