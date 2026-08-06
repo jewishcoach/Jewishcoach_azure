@@ -119,9 +119,9 @@ export function JourneySidebar({ currentMacroStage, currentStep, collectedData, 
           <h3 className="text-sm font-semibold text-[#03ffe6] text-end pe-2" style={{ fontFamily: "'Heebo', sans-serif" }}>
             {isHe ? 'מה שגיליתי בדרך' : 'What I discovered'}
           </h3>
-          <DiscoveryCounter icon={<Lightbulb size={16} />} count={0} label={isHe ? 'תובנות שהתגלו' : 'Insights'} />
-          <DiscoveryCounter icon={<Sparkles size={16} />} count={0} label={isHe ? 'דפוסים שזיהיתי' : 'Patterns'} />
-          <DiscoveryCounter icon={<Heart size={16} />} count={0} label={isHe ? 'החלטות שקיבלתי' : 'Decisions'} />
+          <DiscoveryCounter icon={<Lightbulb size={16} />} count={countInsights(collectedData)} label={isHe ? 'תובנות שהתגלו' : 'Insights'} />
+          <DiscoveryCounter icon={<Sparkles size={16} />} count={countPatterns(collectedData)} label={isHe ? 'דפוסים שזיהיתי' : 'Patterns'} />
+          <DiscoveryCounter icon={<Heart size={16} />} count={countDecisions(collectedData)} label={isHe ? 'החלטות שקיבלתי' : 'Decisions'} />
         </div>
       </aside>
 
@@ -202,6 +202,24 @@ function countInsights(collectedData?: CollectedData): number {
   return Object.entries(collectedData)
     .filter(([k]) => !HIDDEN_KEYS.includes(k))
     .filter(([, v]) => formatInsightValue(v) !== null).length;
+}
+
+function countPatterns(collectedData?: CollectedData): number {
+  if (!collectedData) return 0;
+  let count = 0;
+  if (collectedData.pattern) count++;
+  if (collectedData.paradigm) count++;
+  if (collectedData.gap_name) count++;
+  return count;
+}
+
+function countDecisions(collectedData?: CollectedData): number {
+  if (!collectedData) return 0;
+  let count = 0;
+  if (collectedData.renewal) count++;
+  if (collectedData.commitment) count++;
+  if (collectedData.vision) count++;
+  return count;
 }
 
 function InsightsPanel({ collectedData, isHe }: { collectedData?: CollectedData; isHe: boolean }) {
