@@ -35,23 +35,23 @@ export function MessageBubble({ message, quickReplies, onQuickReply, selectedRep
       {/* Message bubble — full width */}
       <div className="w-full bg-white rounded-xl py-4 px-4 shadow-[0px_0px_3.35px_rgba(0,0,0,0.08)]">
         <p
-          className="text-base text-[#2d4658] text-right leading-[22.75px]"
+          className="text-[15px] lg:text-base text-[#2d4658] text-right leading-[22.75px]"
           style={{ fontFamily: "'Heebo', sans-serif" }}
         >
           {message.content}
         </p>
       </div>
 
-      {/* Quick-reply chips — equal width, single row */}
+      {/* Quick-reply chips — wrap on mobile, single row on desktop */}
       {quickReplies && quickReplies.length > 0 && (
-        <div className="flex gap-3 w-full">
+        <div className="flex flex-wrap lg:flex-nowrap gap-2 lg:gap-3 w-full">
           {quickReplies.map((reply) => (
             <button
               key={reply}
               type="button"
               onClick={() => onQuickReply?.(reply)}
-              className="flex-1 h-[34px] rounded-xl border-[0.8px] border-[#03ffe6] bg-[rgba(3,255,230,0.05)]
-                         text-base font-semibold text-[#2d4658] text-center whitespace-nowrap
+              className="w-auto lg:flex-1 px-4 lg:px-0 h-[34px] rounded-xl border-[0.8px] border-[#03ffe6] bg-[rgba(3,255,230,0.05)]
+                         text-[15px] lg:text-base font-semibold text-[#2d4658] text-center whitespace-nowrap
                          hover:bg-[rgba(3,255,230,0.15)] transition-colors"
               style={{ fontFamily: "'Assistant', sans-serif" }}
             >

@@ -67,27 +67,27 @@ export function V2App({ language = 'he' }: V2AppProps) {
   return (
     <div className="h-screen flex flex-col bg-[#f6f4f0]" dir={isHe ? 'rtl' : 'ltr'}>
       {/* Header */}
-      <header className="h-[64px] sm:h-[80px] flex items-center justify-between px-6 sm:px-9 bg-[#2d4658] flex-shrink-0" dir="ltr">
+      <header className="h-[64px] lg:h-[80px] flex items-center justify-between px-4 lg:px-9 bg-[#2d4658] flex-shrink-0" dir="ltr">
         {/* Left side: hamburger + avatar + name */}
         <div className="flex items-center gap-4">
           <button type="button" onClick={() => setMenuOpen(true)} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
             <Menu size={24} className="text-gray-300" />
           </button>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-white/10 transition-colors cursor-pointer">
+          <div className="flex items-center gap-2 px-2 lg:px-4 py-2 rounded-lg hover:bg-white/10 transition-colors cursor-pointer">
             <div className="w-8 h-8 rounded-full bg-teal-600 flex items-center justify-center overflow-hidden">
               <span className="text-white text-xs font-bold">
                 {user?.firstName?.charAt(0) || (isHe ? 'א' : 'E')}
               </span>
             </div>
-            <span className="text-base font-medium text-[#03ffe6]" style={{ fontFamily: "'Heebo', sans-serif" }}>
+            <span className="hidden lg:inline text-base font-medium text-[#03ffe6]" style={{ fontFamily: "'Heebo', sans-serif" }}>
               {user?.firstName || (isHe ? 'אלי' : 'Eli')}
             </span>
           </div>
         </div>
 
-        {/* Right side: branding text + icon */}
+        {/* Right side: branding text (hidden on mobile) + icon */}
         <div className="flex items-center gap-3">
-          <span className="text-sm sm:text-base font-medium text-[#03ffe6]" style={{ fontFamily: "'Heebo', sans-serif" }}>
+          <span className="hidden lg:inline text-sm sm:text-base font-medium text-[#03ffe6]" style={{ fontFamily: "'Heebo', sans-serif" }}>
             {isHe ? 'בני כאן בשבילך, בכל שלב במסע' : 'Benny is here for you, every step of the way'}
           </span>
           <div className="w-10 h-10 rounded bg-[rgba(151,71,255,0.33)] flex items-center justify-center">

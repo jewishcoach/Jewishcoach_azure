@@ -64,13 +64,32 @@ export function LoginScreen({ onSignedIn: _onSignedIn }: LoginScreenProps) {
       </div>
 
       {/* Left side — auth form (dark background) */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 bg-[#2d4658]">
+      <div className="flex-1 flex flex-col items-center justify-center px-5 lg:px-6 py-8 lg:py-0 overflow-y-auto bg-[#2d4658]">
+        {/* Mobile-only hero section: title + video */}
+        <div className="lg:hidden w-full max-w-[483px] space-y-4 mb-6">
+          <p
+            className="text-[20px] text-white/80 text-center tracking-[-0.5px]"
+            style={{ fontFamily: "'Heebo', sans-serif", lineHeight: '32px' }}
+          >
+            כמה מילים אישיות עבורך מבני גל לפני שמתחילים
+          </p>
+          <div className="aspect-video bg-[#fffdfb] rounded-xl flex items-center justify-center overflow-hidden relative shadow-[0px_14px_8px_rgba(0,0,0,0.2)]">
+            <div className="absolute inset-0 bg-slate-700" />
+            <div className="relative z-10 flex flex-col items-center gap-2">
+              <div className="w-10 h-10 rounded-full bg-[rgba(150,150,150,0.69)] flex items-center justify-center">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>
+              </div>
+              <span className="text-xs font-semibold text-white" style={{ fontFamily: "'Assistant', sans-serif" }}>3 דקות</span>
+            </div>
+          </div>
+        </div>
+
         <div className="w-full max-w-[483px] space-y-4">
           {/* Title */}
           <div className="text-center">
             <h1
-              className="text-[75px] text-white"
-              style={{ fontFamily: "'Karantina', cursive", lineHeight: '77px' }}
+              className="text-[48px] lg:text-[75px] text-white"
+              style={{ fontFamily: "'Karantina', cursive", lineHeight: '1.03' }}
             >
               {mode === 'signup' ? 'נפגשים בפעם הראשונה' : 'ברוך הבא למסע שלך'}
             </h1>

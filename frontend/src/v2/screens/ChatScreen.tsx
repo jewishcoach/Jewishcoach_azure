@@ -32,14 +32,14 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle }: ChatScre
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 pb-10 lg:pb-0">
+    <div className="flex-1 flex flex-col min-h-0 pb-14 lg:pb-0">
       {/* Stage title */}
       {stageTitle && (
-        <div className="pt-6 flex justify-center">
-          <div className="w-full max-w-[662px] px-4">
+        <div className="pt-4 lg:pt-6 flex justify-center">
+          <div className="w-full max-w-[662px] px-5 lg:px-4">
             <h2
-              className="text-[40px] text-[#2d4658] text-center"
-              style={{ fontFamily: "'Karantina', cursive", lineHeight: '77px' }}
+              className="text-[32px] lg:text-[40px] text-[#2d4658] text-center"
+              style={{ fontFamily: "'Karantina', cursive", lineHeight: '1.2' }}
             >
               שלב ראשון - {stageTitle}
             </h2>
@@ -52,7 +52,7 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle }: ChatScre
         ref={scrollRef}
         className="flex-1 overflow-y-auto py-4 flex flex-col items-center"
       >
-        <div className="w-full max-w-[662px] px-4 space-y-6">
+        <div className="w-full max-w-[662px] px-5 lg:px-4 space-y-6">
           {messages.map((msg, idx) => {
             const isLastAssistant = showQuickReplies && idx === messages.length - 1 && msg.role === 'assistant';
 
@@ -104,8 +104,8 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle }: ChatScre
       </div>
 
       {/* Input bar — fixed at bottom */}
-      <div className="bg-white p-3 flex items-center justify-center">
-        <div className="flex items-center gap-3 w-full max-w-[663px]">
+      <div className="fixed bottom-0 inset-x-0 lg:relative bg-white p-3 pb-5 lg:pb-3 flex items-center justify-center z-20">
+        <div className="flex items-center gap-3 w-full max-w-[663px] px-2 lg:px-0">
           <button
             type="button"
             onClick={handleSend}
