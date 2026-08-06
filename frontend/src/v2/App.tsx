@@ -1,5 +1,6 @@
-import { Heart, Menu } from 'lucide-react';
-import { useAuth } from '@clerk/clerk-react';
+import { useState } from 'react';
+import { Heart, Menu, X, LogOut, MessageSquare, User } from 'lucide-react';
+import { useAuth, useUser } from '@clerk/clerk-react';
 import { MACRO_STAGES } from './types';
 import { useStageFlow } from './hooks/useStageFlow';
 import { JourneySidebar } from './components/JourneySidebar';
@@ -14,7 +15,9 @@ interface V2AppProps {
 }
 
 export function V2App({ language = 'he' }: V2AppProps) {
-  const { isSignedIn, isLoaded } = useAuth();
+  const { isSignedIn, isLoaded, signOut } = useAuth();
+  const { user } = useUser();
+  const [menuOpen, setMenuOpen] = useState(false);
   const {
     flowState,
     messages,
@@ -56,17 +59,17 @@ export function V2App({ language = 'he' }: V2AppProps) {
       <header className="h-[64px] sm:h-[80px] flex items-center justify-between px-6 sm:px-9 bg-[#2d4658] flex-shrink-0" dir="ltr">
         {/* Left side: hamburger + avatar + name */}
         <div className="flex items-center gap-4">
-          <button type="button" className="p-2 rounded-lg hover:bg-white/10 transition-colors">
+          <button type="button" onClick={() => setMenuOpen(true)} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
             <Menu size={24} className="text-gray-300" />
           </button>
           <div className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-white/10 transition-colors cursor-pointer">
             <div className="w-8 h-8 rounded-full bg-teal-600 flex items-center justify-center overflow-hidden">
               <span className="text-white text-xs font-bold">
-                {isHe ? 'א' : 'E'}
+                {user?.firstName?.charAt(0) || (isHe ? 'א' : 'E')}
               </span>
             </div>
             <span className="text-base font-medium text-[#03ffe6]" style={{ fontFamily: "'Heebo', sans-serif" }}>
-              {isHe ? 'אלי' : 'Eli'}
+              {user?.firstName || (isHe ? 'אלי' : 'Eli')}
             </span>
           </div>
         </div>
@@ -81,6 +84,67 @@ export function V2App({ language = 'he' }: V2AppProps) {
           </div>
         </div>
       </header>
+
+      {/* Side menu drawer */}
+      {menuOpen && (
+        <>
+          <div className="fixed inset-0 bg-black/40 z-40" onClick={() => setMenuOpen(false)} />
+          <div className="fixed top-0 left-0 h-full w-[300px] bg-[#2d4658] z-50 shadow-xl flex flex-col animate-[slideIn_0.2s_ease-out]" dir="rtl">
+            {/* Close button */}
+            <div className="flex items-center justify-between p-5 border-b border-[rgba(3,255,230,0.2)]">
+              <h2 className="text-lg font-semibold text-[#03ffe6]" style={{ fontFamily: "'Heebo', sans-serif" }}>תפריט</h2>
+              <button type="button" onClick={() => setMenuOpen(false)} className="p-1 rounded-lg hover:bg-white/10">
+                <X size={20} className="text-gray-300" />
+              </button>
+            </div>
+
+            {/* Profile */}
+            <div className="p-5 border-b border-[rgba(3,255,230,0.2)]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-teal-600 flex items-center justify-center">
+                  <User size={18} className="text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-white" style={{ fontFamily: "'Heebo', sans-serif" }}>
+                    {user?.firstName || ''} {user?.lastName || ''}
+                  </p>
+                  <p className="text-xs text-[rgba(255,255,255,0.5)]" style={{ fontFamily: "'Heebo', sans-serif" }}>
+                    {user?.primaryEmailAddress?.emailAddress || ''}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Menu items */}
+            <div className="flex-1 p-3">
+              <button
+                type="button"
+                onClick={() => setMenuOpen(false)}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-colors"
+              >
+                <MessageSquare size={18} className="text-[#03ffe6]" />
+                <span className="text-sm text-white" style={{ fontFamily: "'Heebo', sans-serif" }}>
+                  {isHe ? 'השיחה הנוכחית' : 'Current conversation'}
+                </span>
+              </button>
+            </div>
+
+            {/* Logout */}
+            <div className="p-5 border-t border-[rgba(3,255,230,0.2)]">
+              <button
+                type="button"
+                onClick={() => signOut()}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-colors"
+              >
+                <LogOut size={18} className="text-red-400" />
+                <span className="text-sm text-red-400" style={{ fontFamily: "'Heebo', sans-serif" }}>
+                  {isHe ? 'התנתקות' : 'Sign out'}
+                </span>
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Main content area */}
       <div className="flex-1 flex min-h-0">
