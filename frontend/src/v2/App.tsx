@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Heart, Menu, X, LogOut, MessageSquare, User } from 'lucide-react';
 import { useAuth, useUser } from '@clerk/clerk-react';
 import { MACRO_STAGES } from './types';
 import { useStageFlow } from './hooks/useStageFlow';
+import { listConversations, type ConversationListItem } from './services/api';
 import { JourneySidebar } from './components/JourneySidebar';
 import { ChatScreen } from './screens/ChatScreen';
 import { StageCompleteScreen } from './screens/StageCompleteScreen';
@@ -15,9 +16,19 @@ interface V2AppProps {
 }
 
 export function V2App({ language = 'he' }: V2AppProps) {
-  const { isSignedIn, isLoaded, signOut } = useAuth();
+  const { isSignedIn, isLoaded, signOut, getToken } = useAuth();
   const { user } = useUser();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [conversations, setConversations] = useState<ConversationListItem[]>([]);
+
+  const loadConversations = useCallback(async () => {
+    const list = await listConversations(getToken);
+    setConversations(list);
+  }, [getToken]);
+
+  useEffect(() => {
+    if (menuOpen) loadConversations();
+  }, [menuOpen, loadConversations]);
   const {
     flowState,
     messages,
@@ -115,18 +126,34 @@ export function V2App({ language = 'he' }: V2AppProps) {
               </div>
             </div>
 
-            {/* Menu items */}
-            <div className="flex-1 p-3">
-              <button
-                type="button"
-                onClick={() => setMenuOpen(false)}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-colors"
-              >
-                <MessageSquare size={18} className="text-[#03ffe6]" />
-                <span className="text-sm text-white" style={{ fontFamily: "'Heebo', sans-serif" }}>
-                  {isHe ? 'השיחה הנוכחית' : 'Current conversation'}
-                </span>
-              </button>
+            {/* Conversations list */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-1">
+              <p className="px-4 py-2 text-xs font-semibold text-[#03ffe6]" style={{ fontFamily: "'Heebo', sans-serif" }}>
+                {isHe ? 'השיחות שלי' : 'My conversations'}
+              </p>
+              {conversations.length === 0 && (
+                <p className="px-4 py-2 text-xs text-[rgba(255,255,255,0.4)]" style={{ fontFamily: "'Heebo', sans-serif" }}>
+                  {isHe ? 'אין שיחות קודמות' : 'No conversations yet'}
+                </p>
+              )}
+              {conversations.map((conv) => (
+                <button
+                  key={conv.id}
+                  type="button"
+                  onClick={() => setMenuOpen(false)}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-colors text-right"
+                >
+                  <MessageSquare size={16} className="text-[#03ffe6] flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-white truncate" style={{ fontFamily: "'Heebo', sans-serif" }}>
+                      {conv.title}
+                    </p>
+                    <p className="text-xs text-[rgba(255,255,255,0.4)]" style={{ fontFamily: "'Heebo', sans-serif" }}>
+                      {new Date(conv.created_at).toLocaleDateString('he-IL')} · {conv.message_count} הודעות
+                    </p>
+                  </div>
+                </button>
+              ))}
             </div>
 
             {/* Logout */}

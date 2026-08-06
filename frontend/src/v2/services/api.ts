@@ -89,6 +89,26 @@ export async function fetchStageSummary(
   return res.json();
 }
 
+export interface ConversationListItem {
+  id: number;
+  title: string;
+  created_at: string;
+  current_phase: string;
+  message_count: number;
+}
+
+export async function listConversations(
+  getToken: () => Promise<string | null>,
+): Promise<ConversationListItem[]> {
+  const base = getApiBase();
+  const res = await fetch(`${base}/chat/conversations`, {
+    method: 'GET',
+    headers: await authHeaders(getToken),
+  });
+  if (!res.ok) return [];
+  return res.json();
+}
+
 export async function createConversation(
   language: string,
   getToken: () => Promise<string | null>,
