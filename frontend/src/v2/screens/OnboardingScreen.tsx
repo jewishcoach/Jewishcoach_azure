@@ -29,6 +29,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   const [selectedEmotions, setSelectedEmotions] = useState<string[]>([]);
   const [selectedDomain, setSelectedDomain] = useState<string>('');
   const [step, setStep] = useState<1 | 2>(1);
+  const [showExplanation, setShowExplanation] = useState(false);
 
   const toggleEmotion = (emotion: string) => {
     setSelectedEmotions((prev) =>
@@ -73,14 +74,26 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
           </p>
         </div>
 
-        {/* Helper chip */}
-        <div className="flex justify-center">
-          <div
-            className="px-6 py-3 rounded-xl border border-[#01897b] text-[#2d4658] text-lg"
+        {/* Helper chip — expandable explanation */}
+        <div className="flex flex-col items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setShowExplanation((prev) => !prev)}
+            className="px-6 py-3 rounded-xl border border-[#01897b] text-[#2d4658] text-lg hover:bg-[rgba(1,137,123,0.05)] transition-colors"
             style={{ fontFamily: "'Heebo', sans-serif" }}
           >
             למה מתחילים מהמקום שבו אני נמצא?
-          </div>
+          </button>
+          {showExplanation && (
+            <p
+              className="text-sm text-[#2d4658] text-center max-w-lg leading-relaxed animate-[fadeIn_0.3s_ease-out]"
+              style={{ fontFamily: "'Heebo', sans-serif" }}
+            >
+              כדי שנוכל ללכת לכיוון הנכון, קודם צריך לדעת מאיפה יוצאים.
+              כשאנחנו עוצרים לרגע ומזהים מה באמת קורה — בלי לשפוט, בלי לפתור —
+              אנחנו כבר מתחילים ליצור שינוי.
+            </p>
+          )}
         </div>
 
         {/* Emotions section */}

@@ -2508,6 +2508,10 @@ async def handle_conversation(
             coach_message = (parsed_obj.coach_message or "").strip()
             suggestions = parsed_obj.suggestions or []
             internal_state = parsed_obj.internal_state.model_dump()
+            # Enforce: suggestions only in first 2 turns
+            user_msg_count = sum(1 for m in state.get("messages", []) if m.get("sender") == "user")
+            if user_msg_count >= 2:
+                suggestions = []
         else:
             logger.error("[BSD V2] Model failed to return matching JSON Schema.")
             logger.error(f"[BSD V2] RAW OUTPUT PREVIEW: {raw_text[:500]}...")

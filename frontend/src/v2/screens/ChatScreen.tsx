@@ -69,13 +69,8 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle }: ChatScre
             const repliesForCompleted = hasUserReply ? msgSuggestions : undefined;
 
             if (isSelectedReply) {
-              // User's reply as a selected chip (teal background)
-              return (
-                <MessageBubble
-                  key={msg.id}
-                  message={msg}
-                />
-              );
+              // User's reply is already shown as selectedReply on the previous assistant bubble
+              return null;
             }
 
             return (
@@ -91,12 +86,12 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle }: ChatScre
 
           {/* Loading indicator */}
           {isLoading && (
-            <div className="flex flex-col items-end gap-2">
-              <div className="flex items-center gap-2 pe-1">
-                <span className="text-sm text-[#2d4658]" style={{ fontFamily: "'Heebo', sans-serif" }}>בני</span>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2" dir="rtl">
                 <Heart size={16} className="text-[#03ffe6]" />
+                <span className="text-sm text-[#2d4658]" style={{ fontFamily: "'Heebo', sans-serif" }}>בני</span>
               </div>
-              <div className="px-4 py-3 rounded-xl bg-white text-sm text-gray-400 shadow-[0px_0px_3.35px_rgba(0,0,0,0.08)]">
+              <div className="px-4 py-3 rounded-xl bg-white text-sm text-gray-400 shadow-[0px_0px_3.35px_rgba(0,0,0,0.08)] w-fit">
                 <span className="inline-flex gap-1">
                   <span className="animate-bounce" style={{ animationDelay: '0ms' }}>.</span>
                   <span className="animate-bounce" style={{ animationDelay: '150ms' }}>.</span>
