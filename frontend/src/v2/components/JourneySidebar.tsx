@@ -39,7 +39,7 @@ export function JourneySidebar({ currentMacroStage, currentStep, collectedData, 
             style={{ fontFamily: "'Heebo', sans-serif" }}
           >
             <Lightbulb size={20} />
-            <span>{isHe ? 'התובנות שלי (7)' : 'My Insights (7)'}</span>
+            <span>{isHe ? `התובנות שלי (${countInsights(collectedData)})` : `My Insights (${countInsights(collectedData)})`}</span>
           </button>
           <button
             type="button"
@@ -174,6 +174,36 @@ const INSIGHT_LABELS_HE: Record<string, string> = {
   commitment: 'המחויבות',
 };
 
+function formatInsightValue(value: unknown): string | null {
+  if (value == null || value === '') return null;
+  if (Array.isArray(value)) {
+    const filtered = value.filter(Boolean);
+    return filtered.length > 0 ? filtered.join(', ') : null;
+  }
+  if (typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>).filter(([, v]) => {
+      if (Array.isArray(v)) return v.length > 0;
+      return v != null && v !== '';
+    });
+    if (entries.length === 0) return null;
+    return entries.map(([k, v]) => {
+      const label = INSIGHT_LABELS_HE[k] || k;
+      const formatted = Array.isArray(v) ? (v as string[]).join(', ') : String(v);
+      return `${label}: ${formatted}`;
+    }).join('\n');
+  }
+  return String(value);
+}
+
+const HIDDEN_KEYS = ['entities', 'stance', 'forces', 'gap_booklet_moves', 'offer_trait_picker'];
+
+function countInsights(collectedData?: CollectedData): number {
+  if (!collectedData) return 0;
+  return Object.entries(collectedData)
+    .filter(([k]) => !HIDDEN_KEYS.includes(k))
+    .filter(([, v]) => formatInsightValue(v) !== null).length;
+}
+
 function InsightsPanel({ collectedData, isHe }: { collectedData?: CollectedData; isHe: boolean }) {
   if (!collectedData || Object.keys(collectedData).length === 0) {
     return (
@@ -185,20 +215,20 @@ function InsightsPanel({ collectedData, isHe }: { collectedData?: CollectedData;
     );
   }
 
-  const entries = Object.entries(collectedData).filter(([, v]) => {
-    if (Array.isArray(v)) return v.length > 0;
-    return v != null && v !== '';
-  });
+  const entries = Object.entries(collectedData)
+    .filter(([key]) => !HIDDEN_KEYS.includes(key))
+    .map(([key, value]) => ({ key, formatted: formatInsightValue(value) }))
+    .filter((e) => e.formatted !== null);
 
   return (
     <div className="space-y-4">
-      {entries.map(([key, value]) => (
+      {entries.map(({ key, formatted }) => (
         <div key={key} className="space-y-1">
           <p className="text-xs font-semibold text-[#03ffe6]" style={{ fontFamily: "'Heebo', sans-serif" }}>
             {INSIGHT_LABELS_HE[key] || key}
           </p>
-          <p className="text-sm text-white leading-relaxed" style={{ fontFamily: "'Heebo', sans-serif" }}>
-            {Array.isArray(value) ? value.join(', ') : String(value)}
+          <p className="text-sm text-white leading-relaxed whitespace-pre-line" style={{ fontFamily: "'Heebo', sans-serif" }}>
+            {formatted}
           </p>
         </div>
       ))}

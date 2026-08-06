@@ -110,10 +110,13 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle }: ChatScre
             type="button"
             onClick={handleSend}
             disabled={isLoading || !inputText.trim()}
-            className="flex-shrink-0 w-10 h-10 rounded-xl bg-[#03ffe6] text-[#2d4658] flex items-center justify-center
-                       disabled:opacity-40 hover:bg-[#02e6d0] transition-colors"
+            className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-colors order-first
+              ${inputText.trim()
+                ? 'bg-[#03ffe6] text-[#2d4658] hover:bg-[#02e6d0]'
+                : 'bg-[rgba(3,255,230,0.2)] text-[rgba(45,70,88,0.4)]'
+              }`}
           >
-            <Send size={16} className="rtl:-scale-x-100" />
+            <Send size={16} />
           </button>
           <div className="flex-1">
             <input

@@ -198,9 +198,11 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
           </button>
         </div>
 
-        <p className="text-center text-sm text-[#2d4658]" style={{ fontFamily: "'Heebo', sans-serif" }}>
-          עצם זה שעצרת לרגע והתבוננת, כבר יוצר תנועה חדשה.
-        </p>
+        {step === 2 && (
+          <p className="text-center text-sm text-[#2d4658]" style={{ fontFamily: "'Heebo', sans-serif" }}>
+            עצם זה שעצרת לרגע והתבוננת, כבר יוצר תנועה חדשה.
+          </p>
+        )}
       </div>
     </div>
   );
