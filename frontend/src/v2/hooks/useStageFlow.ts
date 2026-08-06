@@ -96,30 +96,55 @@ export function useStageFlow(language: string = 'he') {
     [conversationId, language, getToken],
   );
 
-  const startOnboarding = useCallback((emotions?: string[], domain?: string) => {
-    const openingQuestion = domain
-      ? `איך ה${domain === 'עבודה' ? 'תקיעות בעבודה' : domain === 'זוגיות' ? 'קושי בזוגיות' : domain === 'משפחה' ? 'מתח במשפחה' : 'מה שמטריד אותך'} בא לידי ביטוי ביום-יום שלך?`
-      : 'ספר לי קצת על מה שעובר עליך בתקופה הזו?';
-
-    const openingSuggestions = domain
-      ? ['עבודה', 'משפחה וקשרים', 'בריאות ורווחה', 'אחר']
-      : ['עבודה', 'זוגיות', 'משפחה', 'אחר'];
-
-    const openingMsg: ChatMessage = {
-      id: `a-opening-${Date.now()}`,
-      role: 'assistant',
-      content: openingQuestion,
-      phase: 'S1',
-      suggestions: openingSuggestions,
-    };
-    setMessages([openingMsg]);
-
+  const startOnboarding = useCallback(async (emotions?: string[], domain?: string) => {
     setFlowState((prev) => ({
       ...prev,
       phase: 'chatting',
       currentMacroStage: 'identification',
     }));
-  }, []);
+    setIsLoading(true);
+
+    try {
+      const contextMessage = [
+        emotions?.length ? `אני מרגיש: ${emotions.join(', ')}` : '',
+        domain ? `בתחום: ${domain}` : '',
+      ].filter(Boolean).join('. ');
+
+      const convId = await createConversation(language, getToken);
+      setConversationId(convId);
+
+      const response = await sendMessageV2(
+        contextMessage || 'אני רוצה להתחיל',
+        convId,
+        language,
+        getToken,
+      );
+
+      const assistantMsg: ChatMessage = {
+        id: `a-opening-${Date.now()}`,
+        role: 'assistant',
+        content: response.coach_message,
+        phase: response.current_step,
+        suggestions: response.suggestions,
+      };
+      setMessages([assistantMsg]);
+
+      if (response.collected_data) {
+        setCollectedData((prev) => ({ ...prev, ...response.collected_data }));
+      }
+    } catch (err) {
+      console.error('[V2 Chat] startOnboarding error:', err);
+      const fallbackMsg: ChatMessage = {
+        id: `a-opening-${Date.now()}`,
+        role: 'assistant',
+        content: 'ספר לי קצת על מה שעובר עליך בתקופה הזו?',
+        phase: 'S1',
+      };
+      setMessages([fallbackMsg]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [language, getToken]);
 
   const requestNextStageIntro = useCallback(async () => {
     if (!conversationId || !flowState.summary?.next_stage_id) return;
