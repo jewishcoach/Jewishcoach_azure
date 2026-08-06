@@ -104,13 +104,13 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle }: ChatScre
       </div>
 
       {/* Input bar — fixed at bottom */}
-      <div className="fixed bottom-0 inset-x-0 lg:relative bg-white p-3 pb-5 lg:pb-3 flex items-center justify-center z-20">
+      <div className="fixed bottom-0 inset-x-0 lg:relative bg-white p-3 pb-5 lg:pb-3 flex items-center justify-center z-20" dir="ltr">
         <div className="flex items-center gap-3 w-full max-w-[663px] px-2 lg:px-0">
           <button
             type="button"
             onClick={handleSend}
             disabled={isLoading || !inputText.trim()}
-            className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-colors order-first
+            className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-colors
               ${inputText.trim()
                 ? 'bg-[#03ffe6] text-[#2d4658] hover:bg-[#02e6d0]'
                 : 'bg-[rgba(3,255,230,0.2)] text-[rgba(45,70,88,0.4)]'
