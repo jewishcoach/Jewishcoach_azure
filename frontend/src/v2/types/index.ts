@@ -98,12 +98,31 @@ export interface ChatMessage {
   suggestions?: string[];
 }
 
+export interface CollectedData {
+  topic?: string;
+  event_description?: string;
+  emotions?: string[];
+  thought?: string;
+  action_actual?: string;
+  action_desired?: string;
+  emotion_desired?: string;
+  thought_desired?: string;
+  gap_name?: string;
+  gap_score?: string;
+  pattern?: string;
+  paradigm?: string;
+  renewal?: string;
+  vision?: string;
+  commitment?: string;
+}
+
 export interface ChatResponseV2 {
   coach_message: string;
   conversation_id: number;
   current_step: string;
   saturation_score: number;
   suggestions?: string[];
+  collected_data?: CollectedData | null;
   tool_call?: Record<string, unknown> | null;
   station_checkpoint?: Record<string, unknown> | null;
   stage_complete?: StageSummaryPayload | null;

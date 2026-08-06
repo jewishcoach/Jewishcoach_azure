@@ -19,6 +19,7 @@ export function V2App({ language = 'he' }: V2AppProps) {
     flowState,
     messages,
     isLoading,
+    collectedData,
     sendMessage,
     startOnboarding,
     requestNextStageIntro,
@@ -145,6 +146,7 @@ export function V2App({ language = 'he' }: V2AppProps) {
           <JourneySidebar
             currentMacroStage={flowState.currentMacroStage}
             currentStep={flowState.currentStep}
+            collectedData={collectedData}
             language={language}
           />
         )}

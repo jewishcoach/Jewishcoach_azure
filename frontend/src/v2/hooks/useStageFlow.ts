@@ -3,6 +3,7 @@ import { useAuth } from '@clerk/clerk-react';
 import type {
   ChatMessage,
   ChatResponseV2,
+  CollectedData,
   FlowState,
   StageIntroPayload,
   StageSummaryPayload,
@@ -27,6 +28,7 @@ export function useStageFlow(language: string = 'he') {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [saturationScore, setSaturationScore] = useState(0);
+  const [collectedData, setCollectedData] = useState<CollectedData>({});
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -63,6 +65,9 @@ export function useStageFlow(language: string = 'he') {
         };
         setMessages((prev) => [...prev, assistantMsg]);
         setSaturationScore(response.saturation_score);
+        if (response.collected_data) {
+          setCollectedData((prev) => ({ ...prev, ...response.collected_data }));
+        }
 
         setFlowState((prev) => ({
           ...prev,
@@ -177,6 +182,7 @@ export function useStageFlow(language: string = 'he') {
     conversationId,
     isLoading,
     saturationScore,
+    collectedData,
     sendMessage,
     startOnboarding,
     requestNextStageIntro,

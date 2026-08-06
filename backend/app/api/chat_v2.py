@@ -66,6 +66,7 @@ class ChatResponse(BaseModel):
     current_step: str
     saturation_score: float
     suggestions: list[str] = []  # Quick-reply options for structured chat flow
+    collected_data: dict | None = None  # Progressive insights (topic, emotions, event, etc.)
     tool_call: dict | None = None  # Interactive tool to activate in InsightHub
     station_checkpoint: dict | None = None  # Sticky mission card + Insights (V2 stations)
     stage_complete: dict | None = None  # Macro-stage completion signal (UX V2)
@@ -343,6 +344,12 @@ async def send_message_v2(
                             logger.exception("[BSD V2 API] Failed to generate stage summary on completion")
 
         suggestions = updated_state.pop("_suggestions", [])
+        collected_data = updated_state.get("collected_data")
+        # Filter out empty values for cleaner frontend payload
+        if collected_data and isinstance(collected_data, dict):
+            collected_data = {k: v for k, v in collected_data.items() if v and v != [] and v != {}}
+        else:
+            collected_data = None
 
         response = ChatResponse(
             coach_message=coach_message,
@@ -350,6 +357,7 @@ async def send_message_v2(
             current_step=updated_state["current_step"],
             saturation_score=updated_state["saturation_score"],
             suggestions=suggestions,
+            collected_data=collected_data if collected_data else None,
             tool_call=tool_call,
             station_checkpoint=station_checkpoint,
             stage_complete=stage_complete_payload,

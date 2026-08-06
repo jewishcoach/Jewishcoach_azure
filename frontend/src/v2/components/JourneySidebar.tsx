@@ -1,5 +1,6 @@
 import { Heart, Lightbulb, Sparkles } from 'lucide-react';
 import { MACRO_STAGES } from '../types';
+import type { CollectedData } from '../types';
 import { useState } from 'react';
 
 const STAGE_STEP_RANGES: Record<string, { start: number; end: number }> = {
@@ -13,10 +14,11 @@ const STAGE_STEP_RANGES: Record<string, { start: number; end: number }> = {
 interface JourneySidebarProps {
   currentMacroStage: string;
   currentStep: string;
+  collectedData?: CollectedData;
   language: string;
 }
 
-export function JourneySidebar({ currentMacroStage, currentStep, language }: JourneySidebarProps) {
+export function JourneySidebar({ currentMacroStage, currentStep, collectedData, language }: JourneySidebarProps) {
   const isHe = language.startsWith('he');
   const currentIdx = MACRO_STAGES.findIndex((s) => s.id === currentMacroStage);
   const [activeTab, setActiveTab] = useState<'journey' | 'insights'>('journey');
@@ -106,6 +108,10 @@ export function JourneySidebar({ currentMacroStage, currentStep, language }: Jou
               </div>
             </>
           )}
+
+          {activeTab === 'insights' && (
+            <InsightsPanel collectedData={collectedData} isHe={isHe} />
+          )}
         </div>
 
         {/* Bottom stats section */}
@@ -147,6 +153,56 @@ export function JourneySidebar({ currentMacroStage, currentStep, language }: Jou
         </div>
       </div>
     </>
+  );
+}
+
+const INSIGHT_LABELS_HE: Record<string, string> = {
+  topic: 'נושא האימון',
+  event_description: 'האירוע',
+  emotions: 'רגשות',
+  thought: 'המחשבה הפנימית',
+  action_actual: 'מה עשיתי (מצוי)',
+  action_desired: 'מה הייתי רוצה לעשות (רצוי)',
+  emotion_desired: 'איך הייתי רוצה להרגיש',
+  thought_desired: 'מה הייתי רוצה לחשוב',
+  gap_name: 'שם הפער',
+  gap_score: 'ציון הפער',
+  pattern: 'הדפוס',
+  paradigm: 'הפרדיגמה',
+  renewal: 'הבחירה החדשה',
+  vision: 'החזון',
+  commitment: 'המחויבות',
+};
+
+function InsightsPanel({ collectedData, isHe }: { collectedData?: CollectedData; isHe: boolean }) {
+  if (!collectedData || Object.keys(collectedData).length === 0) {
+    return (
+      <div className="flex items-center justify-center h-40">
+        <p className="text-sm text-[rgba(255,255,255,0.4)]" style={{ fontFamily: "'Heebo', sans-serif" }}>
+          {isHe ? 'התובנות יתווספו במהלך המסע' : 'Insights will appear during the journey'}
+        </p>
+      </div>
+    );
+  }
+
+  const entries = Object.entries(collectedData).filter(([, v]) => {
+    if (Array.isArray(v)) return v.length > 0;
+    return v != null && v !== '';
+  });
+
+  return (
+    <div className="space-y-4">
+      {entries.map(([key, value]) => (
+        <div key={key} className="space-y-1">
+          <p className="text-xs font-semibold text-[#03ffe6]" style={{ fontFamily: "'Heebo', sans-serif" }}>
+            {INSIGHT_LABELS_HE[key] || key}
+          </p>
+          <p className="text-sm text-white leading-relaxed" style={{ fontFamily: "'Heebo', sans-serif" }}>
+            {Array.isArray(value) ? value.join(', ') : String(value)}
+          </p>
+        </div>
+      ))}
+    </div>
   );
 }
 
