@@ -119,15 +119,20 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle }: ChatScre
             <Send size={16} />
           </button>
           <div className="flex-1">
-            <input
-              type="text"
+            <textarea
               value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+              onChange={(e) => {
+                setInputText(e.target.value);
+                e.target.style.height = 'auto';
+                e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+              }}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
               placeholder="כתוב את תשובתך כאן, או בחר מהאפשרויות למעלה..."
+              rows={1}
               className="w-full px-4 py-3 rounded-xl border-[0.8px] border-[#03ffe6] bg-white text-base text-[#2d4658]
                          placeholder:text-[rgba(45,70,88,0.4)] focus:outline-none
-                         shadow-[0px_0px_6.7px_0px_rgba(0,0,0,0.08)] text-right"
+                         shadow-[0px_0px_6.7px_0px_rgba(0,0,0,0.08)] text-right resize-none
+                         min-h-[46px] max-h-[120px] overflow-y-auto"
               style={{ fontFamily: "'Heebo', sans-serif" }}
             />
           </div>
@@ -137,9 +142,6 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle }: ChatScre
   );
 }
 
-function getQuickRepliesForMessage(msg: ChatMessage): string[] | undefined {
-  if (msg.id.startsWith('a-opening-')) {
-    return ['עבודה', 'משפחה וקשרים', 'בריאות ורווחה', 'אחר'];
-  }
+function getQuickRepliesForMessage(_msg: ChatMessage): string[] | undefined {
   return undefined;
 }

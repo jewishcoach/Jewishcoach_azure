@@ -2149,6 +2149,12 @@ def build_conversation_context(
     if state.get("current_step") in {"S2", "S3", "S8"}:
         history_last_n = max(history_last_n, 10)
 
+    # Later stages (S5+) need more memory to avoid repetition — the LLM must
+    # see what was already collected across desired/gap/pattern exploration.
+    if state.get("current_step") in {"S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12", "S13"}:
+        history_last_n = max(history_last_n, 14)
+        max_msg_chars = max(max_msg_chars, 600)
+
     # Get recent history
     history = get_conversation_history(state, last_n=history_last_n)
     logger.info(
@@ -2221,9 +2227,17 @@ def build_conversation_context(
         context_parts.append(intro_ctx_str)
 
     # Collected data (non-null only, excluding entities which are shown above)
+    # In early stages, hide future-stage fields to prevent the LLM from "jumping ahead"
+    _future_fields_by_stage = {
+        "S0": {"action_desired", "emotion_desired", "thought_desired", "gap_name", "gap_score", "gap_booklet_moves", "pattern", "paradigm", "stance", "forces", "renewal", "vision", "commitment"},
+        "S1": {"action_desired", "emotion_desired", "thought_desired", "gap_name", "gap_score", "gap_booklet_moves", "pattern", "paradigm", "stance", "forces", "renewal", "vision", "commitment"},
+        "S2": {"action_desired", "emotion_desired", "thought_desired", "gap_name", "gap_score", "gap_booklet_moves", "pattern", "paradigm", "stance", "forces", "renewal", "vision", "commitment"},
+        "S3": {"action_desired", "emotion_desired", "thought_desired", "gap_name", "gap_score", "gap_booklet_moves", "pattern", "paradigm", "stance", "forces", "renewal", "vision", "commitment"},
+    }
+    hide_fields = _future_fields_by_stage.get(state.get("current_step"), set())
     collected = {
         k: v for k, v in state['collected_data'].items()
-        if v is not None and v != [] and v != {} and k != "entities"
+        if v is not None and v != [] and v != {} and k != "entities" and k not in hide_fields
     }
     # S7: always show gap_booklet_moves (even []) so the model never re-asks the same gap-work question type
     if state.get("current_step") == "S7":
@@ -2238,6 +2252,55 @@ def build_conversation_context(
         if state.get("current_step") in ("S5", "S6", "S7"):
             context_parts.append("\n🚨 השתמש בנתונים האלה לבניית הסיכום! אל תסכם בלי לדעת מה נאסף." if language == "he" else "\n🚨 Use this data to build the summary! Don't summarize without knowing what was collected.")
     
+    # S6/S7: inject what has already been collected to prevent repetition
+    if state['current_step'] in ('S6', 'S7') and history:
+        already_done = []
+        cd = state.get('collected_data') or {}
+        if state['current_step'] == 'S6':
+            if cd.get('action_desired'):
+                already_done.append(f"✓ פעולה רצויה: {cd['action_desired']}")
+            if cd.get('emotion_desired'):
+                already_done.append(f"✓ רגש רצוי: {cd['emotion_desired']}")
+            if cd.get('thought_desired'):
+                already_done.append(f"✓ מחשבה רצויה: {cd['thought_desired']}")
+            missing = []
+            if not cd.get('action_desired'):
+                missing.append("פעולה רצויה")
+            if not cd.get('emotion_desired'):
+                missing.append("רגש רצוי")
+            if not cd.get('thought_desired'):
+                missing.append("מחשבה רצויה")
+            if already_done:
+                if language == "he":
+                    context_parts.append("\n🚨 ממדי הרצוי שכבר נאספו — אל תשאל עליהם שוב!")
+                else:
+                    context_parts.append("\n🚨 Desired dimensions already collected — do NOT ask again!")
+                context_parts.extend(already_done)
+            if missing:
+                if language == "he":
+                    context_parts.append(f"⏳ עדיין חסר: {', '.join(missing)}")
+                else:
+                    context_parts.append(f"⏳ Still missing: {', '.join(missing)}")
+        elif state['current_step'] == 'S7':
+            moves = cd.get('gap_booklet_moves') or []
+            if cd.get('gap_name'):
+                already_done.append(f"✓ שם הפער: {cd['gap_name']}")
+            if cd.get('gap_score'):
+                already_done.append(f"✓ ציון הפער: {cd['gap_score']}")
+            if moves:
+                move_labels = {"belief": "אמונה", "opportunity": "הזדמנות", "dwelling": "שהייה", "authenticity": "אותנטיות/3 מסכים"}
+                done_labels = [move_labels.get(m, m) for m in moves]
+                already_done.append(f"✓ שאלות שכבר נשאלו ונענו: {', '.join(done_labels)}")
+                remaining = [v for k, v in move_labels.items() if k not in moves]
+                if remaining:
+                    already_done.append(f"⏳ שאלות שעדיין לא נשאלו: {', '.join(remaining)}")
+            if already_done:
+                if language == "he":
+                    context_parts.append("\n🚨 מה כבר נעשה בשלב הפער — אל תחזור על שאלות שכבר נענו!")
+                else:
+                    context_parts.append("\n🚨 Gap work already done — do NOT repeat answered questions!")
+                context_parts.extend(already_done)
+
     # Extract event details from history for S2 (to prevent repeated questions)
     if state['current_step'] == 'S2' and history:
         event_summary = []

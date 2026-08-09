@@ -39,6 +39,8 @@ def _configure_app_logging() -> None:
     level = logging.DEBUG if verbose else logging.WARNING
     for name in ("app.dependencies", "app.api.chat_v2", "app.routers.chat"):
         logging.getLogger(name).setLevel(level)
+    # BSD V2 coach logs: always INFO so [PERF], [BSD], collected_data are visible
+    logging.getLogger("app.bsd_v2.single_agent_coach").setLevel(logging.INFO)
 
 
 _configure_app_logging()

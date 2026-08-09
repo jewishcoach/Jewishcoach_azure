@@ -127,7 +127,7 @@ export function JourneySidebar({ currentMacroStage, currentStep, collectedData, 
 
       {/* Mobile bottom bar */}
       <div className="fixed bottom-0 inset-x-0 lg:hidden bg-[#2d4658]/95 backdrop-blur-sm border-t border-[#3c5465] z-10">
-        <div className="flex items-center justify-center gap-3 py-2.5 px-4">
+        <div className="flex items-center justify-start gap-3 py-2.5 px-4" dir="ltr">
           {MACRO_STAGES.map((stage, idx) => {
             const isActive = idx === currentIdx;
             const isCompleted = idx < currentIdx;

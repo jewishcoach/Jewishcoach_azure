@@ -29,6 +29,7 @@ def _build_azure_llm(*, deployment: str, temperature: float = 0.2) -> AzureChatO
     api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-08-01-preview")
     timeout_seconds = int(os.getenv("AZURE_OPENAI_TIMEOUT_SECONDS", "90"))
     max_retries = int(os.getenv("AZURE_OPENAI_MAX_RETRIES", "2"))
+    max_tokens = int(os.getenv("AZURE_OPENAI_MAX_TOKENS", "700"))
     if not api_key or not endpoint:
         raise RuntimeError("Missing Azure OpenAI configuration.")
     return AzureChatOpenAI(
@@ -37,6 +38,7 @@ def _build_azure_llm(*, deployment: str, temperature: float = 0.2) -> AzureChatO
         api_version=api_version,
         azure_deployment=deployment,
         temperature=temperature,
+        max_tokens=max_tokens,
         request_timeout=timeout_seconds,
         max_retries=max_retries,
     )

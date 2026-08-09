@@ -33,9 +33,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
 
   const toggleEmotion = (emotion: string) => {
     setSelectedEmotions((prev) =>
-      prev.includes(emotion)
-        ? prev.filter((e) => e !== emotion)
-        : [...prev, emotion],
+      prev.includes(emotion) ? [] : [emotion],
     );
   };
 
