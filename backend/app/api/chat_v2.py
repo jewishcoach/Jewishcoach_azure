@@ -183,7 +183,7 @@ def station_intent_v2(
 
 
 @router.post("/message", response_model=ChatResponse)
-@limiter.limit("60/minute")
+@limiter.limit("300/minute")
 async def send_message_v2(
     request: Request,
     body: ChatRequest,
