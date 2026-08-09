@@ -424,6 +424,55 @@ async def send_message_v2(
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# LOAD CONVERSATION (for resuming past sessions)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class ConversationLoadResponse(BaseModel):
+    conversation_id: int
+    current_step: str
+    messages: list[dict]
+    collected_data: dict | None = None
+
+
+@router.get("/conversation/{conversation_id}")
+async def load_conversation(
+    conversation_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Load a V2 conversation for resuming in the frontend."""
+    conv = _get_conversation_or_404(conversation_id, current_user.id, db)
+    state = conv.v2_state or {}
+    raw_messages = state.get("messages", [])
+
+    frontend_messages = []
+    for msg in raw_messages:
+        sender = msg.get("sender") or msg.get("role", "")
+        content = msg.get("content", "")
+        if not content:
+            continue
+        role = "assistant" if sender in ("coach", "assistant") else "user"
+        frontend_messages.append({
+            "id": f"{'a' if role == 'assistant' else 'u'}-{len(frontend_messages)}",
+            "role": role,
+            "content": content,
+        })
+
+    collected_data = state.get("collected_data")
+    if collected_data and isinstance(collected_data, dict):
+        collected_data = {k: v for k, v in collected_data.items() if v and v != [] and v != {}}
+    else:
+        collected_data = None
+
+    return ConversationLoadResponse(
+        conversation_id=conversation_id,
+        current_step=state.get("current_step", "S0"),
+        messages=frontend_messages,
+        collected_data=collected_data,
+    )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # DEBUG: Recent errors (in-memory, last 20)
 # ══════════════════════════════════════════════════════════════════════════════
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Lightbulb, ArrowLeft } from 'lucide-react';
+import { Lightbulb, ArrowLeft, Share2, Download } from 'lucide-react';
 import type { StageSummaryPayload } from '../types';
 
 const TREE_IMAGES: Record<string, string> = {
@@ -130,6 +130,44 @@ export function StageCompleteScreen({ summary, onContinue, language }: StageComp
               {isHe ? 'אתה יכול ללכת ולחזור מתי שתרצה המידע ישמר אוטומטית' : 'You can come and go anytime. Data is saved automatically.'}
             </p>
           </div>
+        </div>
+
+        {/* Action buttons (share/save) */}
+        <div className="flex items-center justify-center gap-4 pt-2">
+          <button
+            type="button"
+            onClick={() => {
+              if (navigator.share) {
+                navigator.share({
+                  title: isHe ? 'כרטיס התובנה שלי' : 'My Insight Card',
+                  text: summary.insights.join('\n'),
+                });
+              }
+            }}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-[#03ffe6] text-sm text-[#2d4658] hover:bg-[rgba(3,255,230,0.05)] transition-colors"
+            style={{ fontFamily: "'Heebo', sans-serif" }}
+          >
+            <Share2 size={16} className="text-[#03ffe6]" />
+            <span>{isHe ? 'שיתוף' : 'Share'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const text = summary.insights.join('\n');
+              const blob = new Blob([text], { type: 'text/plain' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `insight-${summary.stage_id}.txt`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-[#03ffe6] text-sm text-[#2d4658] hover:bg-[rgba(3,255,230,0.05)] transition-colors"
+            style={{ fontFamily: "'Heebo', sans-serif" }}
+          >
+            <Download size={16} className="text-[#03ffe6]" />
+            <span>{isHe ? 'שמירה' : 'Save'}</span>
+          </button>
         </div>
 
         {/* CTA button */}

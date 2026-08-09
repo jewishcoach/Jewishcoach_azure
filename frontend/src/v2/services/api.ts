@@ -97,6 +97,26 @@ export interface ConversationListItem {
   message_count: number;
 }
 
+export interface ConversationLoadData {
+  conversation_id: number;
+  current_step: string;
+  messages: { id: string; role: 'user' | 'assistant'; content: string }[];
+  collected_data?: Record<string, unknown> | null;
+}
+
+export async function loadConversation(
+  conversationId: number,
+  getToken: () => Promise<string | null>,
+): Promise<ConversationLoadData> {
+  const base = getApiBase();
+  const res = await fetch(`${base}/chat/v2/conversation/${conversationId}`, {
+    method: 'GET',
+    headers: await authHeaders(getToken),
+  });
+  if (!res.ok) throw new Error(`Load conversation failed: ${res.status}`);
+  return res.json();
+}
+
 export async function listConversations(
   getToken: () => Promise<string | null>,
 ): Promise<ConversationListItem[]> {

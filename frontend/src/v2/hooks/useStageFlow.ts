@@ -11,6 +11,7 @@ import type {
 import {
   createConversation,
   fetchStageIntro,
+  loadConversation,
   sendMessageV2,
   submitStageIntroAnswers,
 } from '../services/api';
@@ -201,6 +202,27 @@ export function useStageFlow(language: string = 'he') {
     [conversationId, flowState.currentMacroStage, language, getToken],
   );
 
+  const resumeConversation = useCallback(async (convId: number) => {
+    setIsLoading(true);
+    try {
+      const data = await loadConversation(convId, getToken);
+      setConversationId(data.conversation_id);
+      setMessages(data.messages as ChatMessage[]);
+      if (data.collected_data) {
+        setCollectedData(data.collected_data as CollectedData);
+      }
+      setFlowState((prev) => ({
+        ...prev,
+        phase: 'chatting',
+        currentStep: data.current_step,
+      }));
+    } catch (err) {
+      console.error('[V2 Chat] resumeConversation error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [getToken]);
+
   return {
     flowState,
     messages,
@@ -210,6 +232,7 @@ export function useStageFlow(language: string = 'he') {
     collectedData,
     sendMessage,
     startOnboarding,
+    resumeConversation,
     requestNextStageIntro,
     submitIntroAnswers,
   };
