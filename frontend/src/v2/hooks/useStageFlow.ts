@@ -134,7 +134,7 @@ export function useStageFlow(language: string = 'he') {
         setCollectedData((prev) => ({ ...prev, ...response.collected_data }));
       }
     } catch (err) {
-      console.error('[V2 Chat] startOnboarding error:', err);
+      console.error('[V2 Chat] startOnboarding error:', err, 'context:', { emotions, domain });
       const fallbackMsg: ChatMessage = {
         id: `a-opening-${Date.now()}`,
         role: 'assistant',
