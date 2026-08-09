@@ -30,7 +30,7 @@ PLAN_LIMITS = {
         "price": 0,
         "currency": "ILS",
         # Total user-message quota (all-time); JSON key kept as messages_per_month for compatibility.
-        "messages_per_month": 150,
+        "messages_per_month": 1000,
         # תמלול קולי: ללא הגבלה זמנית לכל התוכניות (עד להודעה חדשה)
         "speech_minutes_per_month": -1,
         "features": {
@@ -79,6 +79,7 @@ BILLING_PLANS_IN_CATALOG: tuple[str, ...] = ("basic", "premium")
 # Per-account message quota overrides (same numeric semantics as plan caps). Keys use quota_email_key().
 MESSAGE_LIMIT_OVERRIDES_BY_EMAIL: dict[str, int] = {
     "mormay11@gmail.com": 10_000,  # mor.may11@gmail.com — Gmail ignores dots in local part
+    "ishaimeisels@gmail.com": -1,  # Admin — unlimited
 }
 
 # When Clerk has not synced a real email yet, user.email may be "{clerk_id}@clerk.temp" — overrides by clerk_id still apply.

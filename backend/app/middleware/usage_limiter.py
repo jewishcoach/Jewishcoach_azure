@@ -51,6 +51,8 @@ async def require_message_quota(
     db: Session = Depends(get_db),
 ) -> None:
     """FastAPI dependency: raises 429 if user has no message quota."""
+    if current_user.current_plan == "premium" or current_user.current_plan == "pro":
+        return
     await check_message_limit(request, current_user, db)
 
 
