@@ -125,7 +125,10 @@ export async function listConversations(
     method: 'GET',
     headers: await authHeaders(getToken),
   });
-  if (!res.ok) return [];
+  if (!res.ok) {
+    console.warn('[API] listConversations failed:', res.status, res.statusText);
+    return [];
+  }
   return res.json();
 }
 
