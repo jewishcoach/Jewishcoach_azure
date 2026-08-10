@@ -2753,9 +2753,8 @@ async def handle_conversation(
                 internal_state["collected_data"] = {**internal_state.get("collected_data", {}), "topic": inferred}
 
         new_step_final = internal_state.get("current_step", old_step)
-        station_api_payload = maybe_commit_station_checkpoint(
-            state, old_step, new_step_final, internal_state, language
-        )
+        # Station checkpoints disabled — UX V2 handles pacing via UI
+        station_api_payload = None
 
         # Add user message
         state = add_message(state, "user", user_message)

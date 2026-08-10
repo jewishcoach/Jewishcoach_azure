@@ -51,7 +51,7 @@ export function MessageBubble({ message, quickReplies, onQuickReply, selectedRep
               type="button"
               onClick={() => onQuickReply?.(reply)}
               className="w-auto lg:flex-1 px-4 lg:px-0 h-[34px] rounded-xl border-[0.8px] border-[#03ffe6] bg-[rgba(3,255,230,0.05)]
-                         text-[15px] lg:text-base font-semibold text-[#2d4658] text-center whitespace-nowrap
+                         text-[15px] lg:text-base font-normal text-[#2d4658] text-center whitespace-nowrap
                          hover:bg-[rgba(3,255,230,0.15)] transition-colors"
               style={{ fontFamily: "'Assistant', sans-serif" }}
             >
