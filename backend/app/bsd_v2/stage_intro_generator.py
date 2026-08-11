@@ -28,14 +28,45 @@ logger = logging.getLogger(__name__)
 # Stage summary generation (rule-based from collected_data)
 # ---------------------------------------------------------------------------
 
-def generate_stage_summary(
+INSIGHT_CARD_PROMPT_HE = """אתה מייצר "כרטיס תובנה" אישי למתאמן שסיים שלב באימון BSD.
+
+הכרטיס צריך:
+1. לתת למתאמן ערך — משהו שיקח איתו, שירגיש כמו מתנה מהתהליך
+2. לכלול ציטוט אחד מהמילים של המתאמן עצמו (בגרשיים)
+3. להיות כתוב בגוף שני, חם ואישי, 2-3 משפטים בלבד
+4. לא לייעץ, לא להורות — רק לשקף בצורה שמרגישה כמו גילוי
+
+פורמט התשובה — בדיוק 3 שורות, כל שורה היא insight אחד:
+שורה 1: תובנה מרכזית (עם ציטוט מהמתאמן)
+שורה 2: מה התגלה בשלב הזה
+שורה 3: משפט אחד מעצים שנותן כוח להמשך
+
+אין כותרות, אין מספור, אין נקודות — רק 3 שורות טקסט."""
+
+INSIGHT_CARD_PROMPT_EN = """You generate a personal "insight card" for a trainee who completed a BSD coaching stage.
+
+The card should:
+1. Give the trainee value — something to take with them, like a gift from the process
+2. Include one quote from the trainee's own words (in quotation marks)
+3. Be written in 2nd person, warm and personal, 2-3 sentences only
+4. No advice, no instructions — just reflect in a way that feels like discovery
+
+Response format — exactly 3 lines, each is one insight:
+Line 1: Key insight (with a quote from the trainee)
+Line 2: What was discovered in this stage
+Line 3: One empowering sentence for the road ahead
+
+No headers, no numbering, no bullets — just 3 lines of text."""
+
+
+async def generate_stage_summary(
     state: dict[str, Any],
     completed_macro_id: str,
     language: str = "he",
 ) -> StageSummaryPayload:
     """
-    Build a summary for a completed macro-stage from collected_data.
-    No LLM call — purely rule-based extraction.
+    Build a personalized insight card for a completed macro-stage using LLM.
+    Falls back to rule-based extraction on error.
     """
     macro = get_macro_stage(completed_macro_id)
     if not macro:
@@ -45,7 +76,11 @@ def generate_stage_summary(
     is_he = language.startswith("he")
     title = macro["title_he"] if is_he else macro["title_en"]
 
-    insights = _extract_insights(collected, completed_macro_id, is_he)
+    try:
+        insights = await _generate_insight_card(state, collected, completed_macro_id, is_he)
+    except Exception as e:
+        logger.warning(f"[InsightCard] LLM generation failed, falling back to rule-based: {e}")
+        insights = _extract_insights(collected, completed_macro_id, is_he)
 
     next_id = next_macro_stage(completed_macro_id)
     next_macro = get_macro_stage(next_id) if next_id else None
@@ -61,6 +96,55 @@ def generate_stage_summary(
             else None
         ),
     )
+
+
+async def _generate_insight_card(
+    state: dict[str, Any],
+    collected: dict[str, Any],
+    macro_id: str,
+    is_he: bool,
+) -> list[str]:
+    """Call LLM to generate personalized insight card."""
+    from .state_schema_v2 import get_conversation_history
+
+    history = get_conversation_history(state, last_n=8)
+    user_messages = [m["content"] for m in history if m.get("sender") == "user"]
+    user_quotes = "\n".join(f"- {msg}" for msg in user_messages[-5:])
+
+    collected_summary_parts = []
+    for key, val in collected.items():
+        if val and key != "entities" and val != []:
+            if isinstance(val, list):
+                collected_summary_parts.append(f"{key}: {', '.join(str(v) for v in val)}")
+            elif isinstance(val, dict):
+                collected_summary_parts.append(f"{key}: {val}")
+            else:
+                collected_summary_parts.append(f"{key}: {val}")
+    collected_str = "\n".join(collected_summary_parts)
+
+    context = f"""שלב שהושלם: {macro_id}
+מה המתאמן כתב (ציטוטים):
+{user_quotes}
+
+נתונים שנאספו:
+{collected_str}"""
+
+    system_prompt = INSIGHT_CARD_PROMPT_HE if is_he else INSIGHT_CARD_PROMPT_EN
+    llm = get_azure_chat_llm_4o_mini()
+
+    messages = [
+        SystemMessage(content=system_prompt),
+        HumanMessage(content=context),
+    ]
+
+    response = await llm.ainvoke(messages)
+    text = response.content.strip()
+    lines = [line.strip() for line in text.split("\n") if line.strip()]
+
+    if not lines:
+        raise ValueError("Empty LLM response for insight card")
+
+    return lines[:4]
 
 
 def _extract_insights(

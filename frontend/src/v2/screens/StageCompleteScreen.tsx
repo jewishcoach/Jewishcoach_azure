@@ -14,9 +14,10 @@ interface StageCompleteScreenProps {
   summary: StageSummaryPayload;
   onContinue: () => void;
   language: string;
+  userMessages?: string[];
 }
 
-export function StageCompleteScreen({ summary, onContinue, language }: StageCompleteScreenProps) {
+export function StageCompleteScreen({ summary, onContinue, language, userMessages }: StageCompleteScreenProps) {
   const isHe = language.startsWith('he');
   const [personalStatement, setPersonalStatement] = useState('');
 
@@ -137,10 +138,14 @@ export function StageCompleteScreen({ summary, onContinue, language }: StageComp
           <button
             type="button"
             onClick={() => {
+              const insightsText = summary.insights.join('\n');
+              const userText = userMessages?.length
+                ? `\n\n${isHe ? 'מה שכתבתי:' : 'What I wrote:'}\n${userMessages.slice(-3).join('\n')}`
+                : '';
               if (navigator.share) {
                 navigator.share({
                   title: isHe ? 'כרטיס התובנה שלי' : 'My Insight Card',
-                  text: summary.insights.join('\n'),
+                  text: insightsText + userText,
                 });
               }
             }}

@@ -336,7 +336,7 @@ async def send_message_v2(
                     end_num = int(end_step.replace("S", "")) if end_step else -1
                     if step_num >= end_num:
                         try:
-                            summary = generate_stage_summary(
+                            summary = await generate_stage_summary(
                                 updated_state, current_macro_id, body.language
                             )
                             stage_complete_payload = summary.model_dump()
@@ -770,7 +770,7 @@ async def get_stage_summary(
     state = load_v2_state(body.conversation_id, db)
 
     try:
-        summary = generate_stage_summary(
+        summary = await generate_stage_summary(
             state=state,
             completed_macro_id=body.target_macro_stage,
             language=body.language,
