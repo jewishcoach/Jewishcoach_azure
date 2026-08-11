@@ -127,10 +127,10 @@ export function LoginScreen({ onSignedIn: _onSignedIn }: LoginScreenProps) {
         </p>
       </div>
 
-      {/* Left side — video + text (blue gradient) */}
+      {/* Left side — video + text (sky background) */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-10 relative overflow-hidden">
-        {/* Background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#5a8ea8] to-[#3d6a82]" />
+        {/* Background image — sky with clouds */}
+        <img src="/login-bg.png" alt="" className="absolute inset-0 w-full h-full object-cover" />
 
         <div className="space-y-4 relative z-10">
           <p
