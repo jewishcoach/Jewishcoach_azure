@@ -189,6 +189,7 @@ export function useStageFlow(language: string = 'he') {
           language,
           getToken,
         );
+        setMessages([]);
         setFlowState((prev) => ({
           ...prev,
           phase: 'chatting',

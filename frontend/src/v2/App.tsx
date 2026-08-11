@@ -223,6 +223,7 @@ export function V2App({ language = 'he' }: V2AppProps) {
                 payload={flowState.introPayload}
                 onSubmit={submitIntroAnswers}
                 isSubmitting={false}
+                previousInsights={flowState.summary?.insights}
               />
             </div>
           )}
