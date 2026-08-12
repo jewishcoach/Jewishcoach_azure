@@ -9,7 +9,7 @@ export function LoginScreen({ onSignedIn: _onSignedIn }: LoginScreenProps) {
   const [mode, setMode] = useState<'signin' | 'signup'>('signup');
 
   return (
-    <div className="h-screen flex flex-row-reverse" dir="rtl">
+    <div className="h-screen flex" dir="rtl">
       {/* Right side — auth form (dark background) */}
       <div className="flex-1 flex flex-col items-center justify-between px-5 lg:px-6 py-8 lg:py-10 overflow-y-auto bg-[#2d4658]">
         <div className="w-full max-w-[483px] space-y-4 flex-1 flex flex-col justify-center">
