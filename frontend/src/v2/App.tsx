@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Heart, Menu, X, LogOut, MessageSquare, User } from 'lucide-react';
+import { Heart, Menu, X, LogOut, MessageSquare, User, PlusCircle } from 'lucide-react';
 import { useAuth, useUser } from '@clerk/clerk-react';
 import { MACRO_STAGES } from './types';
 import { useStageFlow } from './hooks/useStageFlow';
@@ -36,6 +36,7 @@ export function V2App({ language = 'he' }: V2AppProps) {
     collectedData,
     sendMessage,
     startOnboarding,
+    startNewConversation,
     resumeConversation,
     requestNextStageIntro,
     submitIntroAnswers,
@@ -125,6 +126,20 @@ export function V2App({ language = 'he' }: V2AppProps) {
                   </p>
                 </div>
               </div>
+            </div>
+
+            {/* New conversation button */}
+            <div className="p-3">
+              <button
+                type="button"
+                onClick={() => { startNewConversation(); setMenuOpen(false); }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-[#9747ff] hover:bg-[#8035e6] transition-colors text-right"
+              >
+                <PlusCircle size={18} className="text-white flex-shrink-0" />
+                <span className="text-sm font-semibold text-white" style={{ fontFamily: "'Heebo', sans-serif" }}>
+                  {isHe ? 'שיחה חדשה' : 'New conversation'}
+                </span>
+              </button>
             </div>
 
             {/* Conversations list */}

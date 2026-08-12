@@ -224,6 +224,18 @@ export function useStageFlow(language: string = 'he') {
     }
   }, [getToken]);
 
+  const startNewConversation = useCallback(() => {
+    setMessages([]);
+    setConversationId(null);
+    setCollectedData({});
+    setSaturationScore(0);
+    setFlowState({
+      phase: 'onboarding',
+      currentMacroStage: 'identification',
+      currentStep: 'S0',
+    });
+  }, []);
+
   return {
     flowState,
     messages,
@@ -233,6 +245,7 @@ export function useStageFlow(language: string = 'he') {
     collectedData,
     sendMessage,
     startOnboarding,
+    startNewConversation,
     resumeConversation,
     requestNextStageIntro,
     submitIntroAnswers,
