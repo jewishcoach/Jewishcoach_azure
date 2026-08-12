@@ -20,10 +20,16 @@ export function V2App({ language = 'he' }: V2AppProps) {
   const { user } = useUser();
   const [menuOpen, setMenuOpen] = useState(false);
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
+  const [loadingConversations, setLoadingConversations] = useState(false);
 
   const loadConversations = useCallback(async () => {
-    const list = await listConversations(getToken);
-    setConversations(list);
+    setLoadingConversations(true);
+    try {
+      const list = await listConversations(getToken);
+      setConversations(list);
+    } finally {
+      setLoadingConversations(false);
+    }
   }, [getToken]);
 
   useEffect(() => {
@@ -147,7 +153,12 @@ export function V2App({ language = 'he' }: V2AppProps) {
               <p className="px-4 py-2 text-xs font-semibold text-[#03ffe6]" style={{ fontFamily: "'Heebo', sans-serif" }}>
                 {isHe ? 'השיחות שלי' : 'My conversations'}
               </p>
-              {conversations.length === 0 && (
+              {loadingConversations && (
+                <div className="flex justify-center py-4">
+                  <div className="animate-spin w-5 h-5 border-2 border-[#03ffe6] border-t-transparent rounded-full" />
+                </div>
+              )}
+              {!loadingConversations && conversations.length === 0 && (
                 <p className="px-4 py-2 text-xs text-[rgba(255,255,255,0.4)]" style={{ fontFamily: "'Heebo', sans-serif" }}>
                   {isHe ? 'אין שיחות קודמות' : 'No conversations yet'}
                 </p>
