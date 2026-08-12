@@ -73,6 +73,15 @@ export const MACRO_STAGES: MacroStage[] = [
   },
 ];
 
+export function stepToMacroStage(step: string): string {
+  const num = parseInt(step.replace('S', ''), 10);
+  if (num <= 8) return 'identification';
+  if (num <= 11) return 'discovery';
+  if (num <= 12) return 'kamaz';
+  if (num <= 13) return 'choice';
+  return 'vision';
+}
+
 export type FlowPhase =
   | 'onboarding'
   | 'chatting'

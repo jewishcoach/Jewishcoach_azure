@@ -8,6 +8,7 @@ import type {
   StageIntroPayload,
   StageSummaryPayload,
 } from '../types';
+import { stepToMacroStage } from '../types';
 import {
   createConversation,
   fetchStageIntro,
@@ -73,6 +74,7 @@ export function useStageFlow(language: string = 'he') {
         setFlowState((prev) => ({
           ...prev,
           currentStep: response.current_step,
+          currentMacroStage: stepToMacroStage(response.current_step || prev.currentStep || 'S0'),
         }));
 
         if (response.stage_complete) {
@@ -216,6 +218,7 @@ export function useStageFlow(language: string = 'he') {
         ...prev,
         phase: 'chatting',
         currentStep: data.current_step,
+        currentMacroStage: stepToMacroStage(data.current_step || 'S0'),
       }));
     } catch (err) {
       console.error('[V2 Chat] resumeConversation error:', err);
