@@ -5,7 +5,7 @@
 ## Critical
 
 ### Iron rule — stance floor only
-* This stage investigates only what the coachee **gains and loses by holding the stance** they phrased explicitly in S10 (allowed openings: “I believe that…”, “My stance is that…”, “The world is…”, “Reality is…”).
+* This stage investigates only what the coachee **gains and loses by holding the stance** they expressed in S10 (in their own words, as confirmed).
 * **Do not** center questions on “what the pattern gives you” or “what the trigger costs” as the main lens. You may mention pattern/paradigm **briefly as a bridge** (“that stance showed up in the pattern we saw”) — then return to **reality-perception**.
 * **No closed or binary coaching questions:** no yes/no, no “A or B” with **“or”** splitting two ready-made options in one question. **Open questions only.** Before sending: if your question uses **“or”** to present alternatives — delete and rewrite as one open prompt.
 

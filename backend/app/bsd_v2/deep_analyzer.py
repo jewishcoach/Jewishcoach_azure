@@ -1,17 +1,11 @@
 """
-Deep Psychological Analyzer — Cross-conversation profile insights.
+"המבט שלי עליך" — Beni's personal letter at the end of the journey.
 
-Analyzes ALL of a user's conversations to surface:
-  1. Language depth (concreteness, metaphor, nuance)
-  2. Emotional expression (richness, avoided emotions)
-  3. Engagement pattern (trend across sessions)
-  4. Psychological blocks (externalization, minimization, avoidance, etc.)
-  5. Core beliefs (implicit, derived from recurring language)
-  6. Coping style
-  7. Self-agency (internal vs. external locus of control)
+Generates a warm, narrative letter from the coach character ("Beni")
+based on ALL of the user's conversations. Not a clinical analysis —
+a personal gift that weaves personality observations into a letter.
 
-This runs ONLY when the user explicitly grants consent.
-Result is cached in User.preferences["last_analysis"] for 7 days.
+Runs ONLY when user grants consent. Cached in User.preferences["last_analysis"].
 """
 
 from __future__ import annotations
@@ -19,7 +13,7 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
@@ -28,72 +22,45 @@ logger = logging.getLogger(__name__)
 
 # ─── Pydantic output schema ────────────────────────────────────────────────────
 
-class IdentifiedBlock(BaseModel):
-    name: str = Field(description="שם החסם: 'חיצוניות', 'מינימיזציה', 'הכחשה' וכד'")
-    description: str = Field(description="פרשנות חמה, לא שיפוטית")
-    quote: str = Field(description="ציטוט ישיר מהשיחות")
-    frequency: int = Field(default=1, description="כמה פעמים זוהה")
+class JourneyMilestone(BaseModel):
+    stage_name: str = Field(description="שם השלב: זיהוי, גילוי, כמ״ז, בחירה, חזון")
+    what_emerged: str = Field(description="מה עלה בשלב הזה — משפט אחד בשפת בני")
+    user_quote: str = Field(default="", description="ציטוט ישיר מהמשתמש בשלב הזה")
 
 
-class CoreBelief(BaseModel):
-    belief: str = Field(description="האמונה כפי שניסחה: 'אני לא מספיק...'")
-    evidence: List[str] = Field(default_factory=list, description="2-3 ציטוטים שתומכים")
-    stage: str = Field(default="", description="שלב BSD שממנו עלה (S1-S12)")
-
-
-class DeepProfileInsights(BaseModel):
+class DeepViewLetter(BaseModel):
     generated_at: str = Field(description="ISO timestamp")
     conversations_analyzed: int
     total_user_words: int
 
-    # 1. Language depth
-    language_depth_score: float = Field(ge=0.0, le=1.0)
-    language_examples: List[str] = Field(default_factory=list, description="2-3 ציטוטים ממחישים")
-    language_depth_note: str = Field(default="")
+    # 1. המכתב מבני (כולל ניתוח אישיות)
+    letter: str = Field(description="מכתב אישי מבני — 6-10 משפטים. פתיחה חמה, ניתוח אישיות בגוף המכתב, סיום עם גאווה")
 
-    # 2. Emotional expression
-    emotional_richness_score: float = Field(ge=0.0, le=1.0)
-    frequent_emotions: List[str] = Field(default_factory=list)
-    avoided_emotions: List[str] = Field(default_factory=list)
-    emotional_note: str = Field(default="")
+    # 2. מה גילית על עצמך (סיכום המסע)
+    journey_milestones: List[JourneyMilestone] = Field(default_factory=list, description="אבן דרך לכל שלב שהמשתמש עבר")
 
-    # 3. Engagement pattern
-    engagement_trend: str = Field(description="rising | stable | declining")
-    engagement_note: str = Field(default="")
-
-    # 4. Psychological blocks
-    psychological_blocks: List[IdentifiedBlock] = Field(default_factory=list)
-
-    # 5. Core beliefs
-    core_beliefs: List[CoreBelief] = Field(default_factory=list)
-
-    # 6. Coping style
-    coping_style: str = Field(description="שם הסגנון")
-    coping_description: str = Field(default="")
-
-    # 7. Self-agency
-    self_agency_score: float = Field(ge=0.0, le=1.0, description="0=חיצוני לגמרי, 1=פנימי לגמרי")
-    agency_examples: List[str] = Field(default_factory=list)
-
-    # Summary
-    summary: str = Field(description="פסקת פורטרט אישי (3-4 משפטים)")
-    key_insight: str = Field(description="התובנה האחת החזקה ביותר")
-    one_invitation: str = Field(description="הזמנה מעשית אחת להמשך הדרך")
+    # 3. מילה אחרונה
+    closing_word: str = Field(description="משפט סיום חם + הזמנה להמשיך לגדול")
 
 
 # ─── System prompt ─────────────────────────────────────────────────────────────
 
-ANALYSIS_SYSTEM_PROMPT = """אתה פסיכולוג קליני-קוגניטיבי בעל ניסיון רב בניתוח שיח טיפולי.
-המשתמש הסכים מפורשות לניתוח זה ומבין שמדובר בבינה מלאכותית ולא באבחנה קלינית.
+ANALYSIS_SYSTEM_PROMPT = """אתה "בני", מאמן אישי חם ואבהי. סיימת מסע אימון ארוך עם המתאמן שלך.
+עכשיו אתה כותב לו מכתב אישי — מתנה בסוף המסע.
 
-תפקידך: לנתח את השיחות ולהחזיר JSON תקני בלבד (ללא טקסט מסביב).
+המכתב הזה הוא הרגע שבו אתה אומר לו: "ראיתי אותך. הנה מה שראיתי."
 
-כללי הזהב:
-• ציטוטים ישירים מהטקסט בכל ממד — לא המצאות
-• שפה חמה, כבוד מלא, ללא שיפוטיות
-• תובנה = מה שהמשתמש כבר יודע אבל עדיין לא ניסח
-• אסור לנסח "אתה..." — רק "נדמה שיש...", "עולה תחושה של..."
-• הימנע מאבחנות קליניות או תיוגים
+כללי הכתיבה:
+• כתוב כאילו אתה מדבר אליו פנים אל פנים — חם, ישיר, בגובה העיניים
+• השתמש בציטוטים ישירים מהשיחות — "כשאמרת '...', הבנתי ש..."
+• אל תתייג ואל תאבחן. אל תשתמש במונחים כמו "חסם", "מוקד שליטה", "סגנון התמודדות"
+• במקום ציונים ומדדים — ספר מה ראית. "שמתי לב ש...", "ראיתי איך..."
+• הניתוח האישיותי שזור בתוך המכתב, לא כסעיף נפרד
+• חתום "— בני"
+
+טון: כמו אבא חכם שיושב מולך ואומר לך מי אתה באמת. לא מתנשא, לא מחמיא סתם — אמיתי.
+
+החזר JSON תקני בלבד (ללא טקסט מסביב).
 """
 
 ANALYSIS_HUMAN_TEMPLATE = """=== נתונים מ-{n_conversations} שיחות אימון ===
@@ -105,42 +72,29 @@ ANALYSIS_HUMAN_TEMPLATE = """=== נתונים מ-{n_conversations} שיחות א
 {raw_messages}
 
 === הוראות ===
-החזר JSON תקני בלבד, לפי הסכמה הזו (ללא שדות נוספים):
+כתוב את "המבט שלי עליך" — המתנה שלך למתאמן בסיום המסע.
+
+החזר JSON תקני בלבד, לפי הסכמה הזו:
 {{
   "generated_at": "<ISO timestamp>",
   "conversations_analyzed": <int>,
   "total_user_words": <int>,
 
-  "language_depth_score": <0.0-1.0>,
-  "language_examples": ["<ציטוט>", "<ציטוט>"],
-  "language_depth_note": "<משפט פרשנות>",
+  "letter": "<מכתב אישי מבני. 6-10 משפטים. מבנה: פתיחה חמה ('עברנו יחד דרך...') → מה ראית בו כאדם (ניתוח אישיות שזור בתוך המכתב, לא כרשימה) → ציטוטים מהשיחות שמדגימים → סיום עם גאווה. חתום: — בני>",
 
-  "emotional_richness_score": <0.0-1.0>,
-  "frequent_emotions": ["<רגש>", ...],
-  "avoided_emotions": ["<רגש>", ...],
-  "emotional_note": "<משפט פרשנות>",
-
-  "engagement_trend": "rising|stable|declining",
-  "engagement_note": "<משפט>",
-
-  "psychological_blocks": [
-    {{"name": "<שם>", "description": "<פרשנות>", "quote": "<ציטוט>", "frequency": <int>}}
+  "journey_milestones": [
+    {{
+      "stage_name": "<שם השלב: זיהוי / גילוי / כמ״ז / בחירה / חזון>",
+      "what_emerged": "<מה עלה — משפט אחד בשפה של בני, לא תיאור טכני>",
+      "user_quote": "<ציטוט ישיר מהמשתמש בשלב הזה, אם יש>"
+    }}
   ],
 
-  "core_beliefs": [
-    {{"belief": "<אמונה>", "evidence": ["<ציטוט>"], "stage": "<S1-S12>"}}
-  ],
-
-  "coping_style": "<שם הסגנון>",
-  "coping_description": "<תיאור>",
-
-  "self_agency_score": <0.0-1.0>,
-  "agency_examples": ["<ציטוט>", ...],
-
-  "summary": "<פסקת פורטרט 3-4 משפטים>",
-  "key_insight": "<התובנה האחת החזקה>",
-  "one_invitation": "<הזמנה מעשית>"
+  "closing_word": "<משפט סיום חם. הזמנה להמשיך לגדול + רמז עדין שיש עוד מה לגלות (בספר, בחיים, בדרך). לא מכירתי — חם.>"
 }}
+
+דוגמה לטון הנכון במכתב:
+"עברנו יחד כמה חודשים, ואני רוצה לספר לך מה ראיתי. אתה בן אדם שמרגיש עמוק אבל רגיל להסתיר את זה מאחורי הומור. כשאמרת 'אני תמיד האחד שמחזיק את כולם' — הבנתי שאתה נושא הרבה, ולפעמים שוכח שגם אתה צריך מישהו שיחזיק אותך..."
 """
 
 
@@ -148,9 +102,9 @@ ANALYSIS_HUMAN_TEMPLATE = """=== נתונים מ-{n_conversations} שיחות א
 
 async def run_deep_analysis(
     conversations_data: List[Dict[str, Any]],
-) -> DeepProfileInsights:
+) -> DeepViewLetter:
     """
-    Run the deep psychological analysis on a user's conversations.
+    Generate Beni's personal letter — the "gift" at the end of the journey.
 
     Args:
         conversations_data: List of dicts, each with:
@@ -158,7 +112,7 @@ async def run_deep_analysis(
             - "user_messages": list of str (user-only message texts)
             - "message_count": int
     Returns:
-        DeepProfileInsights pydantic object
+        DeepViewLetter pydantic object
     """
     from ..bsd.llm import get_azure_chat_llm
 
@@ -183,7 +137,7 @@ async def run_deep_analysis(
 
     human_text = ANALYSIS_HUMAN_TEMPLATE.format(
         n_conversations=n,
-        structured_json=structured_json[:6000],   # cap to avoid token overflow
+        structured_json=structured_json[:6000],
         raw_messages=raw_messages[:8000],
     )
 
@@ -211,4 +165,4 @@ async def run_deep_analysis(
     data["conversations_analyzed"] = n
     data["total_user_words"] = total_words
 
-    return DeepProfileInsights(**data)
+    return DeepViewLetter(**data)

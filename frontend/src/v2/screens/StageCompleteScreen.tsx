@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Lightbulb, ArrowLeft, Share2, Download } from 'lucide-react';
+import { Lightbulb, ArrowLeft, Share2, Download, Heart } from 'lucide-react';
 import type { StageSummaryPayload } from '../types';
 
 const TREE_IMAGES: Record<string, string> = {
@@ -173,6 +173,14 @@ export function StageCompleteScreen({ summary, onContinue, language, userMessage
             <Download size={16} className="text-[#03ffe6]" />
             <span>{isHe ? 'שמירה' : 'Save'}</span>
           </button>
+        </div>
+
+        {/* Deep View teaser */}
+        <div className="flex items-center justify-center gap-2 pt-2">
+          <p className="text-sm text-[#2d4658] opacity-60" style={{ fontFamily: "'Heebo', sans-serif" }}>
+            {isHe ? 'בסוף המסע מחכה לך מתנה ממני — בני' : 'A gift from me awaits you at the end — Beni'}
+          </p>
+          <Heart size={14} className="text-[#e57373] opacity-60" />
         </div>
 
         {/* CTA button */}
