@@ -307,7 +307,7 @@ function StageProgressCircle({ stageId, isActive, isCompleted, currentStepNum }:
 
 function DiscoveryCounter({ icon, count, label }: { icon: React.ReactNode; count: number; label: string }) {
   return (
-    <div className="flex flex-row-reverse items-center gap-6 w-full">
+    <div className="flex items-center gap-4 w-full">
       <div className="w-8 h-8 rounded-lg bg-[rgba(3,255,230,0.2)] flex items-center justify-center text-[#03ffe6] shrink-0">
         {icon}
       </div>
