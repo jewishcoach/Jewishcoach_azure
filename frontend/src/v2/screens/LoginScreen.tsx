@@ -11,7 +11,7 @@ export function LoginScreen({ onSignedIn: _onSignedIn }: LoginScreenProps) {
   return (
     <div className="h-screen flex" dir="rtl">
       {/* Right side — auth form (dark background) */}
-      <div className="flex-1 flex flex-col items-center justify-between px-5 lg:px-6 py-8 lg:py-10 overflow-y-auto bg-[#2d4658]">
+      <div className="flex-1 flex flex-col items-center justify-between px-5 lg:px-6 py-8 lg:py-10 overflow-hidden bg-[#2d4658]">
         <div className="w-full max-w-[483px] space-y-4 flex-1 flex flex-col justify-center">
           {/* Mobile-only hero section: video */}
           <div className="lg:hidden w-full space-y-4 mb-6">
