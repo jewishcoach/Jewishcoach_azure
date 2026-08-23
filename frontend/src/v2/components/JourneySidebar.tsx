@@ -57,7 +57,7 @@ export function JourneySidebar({ currentMacroStage, currentStep, collectedData, 
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-6">
+        <div className="flex-1 overflow-hidden p-5 space-y-6">
           {activeTab === 'journey' && (
             <>
               {/* Section title */}

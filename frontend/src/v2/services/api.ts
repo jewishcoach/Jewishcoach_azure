@@ -19,13 +19,21 @@ export async function sendMessageV2(
   getToken: () => Promise<string | null>,
 ): Promise<ChatResponseV2> {
   const base = getApiBase();
-  const res = await fetch(`${base}/chat/v2/message`, {
-    method: 'POST',
-    headers: await authHeaders(getToken),
-    body: JSON.stringify({ message, conversation_id: conversationId, language }),
-  });
-  if (!res.ok) throw new Error(`Chat failed: ${res.status}`);
-  return res.json();
+  const headers = await authHeaders(getToken);
+  const body = JSON.stringify({ message, conversation_id: conversationId, language });
+
+  let lastStatus = 0;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const res = await fetch(`${base}/chat/v2/message`, { method: 'POST', headers, body });
+    if (res.ok) return res.json();
+    lastStatus = res.status;
+    if (res.status >= 500 && attempt === 0) {
+      await new Promise((r) => setTimeout(r, 1500));
+      continue;
+    }
+    break;
+  }
+  throw new Error(`Chat failed: ${lastStatus}`);
 }
 
 export async function fetchStageIntro(
