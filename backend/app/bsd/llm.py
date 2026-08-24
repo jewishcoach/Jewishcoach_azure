@@ -38,7 +38,7 @@ def _build_azure_llm(*, deployment: str, temperature: float = 0.2) -> AzureChatO
         api_version=api_version,
         azure_deployment=deployment,
         temperature=temperature,
-        max_tokens=max_tokens,
+        max_completion_tokens=max_tokens,
         request_timeout=timeout_seconds,
         max_retries=max_retries,
     )
