@@ -147,7 +147,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
               באיזה תחום זה מורגש לך הכי הרבה?
             </h2>
 
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {DOMAIN_OPTIONS.map((domain) => {
                 const isSelected = selectedDomain === domain;
                 return (
