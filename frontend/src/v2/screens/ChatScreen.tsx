@@ -104,8 +104,8 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle }: ChatScre
       </div>
 
       {/* Input bar — fixed at bottom */}
-      <div className="fixed bottom-0 inset-x-0 lg:relative bg-white p-3 pb-5 lg:pb-3 flex items-center justify-center z-20" dir="ltr">
-        <div className="flex items-center gap-3 w-full max-w-[663px] px-2 lg:px-0">
+      <div className="fixed bottom-0 inset-x-0 lg:relative bg-white p-3 pb-5 lg:pb-3 flex items-center justify-center z-20" dir="rtl">
+        <div className="flex items-center gap-3 w-full max-w-[663px] px-2 lg:px-0 flex-row-reverse">
           <button
             type="button"
             onClick={handleSend}
