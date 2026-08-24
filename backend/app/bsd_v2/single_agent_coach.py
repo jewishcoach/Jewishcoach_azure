@@ -2775,6 +2775,11 @@ async def handle_conversation(
         _bsd_log("TURN_END", final_step=state['current_step'], overrides=overrides_applied,
                  collected_data_keys=[k for k, v in _safe_collected_dict(state.get('collected_data')).items() if v])
 
+        # Inject 1-10 scale for gap score question (S7, has gap_name but no gap_score)
+        cd = state.get("collected_data") or {}
+        if state.get("current_step") == "S7" and cd.get("gap_name") and not cd.get("gap_score"):
+            suggestions = [str(i) for i in range(1, 11)]
+
         state["_suggestions"] = suggestions
         return coach_message, state
         
