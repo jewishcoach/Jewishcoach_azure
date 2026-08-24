@@ -120,6 +120,7 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle }: ChatScre
           </button>
           <div className="flex-1">
             <textarea
+              dir="auto"
               value={inputText}
               onChange={(e) => {
                 setInputText(e.target.value);
