@@ -40,7 +40,7 @@ export const MACRO_STAGES: MacroStage[] = [
     id: 'identification',
     title_he: 'זיהוי',
     title_en: 'Identification',
-    description_he: 'עוצר לדעת כדי לראות מה באמת קורה בי',
+    description_he: 'עוצר לרגע כדי לראות מה באמת קורה',
     description_en: 'Stopping to know — seeing what\'s really happening inside',
   },
   {
@@ -54,14 +54,14 @@ export const MACRO_STAGES: MacroStage[] = [
     id: 'kamaz',
     title_he: 'כמ"ז',
     title_en: 'Forces (KMZ)',
-    description_he: 'כוחות מקור וטבע — בונה האמן אישי',
+    description_he: 'כוחות מקור וטבע — בניית מצפן אישי',
     description_en: 'Source & Nature forces — building a personal identity card',
   },
   {
     id: 'choice',
     title_he: 'בחירה',
     title_en: 'Choice',
-    description_he: 'בוחר מחדש — עמדה, פרדיגמה ודפוס חדשים',
+    description_he: 'בוחר מחדש — עמדה, גישה ודפוס חדשים',
     description_en: 'Choosing anew — a new stance, paradigm, and pattern',
   },
   {
