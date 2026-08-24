@@ -19,6 +19,7 @@ export function V2App({ language = 'he' }: V2AppProps) {
   const { isSignedIn, isLoaded, signOut, getToken } = useAuth();
   const { user } = useUser();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [journeyOpen, setJourneyOpen] = useState(false);
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [loadingConversations, setLoadingConversations] = useState(false);
 
@@ -98,9 +99,9 @@ export function V2App({ language = 'he' }: V2AppProps) {
           <span className="hidden lg:inline text-sm sm:text-base font-medium text-[#03ffe6]" style={{ fontFamily: "'Heebo', sans-serif" }}>
             {isHe ? 'בני כאן בשבילך, בכל שלב במסע' : 'Benny is here for you, every step of the way'}
           </span>
-          <div className="w-10 h-10 rounded bg-[rgba(151,71,255,0.33)] flex items-center justify-center">
+          <button type="button" onClick={() => setJourneyOpen(true)} className="w-10 h-10 rounded bg-[rgba(151,71,255,0.33)] flex items-center justify-center lg:pointer-events-none">
             <Heart size={20} className="text-[#03ffe6]" />
-          </div>
+          </button>
         </div>
       </header>
 
@@ -196,6 +197,24 @@ export function V2App({ language = 'he' }: V2AppProps) {
                 </span>
               </button>
             </div>
+          </div>
+        </>
+      )}
+
+      {/* Journey drawer (mobile) */}
+      {journeyOpen && flowState.phase !== 'onboarding' && (
+        <>
+          <div className="fixed inset-0 bg-black/40 z-40 lg:hidden" onClick={() => setJourneyOpen(false)} />
+          <div className="fixed top-0 right-0 h-full w-[330px] z-50 lg:hidden animate-[slideIn_0.2s_ease-out] [&_aside]:flex [&_aside]:flex-col [&_aside]:h-full" dir="rtl">
+            <button type="button" onClick={() => setJourneyOpen(false)} className="absolute top-4 left-4 p-1 rounded-lg hover:bg-white/10 z-10">
+              <X size={20} className="text-gray-300" />
+            </button>
+            <JourneySidebar
+              currentMacroStage={flowState.currentMacroStage}
+              currentStep={flowState.currentStep}
+              collectedData={collectedData}
+              language={language}
+            />
           </div>
         </>
       )}
