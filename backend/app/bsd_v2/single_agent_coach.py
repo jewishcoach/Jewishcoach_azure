@@ -311,6 +311,8 @@ def _check_gate_met(current_step: str, cd: Dict[str, Any]) -> str | None:
         return "S5"
     if current_step == "S5" and cd.get("action_actual"):
         return "S6"
+    if current_step == "S6" and cd.get("action_desired"):
+        return "S7"
     return None
 
 
