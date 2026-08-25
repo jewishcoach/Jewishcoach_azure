@@ -62,12 +62,14 @@ export function V2App({ language = 'he' }: V2AppProps) {
   }
 
   const isHe = language.startsWith('he');
-  const currentMacro = MACRO_STAGES.find((s) => s.id === flowState.currentMacroStage);
+  const currentMacroIdx = MACRO_STAGES.findIndex((s) => s.id === flowState.currentMacroStage);
+  const currentMacro = currentMacroIdx >= 0 ? MACRO_STAGES[currentMacroIdx] : undefined;
   const stageTitle = currentMacro
     ? isHe
       ? currentMacro.title_he
       : currentMacro.title_en
     : '';
+  const stageNumber = currentMacroIdx + 1;
 
   const handleOnboardingComplete = (emotions: string[], domain: string) => {
     startOnboarding(emotions, domain);
@@ -236,6 +238,7 @@ export function V2App({ language = 'he' }: V2AppProps) {
                 onSend={sendMessage}
                 isLoading={isLoading}
                 stageTitle={stageTitle}
+                stageNumber={stageNumber}
               />
             </div>
           )}

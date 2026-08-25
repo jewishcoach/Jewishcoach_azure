@@ -3,14 +3,17 @@ import { Heart, Send } from 'lucide-react';
 import type { ChatMessage } from '../types';
 import { MessageBubble } from '../components/MessageBubble';
 
+const STAGE_ORDINAL_HE = ['', 'ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי'];
+
 interface ChatScreenProps {
   messages: ChatMessage[];
   onSend: (message: string) => void;
   isLoading: boolean;
   stageTitle?: string;
+  stageNumber?: number;
 }
 
-export function ChatScreen({ messages, onSend, isLoading, stageTitle }: ChatScreenProps) {
+export function ChatScreen({ messages, onSend, isLoading, stageTitle, stageNumber = 1 }: ChatScreenProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputBarRef = useRef<HTMLDivElement>(null);
   const [inputText, setInputText] = useState('');
@@ -59,7 +62,7 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle }: ChatScre
               className="text-[32px] lg:text-[40px] text-[#2d4658] text-center"
               style={{ fontFamily: "'Karantina', cursive", lineHeight: '1.2' }}
             >
-              שלב ראשון - {stageTitle}
+              שלב {STAGE_ORDINAL_HE[stageNumber] || stageNumber} - {stageTitle}
             </h2>
           </div>
         </div>
