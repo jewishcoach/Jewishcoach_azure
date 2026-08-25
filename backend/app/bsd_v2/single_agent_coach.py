@@ -302,6 +302,18 @@ def _safe_get_topic_from_collected(collected_data: Any) -> str:
     return ""
 
 
+def _check_gate_met(current_step: str, cd: Dict[str, Any]) -> str | None:
+    """Check if collected_data already satisfies the gate for current_step.
+    Returns the next step if gate is met, None otherwise."""
+    if current_step == "S3" and cd.get("emotions"):
+        return "S4"
+    if current_step == "S4" and cd.get("thought"):
+        return "S5"
+    if current_step == "S5" and cd.get("action_actual"):
+        return "S6"
+    return None
+
+
 def _safe_collected_dict(collected_data: Any) -> Dict[str, Any]:
     """Return collected_data as dict - handles str/invalid by returning empty dict."""
     if collected_data is None:
@@ -2775,8 +2787,15 @@ async def handle_conversation(
         _bsd_log("TURN_END", final_step=state['current_step'], overrides=overrides_applied,
                  collected_data_keys=[k for k, v in _safe_collected_dict(state.get('collected_data')).items() if v])
 
-        # Inject 1-10 scale for gap score question (S7, has gap_name but no gap_score)
+        # Server-side gate enforcement: if collected_data meets gate but LLM didn't advance, force it
         cd = state.get("collected_data") or {}
+        current = state.get("current_step", "S0")
+        gate_next = _check_gate_met(current, cd)
+        if gate_next and gate_next != current:
+            logger.info(f"[Gate Enforce] collected_data meets gate for {current}, forcing → {gate_next}")
+            state["current_step"] = gate_next
+
+        # Inject 1-10 scale for gap score question (S7, has gap_name but no gap_score)
         if state.get("current_step") == "S7" and cd.get("gap_name") and not cd.get("gap_score"):
             suggestions = [str(i) for i in range(1, 11)]
 
