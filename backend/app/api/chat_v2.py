@@ -784,3 +784,32 @@ async def get_stage_summary(
 
     return summary.model_dump()
 
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PERSONAL STATEMENT (saved per macro-stage)
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+class PersonalStatementRequest(BaseModel):
+    stage_id: str
+    statement: str = Field(..., min_length=1, max_length=500)
+
+
+@router.post("/conversations/{conversation_id}/statement")
+async def save_personal_statement(
+    conversation_id: int,
+    body: PersonalStatementRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Save the user's personal insight statement for a completed macro-stage."""
+    _get_conversation_or_404(conversation_id, current_user.id, db)
+    state = load_v2_state(conversation_id, db)
+
+    if "personal_statements" not in state:
+        state["personal_statements"] = {}
+    state["personal_statements"][body.stage_id] = body.statement
+
+    save_v2_state(conversation_id, state, db)
+    return {"ok": True}
+

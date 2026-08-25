@@ -16,6 +16,7 @@ import {
   sendMessageV2,
   submitStageIntroAnswers,
 } from '../services/api';
+import { getApiBase } from '../../config';
 
 const INITIAL_FLOW_STATE: FlowState = {
   phase: 'onboarding',
@@ -149,9 +150,20 @@ export function useStageFlow(language: string = 'he') {
     }
   }, [language, getToken]);
 
-  const requestNextStageIntro = useCallback(async () => {
+  const requestNextStageIntro = useCallback(async (personalStatement?: string) => {
     if (!conversationId || !flowState.summary?.next_stage_id) return;
     const nextStageId = flowState.summary.next_stage_id;
+
+    if (personalStatement) {
+      try {
+        const base = getApiBase();
+        await fetch(`${base}/chat/v2/conversations/${conversationId}/statement`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(await getToken() ? { Authorization: `Bearer ${await getToken()}` } : {}) },
+          body: JSON.stringify({ stage_id: flowState.currentMacroStage, statement: personalStatement }),
+        });
+      } catch { /* best effort */ }
+    }
 
     setFlowState((prev) => ({
       ...prev,

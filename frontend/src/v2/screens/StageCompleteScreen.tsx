@@ -12,7 +12,7 @@ const TREE_IMAGES: Record<string, string> = {
 
 interface StageCompleteScreenProps {
   summary: StageSummaryPayload;
-  onContinue: () => void;
+  onContinue: (personalStatement?: string) => void;
   language: string;
   userMessages?: string[];
 }
@@ -188,7 +188,7 @@ export function StageCompleteScreen({ summary, onContinue, language, userMessage
           <div className="flex flex-col items-center gap-2 pt-4">
             <button
               type="button"
-              onClick={onContinue}
+              onClick={() => onContinue(personalStatement || undefined)}
               className="w-[239px] h-[53px] rounded-xl bg-[#9747ff] text-white text-base
                          hover:bg-[#8035e6] transition-colors
                          drop-shadow-[0px_8px_2.9px_rgba(0,0,0,0.12)]
