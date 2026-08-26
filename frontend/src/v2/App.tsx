@@ -260,6 +260,7 @@ export function V2App({ language = 'he' }: V2AppProps) {
       {/* Pause modal */}
       <PauseModal
         isOpen={showPauseModal}
+        stageNumber={stageNumber}
         onContinue={() => setShowPauseModal(false)}
         onGoHome={() => { setShowPauseModal(false); startNewConversation(); }}
       />

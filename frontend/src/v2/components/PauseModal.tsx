@@ -1,13 +1,22 @@
-import { TreePine } from 'lucide-react';
+const STAGE_TREES = [
+  '/trees/tree-1.png',
+  '/trees/tree-2.png',
+  '/trees/tree-3.png',
+  '/trees/tree-4.png',
+  '/trees/tree-5.png',
+];
 
 interface PauseModalProps {
   isOpen: boolean;
+  stageNumber?: number;
   onContinue: () => void;
   onGoHome: () => void;
 }
 
-export function PauseModal({ isOpen, onContinue, onGoHome }: PauseModalProps) {
+export function PauseModal({ isOpen, stageNumber = 1, onContinue, onGoHome }: PauseModalProps) {
   if (!isOpen) return null;
+
+  const treeImg = STAGE_TREES[Math.min(stageNumber - 1, STAGE_TREES.length - 1)];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" dir="rtl">
@@ -15,10 +24,10 @@ export function PauseModal({ isOpen, onContinue, onGoHome }: PauseModalProps) {
       <div className="absolute inset-0 bg-black/40" onClick={onContinue} />
 
       {/* Card */}
-      <div className="relative bg-white rounded-2xl shadow-xl max-w-[440px] w-[90%] px-8 pt-10 pb-8 space-y-6 animate-[fadeIn_0.2s_ease-out]">
-        {/* Tree illustration */}
-        <div className="flex justify-center">
-          <img src="/tree-illustration.png" alt="" className="w-20 h-20 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+      <div className="relative bg-white rounded-2xl shadow-xl max-w-[560px] w-[90%] px-10 pt-16 pb-8 space-y-6 animate-[fadeIn_0.2s_ease-out]">
+        {/* Tree — overflows above the card */}
+        <div className="absolute -top-14 left-1/2 -translate-x-1/2">
+          <img src={treeImg} alt="" className="w-28 h-28 object-contain drop-shadow-md" />
         </div>
 
         {/* Title */}
