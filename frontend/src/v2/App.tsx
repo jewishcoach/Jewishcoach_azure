@@ -39,6 +39,16 @@ export function V2App({ language = 'he' }: V2AppProps) {
   useEffect(() => {
     if (menuOpen) loadConversations();
   }, [menuOpen, loadConversations]);
+
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (flowState.phase === 'chatting' && messages.length > 0) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [flowState.phase, messages.length]);
   const {
     flowState,
     messages,
@@ -83,11 +93,16 @@ export function V2App({ language = 'he' }: V2AppProps) {
     <div className="h-screen flex flex-col bg-[#f6f4f0]" dir={isHe ? 'rtl' : 'ltr'}>
       {/* Header */}
       <header className="h-[64px] lg:h-[80px] flex items-center justify-between px-4 lg:px-9 bg-[#2d4658] flex-shrink-0" dir="ltr">
-        {/* Left side: hamburger + avatar + name */}
-        <div className="flex items-center gap-4">
+        {/* Left side: hamburger + pause + avatar + name */}
+        <div className="flex items-center gap-2">
           <button type="button" onClick={() => setMenuOpen(true)} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
             <Menu size={24} className="text-gray-300" />
           </button>
+          {flowState.phase === 'chatting' && (
+            <button type="button" onClick={() => setShowPauseModal(true)} className="p-2 rounded-lg hover:bg-white/10 transition-colors" title={isHe ? 'שמור ועצור' : 'Save & pause'}>
+              <Pause size={18} className="text-gray-300" />
+            </button>
+          )}
           <div className="flex items-center gap-2 px-2 lg:px-4 py-2 rounded-lg hover:bg-white/10 transition-colors cursor-pointer">
             <div className="w-8 h-8 rounded-full bg-teal-600 flex items-center justify-center overflow-hidden">
               <span className="text-white text-xs font-bold">
