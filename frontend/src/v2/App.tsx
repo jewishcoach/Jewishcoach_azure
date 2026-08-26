@@ -1,14 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Heart, Menu, X, LogOut, MessageSquare, User, PlusCircle } from 'lucide-react';
+import { Heart, Menu, X, LogOut, MessageSquare, User, PlusCircle, Pause } from 'lucide-react';
 import { useAuth, useUser } from '@clerk/clerk-react';
 import { MACRO_STAGES } from './types';
 import { useStageFlow } from './hooks/useStageFlow';
 import { listConversations, type ConversationListItem } from './services/api';
 import { JourneySidebar } from './components/JourneySidebar';
+import { PauseModal } from './components/PauseModal';
 import { ChatScreen } from './screens/ChatScreen';
 import { StageCompleteScreen } from './screens/StageCompleteScreen';
 import { StageIntroScreen } from './screens/StageIntroScreen';
 import { OnboardingScreen } from './screens/OnboardingScreen';
+import { WelcomeBackScreen } from './screens/WelcomeBackScreen';
 import { LoginScreen } from './screens/LoginScreen';
 
 interface V2AppProps {
@@ -20,6 +22,7 @@ export function V2App({ language = 'he' }: V2AppProps) {
   const { user } = useUser();
   const [menuOpen, setMenuOpen] = useState(false);
   const [journeyOpen, setJourneyOpen] = useState(false);
+  const [showPauseModal, setShowPauseModal] = useState(false);
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [loadingConversations, setLoadingConversations] = useState(false);
 
@@ -151,6 +154,22 @@ export function V2App({ language = 'he' }: V2AppProps) {
               </button>
             </div>
 
+            {/* Pause button */}
+            {flowState.phase === 'chatting' && (
+              <div className="px-3">
+                <button
+                  type="button"
+                  onClick={() => { setShowPauseModal(true); setMenuOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-colors text-right"
+                >
+                  <Pause size={18} className="text-[#03ffe6] flex-shrink-0" />
+                  <span className="text-sm text-white" style={{ fontFamily: "'Heebo', sans-serif" }}>
+                    {isHe ? 'שמור ועצור' : 'Save & pause'}
+                  </span>
+                </button>
+              </div>
+            )}
+
             {/* Conversations list */}
             <div className="flex-1 overflow-y-auto p-3 space-y-1">
               <p className="px-4 py-2 text-xs font-semibold text-[#03ffe6]" style={{ fontFamily: "'Heebo', sans-serif" }}>
@@ -221,10 +240,30 @@ export function V2App({ language = 'he' }: V2AppProps) {
         </>
       )}
 
+      {/* Pause modal */}
+      <PauseModal
+        isOpen={showPauseModal}
+        onContinue={() => setShowPauseModal(false)}
+        onGoHome={() => { setShowPauseModal(false); startNewConversation(); }}
+      />
+
       {/* Main content area */}
       <div className="flex-1 flex min-h-0">
         {/* Chat / Screens area */}
         <main className="flex-1 flex flex-col min-h-0">
+          {flowState.phase === 'welcome_back' && (
+            <div className="flex-1 flex flex-col min-h-0 animate-[fadeIn_0.3s_ease-out]">
+              <WelcomeBackScreen
+                stageTitle={stageTitle}
+                stageNumber={stageNumber}
+                personalStatement={undefined}
+                lastActiveDate={undefined}
+                onContinue={() => resumeConversation(flowState.conversationId!)}
+                onGoHome={startNewConversation}
+              />
+            </div>
+          )}
+
           {flowState.phase === 'onboarding' && (
             <div className="flex-1 flex flex-col min-h-0 animate-[fadeIn_0.3s_ease-out]">
               <OnboardingScreen onComplete={handleOnboardingComplete} />

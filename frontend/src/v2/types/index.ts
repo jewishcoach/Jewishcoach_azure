@@ -84,6 +84,7 @@ export function stepToMacroStage(step: string): string {
 
 export type FlowPhase =
   | 'onboarding'
+  | 'welcome_back'
   | 'chatting'
   | 'stage_complete'
   | 'loading_intro'
@@ -94,6 +95,7 @@ export interface FlowState {
   phase: FlowPhase;
   currentMacroStage: string;
   currentStep: string;
+  conversationId?: number;
   summary?: StageSummaryPayload;
   introPayload?: StageIntroPayload;
 }
