@@ -40,15 +40,6 @@ export function V2App({ language = 'he' }: V2AppProps) {
     if (menuOpen) loadConversations();
   }, [menuOpen, loadConversations]);
 
-  useEffect(() => {
-    const handler = (e: BeforeUnloadEvent) => {
-      if (flowState.phase === 'chatting' && messages.length > 0) {
-        e.preventDefault();
-      }
-    };
-    window.addEventListener('beforeunload', handler);
-    return () => window.removeEventListener('beforeunload', handler);
-  }, [flowState.phase, messages.length]);
   const {
     flowState,
     messages,
@@ -62,6 +53,16 @@ export function V2App({ language = 'he' }: V2AppProps) {
     requestNextStageIntro,
     submitIntroAnswers,
   } = useStageFlow(language);
+
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (flowState.phase === 'chatting' && messages.length > 0) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [flowState.phase, messages.length]);
 
   if (!isLoaded) {
     return (
