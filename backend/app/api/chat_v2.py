@@ -432,6 +432,8 @@ class ConversationLoadResponse(BaseModel):
     current_step: str
     messages: list[dict]
     collected_data: dict | None = None
+    personal_statements: dict | None = None
+    updated_at: str | None = None
 
 
 @router.get("/conversation/{conversation_id}")
@@ -464,11 +466,20 @@ async def load_conversation(
     else:
         collected_data = None
 
+    personal_statements = state.get("personal_statements")
+    updated_at = None
+    if hasattr(conv, 'updated_at') and conv.updated_at:
+        updated_at = conv.updated_at.isoformat()
+    elif conv.created_at:
+        updated_at = conv.created_at.isoformat()
+
     return ConversationLoadResponse(
         conversation_id=conversation_id,
         current_step=state.get("current_step", "S0"),
         messages=frontend_messages,
         collected_data=collected_data,
+        personal_statements=personal_statements if personal_statements else None,
+        updated_at=updated_at,
     )
 
 

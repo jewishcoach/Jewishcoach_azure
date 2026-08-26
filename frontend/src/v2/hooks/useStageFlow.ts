@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import type {
   ChatMessage,
@@ -250,6 +250,27 @@ export function useStageFlow(language: string = 'he') {
       currentStep: 'S0',
     });
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const convs = await listConversations(getToken);
+        if (cancelled) return;
+        const recent = convs.find((c) => c.current_phase && c.current_phase !== 'S0' && c.message_count > 2);
+        if (recent) {
+          setConversationId(recent.id);
+          setFlowState({
+            phase: 'welcome_back',
+            currentMacroStage: stepToMacroStage(recent.current_phase),
+            currentStep: recent.current_phase,
+            conversationId: recent.id,
+          });
+        }
+      } catch { /* first visit or network error — stay on onboarding */ }
+    })();
+    return () => { cancelled = true; };
+  }, [getToken]);
 
   return {
     flowState,
