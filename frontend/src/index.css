@@ -314,6 +314,11 @@ body {
   background: linear-gradient(to right, var(--color-accent), var(--color-accent-dark));
 }
 
+/* Hidden scrollbar - scrollable but invisible */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* Custom Scrollbar - Premium */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
