@@ -28,7 +28,7 @@ export function JourneySidebar({ currentMacroStage, currentStep, collectedData, 
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="w-[330px] bg-[#3c5465] hidden lg:flex lg:flex-col flex-shrink-0 order-first" dir="rtl">
+      <aside className="w-[330px] bg-[#3c5465] hidden lg:flex lg:flex-col flex-shrink-0 order-first min-h-0" dir="rtl">
         {/* Tabs */}
         <div className="flex border-b border-[#4a4440]">
           <button
