@@ -83,6 +83,7 @@ export function stepToMacroStage(step: string): string {
 }
 
 export type FlowPhase =
+  | 'initializing'
   | 'onboarding'
   | 'welcome_back'
   | 'chatting'

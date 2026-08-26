@@ -64,7 +64,7 @@ export function V2App({ language = 'he' }: V2AppProps) {
     return () => window.removeEventListener('beforeunload', handler);
   }, [flowState.phase, messages.length]);
 
-  if (!isLoaded) {
+  if (!isLoaded || flowState.phase === 'initializing') {
     return (
       <div className="h-screen flex items-center justify-center bg-[#f6f4f0]">
         <div className="h-9 w-9 animate-spin rounded-full border-2 border-[#03ffe6] border-t-transparent" />

@@ -20,7 +20,7 @@ import {
 import { getApiBase } from '../../config';
 
 const INITIAL_FLOW_STATE: FlowState = {
-  phase: 'onboarding',
+  phase: 'initializing',
   currentMacroStage: 'identification',
   currentStep: 'S0',
 };
@@ -265,10 +265,13 @@ export function useStageFlow(language: string = 'he') {
             phase: 'welcome_back',
             currentMacroStage: stepToMacroStage(recent.current_phase),
             currentStep: recent.current_phase,
-            conversationId: recent.id,
           });
+        } else {
+          setFlowState((prev) => ({ ...prev, phase: 'onboarding' }));
         }
-      } catch { /* first visit or network error — stay on onboarding */ }
+      } catch {
+        if (!cancelled) setFlowState((prev) => ({ ...prev, phase: 'onboarding' }));
+      }
     })();
     return () => { cancelled = true; };
   }, [getToken]);
