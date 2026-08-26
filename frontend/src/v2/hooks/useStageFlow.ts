@@ -12,6 +12,7 @@ import { stepToMacroStage } from '../types';
 import {
   createConversation,
   fetchStageIntro,
+  listConversations,
   loadConversation,
   sendMessageV2,
   submitStageIntroAnswers,
