@@ -26,7 +26,7 @@ const INITIAL_FLOW_STATE: FlowState = {
 };
 
 export function useStageFlow(language: string = 'he') {
-  const { getToken } = useAuth();
+  const { getToken, isSignedIn } = useAuth();
   const [flowState, setFlowState] = useState<FlowState>(INITIAL_FLOW_STATE);
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -253,6 +253,7 @@ export function useStageFlow(language: string = 'he') {
   }, []);
 
   useEffect(() => {
+    if (!isSignedIn) return;
     let cancelled = false;
     (async () => {
       try {
@@ -274,7 +275,7 @@ export function useStageFlow(language: string = 'he') {
       }
     })();
     return () => { cancelled = true; };
-  }, [getToken]);
+  }, [getToken, isSignedIn]);
 
   return {
     flowState,
