@@ -95,7 +95,6 @@ export interface FlowState {
   phase: FlowPhase;
   currentMacroStage: string;
   currentStep: string;
-  conversationId?: number;
   summary?: StageSummaryPayload;
   introPayload?: StageIntroPayload;
 }

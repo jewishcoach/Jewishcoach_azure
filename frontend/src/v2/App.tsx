@@ -42,6 +42,7 @@ export function V2App({ language = 'he' }: V2AppProps) {
   const {
     flowState,
     messages,
+    conversationId,
     isLoading,
     collectedData,
     sendMessage,
@@ -251,14 +252,14 @@ export function V2App({ language = 'he' }: V2AppProps) {
       <div className="flex-1 flex min-h-0">
         {/* Chat / Screens area */}
         <main className="flex-1 flex flex-col min-h-0">
-          {flowState.phase === 'welcome_back' && (
+          {flowState.phase === 'welcome_back' && conversationId && (
             <div className="flex-1 flex flex-col min-h-0 animate-[fadeIn_0.3s_ease-out]">
               <WelcomeBackScreen
                 stageTitle={stageTitle}
                 stageNumber={stageNumber}
                 personalStatement={undefined}
                 lastActiveDate={undefined}
-                onContinue={() => resumeConversation(flowState.conversationId!)}
+                onContinue={() => resumeConversation(conversationId)}
                 onGoHome={startNewConversation}
               />
             </div>
