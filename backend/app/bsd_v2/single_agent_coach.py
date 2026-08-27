@@ -312,7 +312,7 @@ def _check_gate_met(current_step: str, cd: Dict[str, Any]) -> str | None:
         return "S5"
     if current_step == "S5" and cd.get("action_actual"):
         return "S6"
-    if current_step == "S6" and cd.get("action_desired"):
+    if current_step == "S6" and cd.get("action_desired") and (cd.get("emotion_desired") or cd.get("thought_desired")):
         return "S7"
     if current_step == "S7" and cd.get("gap_name") and cd.get("gap_score"):
         return "S8"
