@@ -24,10 +24,10 @@ export function PauseModal({ isOpen, stageNumber = 1, onContinue, onGoHome }: Pa
       <div className="absolute inset-0 bg-black/40" onClick={onContinue} />
 
       {/* Card */}
-      <div className="relative bg-white rounded-2xl shadow-xl max-w-[560px] w-[90%] px-10 pt-16 pb-8 space-y-6 animate-[fadeIn_0.2s_ease-out]">
+      <div className="relative bg-white rounded-2xl shadow-xl max-w-[450px] w-[85%] px-8 pt-14 pb-7 space-y-4 animate-[fadeIn_0.2s_ease-out]">
         {/* Tree — overflows above the card */}
-        <div className="absolute -top-14 left-1/2 -translate-x-1/2">
-          <img src={treeImg} alt="" className="w-28 h-28 object-contain drop-shadow-md" />
+        <div className="absolute -top-10 left-1/2 -translate-x-1/2">
+          <img src={treeImg} alt="" className="w-20 h-20 object-contain drop-shadow-md" />
         </div>
 
         {/* Title */}
@@ -55,7 +55,7 @@ export function PauseModal({ isOpen, stageNumber = 1, onContinue, onGoHome }: Pa
           <button
             type="button"
             onClick={onGoHome}
-            className="flex-1 h-[48px] rounded-xl border border-[#03ffe6] text-[#2d4658] text-[15px] font-medium
+            className="w-[40%] h-[46px] rounded-xl border border-[#03ffe6] text-[#2d4658] text-[14px] font-medium
                        hover:bg-[rgba(3,255,230,0.05)] transition-colors"
             style={{ fontFamily: "'Heebo', sans-serif" }}
           >
@@ -64,7 +64,7 @@ export function PauseModal({ isOpen, stageNumber = 1, onContinue, onGoHome }: Pa
           <button
             type="button"
             onClick={onContinue}
-            className="flex-1 h-[48px] rounded-xl bg-[#03ffe6] text-[#2d4658] text-[15px] font-semibold
+            className="flex-1 h-[46px] rounded-xl bg-[#03ffe6] text-[#2d4658] text-[14px] font-semibold
                        hover:bg-[#02e6d0] transition-colors"
             style={{ fontFamily: "'Heebo', sans-serif" }}
           >
