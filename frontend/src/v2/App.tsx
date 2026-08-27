@@ -240,7 +240,7 @@ export function V2App({ language = 'he' }: V2AppProps) {
       )}
 
       {/* Journey drawer (mobile) */}
-      {journeyOpen && flowState.phase !== 'onboarding' && (
+      {journeyOpen && flowState.phase !== 'onboarding' && flowState.phase !== 'welcome_back' && (
         <>
           <div className="fixed inset-0 bg-black/40 z-40 lg:hidden" onClick={() => setJourneyOpen(false)} />
           <div className="fixed top-0 right-0 h-full w-[330px] z-50 lg:hidden animate-[slideIn_0.2s_ease-out] [&_aside]:flex [&_aside]:flex-col [&_aside]:h-full" dir="rtl">
@@ -341,7 +341,7 @@ export function V2App({ language = 'he' }: V2AppProps) {
         </main>
 
         {/* Journey Sidebar — hidden during onboarding */}
-        {flowState.phase !== 'onboarding' && (
+        {flowState.phase !== 'onboarding' && flowState.phase !== 'welcome_back' && (
           <JourneySidebar
             currentMacroStage={flowState.currentMacroStage}
             currentStep={flowState.currentStep}
