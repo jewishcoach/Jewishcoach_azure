@@ -2800,15 +2800,8 @@ async def handle_conversation(
         _bsd_log("TURN_END", final_step=state['current_step'], overrides=overrides_applied,
                  collected_data_keys=[k for k, v in _safe_collected_dict(state.get('collected_data')).items() if v])
 
-        # Server-side gate enforcement: if collected_data meets gate but LLM didn't advance, force it
-        cd = state.get("collected_data") or {}
-        current = state.get("current_step", "S0")
-        gate_next = _check_gate_met(current, cd)
-        if gate_next and gate_next != current:
-            logger.info(f"[Gate Enforce] collected_data meets gate for {current}, forcing → {gate_next}")
-            state["current_step"] = gate_next
-
         # Inject 1-10 scale for gap score question (S7, has gap_name but no gap_score)
+        cd = state.get("collected_data") or {}
         if state.get("current_step") == "S7" and cd.get("gap_name") and not cd.get("gap_score"):
             suggestions = [str(i) for i in range(1, 11)]
 
