@@ -304,7 +304,8 @@ def _safe_get_topic_from_collected(collected_data: Any) -> str:
 
 def _check_gate_met(current_step: str, cd: Dict[str, Any]) -> str | None:
     """Check if collected_data already satisfies the gate for current_step.
-    Returns the next step if gate is met, None otherwise."""
+    Returns the next step if gate is met, None otherwise.
+    Covers ALL steps where the LLM might forget to advance."""
     if current_step == "S3" and cd.get("emotions"):
         return "S4"
     if current_step == "S4" and cd.get("thought"):
@@ -313,8 +314,16 @@ def _check_gate_met(current_step: str, cd: Dict[str, Any]) -> str | None:
         return "S6"
     if current_step == "S6" and cd.get("action_desired"):
         return "S7"
+    if current_step == "S7" and cd.get("gap_name") and cd.get("gap_score"):
+        return "S8"
+    if current_step == "S8" and cd.get("pattern"):
+        return "S9"
     if current_step == "S9" and cd.get("paradigm"):
         return "S10"
+    if current_step == "S10" and cd.get("stance"):
+        return "S11"
+    if current_step == "S11" and cd.get("renewal"):
+        return "S12"
     return None
 
 
