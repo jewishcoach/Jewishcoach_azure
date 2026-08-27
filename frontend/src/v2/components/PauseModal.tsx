@@ -19,12 +19,12 @@ export function PauseModal({ isOpen, stageNumber = 1, onContinue, onGoHome }: Pa
   const treeImg = STAGE_TREES[Math.min(stageNumber - 1, STAGE_TREES.length - 1)];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" dir="rtl">
+    <div className="fixed inset-0 lg:right-[330px] z-50 flex items-center justify-center" dir="rtl">
       {/* Overlay */}
       <div className="absolute inset-0 bg-black/40" onClick={onContinue} />
 
       {/* Card */}
-      <div className="relative bg-white rounded-2xl shadow-xl max-w-[450px] w-[85%] px-8 pt-14 pb-7 space-y-4 animate-[fadeIn_0.2s_ease-out]">
+      <div className="relative bg-white rounded-2xl shadow-xl max-w-[580px] w-[92%] px-8 pt-14 pb-7 space-y-4 animate-[fadeIn_0.2s_ease-out]">
         {/* Tree — overflows above the card */}
         <div className="absolute -top-10 left-1/2 -translate-x-1/2">
           <img src={treeImg} alt="" className="w-20 h-20 object-contain drop-shadow-md" />
@@ -43,7 +43,7 @@ export function PauseModal({ isOpen, stageNumber = 1, onContinue, onGoHome }: Pa
           className="text-[15px] text-[#2d4658] text-center leading-relaxed"
           style={{ fontFamily: "'Heebo', sans-serif" }}
         >
-          לפעמים נכון לעצור להנוע. כשתרגיש מוכן, תמיד אפשר
+          לפעמים נכון לעצור ולנוח. כשתרגיש מוכן, תמיד אפשר
           <br />
           להמשיך בדיוק מהמקום שבו עצרת.
           <br />
@@ -64,8 +64,8 @@ export function PauseModal({ isOpen, stageNumber = 1, onContinue, onGoHome }: Pa
           <button
             type="button"
             onClick={onContinue}
-            className="flex-1 h-[46px] rounded-xl bg-[#03ffe6] text-[#2d4658] text-[14px] font-semibold
-                       hover:bg-[#02e6d0] transition-colors"
+            className="flex-1 h-[46px] rounded-xl bg-[#9747ff] text-white text-[14px] font-semibold
+                       hover:bg-[#8035e6] transition-colors"
             style={{ fontFamily: "'Heebo', sans-serif" }}
           >
             נמשיך מאיפה שעצרנו
