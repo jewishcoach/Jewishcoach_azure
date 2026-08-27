@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { TreePine } from 'lucide-react';
 
 const MOOD_OPTIONS = ['רגוע מאד', 'שמח אבל כאן', 'צריך כמה דקות', 'מוכן להמשיך'];
 
@@ -32,10 +31,8 @@ export function WelcomeBackScreen({
       <img src="/login-bg.png" alt="" className="absolute inset-0 w-full h-full object-cover" />
 
       {/* Tree illustration - left side */}
-      <div className="absolute bottom-0 left-0 w-[220px] h-[320px] lg:w-[300px] lg:h-[420px] z-0">
-        <div className="w-full h-full flex items-end justify-center">
-          <TreePine size={180} className="text-[#2d4658] opacity-20" />
-        </div>
+      <div className="absolute bottom-0 left-0 w-[220px] lg:w-[320px] z-0">
+        <img src="/tree-globe.png" alt="" className="w-full object-contain" />
       </div>
 
       {/* Content */}

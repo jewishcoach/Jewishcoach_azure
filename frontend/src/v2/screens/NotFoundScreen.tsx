@@ -8,6 +8,11 @@ export function NotFoundScreen({ onGoToJourney, onStartFresh }: NotFoundScreenPr
     <div className="h-screen flex flex-col items-center justify-center relative overflow-hidden" dir="rtl">
       <img src="/login-bg.png" alt="" className="absolute inset-0 w-full h-full object-cover" />
 
+      {/* Tree illustration - left side */}
+      <div className="absolute bottom-0 left-0 w-[220px] lg:w-[320px] z-0">
+        <img src="/tree-globe.png" alt="" className="w-full object-contain" />
+      </div>
+
       <div className="relative z-10 flex flex-col items-center text-center px-6 max-w-[500px]">
         <p className="text-sm text-[#2d4658]/60" style={{ fontFamily: "'Heebo', sans-serif" }}>404</p>
 
