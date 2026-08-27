@@ -26,8 +26,8 @@ export function PauseModal({ isOpen, stageNumber = 1, onContinue, onGoHome }: Pa
       {/* Card */}
       <div className="relative bg-white rounded-2xl shadow-xl max-w-[580px] w-[92%] px-8 pt-14 pb-7 space-y-4 animate-[fadeIn_0.2s_ease-out]">
         {/* Tree — overflows above the card */}
-        <div className="absolute -top-10 left-1/2 -translate-x-1/2">
-          <img src={treeImg} alt="" className="w-20 h-20 object-contain drop-shadow-md" />
+        <div className="absolute -top-16 left-1/2 -translate-x-1/2">
+          <img src={treeImg} alt="" className="w-32 h-32 object-contain drop-shadow-md" />
         </div>
 
         {/* Title */}
