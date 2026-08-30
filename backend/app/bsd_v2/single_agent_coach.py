@@ -533,7 +533,7 @@ def _parse_json_response(
     if isinstance(coach_message, str) and coach_message.strip().startswith("{"):
         coach_message = trailing_text or ""
     if not coach_message:
-        coach_message = get_next_step_question(state.get("current_step", "S1"), language)
+        coach_message = get_next_step_question(state.get("current_step", "S1"), language, state=state)
 
     return coach_message, internal_state
 
@@ -728,10 +728,23 @@ def get_s1_explanation_for_missing_info(reason: str, language: str) -> str:
         return explanations.get(reason, explanations["missing_context"])
 
 
-def get_next_step_question(current_step: str, language: str = "he") -> str:
+def _s12_fallback_question(state: Optional[Dict[str, Any]], language: str) -> str:
+    """S12 fallback: ask about nature if source already has 3+ items, otherwise ask about source."""
+    forces = (state or {}).get("collected_data", {}).get("forces", {})
+    src = forces.get("source", [])
+    if len(src) >= 3:
+        if language == "he":
+            return "עכשיו לצד הטבע — מה הדבר הכבד, ההגנה או הדחף שמוכר לך? מה מושך אותך למטה?"
+        return "Now for the nature side — what is the heavy thing, the defense or urge you recognize? What pulls you down?"
+    if language == "he":
+        return "מה כאן בשבילך מקור — אור או ערך שמדליק אותך?"
+    return "What here is source for you — light or a value that lifts you?"
+
+
+def get_next_step_question(current_step: str, language: str = "he", state: Optional[Dict[str, Any]] = None) -> str:
     """
     Get appropriate next question based on current step (for loop prevention).
-    
+
     Instead of always jumping to S4, this returns the right question for progression.
     """
     if language == "he":
@@ -748,7 +761,7 @@ def get_next_step_question(current_step: str, language: str = "he") -> str:
             "S9": "מהו ה'ככה זה אצלי' שממנו מופיע הדפוס הזה?",
             "S10": "מאיזו תפיסת מציאות או אמונה הפרכדיגמה הזו נובעת? מה מדליק אותה?",
             "S11": "מה אתה מרוויח מלהחזיק בתפיסת המציאות ובעמדה שזיהינו — לא רק מהדפוס בשטח?",
-            "S12": "מה כאן בשבילך מקור — אור או ערך שמדליק אותך?",
+            "S12": _s12_fallback_question(state, "he"),
             "S13": "איזו עמדה חדשה אתה בוחר?",
             "S14": "איפה הבחירה הזו מובילה אותך?",
             "S15": "מה תעשה בפעם הבאה?"
@@ -767,7 +780,7 @@ def get_next_step_question(current_step: str, language: str = "he") -> str:
             "S9": "What is the 'that's how it is for me' from which this pattern emerges?",
             "S10": "From what reality perception or belief does this paradigm stem? What activates it?",
             "S11": "What do you gain from holding the stance and reality-perception we named—not only from the surface pattern?",
-            "S12": "What here is source for you — light or a value that lifts you?",
+            "S12": _s12_fallback_question(state, "en"),
             "S13": "What new stance do you choose?",
             "S14": "Where does this choice lead you?",
             "S15": "What will you do next time?"
@@ -2510,7 +2523,7 @@ async def handle_conversation(
                     prefix = "סליחה על השאלה המסובכת. " if is_confusion else "אני מבין. "
                 else:
                     prefix = "Sorry for the confusing question. " if is_confusion else "I understand. "
-                apology_message = f"{prefix}{get_next_step_question(current_step, language)}"
+                apology_message = f"{prefix}{get_next_step_question(current_step, language, state=state)}"
                 next_step = "S2"
             else:
                 # ⚠️ Topic not clear - EXPLAIN why we need more info
@@ -2520,9 +2533,9 @@ async def handle_conversation(
         else:
             # For other stages, use standard progression
             if language == "he":
-                apology_message = f"מצטער על החזרה! {get_next_step_question(current_step, language)}"
+                apology_message = f"מצטער על החזרה! {get_next_step_question(current_step, language, state=state)}"
             else:
-                apology_message = f"Sorry for repeating! {get_next_step_question(current_step, language)}"
+                apology_message = f"Sorry for repeating! {get_next_step_question(current_step, language, state=state)}"
             
             # Determine next step
             step_progression = {
@@ -2609,7 +2622,7 @@ async def handle_conversation(
                 logger.info("[BSD V2] Manual fallback parsing succeeded.")
             except (json.JSONDecodeError, Exception) as parse_err:
                 logger.error(f"[BSD V2] Manual fallback parsing also failed: {parse_err}")
-                coach_message = get_next_step_question(state.get("current_step", "S1"), language)
+                coach_message = get_next_step_question(state.get("current_step", "S1"), language, state=state)
                 internal_state = {
                     "current_step": state.get("current_step", "S1"),
                     "saturation_score": state.get("saturation_score", 0.3),

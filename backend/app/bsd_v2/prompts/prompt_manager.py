@@ -37,7 +37,7 @@ STAGE_GATES_HE: Dict[str, str] = {
     "S10": "**Gate (S10→S11):** עמדה מנוסחת + טריגר + שאלות שליטה/סביבה.",
     "S11": "**Gate (S11→S12):** 2+ רווחים, 2+ הפסדים.",
     "S12": "**Gate (S12→S13):** חקר מקור (מאקרו) ואז טבע (מאקרו) — בלי עיגון לאירוע האימון; ב־`forces` **6+6** + **מובילה ראשונה** בכל רשימה; או **הסכמה מפורשת** לקיצור (ב־`reflection`). המערכת חוסמת מעבר בלי זה.",
-    "S13": "**Gate (S13→S14):** 3 קומות (עמדה→פרדיגמה→דפוס) + תמהיל כמ\"ז בכל אחת.",
+    "S13": "**Gate (S13→S14):** `renewal` מלא (עמדה חדשה) + המתאמן תיאר לפחות פרדיגמה או דפוס חדשים. תמהיל כמ\"ז רצוי אך לא חוסם.",
     "S14": "**Gate (S14→S15):** חזון ברור.",
     "S15": "**Gate (S15→סיום):** מחויבות קונקרטית.",
 }
@@ -55,7 +55,7 @@ STAGE_GATES_EN: Dict[str, str] = {
     "S10": "**Gate (S10→S11):** Stance formulated + trigger + control/environment questions.",
     "S11": "**Gate (S11→S12):** 2+ gains, 2+ losses.",
     "S12": "**Gate (S12→S13):** Source (macro life), then nature (macro) — not anchored to the coaching-event story; in `forces` **6+6** + **first item** = leading trait each side; or **explicit** consent to a shorter card (in `reflection`). The API blocks the transition without this.",
-    "S13": "**Gate (S13→S14):** 3 floors (stance→paradigm→pattern) + KaMaZ mix in each.",
+    "S13": "**Gate (S13→S14):** `renewal` filled (new stance) + user described at least paradigm or pattern. KaMaZ mix encouraged but not blocking.",
     "S14": "**Gate (S14→S15):** Clear vision.",
     "S15": "**Gate (S15→End):** Specific commitment.",
 }
