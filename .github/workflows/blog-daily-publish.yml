@@ -1,0 +1,47 @@
+# Publishes one SEO blog article per day when a keyword is scheduled.
+#
+# School-site-api server:
+#   BLOG_CRON_SECRET=<same random string as GitHub secret below>
+#
+# GitHub repo -> Settings -> Secrets and variables -> Actions:
+#   BLOG_CRON_SECRET   — same value as the server env var
+#   BLOG_CRON_POST_URL — full URL, e.g.
+#       https://www.bsdcoaching.co.il/api/admin/content/cron/daily
+
+name: Blog daily publish (SEO)
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # 06:00 UTC = 09:00 Israel time
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: POST cron/daily
+        env:
+          URL: ${{ secrets.BLOG_CRON_POST_URL }}
+          SECRET: ${{ secrets.BLOG_CRON_SECRET }}
+        run: |
+          if [ -z "$URL" ] || [ -z "$SECRET" ]; then
+            echo "::notice::Skipped — add secrets BLOG_CRON_POST_URL and BLOG_CRON_SECRET (see workflow header comments)."
+            exit 0
+          fi
+          URL="$(printf '%s' "$URL" | tr -d '\r\n' | sed 's/[[:space:]]*$//')"
+          SECRET="$(printf '%s' "$SECRET" | tr -d '\r\n')"
+          RESP_FILE="$(mktemp)"
+          trap 'rm -f "$RESP_FILE"' EXIT
+          HTTP_CODE="$(curl -sS -o "$RESP_FILE" -w '%{http_code}' -X POST "${URL}" \
+            -H "X-Blog-Cron-Secret: ${SECRET}")"
+          BODY="$(cat "$RESP_FILE")"
+          echo "HTTP ${HTTP_CODE}"
+          echo "${BODY}"
+          case "$HTTP_CODE" in
+            2??) exit 0 ;;
+          esac
+          echo "::error::POST failed with HTTP ${HTTP_CODE}."
+          echo "::error::403 = invalid cron secret (GitHub BLOG_CRON_SECRET must equal server BLOG_CRON_SECRET)."
+          echo "::error::503 = BLOG_CRON_SECRET not set on server."
+          echo "::error::404 = fix BLOG_CRON_POST_URL."
+          exit 1

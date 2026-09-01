@@ -255,6 +255,12 @@ export function useStageFlow(language: string = 'he') {
   useEffect(() => {
     if (!isSignedIn) return;
     let cancelled = false;
+    const timeout = setTimeout(() => {
+      if (!cancelled) {
+        console.warn('[V2 StageFlow] Init timed out — falling back to onboarding');
+        setFlowState((prev) => prev.phase === 'initializing' ? { ...prev, phase: 'onboarding' } : prev);
+      }
+    }, 10_000);
     (async () => {
       try {
         const convs = await listConversations(getToken);
@@ -274,7 +280,7 @@ export function useStageFlow(language: string = 'he') {
         if (!cancelled) setFlowState((prev) => ({ ...prev, phase: 'onboarding' }));
       }
     })();
-    return () => { cancelled = true; };
+    return () => { cancelled = true; clearTimeout(timeout); };
   }, [getToken, isSignedIn]);
 
   return {
