@@ -2794,6 +2794,17 @@ async def handle_conversation(
         # Station checkpoints disabled — UX V2 handles pacing via UI
         station_api_payload = None
 
+        # S15 anti-loop safety net: if stuck at S15 with saturation 1.0 for 2+ coach turns, force completion
+        if state.get("current_step") == "S15" and state.get("saturation_score", 0) >= 1.0:
+            s15_high_sat_turns = sum(
+                1 for m in state.get("messages", [])[-8:]
+                if m.get("sender") == "coach"
+                and (m.get("internal_state") or {}).get("saturation_score", 0) >= 1.0
+            )
+            if s15_high_sat_turns >= 2:
+                logger.info("[Safety Net] S15 anti-loop: saturation 1.0 for 2+ turns → forcing stage_ready_to_complete")
+                internal_state["stage_ready_to_complete"] = True
+
         # Add user message
         state = add_message(state, "user", user_message)
 
