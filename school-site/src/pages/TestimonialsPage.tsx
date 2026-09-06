@@ -69,7 +69,7 @@ export function TestimonialsPage() {
                 className="overflow-hidden rounded-xl border border-brown/10 bg-white shadow-[0_0_4px_rgba(0,0,0,0.1)]"
               >
                 {item.image ? (
-                  <div className="aspect-[16/10] overflow-hidden bg-cream-warm flex items-center justify-center p-4">
+                  <div className="h-28 overflow-hidden bg-cream-warm flex items-center justify-center p-3">
                     <img src={item.image} alt="" className="max-h-full max-w-full object-contain" loading="lazy" />
                   </div>
                 ) : null}
