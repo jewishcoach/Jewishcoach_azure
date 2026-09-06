@@ -529,7 +529,7 @@ async def get_current_user(
         logger.error("Database error during auth: %s", type(e).__name__)
         raise HTTPException(status_code=503, detail=client_error_detail("Service temporarily unavailable", e))
     except Exception as e:
-        logger.warning("JWT validation failed: %s", type(e).__name__)
+        logger.warning("JWT validation failed: %s — %s", type(e).__name__, str(e)[:200])
         raise HTTPException(status_code=401, detail=client_error_detail("Invalid or expired session", e))
 
 
