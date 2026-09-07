@@ -1,8 +1,71 @@
 import { SignIn, SignUp } from '@clerk/clerk-react';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 interface LoginScreenProps {
   onSignedIn?: () => void;
+}
+
+function BennyAudioPlayer({ size = 'lg' }: { size?: 'sm' | 'lg' }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(172);
+
+  const toggle = async () => {
+    const el = audioRef.current;
+    if (!el) return;
+    if (playing) {
+      el.pause();
+      setPlaying(false);
+    } else {
+      try {
+        await el.play();
+        setPlaying(true);
+      } catch (e) {
+        console.error('Audio play failed:', e);
+      }
+    }
+  };
+
+  const formatTime = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  const btnSize = size === 'lg' ? 'w-14 h-14' : 'w-10 h-10';
+  const iconSize = size === 'lg' ? 24 : 20;
+
+  return (
+    <div className="aspect-video bg-[#fffdfb] rounded-xl flex items-center justify-center overflow-hidden relative shadow-[0px_27px_14.2px_rgba(0,0,0,0.25)]"
+         style={size === 'sm' ? { boxShadow: '0px 14px 8px rgba(0,0,0,0.2)' } : undefined}>
+      <div className="absolute inset-0 bg-slate-700" />
+      <audio
+        ref={audioRef}
+        src="/benny-intro.mp3"
+        preload="auto"
+        onTimeUpdate={() => {
+          const el = audioRef.current;
+          if (el) { setCurrentTime(el.currentTime); setProgress(el.duration ? (el.currentTime / el.duration) * 100 : 0); }
+        }}
+        onLoadedMetadata={() => { if (audioRef.current) setDuration(audioRef.current.duration); }}
+        onEnded={() => { setPlaying(false); setProgress(0); setCurrentTime(0); }}
+      />
+      <div className="relative z-10 flex flex-col items-center gap-3">
+        <button type="button" onClick={toggle} className={`${btnSize} rounded-full bg-[rgba(150,150,150,0.69)] hover:bg-[rgba(150,150,150,0.9)] flex items-center justify-center transition-colors`}>
+          {playing ? (
+            <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="white"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+          ) : (
+            <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>
+          )}
+        </button>
+        <span className={`${size === 'lg' ? 'text-sm' : 'text-xs'} font-semibold text-white`} style={{ fontFamily: "'Assistant', sans-serif" }}>
+          {playing ? `${formatTime(currentTime)} / ${formatTime(duration)}` : `${formatTime(duration)}`}
+        </span>
+      </div>
+      {playing && (
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20">
+          <div className="h-full bg-[#03ffe6] transition-all duration-300" style={{ width: `${progress}%` }} />
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function LoginScreen({ onSignedIn: _onSignedIn }: LoginScreenProps) {
@@ -21,15 +84,7 @@ export function LoginScreen({ onSignedIn: _onSignedIn }: LoginScreenProps) {
             >
               כמה מילים אישיות עבורך מבני גל לפני שמתחילים
             </p>
-            <div className="aspect-video bg-[#fffdfb] rounded-xl flex items-center justify-center overflow-hidden relative shadow-[0px_14px_8px_rgba(0,0,0,0.2)]">
-              <div className="absolute inset-0 bg-slate-700" />
-              <div className="relative z-10 flex flex-col items-center gap-2">
-                <div className="w-10 h-10 rounded-full bg-[rgba(150,150,150,0.69)] flex items-center justify-center">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>
-                </div>
-                <span className="text-xs font-semibold text-white" style={{ fontFamily: "'Assistant', sans-serif" }}>3 דקות</span>
-              </div>
-            </div>
+            <BennyAudioPlayer size="sm" />
           </div>
 
           {/* Title */}
@@ -139,16 +194,7 @@ export function LoginScreen({ onSignedIn: _onSignedIn }: LoginScreenProps) {
           >
             כמה מילים אישיות עבורך מבני גל לפני שמתחילים
           </p>
-          {/* Video placeholder */}
-          <div className="aspect-video bg-[#fffdfb] rounded-xl flex items-center justify-center overflow-hidden relative shadow-[0px_27px_14.2px_rgba(0,0,0,0.25)]">
-            <div className="absolute inset-0 bg-slate-700" />
-            <div className="relative z-10 flex flex-col items-center gap-2">
-              <div className="w-11 h-11 rounded-full bg-[rgba(150,150,150,0.69)] flex items-center justify-center">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>
-              </div>
-              <span className="text-sm font-semibold text-white" style={{ fontFamily: "'Assistant', sans-serif" }}>3 דקות</span>
-            </div>
-          </div>
+          <BennyAudioPlayer size="lg" />
         </div>
 
         <div className="space-y-4 relative z-10">
