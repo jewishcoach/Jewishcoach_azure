@@ -20,6 +20,7 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle, stageNumbe
   const inputBarRef = useRef<HTMLDivElement>(null);
   const [inputText, setInputText] = useState('');
   const [playedAudioFiles] = useState(() => new Set<string>());
+  const [messageAudioMap] = useState(() => new Map<string, { file: string; label: string }>());
 
   useEffect(() => {
     const vv = window.visualViewport;
@@ -99,9 +100,16 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle, stageNumbe
 
             let conceptAudio = null;
             if (msg.role === 'assistant') {
-              const step = (msg as ChatMessage & { step?: string }).step || currentStep;
-              conceptAudio = getConceptAudioForMessage(step, msg.content, playedAudioFiles);
-              if (conceptAudio) playedAudioFiles.add(conceptAudio.file);
+              if (messageAudioMap.has(msg.id)) {
+                conceptAudio = messageAudioMap.get(msg.id)!;
+              } else {
+                const step = (msg as ChatMessage & { step?: string }).step || currentStep;
+                conceptAudio = getConceptAudioForMessage(step, msg.content, playedAudioFiles);
+                if (conceptAudio) {
+                  playedAudioFiles.add(conceptAudio.file);
+                  messageAudioMap.set(msg.id, conceptAudio);
+                }
+              }
             }
 
             return (
