@@ -30,7 +30,10 @@ export function V2App({ language = 'he' }: V2AppProps) {
     setLoadingConversations(true);
     try {
       const list = await listConversations(getToken);
+      console.debug('[V2 Menu] loadConversations:', list.length, 'items');
       setConversations(list);
+    } catch (err) {
+      console.error('[V2 Menu] loadConversations failed:', err);
     } finally {
       setLoadingConversations(false);
     }
@@ -196,7 +199,7 @@ export function V2App({ language = 'he' }: V2AppProps) {
             )}
 
             {/* Conversations list */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-1">
+            <div className="flex-1 overflow-y-auto p-3 space-y-1 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
               <p className="px-4 py-2 text-xs font-semibold text-[#03ffe6]" style={{ fontFamily: "'Heebo', sans-serif" }}>
                 {isHe ? 'השיחות שלי' : 'My conversations'}
               </p>
@@ -304,6 +307,7 @@ export function V2App({ language = 'he' }: V2AppProps) {
                 isLoading={isLoading}
                 stageTitle={stageTitle}
                 stageNumber={stageNumber}
+                currentStep={flowState.currentStep}
               />
             </div>
           )}

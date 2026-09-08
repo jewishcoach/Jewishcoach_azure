@@ -2,6 +2,7 @@ import { useRef, useEffect, useState } from 'react';
 import { Heart, Send } from 'lucide-react';
 import type { ChatMessage } from '../types';
 import { MessageBubble } from '../components/MessageBubble';
+import { getConceptAudioForMessage } from '../components/conceptAudio';
 
 const STAGE_ORDINAL_HE = ['', 'ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי'];
 
@@ -11,12 +12,14 @@ interface ChatScreenProps {
   isLoading: boolean;
   stageTitle?: string;
   stageNumber?: number;
+  currentStep?: string;
 }
 
-export function ChatScreen({ messages, onSend, isLoading, stageTitle, stageNumber = 1 }: ChatScreenProps) {
+export function ChatScreen({ messages, onSend, isLoading, stageTitle, stageNumber = 1, currentStep = 'S0' }: ChatScreenProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputBarRef = useRef<HTMLDivElement>(null);
   const [inputText, setInputText] = useState('');
+  const [playedAudioFiles] = useState(() => new Set<string>());
 
   useEffect(() => {
     const vv = window.visualViewport;
@@ -94,6 +97,13 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle, stageNumbe
               return null;
             }
 
+            let conceptAudio = null;
+            if (msg.role === 'assistant') {
+              const step = (msg as ChatMessage & { step?: string }).step || currentStep;
+              conceptAudio = getConceptAudioForMessage(step, msg.content, playedAudioFiles);
+              if (conceptAudio) playedAudioFiles.add(conceptAudio.file);
+            }
+
             return (
               <MessageBubble
                 key={msg.id}
@@ -101,6 +111,7 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle, stageNumbe
                 quickReplies={isLastAssistant ? quickReplies : repliesForCompleted}
                 onQuickReply={isLastAssistant ? onSend : undefined}
                 selectedReply={hasUserReply && repliesForCompleted ? nextMsg!.content : undefined}
+                conceptAudio={conceptAudio}
               />
             );
           })}

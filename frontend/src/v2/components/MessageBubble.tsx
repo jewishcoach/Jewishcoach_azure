@@ -1,14 +1,21 @@
 import { Heart } from 'lucide-react';
 import type { ChatMessage } from '../types';
+import { MiniVoiceNote } from './MiniVoiceNote';
+
+interface ConceptAudioInfo {
+  file: string;
+  label: string;
+}
 
 interface MessageBubbleProps {
   message: ChatMessage;
   quickReplies?: string[];
   onQuickReply?: (text: string) => void;
   selectedReply?: string;
+  conceptAudio?: ConceptAudioInfo | null;
 }
 
-export function MessageBubble({ message, quickReplies, onQuickReply, selectedReply }: MessageBubbleProps) {
+export function MessageBubble({ message, quickReplies, onQuickReply, selectedReply, conceptAudio }: MessageBubbleProps) {
   const isUser = message.role === 'user';
 
   if (isUser) {
@@ -30,6 +37,9 @@ export function MessageBubble({ message, quickReplies, onQuickReply, selectedRep
       <div className="flex items-center gap-2 justify-start">
         <Heart size={16} className="text-[#03ffe6]" />
         <span className="text-sm text-[#2d4658]" style={{ fontFamily: "'Heebo', sans-serif" }}>בני</span>
+        {conceptAudio && (
+          <MiniVoiceNote src={conceptAudio.file} label={conceptAudio.label} />
+        )}
       </div>
 
       {/* Message bubble — full width */}
