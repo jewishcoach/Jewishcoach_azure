@@ -2202,9 +2202,12 @@ def build_conversation_context(
     # Build context
     context_parts = []
     
-    # Current state
-    context_parts.append("# מצב נוכחי" if language == "he" else "# Current State")
-    context_parts.append(f"שלב: {state['current_step']}" if language == "he" else f"Stage: {state['current_step']}")
+    # Stage lock — prominent so the model doesn't skip ahead
+    step = state['current_step']
+    if language == "he":
+        context_parts.append(f"⚠️ שלב נעול: {step}. current_step חייב להיות {step} אלא אם ה-Gate מתקיים.")
+    else:
+        context_parts.append(f"⚠️ STAGE LOCK: {step}. current_step MUST be {step} unless Gate is met.")
     context_parts.append(f"Saturation Score: {state['saturation_score']:.1f}")
 
     ot = (state.get("coach_context_onboarding_topics") or "").strip()
@@ -2602,8 +2605,17 @@ async def handle_conversation(
         raw_message = response_dict.get("raw")
         raw_text = (raw_message.content if raw_message else "") or ""
         parsed_obj = response_dict.get("parsed")
+        parsing_error = response_dict.get("parsing_error")
 
-        logger.info(f"[BSD V2] Raw LLM response length: {len(raw_text)} chars")
+        # When using function_calling, content is empty — data lives in tool_calls
+        tool_call_args: dict | None = None
+        if raw_message and hasattr(raw_message, "tool_calls") and raw_message.tool_calls:
+            tool_call_args = raw_message.tool_calls[0].get("args") if isinstance(raw_message.tool_calls[0], dict) else getattr(raw_message.tool_calls[0], "args", None)
+
+        effective_raw = raw_text or (json.dumps(tool_call_args, ensure_ascii=False) if tool_call_args else "")
+        logger.info(f"[BSD V2] Raw LLM response length: {len(effective_raw)} chars (content={len(raw_text)}, tool_call={'yes' if tool_call_args else 'no'})")
+        if parsing_error:
+            logger.warning(f"[BSD V2] Parsing error from structured output: {parsing_error}")
 
         if parsed_obj:
             coach_message = (parsed_obj.coach_message or "").strip()
@@ -2615,19 +2627,37 @@ async def handle_conversation(
                 suggestions = []
         else:
             logger.error("[BSD V2] Model failed to return matching JSON Schema.")
-            logger.error(f"[BSD V2] RAW OUTPUT PREVIEW: {raw_text[:500]}...")
-            logger.info("[BSD V2] Initiating manual fallback parsing (_parse_json_response)...")
-            try:
-                coach_message, internal_state = _parse_json_response(raw_text, state, user_message, language)
-                logger.info("[BSD V2] Manual fallback parsing succeeded.")
-            except (json.JSONDecodeError, Exception) as parse_err:
-                logger.error(f"[BSD V2] Manual fallback parsing also failed: {parse_err}")
-                coach_message = get_next_step_question(state.get("current_step", "S1"), language, state=state)
-                internal_state = {
-                    "current_step": state.get("current_step", "S1"),
-                    "saturation_score": state.get("saturation_score", 0.3),
-                    "reflection": "Fallback after both structured and manual parse failed",
-                }
+            logger.error(f"[BSD V2] RAW OUTPUT PREVIEW: {effective_raw[:500]}...")
+
+            # Try extracting from tool_call args directly (most common failure path)
+            fallback_resolved = False
+            if tool_call_args and isinstance(tool_call_args, dict):
+                logger.info("[BSD V2] Attempting recovery from tool_call args...")
+                tc_msg = (tool_call_args.get("coach_message") or "").strip()
+                tc_state = tool_call_args.get("internal_state")
+                if tc_msg and isinstance(tc_state, dict):
+                    coach_message = tc_msg
+                    suggestions = tool_call_args.get("suggestions") or []
+                    internal_state = tc_state
+                    # Ensure collected_data is a plain dict
+                    if "collected_data" in internal_state and hasattr(internal_state["collected_data"], "model_dump"):
+                        internal_state["collected_data"] = internal_state["collected_data"].model_dump()
+                    fallback_resolved = True
+                    logger.info("[BSD V2] Recovered coach_message + internal_state from tool_call args.")
+
+            if not fallback_resolved:
+                logger.info("[BSD V2] Initiating manual fallback parsing (_parse_json_response)...")
+                try:
+                    coach_message, internal_state = _parse_json_response(effective_raw, state, user_message, language)
+                    logger.info("[BSD V2] Manual fallback parsing succeeded.")
+                except (json.JSONDecodeError, Exception) as parse_err:
+                    logger.error(f"[BSD V2] Manual fallback parsing also failed: {parse_err}")
+                    coach_message = get_next_step_question(state.get("current_step", "S1"), language, state=state)
+                    internal_state = {
+                        "current_step": state.get("current_step", "S1"),
+                        "saturation_score": state.get("saturation_score", 0.3),
+                        "reflection": "Fallback after both structured and manual parse failed",
+                    }
 
         # Fallback: ensure collected_data has topic when LLM omits it (S1)
         cd = internal_state.get("collected_data") or {}

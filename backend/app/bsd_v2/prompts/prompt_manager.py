@@ -22,6 +22,45 @@ STAGE_FILES: Dict[str, str] = {
 
 SUPPORTED_LANGUAGES = {"he", "en"}
 
+# Per-stage collected_data instructions — only the relevant fields.
+# Keeps the prompt focused so the model doesn't get ideas about other stages.
+STAGE_COLLECTED_DATA_HE: Dict[str, str] = {
+    "S0": "`collected_data`: אין שדות לעדכן ב-S0.",
+    "S1": "`collected_data`: מלא `topic` — נושא האימון במשפט קצר.",
+    "S2": "`collected_data`: מלא `event_description` (תיאור האירוע). עדכן גם `topic` אם המתאמן חידד.",
+    "S3": "`collected_data`: מלא `emotions` — רשימת רגשות שהמשתמש הביע.",
+    "S4": "`collected_data`: מלא `thought` — המשפט הפנימי / מחשבה באותו רגע.",
+    "S5": "`collected_data`: מלא `action_actual` — מה עשה בפועל (מצוי).",
+    "S6": "`collected_data`: מלא `action_desired`, `emotion_desired`, `thought_desired` — מה היה רוצה לעשות/להרגיש/לחשוב (רצוי).",
+    "S7": "`collected_data`: מלא `gap_name` (שם הפער), `gap_score` (ציון 1-10), `gap_booklet_moves` (מערך: belief, opportunity, dwelling, authenticity — עדכן מצטבר).",
+    "S8": "`collected_data`: מלא `pattern` — הדפוס החוזר שזוהה.",
+    "S9": "`collected_data`: מלא `paradigm` — הפרדיגמה / מחשבת המעשה ('ככה זה אצלי').",
+    "S10": "`collected_data`: ב־`stance` מלא `reality_belief` (תפיסת מציאות) ו-`activation_trigger` (טריגר).",
+    "S11": "`collected_data`: ב־`stance` מלא `gains` ו-`losses` (טבלת רווח והפסד).",
+    "S12": "`collected_data`: מלא `forces` — `source` (מקור) ו-`nature` (טבע); יעד 6+6, ראשון = מובילה. `offer_trait_picker`: true רק כשיש ריכוז ברור לשני הצדדים.",
+    "S13": "`collected_data`: מלא `renewal` — בחירה/עמדה חדשה. תמהיל כמ\"ז באחוזים.",
+    "S14": "`collected_data`: מלא `vision` — חזון / תמונת עתיד.",
+    "S15": "`collected_data`: מלא `commitment` — צעד מחויבות קונקרטי.",
+}
+STAGE_COLLECTED_DATA_EN: Dict[str, str] = {
+    "S0": "`collected_data`: No fields to update in S0.",
+    "S1": "`collected_data`: Fill `topic` — short coaching topic sentence.",
+    "S2": "`collected_data`: Fill `event_description`. Also update `topic` if the user refined it.",
+    "S3": "`collected_data`: Fill `emotions` — list of emotions the user expressed.",
+    "S4": "`collected_data`: Fill `thought` — the inner sentence / thought in that moment.",
+    "S5": "`collected_data`: Fill `action_actual` — what the user actually did.",
+    "S6": "`collected_data`: Fill `action_desired`, `emotion_desired`, `thought_desired`.",
+    "S7": "`collected_data`: Fill `gap_name`, `gap_score`, `gap_booklet_moves` (cumulative array).",
+    "S8": "`collected_data`: Fill `pattern` — the recurring pattern identified.",
+    "S9": "`collected_data`: Fill `paradigm` — 'that's how it is for me'.",
+    "S10": "`collected_data`: In `stance`, fill `reality_belief` and `activation_trigger`.",
+    "S11": "`collected_data`: In `stance`, fill `gains` and `losses`.",
+    "S12": "`collected_data`: Fill `forces` — `source` and `nature`; target 6+6, first = leading trait. `offer_trait_picker`: true only with clear summary for both sides.",
+    "S13": "`collected_data`: Fill `renewal` — new choice/stance. KaMaZ mix in percentages.",
+    "S14": "`collected_data`: Fill `vision` — future picture.",
+    "S15": "`collected_data`: Fill `commitment` — concrete first step.",
+}
+
 # Gate per stage only – each stage sees only its transition rule
 STAGE_GATES_HE: Dict[str, str] = {
     "S0": "**Gate (S0→S1):** רשות מפורשת להתחיל (כן/בסדר/בוא נתחיל).",
@@ -127,6 +166,12 @@ def assemble_system_prompt(current_step: str, language: str = "he", user_gender:
 
     stage_title = f"# שלב נוכחי: {current_step}" if lang == "he" else f"# Current Stage: {current_step}"
     response_format = core_sections[-1]
+
+    # Append stage-specific collected_data instruction to response format
+    cd_dict = STAGE_COLLECTED_DATA_HE if lang == "he" else STAGE_COLLECTED_DATA_EN
+    cd_instruction = cd_dict.get(current_step, "")
+    if cd_instruction:
+        response_format = response_format + f"\n\n{cd_instruction}"
 
     # Gender instruction (from user dashboard) - critical for correct אתה/את
     gender_suffix = ""
