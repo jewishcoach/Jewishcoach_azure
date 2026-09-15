@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 
 interface OnboardingScreenProps {
   onComplete: (emotions: string[], domain: string) => void;
@@ -30,12 +30,20 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   const [selectedDomain, setSelectedDomain] = useState<string>('');
   const [step, setStep] = useState<1 | 2>(1);
   const [showExplanation, setShowExplanation] = useState(false);
+  const domainRef = useRef<HTMLDivElement>(null);
 
-  const toggleEmotion = (emotion: string) => {
-    setSelectedEmotions((prev) =>
-      prev.includes(emotion) ? [] : [emotion],
-    );
-  };
+  const toggleEmotion = useCallback((emotion: string) => {
+    setSelectedEmotions((prev) => {
+      const next = prev.includes(emotion) ? [] : [emotion];
+      if (next.length > 0) {
+        setStep(2);
+        setTimeout(() => {
+          domainRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+      }
+      return next;
+    });
+  }, []);
 
   const selectDomain = (domain: string) => {
     setSelectedDomain((prev) => (prev === domain ? '' : domain));
@@ -139,7 +147,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
 
         {/* Domain section */}
         {step === 2 && (
-          <div className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
+          <div ref={domainRef} className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
             <h2
               className="text-[25px] font-semibold text-[#2d4658] text-right tracking-[-1px]"
               style={{ fontFamily: "'Heebo', sans-serif" }}
