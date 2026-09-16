@@ -2834,10 +2834,15 @@ async def handle_conversation(
                 and (m.get("internal_state") or {}).get("saturation_score", 0) >= 0.8
             ]
             if len(recent_coach) >= 3:
-                next_step = "S8" if current == "S7" else "S9"
-                logger.info("[Safety Net] %s anti-loop: sat>=0.8 for 3+ turns → forcing advance to %s", current, next_step)
-                internal_state["current_step"] = next_step
-                state["current_step"] = next_step
+                if current == "S7":
+                    next_step = "S8"
+                    logger.info("[Safety Net] S7 anti-loop: sat>=0.8 for 3+ turns → forcing advance to S8")
+                    internal_state["current_step"] = next_step
+                    state["current_step"] = next_step
+                else:
+                    # S8 is the end of the "identification" macro-stage — signal completion, don't cross boundary
+                    logger.info("[Safety Net] S8 anti-loop: sat>=0.8 for 3+ turns → forcing stage_ready_to_complete")
+                    internal_state["stage_ready_to_complete"] = True
 
         # S15 anti-loop safety net: if stuck at S15 with saturation 1.0 for 2+ coach turns, force completion
         if state.get("current_step") == "S15" and state.get("saturation_score", 0) >= 1.0:
@@ -2849,6 +2854,21 @@ async def handle_conversation(
             if s15_high_sat_turns >= 2:
                 logger.info("[Safety Net] S15 anti-loop: saturation 1.0 for 2+ turns → forcing stage_ready_to_complete")
                 internal_state["stage_ready_to_complete"] = True
+
+        # Hard clamp: prevent crossing macro-stage boundary without stage_ready_to_complete.
+        # This runs regardless of SAFETY_NET_DISABLED.
+        from .stage_intro_schema import step_to_macro_stage, MACRO_STAGE_END_STEPS
+        final_step = internal_state.get("current_step", old_step)
+        old_macro = step_to_macro_stage(old_step)
+        new_macro = step_to_macro_stage(final_step)
+        if old_macro and new_macro and old_macro != new_macro:
+            end_step = MACRO_STAGE_END_STEPS.get(old_macro, old_step)
+            logger.warning(
+                "[Macro Clamp] Model crossed %s→%s boundary (%s→%s). Clamping to %s + stage_ready_to_complete.",
+                old_macro, new_macro, old_step, final_step, end_step,
+            )
+            internal_state["current_step"] = end_step
+            internal_state["stage_ready_to_complete"] = True
 
         # Add user message
         state = add_message(state, "user", user_message)
