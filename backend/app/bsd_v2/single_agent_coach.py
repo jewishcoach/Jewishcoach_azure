@@ -2688,7 +2688,8 @@ async def handle_conversation(
         t8 = time.time()
         logger.info(f"[PERF] Repeated check: {(t8-t7)*1000:.0f}ms")
         
-        if not SAFETY_NET_DISABLED and repeated_check:
+        # Repetition and re-ask checks run ALWAYS (not gated by SAFETY_NET_DISABLED)
+        if repeated_check:
             overrides_applied.append("repetition")
             repl_msg = repeated_check[0] if isinstance(repeated_check, tuple) else repeated_check
             step_override = repeated_check[1] if isinstance(repeated_check, tuple) and len(repeated_check) > 1 else None
@@ -2698,9 +2699,9 @@ async def handle_conversation(
             coach_message = repl_msg
             internal_state["current_step"] = step_override if step_override else state["current_step"]
             internal_state["saturation_score"] = state.get("saturation_score", 0.3)
-        
-        # 5.5. Safety Net: Coach re-asking for event when user already gave it
-        re_ask_check = detect_re_asking_for_event(coach_message, state, language, user_message=user_message) if not SAFETY_NET_DISABLED else None
+
+        # 5.5. Coach re-asking for event when user already gave it (always active)
+        re_ask_check = detect_re_asking_for_event(coach_message, state, language, user_message=user_message)
         if re_ask_check:
             overrides_applied.append("re_ask_event")
             coach_message, next_step_for_reask = re_ask_check
@@ -2714,7 +2715,8 @@ async def handle_conversation(
         t10 = time.time()
         logger.info(f"[PERF] Stage mismatch check: {(t10-t9)*1000:.0f}ms")
         
-        if not SAFETY_NET_DISABLED and mismatch_stage:
+        # Stage mismatch correction runs ALWAYS (not gated by SAFETY_NET_DISABLED)
+        if mismatch_stage:
             overrides_applied.append("stage_mismatch")
             _bsd_log("STAGE_MISMATCH", llm_step=internal_state.get("current_step"), corrected=mismatch_stage,
                      coach_preview=coach_message[:60])
