@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Lightbulb, ArrowLeft, Share2, Download, Heart } from 'lucide-react';
+import { Lightbulb, ArrowLeft, Share2, Download, Heart, Gift } from 'lucide-react';
+import { useAuth } from '@clerk/clerk-react';
 import type { StageSummaryPayload } from '../types';
+import { fetchDeepAnalysis, type DeepViewLetter } from '../services/api';
 
 const TREE_IMAGES: Record<string, string> = {
   identification: '/trees/tree-identification.png',
@@ -19,7 +21,12 @@ interface StageCompleteScreenProps {
 
 export function StageCompleteScreen({ summary, onContinue, language, userMessages }: StageCompleteScreenProps) {
   const isHe = language.startsWith('he');
+  const { getToken } = useAuth();
   const [personalStatement, setPersonalStatement] = useState('');
+  const [deepView, setDeepView] = useState<DeepViewLetter | null>(null);
+  const [loadingGift, setLoadingGift] = useState(false);
+  const [giftError, setGiftError] = useState(false);
+  const isLastStage = !summary.next_stage_id;
 
   const insightLabels = isHe
     ? ['מה גיליתי', 'מה מנהל אותי כרגע', 'מה אני מבקש לבחור', 'משפט לקחת איתי']
@@ -175,35 +182,118 @@ export function StageCompleteScreen({ summary, onContinue, language, userMessage
           </button>
         </div>
 
-        {/* Deep View teaser */}
-        <div className="flex items-center justify-center gap-2 pt-2">
-          <p className="text-sm text-[#2d4658] opacity-60" style={{ fontFamily: "'Heebo', sans-serif" }}>
-            {isHe ? 'בסוף המסע מחכה לך מתנה ממני — בני' : 'A gift from me awaits you at the end — Beni'}
-          </p>
-          <Heart size={14} className="text-[#e57373] opacity-60" />
-        </div>
-
-        {/* CTA button */}
-        {summary.next_stage_id && (
-          <div className="flex flex-col items-center gap-2 pt-4">
+        {/* Deep View teaser or actual gift */}
+        {isLastStage && deepView ? (
+          <div className="rounded-xl overflow-hidden shadow-[0px_0px_6.25px_rgba(0,0,0,0.14)]">
+            <div className="bg-[#2d4658] px-4 py-3 flex items-center gap-2 justify-end">
+              <span className="text-[13px] font-semibold text-white" style={{ fontFamily: "'Heebo', sans-serif" }}>
+                {isHe ? 'המבט שלי עליך — בני' : 'How I See You — Beni'}
+              </span>
+              <Gift size={20} className="text-[#03ffe6]" />
+            </div>
+            <div className="bg-white p-6 space-y-5">
+              <p className="text-sm text-[#2d4658] leading-relaxed whitespace-pre-line text-right" style={{ fontFamily: "'Heebo', sans-serif" }}>
+                {deepView.letter}
+              </p>
+              {deepView.journey_milestones.length > 0 && (
+                <div className="space-y-3 pt-2">
+                  <p className="text-[10px] font-bold uppercase text-[#01897b] tracking-wider text-right" style={{ fontFamily: "'Heebo', sans-serif" }}>
+                    {isHe ? 'מה גילית על עצמך' : 'What you discovered about yourself'}
+                  </p>
+                  {deepView.journey_milestones.map((m, i) => (
+                    <div key={i} className="bg-[#f6f4f0] rounded-lg p-3 text-right">
+                      <p className="text-xs font-semibold text-[#009081]" style={{ fontFamily: "'Heebo', sans-serif" }}>{m.stage_name}</p>
+                      <p className="text-sm text-[#2d4658]" style={{ fontFamily: "'Heebo', sans-serif" }}>{m.what_emerged}</p>
+                      {m.user_quote && (
+                        <p className="text-xs text-[rgba(45,70,88,0.6)] mt-1 italic" style={{ fontFamily: "'Heebo', sans-serif" }}>
+                          &ldquo;{m.user_quote}&rdquo;
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="bg-[#f6f4f0] rounded-xl px-4 py-3 text-right">
+                <p className="text-sm font-medium text-[#2d4658]" style={{ fontFamily: "'Heebo', sans-serif" }}>
+                  {deepView.closing_word}
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : isLastStage ? (
+          <div className="flex flex-col items-center gap-3 pt-4">
             <button
               type="button"
-              onClick={() => onContinue(personalStatement || undefined)}
-              className="w-[239px] h-[53px] rounded-xl bg-[#9747ff] text-white text-base
+              disabled={loadingGift}
+              onClick={async () => {
+                setLoadingGift(true);
+                setGiftError(false);
+                try {
+                  const result = await fetchDeepAnalysis(getToken);
+                  setDeepView(result);
+                } catch {
+                  setGiftError(true);
+                } finally {
+                  setLoadingGift(false);
+                }
+              }}
+              className="w-[280px] h-[53px] rounded-xl bg-[#9747ff] text-white text-base
                          hover:bg-[#8035e6] transition-colors
                          drop-shadow-[0px_8px_2.9px_rgba(0,0,0,0.12)]
-                         flex items-center justify-center gap-2"
+                         flex items-center justify-center gap-2 disabled:opacity-50"
               style={{ fontFamily: "'Heebo', sans-serif" }}
             >
-              <span>{isHe ? 'המשך לצעד הבא' : 'Continue to next step'}</span>
+              {loadingGift ? (
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              ) : (
+                <>
+                  <Gift size={18} />
+                  <span>{isHe ? 'קבל את המתנה מבני' : 'Receive Beni\'s gift'}</span>
+                </>
+              )}
             </button>
-
-            <p className="text-base text-[#2d4658]" style={{ fontFamily: "'Heebo', sans-serif" }}>
-              {isHe
-                ? `הצעד הבא שלך - ${summary.next_stage_title}`
-                : `Your next step — ${summary.next_stage_title}`}
-            </p>
+            {giftError && (
+              <p className="text-sm text-red-500" style={{ fontFamily: "'Heebo', sans-serif" }}>
+                {isHe ? 'משהו השתבש, נסה שוב' : 'Something went wrong, try again'}
+              </p>
+            )}
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-[#2d4658] opacity-60" style={{ fontFamily: "'Heebo', sans-serif" }}>
+                {isHe ? 'מכתב אישי מבני — המבט שלו עליך' : 'A personal letter from Beni — how he sees you'}
+              </p>
+              <Heart size={14} className="text-[#e57373] opacity-60" />
+            </div>
           </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-center gap-2 pt-2">
+              <p className="text-sm text-[#2d4658] opacity-60" style={{ fontFamily: "'Heebo', sans-serif" }}>
+                {isHe ? 'בסוף המסע מחכה לך מתנה ממני — בני' : 'A gift from me awaits you at the end — Beni'}
+              </p>
+              <Heart size={14} className="text-[#e57373] opacity-60" />
+            </div>
+
+            {/* CTA button */}
+            <div className="flex flex-col items-center gap-2 pt-4">
+              <button
+                type="button"
+                onClick={() => onContinue(personalStatement || undefined)}
+                className="w-[239px] h-[53px] rounded-xl bg-[#9747ff] text-white text-base
+                           hover:bg-[#8035e6] transition-colors
+                           drop-shadow-[0px_8px_2.9px_rgba(0,0,0,0.12)]
+                           flex items-center justify-center gap-2"
+                style={{ fontFamily: "'Heebo', sans-serif" }}
+              >
+                <span>{isHe ? 'המשך לצעד הבא' : 'Continue to next step'}</span>
+              </button>
+
+              <p className="text-base text-[#2d4658]" style={{ fontFamily: "'Heebo', sans-serif" }}>
+                {isHe
+                  ? `הצעד הבא שלך - ${summary.next_stage_title}`
+                  : `Your next step — ${summary.next_stage_title}`}
+              </p>
+            </div>
+          </>
         )}
       </div>
     </div>

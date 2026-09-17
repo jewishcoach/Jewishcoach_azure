@@ -162,6 +162,36 @@ export async function createConversation(
   return data.id;
 }
 
+export async function grantAnalysisConsent(
+  getToken: (opts?: { skipCache?: boolean }) => Promise<string | null>,
+): Promise<void> {
+  const base = getApiBase();
+  const headers = await authHeaders(getToken);
+  await fetch(`${base}/profile/insights/consent`, { method: 'POST', headers });
+}
+
+export interface DeepViewLetter {
+  letter: string;
+  journey_milestones: { stage_name: string; what_emerged: string; user_quote: string }[];
+  closing_word: string;
+}
+
+export async function fetchDeepAnalysis(
+  getToken: (opts?: { skipCache?: boolean }) => Promise<string | null>,
+): Promise<DeepViewLetter> {
+  const base = getApiBase();
+  const headers = await authHeaders(getToken);
+  const res = await fetch(`${base}/profile/insights`, { headers });
+  if (res.status === 403) {
+    await grantAnalysisConsent(getToken);
+    const retry = await fetch(`${base}/profile/insights`, { headers: await authHeaders(getToken) });
+    if (!retry.ok) throw new Error(`Deep analysis failed: ${retry.status}`);
+    return retry.json();
+  }
+  if (!res.ok) throw new Error(`Deep analysis failed: ${res.status}`);
+  return res.json();
+}
+
 export async function fetchUserGender(
   getToken: (opts?: { skipCache?: boolean }) => Promise<string | null>,
 ): Promise<string | null> {
