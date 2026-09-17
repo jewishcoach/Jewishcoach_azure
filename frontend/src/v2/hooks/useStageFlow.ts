@@ -264,58 +264,34 @@ export function useStageFlow(language: string = 'he') {
       setFlowState((prev) => ({ ...prev, phase: 'submitting_answers' }));
 
       try {
-        await submitStageIntroAnswers(
+        const result = await submitStageIntroAnswers(
           conversationId,
           macroStage,
           answers,
           language,
           getToken,
         );
-        setMessages([]);
+
+        const openingContent = result.opening_message
+          || (language === 'he' ? 'בוא נתחיל את השלב הבא. ספר לי מה עובר עליך.' : 'Let\'s start the next stage. Tell me what\'s on your mind.');
+        const firstStep = macroStage === 'discovery' ? 'S9' : macroStage === 'kamaz' ? 'S12' : macroStage === 'choice' ? 'S13' : 'S14';
+
+        const openingMsg: ChatMessage = {
+          id: `a-stage-open-${Date.now()}`,
+          role: 'assistant',
+          content: openingContent,
+          phase: firstStep,
+        };
+
+        setMessages([openingMsg]);
         setFlowState((prev) => ({
           ...prev,
           phase: 'chatting',
           introPayload: undefined,
           summary: undefined,
+          currentStep: firstStep,
+          currentMacroStage: macroStage,
         }));
-
-        // Send automatic opening message to get coach's first response for this stage
-        try {
-          setIsLoading(true);
-          const response: ChatResponseV2 = await sendMessageV2(
-            'אני מוכן, בוא נתחיל',
-            conversationId,
-            language,
-            getToken,
-          );
-          const openingMsg: ChatMessage = {
-            id: `a-stage-open-${Date.now()}`,
-            role: 'assistant',
-            content: response.coach_message,
-            phase: response.current_step,
-            suggestions: response.suggestions,
-          };
-          setMessages([openingMsg]);
-          if (response.collected_data) {
-            setCollectedData((prev) => ({ ...prev, ...response.collected_data }));
-          }
-          setFlowState((prev) => ({
-            ...prev,
-            currentStep: response.current_step,
-            currentMacroStage: stepToMacroStage(response.current_step || prev.currentStep || 'S0'),
-          }));
-        } catch (err) {
-          console.error('[V2 Chat] stage opening message error:', err);
-          const fallbackMsg: ChatMessage = {
-            id: `a-stage-open-${Date.now()}`,
-            role: 'assistant',
-            content: 'בוא נתחיל את השלב הבא. ספר לי מה עובר עליך.',
-            phase: macroStage === 'discovery' ? 'S9' : macroStage === 'kamaz' ? 'S12' : macroStage === 'choice' ? 'S13' : 'S14',
-          };
-          setMessages([fallbackMsg]);
-        } finally {
-          setIsLoading(false);
-        }
       } catch {
         setFlowState((prev) => ({ ...prev, phase: 'answering_intro' }));
       }

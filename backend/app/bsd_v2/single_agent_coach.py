@@ -2879,6 +2879,13 @@ async def handle_conversation(
                 logger.info("[Safety Net] S15 anti-loop: saturation 1.0 for 2+ turns → forcing stage_ready_to_complete")
                 internal_state["stage_ready_to_complete"] = True
 
+        # Block stage completion on stage-opening turns (first turn after stage intro)
+        if state.get("_stage_opening"):
+            if internal_state.get("stage_ready_to_complete"):
+                logger.warning("[Safety Net] Blocked stage_ready_to_complete on stage-opening turn")
+                internal_state["stage_ready_to_complete"] = False
+            internal_state["current_step"] = old_step
+
         # Hard clamp: prevent crossing macro-stage boundary without stage_ready_to_complete.
         # This runs regardless of SAFETY_NET_DISABLED.
         from .stage_intro_schema import step_to_macro_stage, MACRO_STAGE_END_STEPS

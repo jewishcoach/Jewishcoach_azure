@@ -70,6 +70,7 @@ class ChatResponse(BaseModel):
     tool_call: dict | None = None  # Interactive tool to activate in InsightHub
     station_checkpoint: dict | None = None  # Sticky mission card + Insights (V2 stations)
     stage_complete: dict | None = None  # Macro-stage completion signal (UX V2)
+    is_error: bool = False  # True when response is a fallback due to server error
 
 
 class StationIntentRequest(BaseModel):
@@ -100,46 +101,84 @@ def _get_conversation_or_404(
     return conv
 
 
-def load_v2_state(conversation_id: int, db: Session) -> Dict[str, Any]:
+def load_v2_state(conversation_id: int, db: Session) -> tuple[Dict[str, Any], int]:
     """
     Load V2 state from database.
-    
-    V2 state is stored in conversation.v2_state as JSON.
+    Returns (state_dict, version) for optimistic locking.
     """
     conv = db.query(ConversationModel).filter_by(id=conversation_id).first()
     if not conv:
         raise HTTPException(status_code=404, detail="Conversation not found")
-    
-    # Try to load state from v2_state
+
+    version = conv.v2_state_version or 0
+
     if conv.v2_state and isinstance(conv.v2_state, dict):
-        logger.debug(f"[BSD V2 API] Loaded existing state with {len(conv.v2_state.get('messages', []))} messages")
-        return conv.v2_state
-    
-    # Create new state if not found
+        logger.debug(f"[BSD V2 API] Loaded existing state with {len(conv.v2_state.get('messages', []))} messages, version={version}")
+        return conv.v2_state, version
+
     logger.debug(f"[BSD V2 API] Creating new state for conversation {conversation_id}")
     return create_initial_state(
         conversation_id=str(conversation_id),
         user_id=str(conv.user_id),
         language="he"
-    )
+    ), version
 
 
-def save_v2_state(conversation_id: int, state: Dict[str, Any], db: Session) -> None:
+MAX_STATE_MESSAGES = 40
+TRIM_KEEP_RECENT = 20
+
+
+def _prune_state_messages(state: Dict[str, Any]) -> None:
     """
-    Save V2 state to database.
+    Trim the in-state message list to prevent unbounded JSON growth.
+    Full messages are already persisted in the Message table.
+    - Strip internal_state from all but the last 6 coach messages.
+    - If total messages exceed MAX_STATE_MESSAGES, keep only the most recent TRIM_KEEP_RECENT.
+    """
+    msgs = state.get("messages")
+    if not msgs:
+        return
+
+    # Strip internal_state from older messages (biggest space savings)
+    coach_count_from_end = 0
+    for i in range(len(msgs) - 1, -1, -1):
+        if msgs[i].get("sender") == "coach" or msgs[i].get("role") == "assistant":
+            coach_count_from_end += 1
+            if coach_count_from_end > 6 and "internal_state" in msgs[i]:
+                del msgs[i]["internal_state"]
+
+    # Hard cap on total messages
+    if len(msgs) > MAX_STATE_MESSAGES:
+        state["messages"] = msgs[-TRIM_KEEP_RECENT:]
+
+
+def save_v2_state(conversation_id: int, state: Dict[str, Any], db: Session, expected_version: int | None = None) -> None:
+    """
+    Save V2 state to database with optimistic locking.
+    If expected_version is provided, the save fails with 409 if the DB version
+    has changed since load (another request wrote in between).
     """
     conv = db.query(ConversationModel).filter_by(id=conversation_id).first()
     if not conv:
         raise HTTPException(status_code=404, detail="Conversation not found")
-    
-    # Save state to v2_state as JSON
+
+    if expected_version is not None:
+        current_version = conv.v2_state_version or 0
+        if current_version != expected_version:
+            db.rollback()
+            raise HTTPException(
+                status_code=409,
+                detail="Conversation was updated by another request. Please retry.",
+            )
+
+    _prune_state_messages(state)
+
     conv.v2_state = state
-    
-    # Update current_phase
     conv.current_phase = state.get("current_step", "S0")
-    
+    conv.v2_state_version = (conv.v2_state_version or 0) + 1
+
     db.commit()
-    logger.debug(f"[BSD V2 API] Saved state with {len(state.get('messages', []))} messages")
+    logger.debug(f"[BSD V2 API] Saved state with {len(state.get('messages', []))} messages, version={conv.v2_state_version}")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -176,9 +215,9 @@ def station_intent_v2(
     Shapes the next coach turn via session_flow flags (no LLM call).
     """
     _get_conversation_or_404(body.conversation_id, current_user.id, db)
-    state = load_v2_state(body.conversation_id, db)
+    state, ver = load_v2_state(body.conversation_id, db)
     apply_station_intent(state, body.intent)
-    save_v2_state(body.conversation_id, state, db)
+    save_v2_state(body.conversation_id, state, db, expected_version=ver)
     return {"ok": True}
 
 
@@ -233,7 +272,7 @@ async def send_message_v2(
         
         # Load state
         t1 = time.time()
-        state = load_v2_state(body.conversation_id, db)
+        state, state_version = load_v2_state(body.conversation_id, db)
         ensure_training_started_at(state)
         inject_onboarding_topics_into_state(state, current_user.preferences or {}, body.language)
         t2 = time.time()
@@ -270,7 +309,8 @@ async def send_message_v2(
             updated_state["current_step"],
             len(updated_state.get("messages", [])),
         )
-        save_v2_state(body.conversation_id, updated_state, db)
+        save_v2_state(body.conversation_id, updated_state, db, expected_version=state_version)
+        state_version += 1
         t6 = time.time()
         logger.debug("[PERF API] Save state to DB: %.0fms", (t6 - t5) * 1000)
         logger.debug("[BSD V2 API] State saved successfully")
@@ -312,7 +352,8 @@ async def send_message_v2(
         tool_call = resolve_post_turn_tool_call(prev_step, updated_state)
         if tool_call and tool_call.get("tool_type") == "trait_picker":
             mark_trait_picker_sent(updated_state)
-            save_v2_state(body.conversation_id, updated_state, db)
+            save_v2_state(body.conversation_id, updated_state, db, expected_version=state_version)
+            state_version += 1
         if tool_call:
             logger.debug(
                 "[BSD V2 API] tool_call: %s (step %s→%s)",
@@ -391,35 +432,20 @@ async def send_message_v2(
             capture_error("chat_v2_api", e, {"conv_id": body.conversation_id})
         except Exception:
             pass
-        # Return fallback instead of 500 - user gets friendly message, not network error
         fallback_he = "הייתה לי בעיה טכנית. תוכל לחזור על זה?"
         fallback_en = "I had a technical issue. Could you try again?"
         fallback_msg = fallback_he if (body.language or "he") == "he" else fallback_en
-        try:
-            from app.database import utc_now
-            fb_user_content = (
-                safe_message
-                if safe_message is not None
-                else (body.message or "")[:MAX_CHAT_MESSAGE_CHARS]
-            )
-            user_msg = Message(
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=500,
+            content=ChatResponse(
+                coach_message=fallback_msg,
                 conversation_id=body.conversation_id,
-                role="user",
-                content=fb_user_content,
-                timestamp=utc_now(),
-            )
-            coach_msg = Message(conversation_id=body.conversation_id, role="assistant", content=fallback_msg, timestamp=utc_now(), meta={"phase": state.get("current_step", "S1")})
-            db.add(user_msg)
-            db.add(coach_msg)
-            db.commit()
-        except Exception as db_err:
-            logger.warning(f"[BSD V2 API] Could not save fallback messages: {db_err}")
-        return ChatResponse(
-            coach_message=fallback_msg,
-            conversation_id=body.conversation_id,
-            current_step=state.get("current_step", "S1"),
-            saturation_score=state.get("saturation_score", 0.3),
-            station_checkpoint=None,
+                current_step=state.get("current_step", "S1"),
+                saturation_score=state.get("saturation_score", 0.3),
+                station_checkpoint=None,
+                is_error=True,
+            ).model_dump(),
         )
 
 
@@ -622,7 +648,7 @@ async def get_conversation_insights_v2(
         conv = _get_conversation_or_404(conversation_id, current_user.id, db)
         
         # Load V2 state
-        state = load_v2_state(conversation_id, db)
+        state, _ver = load_v2_state(conversation_id, db)
         
         # Extract insights from state
         current_stage = state.get("current_step", "S0")
@@ -698,7 +724,7 @@ async def get_stage_intro(
         raise HTTPException(status_code=400, detail=f"Invalid macro-stage: {body.target_macro_stage}")
 
     _get_conversation_or_404(body.conversation_id, current_user.id, db)
-    state = load_v2_state(body.conversation_id, db)
+    state, ver = load_v2_state(body.conversation_id, db)
 
     try:
         intro_payload = await generate_stage_intro(
@@ -714,7 +740,7 @@ async def get_stage_intro(
         )
 
     state["pending_stage_intro"] = intro_payload.model_dump()
-    save_v2_state(body.conversation_id, state, db)
+    save_v2_state(body.conversation_id, state, db, expected_version=ver)
 
     return intro_payload.model_dump()
 
@@ -736,7 +762,7 @@ async def submit_stage_intro_answers(
         raise HTTPException(status_code=400, detail=f"Invalid macro-stage: {body.macro_stage}")
 
     _get_conversation_or_404(body.conversation_id, current_user.id, db)
-    state = load_v2_state(body.conversation_id, db)
+    state, ver = load_v2_state(body.conversation_id, db)
 
     pending = state.get("pending_stage_intro")
     if not pending:
@@ -759,9 +785,33 @@ async def submit_stage_intro_answers(
 
     state.pop("pending_stage_intro", None)
 
-    save_v2_state(body.conversation_id, state, db)
+    state["_stage_opening"] = True
+    save_v2_state(body.conversation_id, state, db, expected_version=ver)
 
-    return {"ok": True, "stage": body.macro_stage, "current_step": first_step}
+    # Generate coach opening message for the new stage
+    opening_message = None
+    try:
+        user_gender = getattr(current_user, "gender", None) or None
+        state_fresh, ver_fresh = load_v2_state(body.conversation_id, db)
+        coach_msg, updated_state = await handle_conversation(
+            "אני מוכן להתחיל" if body.language == "he" else "I'm ready to start",
+            state_fresh,
+            language=body.language,
+            user_gender=user_gender,
+            conversation_id=body.conversation_id,
+        )
+        updated_state.pop("_stage_opening", None)
+        save_v2_state(body.conversation_id, updated_state, db, expected_version=ver_fresh)
+        opening_message = coach_msg
+    except Exception as e:
+        logger.warning("[BSD V2 API] Failed to generate stage opening message: %s", e)
+
+    return {
+        "ok": True,
+        "stage": body.macro_stage,
+        "current_step": first_step,
+        "opening_message": opening_message,
+    }
 
 
 @router.post("/stage-summary")
@@ -778,7 +828,7 @@ async def get_stage_summary(
     (target_macro_stage here means the stage that just completed)
     """
     _get_conversation_or_404(body.conversation_id, current_user.id, db)
-    state = load_v2_state(body.conversation_id, db)
+    state, _ver = load_v2_state(body.conversation_id, db)
 
     try:
         summary = await generate_stage_summary(
@@ -815,12 +865,12 @@ async def save_personal_statement(
 ):
     """Save the user's personal insight statement for a completed macro-stage."""
     _get_conversation_or_404(conversation_id, current_user.id, db)
-    state = load_v2_state(conversation_id, db)
+    state, ver = load_v2_state(conversation_id, db)
 
     if "personal_statements" not in state:
         state["personal_statements"] = {}
     state["personal_statements"][body.stage_id] = body.statement
 
-    save_v2_state(conversation_id, state, db)
+    save_v2_state(conversation_id, state, db, expected_version=ver)
     return {"ok": True}
 

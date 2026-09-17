@@ -86,13 +86,14 @@ export async function submitStageIntroAnswers(
   answers: Record<string, string[]>,
   language: string,
   getToken: (opts?: { skipCache?: boolean }) => Promise<string | null>,
-): Promise<void> {
+): Promise<{ opening_message?: string }> {
   const base = getApiBase();
   const res = await fetchWithAuthRetry(`${base}/chat/v2/stage-intro-answers`, getToken, {
     method: 'POST',
     body: JSON.stringify({ conversation_id: conversationId, macro_stage: macroStage, answers, language }),
   });
   if (!res.ok) throw new Error(`Stage intro answers failed: ${res.status}`);
+  return res.json();
 }
 
 export async function fetchStageSummary(
