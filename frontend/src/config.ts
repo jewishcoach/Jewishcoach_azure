@@ -18,6 +18,13 @@ const _uxV2Param = typeof window !== 'undefined' && new URLSearchParams(window.l
 if (_uxV2Param) localStorage.setItem('ux_v2', 'true');
 export const UX_V2_ENABLED = (localStorage.getItem('ux_v2') || 'true') === 'true';
 
+/** UX V3: Hybrid chat + structured UI — faster coaching flow with inline tool cards. */
+const _uxV3Param = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('v3');
+if (_uxV3Param) localStorage.setItem('ux_v3', 'true');
+const _uxV2Reset = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('v2');
+if (_uxV2Reset) localStorage.removeItem('ux_v3');
+export const UX_V3_ENABLED = (localStorage.getItem('ux_v3') || 'false') === 'true';
+
 /** Free (basic) plan total message quota — keep in sync with backend PLAN_LIMITS["basic"].messages_per_month */
 export const BASIC_PLAN_MESSAGES_PER_MONTH = 150;
 
@@ -140,6 +147,12 @@ export function setBsdVersion(version: 'v1' | 'v2') {
 
 export function setUxV2(enabled: boolean) {
   localStorage.setItem('ux_v2', enabled ? 'true' : 'false');
+  localStorage.removeItem('ux_v3');
+  window.location.reload();
+}
+
+export function setUxV3(enabled: boolean) {
+  localStorage.setItem('ux_v3', enabled ? 'true' : 'false');
   window.location.reload();
 }
 
@@ -147,9 +160,10 @@ export function setUxV2(enabled: boolean) {
 if (import.meta.env.DEV) {
   (window as any).setBsdVersion = setBsdVersion;
   (window as any).setUxV2 = setUxV2;
+  (window as any).setUxV3 = setUxV3;
   console.log('🔧 [CONFIG] BSD Version:', BSD_VERSION);
   console.log('🔧 [CONFIG] UX V2:', UX_V2_ENABLED);
-  console.log('🔧 [CONFIG] To switch to V1: window.setBsdVersion("v1")');
-  console.log('🔧 [CONFIG] To switch to V2: window.setBsdVersion("v2")');
-  console.log('🔧 [CONFIG] To enable UX V2: window.setUxV2(true)');
+  console.log('🔧 [CONFIG] UX V3:', UX_V3_ENABLED);
+  console.log('🔧 [CONFIG] To switch: window.setUxV2(true) | window.setUxV3(true)');
+  console.log('🔧 [CONFIG] Or use ?v3 / ?v2 URL params');
 }

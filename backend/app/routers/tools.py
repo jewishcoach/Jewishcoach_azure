@@ -8,7 +8,7 @@ from typing import Dict, Any, List
 from datetime import datetime
 import logging
 from ..bsd_v2.single_agent_coach import handle_conversation
-from ..bsd_v2.stage_tool_triggers import resolve_post_turn_tool_call, mark_trait_picker_sent
+from ..bsd_v2.stage_tool_triggers import resolve_post_turn_tool_call, mark_trait_picker_sent, mark_matzui_summary_sent
 from ..bsd_v2.onboarding_topics_context import inject_onboarding_topics_into_state
 from ..security.chat_input import ChatMessageRejected, sanitize_chat_message
 
@@ -107,7 +107,7 @@ async def submit_tool_response(
                 cd["stance"] = stance
                 v2_state["collected_data"] = cd
 
-            elif request.tool_type == "trait_picker":
+            elif request.tool_type in ("trait_picker", "trait_card_builder"):
                 cd = dict(v2_state.get("collected_data") or {})
                 forces = dict(cd.get("forces") or {})
                 source = request.data.get("source_forces") or request.data.get("source_traits") or []
@@ -117,6 +117,87 @@ async def submit_tool_response(
                 if nature:
                     forces["nature"] = nature
                 cd["forces"] = forces
+                v2_state["collected_data"] = cd
+
+            elif request.tool_type == "event_form":
+                cd = dict(v2_state.get("collected_data") or {})
+                parts = []
+                if request.data.get("when"):
+                    parts.append(request.data["when"])
+                if request.data.get("with_whom"):
+                    parts.append(f"עם {request.data['with_whom']}")
+                if request.data.get("what_happened"):
+                    parts.append(request.data["what_happened"])
+                cd["event_description"] = " — ".join(parts) if parts else ""
+                v2_state["collected_data"] = cd
+
+            elif request.tool_type == "emotion_selector":
+                cd = dict(v2_state.get("collected_data") or {})
+                cd["emotions"] = request.data.get("emotions", [])
+                v2_state["collected_data"] = cd
+
+            elif request.tool_type == "action_field":
+                cd = dict(v2_state.get("collected_data") or {})
+                cd["action_actual"] = request.data.get("action_actual", "")
+                v2_state["collected_data"] = cd
+
+            elif request.tool_type == "comparison_card":
+                cd = dict(v2_state.get("collected_data") or {})
+                cd["action_desired"] = request.data.get("action_desired", "")
+                cd["emotion_desired"] = request.data.get("emotion_desired", "")
+                cd["thought_desired"] = request.data.get("thought_desired", "")
+                v2_state["collected_data"] = cd
+
+            elif request.tool_type == "gap_card":
+                cd = dict(v2_state.get("collected_data") or {})
+                cd["gap_name"] = request.data.get("gap_name", "")
+                cd["gap_score"] = str(request.data.get("gap_score", ""))
+                moves = list(cd.get("gap_booklet_moves") or [])
+                if request.data.get("belief") is not None:
+                    if "belief" not in moves:
+                        moves.append("belief")
+                if request.data.get("opportunity") is not None:
+                    if "opportunity" not in moves:
+                        moves.append("opportunity")
+                cd["gap_booklet_moves"] = moves
+                v2_state["collected_data"] = cd
+
+            elif request.tool_type == "sentence_builder":
+                cd = dict(v2_state.get("collected_data") or {})
+                cd["paradigm"] = request.data.get("paradigm", "")
+                stance = dict(cd.get("stance") or {})
+                if request.data.get("reality_belief"):
+                    stance["reality_belief"] = request.data["reality_belief"]
+                cd["stance"] = stance
+                v2_state["collected_data"] = cd
+
+            elif request.tool_type == "balance_scale":
+                cd = dict(v2_state.get("collected_data") or {})
+                stance = dict(cd.get("stance") or {})
+                gains = request.data.get("gains", [])
+                losses = request.data.get("losses", [])
+                if gains:
+                    stance["gains"] = gains
+                if losses:
+                    stance["losses"] = losses
+                cd["stance"] = stance
+                v2_state["collected_data"] = cd
+
+            elif request.tool_type == "declaration_card":
+                cd = dict(v2_state.get("collected_data") or {})
+                cd["renewal"] = request.data.get("renewal", "")
+                v2_state["collected_data"] = cd
+
+            elif request.tool_type == "commitment_card":
+                cd = dict(v2_state.get("collected_data") or {})
+                parts = []
+                if request.data.get("commitment"):
+                    parts.append(request.data["commitment"])
+                if request.data.get("when"):
+                    parts.append(f"מתי: {request.data['when']}")
+                if request.data.get("where_who"):
+                    parts.append(f"איפה/מול מי: {request.data['where_who']}")
+                cd["commitment"] = " | ".join(parts) if parts else ""
                 v2_state["collected_data"] = cd
 
             if summary:
@@ -237,6 +318,92 @@ def _generate_tool_summary(tool_type: str, data: Dict[str, Any]) -> str:
         vision = data.get("vision", "")
         summary = f"🔮 **החזון שלי:**\n\n{vision}"
         return summary.strip()
+
+    # V3 structured tools
+    elif tool_type == "event_form":
+        when = data.get("when", "")
+        who = data.get("with_whom", "")
+        what = data.get("what_happened", "")
+        return f"סיפרתי על אירוע: {when} עם {who} — {what}".strip()
+
+    elif tool_type == "emotion_selector":
+        emotions = data.get("emotions", [])
+        return f"הרגשות שזיהיתי: {', '.join(emotions)}" if emotions else ""
+
+    elif tool_type == "action_field":
+        action = data.get("action_actual", "")
+        return f"מה שעשיתי בפועל: {action}" if action else ""
+
+    elif tool_type == "matzui_summary":
+        return "אישרתי את תמונת המצוי"
+
+    elif tool_type == "comparison_card":
+        ed = data.get("emotion_desired", "")
+        td = data.get("thought_desired", "")
+        ad = data.get("action_desired", "")
+        parts = []
+        if ed:
+            parts.append(f"הייתי רוצה להרגיש: {ed}")
+        if td:
+            parts.append(f"הייתי רוצה לחשוב: {td}")
+        if ad:
+            parts.append(f"הייתי רוצה לעשות: {ad}")
+        return "הרצוי שלי: " + ". ".join(parts) if parts else ""
+
+    elif tool_type == "gap_card":
+        name = data.get("gap_name", "")
+        score = data.get("gap_score", "")
+        belief = data.get("belief", "")
+        opp = data.get("opportunity", {})
+        parts = [f"הפער: {name} (ציון {score}/10)"]
+        if belief:
+            parts.append(f"אמונה בשינוי: {belief}")
+        if isinstance(opp, dict) and opp.get("has"):
+            parts.append(f"הזדמנות: {opp.get('what', 'כן')}")
+        elif opp:
+            parts.append(f"הזדמנות: {opp}")
+        return " | ".join(parts)
+
+    elif tool_type == "sentence_builder":
+        paradigm = data.get("paradigm", "")
+        belief = data.get("reality_belief", "")
+        parts = []
+        if paradigm:
+            parts.append(f"ככה זה אצלי: {paradigm}")
+        if belief:
+            parts.append(f"האמונה: {belief}")
+        return ". ".join(parts) if parts else ""
+
+    elif tool_type == "balance_scale":
+        gains = data.get("gains", [])
+        losses = data.get("losses", [])
+        parts = []
+        if gains:
+            parts.append(f"רווחים: {', '.join(gains)}")
+        if losses:
+            parts.append(f"הפסדים: {', '.join(losses)}")
+        return " / ".join(parts) if parts else ""
+
+    elif tool_type == "declaration_card":
+        renewal = data.get("renewal", "")
+        action = data.get("next_action", "")
+        parts = []
+        if renewal:
+            parts.append(f"אני בוחר: {renewal}")
+        if action:
+            parts.append(f"מה אעשה אחרת: {action}")
+        return ". ".join(parts) if parts else ""
+
+    elif tool_type == "commitment_card":
+        commitment = data.get("commitment", "")
+        when = data.get("when", "")
+        where_who = data.get("where_who", "")
+        parts = [f"המחויבות שלי: {commitment}"]
+        if when:
+            parts.append(f"מתי: {when}")
+        if where_who:
+            parts.append(f"איפה/מול מי: {where_who}")
+        return " | ".join(parts)
 
     # Default: just stringify the data
     return f"[הגשת כלי: {tool_type}]"

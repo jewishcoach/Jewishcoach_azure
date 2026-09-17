@@ -22,7 +22,7 @@ from ..security.chat_input import (
 )
 from ..middleware.usage_limiter import require_message_quota
 from ..bsd_v2.single_agent_coach import handle_conversation, warm_prompt_cache
-from ..bsd_v2.stage_tool_triggers import resolve_post_turn_tool_call, mark_trait_picker_sent
+from ..bsd_v2.stage_tool_triggers import resolve_post_turn_tool_call, mark_trait_picker_sent, mark_matzui_summary_sent
 from ..bsd_v2.state_schema_v2 import create_initial_state
 from ..bsd_v2.station_checkpoint import ensure_training_started_at, apply_station_intent
 from ..bsd_v2.onboarding_topics_context import inject_onboarding_topics_into_state
@@ -349,17 +349,23 @@ async def send_message_v2(
         try_autotitle_conversation(db, body.conversation_id, body.language or "he")
         
         # Interactive tools: S11 on entry; S12 deferred (booklet order — see stage_tool_triggers).
-        tool_call = resolve_post_turn_tool_call(prev_step, updated_state)
-        if tool_call and tool_call.get("tool_type") == "trait_picker":
+        ux_version = int(request.headers.get("x-ux-version", "2") or "2")
+        tool_call = resolve_post_turn_tool_call(prev_step, updated_state, ux_version=ux_version)
+        if tool_call and tool_call.get("tool_type") in ("trait_picker", "trait_card_builder"):
             mark_trait_picker_sent(updated_state)
+            save_v2_state(body.conversation_id, updated_state, db, expected_version=state_version)
+            state_version += 1
+        if tool_call and tool_call.get("tool_type") == "matzui_summary":
+            mark_matzui_summary_sent(updated_state)
             save_v2_state(body.conversation_id, updated_state, db, expected_version=state_version)
             state_version += 1
         if tool_call:
             logger.debug(
-                "[BSD V2 API] tool_call: %s (step %s→%s)",
+                "[BSD V2 API] tool_call: %s (step %s→%s, ux_v%s)",
                 tool_call["tool_type"],
                 prev_step,
                 updated_state.get("current_step"),
+                ux_version,
             )
 
         # UX V2: detect macro-stage completion signal

@@ -13,8 +13,9 @@ import { BillingPage } from './components/BillingPage';
 import { apiClient } from './services/api';
 import './i18n';
 import { isClerkSyntheticEmail } from './lib/clerkEmail';
-import { isClerkUiAdminAllowlisted, UX_V2_ENABLED } from './config';
+import { isClerkUiAdminAllowlisted, UX_V2_ENABLED, UX_V3_ENABLED } from './config';
 import { V2App } from './v2/App';
+import { V3App } from './v3/App';
 import { normalizeTraineeGender } from './utils/welcomeMessage';
 
 // Check if running on tunnel domain (Demo Mode)
@@ -485,6 +486,11 @@ function App() {
 
   if (demoMode) {
     return <DemoModeContent />;
+  }
+
+  // V3 mode: ?v3 or localStorage ux_v3=true — hybrid chat + structured UI
+  if (UX_V3_ENABLED) {
+    return <V3App language="he" />;
   }
 
   // V2 mode: ?v2=1 or localStorage ux_v2=true — V2App handles its own auth
