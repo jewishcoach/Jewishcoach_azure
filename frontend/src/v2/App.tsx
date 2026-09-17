@@ -3,7 +3,7 @@ import { Heart, Menu, X, LogOut, MessageSquare, User, PlusCircle, Pause } from '
 import { useAuth, useUser } from '@clerk/clerk-react';
 import { MACRO_STAGES } from './types';
 import { useStageFlow } from './hooks/useStageFlow';
-import { listConversations, type ConversationListItem } from './services/api';
+import { listConversations, fetchUserGender, type ConversationListItem } from './services/api';
 import { JourneySidebar } from './components/JourneySidebar';
 import { PauseModal } from './components/PauseModal';
 import { ChatScreen } from './screens/ChatScreen';
@@ -12,6 +12,7 @@ import { StageIntroScreen } from './screens/StageIntroScreen';
 import { OnboardingScreen } from './screens/OnboardingScreen';
 import { WelcomeBackScreen } from './screens/WelcomeBackScreen';
 import { LoginScreen } from './screens/LoginScreen';
+import { QuotaExceededModal } from '../components/QuotaExceededModal';
 
 interface V2AppProps {
   language?: string;
@@ -25,6 +26,13 @@ export function V2App({ language = 'he' }: V2AppProps) {
   const [showPauseModal, setShowPauseModal] = useState(false);
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [loadingConversations, setLoadingConversations] = useState(false);
+  const [userGender, setUserGender] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isSignedIn) {
+      fetchUserGender(getToken).then(setUserGender);
+    }
+  }, [isSignedIn, getToken]);
 
   const loadConversations = useCallback(async () => {
     setLoadingConversations(true);
@@ -55,6 +63,8 @@ export function V2App({ language = 'he' }: V2AppProps) {
     resumeConversation,
     requestNextStageIntro,
     submitIntroAnswers,
+    quotaExceeded,
+    dismissQuotaExceeded,
   } = useStageFlow(language);
 
   useEffect(() => {
@@ -276,6 +286,13 @@ export function V2App({ language = 'he' }: V2AppProps) {
         onGoHome={() => { setShowPauseModal(false); startNewConversation(); }}
       />
 
+      {/* Quota exceeded modal */}
+      <QuotaExceededModal
+        isOpen={quotaExceeded}
+        onClose={dismissQuotaExceeded}
+        onGoToSubscription={() => { window.location.href = '/billing'; }}
+      />
+
       {/* Main content area */}
       <div className="flex-1 flex min-h-0">
         {/* Chat / Screens area */}
@@ -341,6 +358,7 @@ export function V2App({ language = 'he' }: V2AppProps) {
                 onSubmit={submitIntroAnswers}
                 isSubmitting={false}
                 previousInsights={flowState.summary?.insights}
+                userGender={userGender}
               />
             </div>
           )}

@@ -37,9 +37,10 @@ interface StageIntroScreenProps {
   onSubmit: (answers: Record<string, string[]>) => void;
   isSubmitting: boolean;
   previousInsights?: string[];
+  userGender?: string | null;
 }
 
-export function StageIntroScreen({ payload, onSubmit, isSubmitting, previousInsights }: StageIntroScreenProps) {
+export function StageIntroScreen({ payload, onSubmit, isSubmitting, previousInsights, userGender }: StageIntroScreenProps) {
   const stageId = payload.stage_id || 'discovery';
   const treeImg = STAGE_TREES[stageId] || STAGE_TREES.discovery;
   const stageInfo = STAGE_DESCRIPTIONS[stageId] || STAGE_DESCRIPTIONS.discovery;
@@ -113,7 +114,9 @@ export function StageIntroScreen({ payload, onSubmit, isSubmitting, previousInsi
               className="text-base text-[#2d4658] text-right"
               style={{ fontFamily: "'Heebo', sans-serif" }}
             >
-              במה התבוננו יחד בשלב הקודם?
+              {userGender === 'female'
+                ? 'מה בעיקר את לוקחת איתך מהשלב הזה?'
+                : 'מה בעיקר אתה לוקח איתך מהשלב הזה?'}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {previousInsights.slice(0, 3).map((insight, idx) => (
