@@ -3,8 +3,8 @@ import type { StageIntroPayload } from '../types';
 const STAGE_TREES: Record<string, string> = {
   identification: '/trees/tree-identification.png',
   discovery: '/trees/tree-discovery.png',
-  kamaz: '/trees/tree-kamaz.png',
-  choice: '/trees/tree-self-discovery.png',
+  kamaz: '/trees/tree-self-discovery.png',
+  choice: '/trees/tree-kamaz.png',
   vision: '/trees/tree-vision.png',
   change: '/trees/tree-change.png',
 };
