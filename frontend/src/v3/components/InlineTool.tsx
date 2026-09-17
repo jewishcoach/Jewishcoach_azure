@@ -6,6 +6,11 @@ import { EmotionSelector } from './tools/EmotionSelector';
 import { ActionField } from './tools/ActionField';
 import { MatzuiSummary } from './tools/MatzuiSummary';
 import { ComparisonCard } from './tools/ComparisonCard';
+import { GapCard } from './tools/GapCard';
+import { DeclarationCard } from './tools/DeclarationCard';
+import { CommitmentCard } from './tools/CommitmentCard';
+import { SentenceBuilder } from './tools/SentenceBuilder';
+import { BalanceScale } from './tools/BalanceScale';
 
 interface InlineToolProps {
   tool: ActiveInlineTool;
@@ -57,6 +62,23 @@ export function InlineTool({ tool, onSubmit, isSubmitting }: InlineToolProps) {
         />
       );
 
+    case 'sentence_builder':
+      return (
+        <SentenceBuilder
+          data={tool.data as { pattern?: string } | undefined}
+          onSubmit={onSubmit}
+          isSubmitting={isSubmitting}
+        />
+      );
+
+    case 'balance_scale':
+      return (
+        <BalanceScale
+          onSubmit={onSubmit}
+          isSubmitting={isSubmitting}
+        />
+      );
+
     case 'trait_card_builder':
       return (
         <CardShell>
@@ -66,6 +88,31 @@ export function InlineTool({ tool, onSubmit, isSubmitting }: InlineToolProps) {
             isSubmitting={isSubmitting}
           />
         </CardShell>
+      );
+
+    case 'gap_card':
+      return (
+        <GapCard
+          onSubmit={onSubmit}
+          isSubmitting={isSubmitting}
+        />
+      );
+
+    case 'declaration_card':
+      return (
+        <DeclarationCard
+          data={tool.data as { old_pattern?: string; old_paradigm?: string } | undefined}
+          onSubmit={onSubmit}
+          isSubmitting={isSubmitting}
+        />
+      );
+
+    case 'commitment_card':
+      return (
+        <CommitmentCard
+          onSubmit={onSubmit}
+          isSubmitting={isSubmitting}
+        />
       );
 
     default:
