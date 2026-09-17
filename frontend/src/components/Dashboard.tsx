@@ -18,7 +18,7 @@ import { TermsOfUsePage } from './TermsOfUsePage';
 import { PwaInstallCard } from './PwaInstallCard';
 import { apiClient } from '../services/api';
 import type { I18nT } from '../i18nT';
-import { friendlyEmailPrefix, isClerkSyntheticEmail } from '../lib/clerkEmail';
+import { friendlyEmailPrefix } from '../lib/clerkEmail';
 
 // BSD dashboard (Figma Page 2): cream canvas, slate sidebar, gold accents
 const COLORS = {
@@ -78,9 +78,9 @@ interface DashboardStats {
 interface DashboardData {
   profile: Profile;
   stats: DashboardStats;
-  recent_conversations: any[];
+  recent_conversations: Record<string, unknown>[];
   /** All conversations for calendar markers (recent_conversations may be truncated). */
-  calendar_conversations?: any[];
+  calendar_conversations?: Record<string, unknown>[];
 }
 
 interface DashboardProps {

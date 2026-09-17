@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Lightbulb, ArrowLeft, Share2, Download, Heart, Gift } from 'lucide-react';
+import { Lightbulb, Share2, Download, Heart, Gift } from 'lucide-react';
 import { useAuth } from '@clerk/clerk-react';
 import type { StageSummaryPayload } from '../types';
 import { fetchDeepAnalysis, type DeepViewLetter } from '../services/api';

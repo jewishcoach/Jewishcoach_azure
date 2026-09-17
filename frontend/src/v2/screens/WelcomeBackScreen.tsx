@@ -21,9 +21,9 @@ export function WelcomeBackScreen({
 }: WelcomeBackScreenProps) {
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
 
-  const daysAgo = lastActiveDate
+  const [daysAgo] = useState(() => lastActiveDate
     ? Math.max(1, Math.floor((Date.now() - new Date(lastActiveDate).getTime()) / (1000 * 60 * 60 * 24)))
-    : null;
+    : null);
 
   return (
     <div className="flex-1 flex flex-col items-center relative overflow-hidden" dir="rtl">

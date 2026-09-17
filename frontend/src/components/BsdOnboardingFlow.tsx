@@ -520,7 +520,7 @@ function TypingIndicator({ label }: { label: string }) {
 
 export function BsdOnboardingFlow({
   onComplete,
-  initialDisplayName = null,
+  initialDisplayName: _initialDisplayName = null,
   onDisplayNameUpdated,
 }: Props) {
   const { t, i18n } = useTranslation();
@@ -941,8 +941,6 @@ export function BsdOnboardingFlow({
       topicsSkipped,
       turnLoading,
       preferredName,
-      gender,
-      genderSkipped,
     ],
   );
 

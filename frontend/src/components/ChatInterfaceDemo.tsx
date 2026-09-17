@@ -17,7 +17,6 @@ import { isChatBlockedByActiveTool } from '../utils/activeFormTools';
 
 // Demo mode uses the real API (tunnel domains still need auth via demo token)
 const DEMO_API_URL = import.meta.env.VITE_API_URL || getApiBase();
-const DEMO_FRONTEND_URL = window.location.origin;
 
 interface ChatInterfaceDemoProps {
   displayName?: string | null;
@@ -53,10 +52,10 @@ export const ChatInterfaceDemo = ({ displayName }: ChatInterfaceDemoProps) => {
         console.log('🔧 [DEMO] Forcing API URL to:', DEMO_API_URL);
         
         // Override the baseURL (access private property)
-        (apiClient as any).client.defaults.baseURL = DEMO_API_URL;
+        (apiClient as unknown as { client: { defaults: { baseURL: string } } }).client.defaults.baseURL = DEMO_API_URL;
         apiClient.setToken('demo_tunnel_token');
         
-        console.log('🔧 [DEMO] Current baseURL:', (apiClient as any).client.defaults.baseURL);
+        console.log('🔧 [DEMO] Current baseURL:', (apiClient as unknown as { client: { defaults: { baseURL: string } } }).client.defaults.baseURL);
         
         const convs = await apiClient.getConversations();
         setConversations(convs);
@@ -80,10 +79,10 @@ export const ChatInterfaceDemo = ({ displayName }: ChatInterfaceDemoProps) => {
     isSendingRef.current = true;
     
     // Force override API URL again before sending (to be safe)
-    (apiClient as any).client.defaults.baseURL = DEMO_API_URL;
+    (apiClient as unknown as { client: { defaults: { baseURL: string } } }).client.defaults.baseURL = DEMO_API_URL;
     
     console.log('📤 [DEMO] Sending message:', messageToSend);
-    console.log('📤 [DEMO] Current baseURL:', (apiClient as any).client.defaults.baseURL);
+    console.log('📤 [DEMO] Current baseURL:', (apiClient as unknown as { client: { defaults: { baseURL: string } } }).client.defaults.baseURL);
     console.log('📤 [DEMO] Stream URL:', apiClient.getMessageStreamUrl(conversationId || 0));
     
     try {
