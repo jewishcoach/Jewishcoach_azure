@@ -156,52 +156,74 @@ export function JourneySidebar({ currentMacroStage, currentStep, collectedData, 
   );
 }
 
-const INSIGHT_LABELS_HE: Record<string, string> = {
-  topic: 'נושא האימון',
-  event_description: 'האירוע',
-  emotions: 'רגשות',
-  thought: 'המחשבה הפנימית',
-  action_actual: 'מה עשיתי (מצוי)',
-  action_desired: 'מה הייתי רוצה לעשות (רצוי)',
-  emotion_desired: 'איך הייתי רוצה להרגיש',
-  thought_desired: 'מה הייתי רוצה לחשוב',
-  gap_name: 'שם הפער',
-  gap_score: 'ציון הפער',
-  pattern: 'הדפוס',
-  paradigm: 'הפרדיגמה',
-  renewal: 'הבחירה החדשה',
-  vision: 'החזון',
-  commitment: 'המחויבות',
-};
+// Ordered list of insight fields, grouped by stage progression
+const INSIGHT_DISPLAY_ORDER: { key: string; label: string; group: string }[] = [
+  // Identification (S0-S8)
+  { key: 'topic', label: 'נושא האימון', group: 'זיהוי' },
+  { key: 'event_description', label: 'האירוע', group: 'זיהוי' },
+  { key: 'emotions', label: 'רגשות שזיהיתי', group: 'זיהוי' },
+  { key: 'thought', label: 'המחשבה הפנימית', group: 'זיהוי' },
+  { key: 'action_actual', label: 'מה עשיתי (מצוי)', group: 'זיהוי' },
+  { key: 'action_desired', label: 'מה הייתי רוצה לעשות', group: 'זיהוי' },
+  { key: 'emotion_desired', label: 'איך הייתי רוצה להרגיש', group: 'זיהוי' },
+  { key: 'thought_desired', label: 'מה הייתי רוצה לחשוב', group: 'זיהוי' },
+  { key: 'gap_name', label: 'שם הפער', group: 'זיהוי' },
+  { key: 'gap_score', label: 'ציון הפער', group: 'זיהוי' },
+  { key: 'pattern', label: 'הדפוס החוזר', group: 'זיהוי' },
+  // Discovery (S9-S11)
+  { key: 'paradigm', label: 'הפרדיגמה', group: 'גילוי' },
+  { key: 'stance.reality_belief', label: 'תפיסת המציאות', group: 'גילוי' },
+  { key: 'stance.trigger', label: 'הטריגר', group: 'גילוי' },
+  { key: 'stance.gains', label: 'רווחים מהדפוס', group: 'גילוי' },
+  { key: 'stance.losses', label: 'הפסדים מהדפוס', group: 'גילוי' },
+  // KaMaZ (S12)
+  { key: 'forces.source', label: 'כוחות מקור', group: 'כרטיס מהות זהות' },
+  { key: 'forces.nature', label: 'כוחות טבע', group: 'כרטיס מהות זהות' },
+  // Choice (S13)
+  { key: 'renewal', label: 'הבחירה החדשה', group: 'בחירה' },
+  // Vision (S14-S15)
+  { key: 'vision', label: 'החזון', group: 'חזון' },
+  { key: 'commitment', label: 'המחויבות', group: 'חזון' },
+];
 
-function formatInsightValue(value: unknown): string | null {
+function getNestedValue(data: Record<string, unknown>, path: string): unknown {
+  const parts = path.split('.');
+  let current: unknown = data;
+  for (const part of parts) {
+    if (current == null || typeof current !== 'object') return null;
+    current = (current as Record<string, unknown>)[part];
+  }
+  return current;
+}
+
+function formatSimpleValue(value: unknown): string | null {
   if (value == null || value === '') return null;
   if (Array.isArray(value)) {
     const filtered = value.filter(Boolean);
     return filtered.length > 0 ? filtered.join(', ') : null;
   }
-  if (typeof value === 'object') {
-    const entries = Object.entries(value as Record<string, unknown>).filter(([, v]) => {
-      if (Array.isArray(v)) return v.length > 0;
-      return v != null && v !== '';
-    });
-    if (entries.length === 0) return null;
-    return entries.map(([k, v]) => {
-      const label = INSIGHT_LABELS_HE[k] || k;
-      const formatted = Array.isArray(v) ? (v as string[]).join(', ') : String(v);
-      return `${label}: ${formatted}`;
-    }).join('\n');
-  }
-  return String(value);
+  if (typeof value === 'number') return String(value);
+  if (typeof value === 'string') return value;
+  return null;
 }
 
-const HIDDEN_KEYS = ['entities', 'stance', 'forces', 'gap_booklet_moves', 'offer_trait_picker'];
+const SKIP_KEYS = new Set(['entities', 'gap_booklet_moves', 'offer_trait_picker']);
+
+function getOrderedInsights(collectedData?: CollectedData): { key: string; label: string; group: string; value: string }[] {
+  if (!collectedData) return [];
+  const results: { key: string; label: string; group: string; value: string }[] = [];
+  for (const item of INSIGHT_DISPLAY_ORDER) {
+    const raw = getNestedValue(collectedData as Record<string, unknown>, item.key);
+    const formatted = formatSimpleValue(raw);
+    if (formatted) {
+      results.push({ ...item, value: formatted });
+    }
+  }
+  return results;
+}
 
 function countInsights(collectedData?: CollectedData): number {
-  if (!collectedData) return 0;
-  return Object.entries(collectedData)
-    .filter(([k]) => !HIDDEN_KEYS.includes(k))
-    .filter(([, v]) => formatInsightValue(v) !== null).length;
+  return getOrderedInsights(collectedData).length;
 }
 
 function countPatterns(collectedData?: CollectedData): number {
@@ -210,6 +232,8 @@ function countPatterns(collectedData?: CollectedData): number {
   if (collectedData.pattern) count++;
   if (collectedData.paradigm) count++;
   if (collectedData.gap_name) count++;
+  const stance = (collectedData as Record<string, unknown>).stance as Record<string, unknown> | undefined;
+  if (stance?.reality_belief) count++;
   return count;
 }
 
@@ -223,7 +247,9 @@ function countDecisions(collectedData?: CollectedData): number {
 }
 
 function InsightsPanel({ collectedData, isHe }: { collectedData?: CollectedData; isHe: boolean }) {
-  if (!collectedData || Object.keys(collectedData).length === 0) {
+  const insights = getOrderedInsights(collectedData);
+
+  if (insights.length === 0) {
     return (
       <div className="flex items-center justify-center h-40">
         <p className="text-sm text-[rgba(255,255,255,0.4)]" style={{ fontFamily: "'Heebo', sans-serif" }}>
@@ -233,23 +259,30 @@ function InsightsPanel({ collectedData, isHe }: { collectedData?: CollectedData;
     );
   }
 
-  const entries = Object.entries(collectedData)
-    .filter(([key]) => !HIDDEN_KEYS.includes(key))
-    .map(([key, value]) => ({ key, formatted: formatInsightValue(value) }))
-    .filter((e) => e.formatted !== null);
-
+  let lastGroup = '';
   return (
-    <div className="space-y-4">
-      {entries.map(({ key, formatted }) => (
-        <div key={key} className="space-y-1">
-          <p className="text-xs font-semibold text-[#03ffe6]" style={{ fontFamily: "'Heebo', sans-serif" }}>
-            {INSIGHT_LABELS_HE[key] || key}
-          </p>
-          <p className="text-sm text-white leading-relaxed whitespace-pre-line" style={{ fontFamily: "'Heebo', sans-serif" }}>
-            {formatted}
-          </p>
-        </div>
-      ))}
+    <div className="space-y-3">
+      {insights.map(({ key, label, group, value }) => {
+        const showGroupHeader = group !== lastGroup;
+        lastGroup = group;
+        return (
+          <div key={key}>
+            {showGroupHeader && (
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[rgba(3,255,230,0.5)] mt-4 mb-2" style={{ fontFamily: "'Heebo', sans-serif" }}>
+                {group}
+              </p>
+            )}
+            <div className="bg-[rgba(255,255,255,0.08)] rounded-lg p-3 space-y-1">
+              <p className="text-[10px] font-semibold text-[#03ffe6] uppercase tracking-wide" style={{ fontFamily: "'Heebo', sans-serif" }}>
+                {label}
+              </p>
+              <p className="text-sm text-[rgba(245,243,240,0.85)] leading-relaxed" style={{ fontFamily: "'Heebo', sans-serif" }}>
+                {value}
+              </p>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
