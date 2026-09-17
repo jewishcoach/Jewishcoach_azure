@@ -75,12 +75,20 @@ interface DashboardStats {
   favorite_coaching_phase: string | null;
 }
 
+interface Conversation {
+  id: number;
+  title: string;
+  created_at: string;
+  current_phase: string;
+  message_count: number;
+}
+
 interface DashboardData {
   profile: Profile;
   stats: DashboardStats;
-  recent_conversations: Record<string, unknown>[];
+  recent_conversations: Conversation[];
   /** All conversations for calendar markers (recent_conversations may be truncated). */
-  calendar_conversations?: Record<string, unknown>[];
+  calendar_conversations?: Conversation[];
 }
 
 interface DashboardProps {
