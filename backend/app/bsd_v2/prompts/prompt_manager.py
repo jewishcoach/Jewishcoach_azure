@@ -133,9 +133,10 @@ def _resolve_prompt_file(base_dir: Path, language: str, filename: str) -> Path:
     raise FileNotFoundError(f"Prompt file not found for language={language}: {filename}")
 
 
-def assemble_system_prompt(current_step: str, language: str = "he", user_gender: str = None) -> str:
+def assemble_system_prompt(current_step: str, language: str = "he", user_gender: str = None, ux_version: int = 2) -> str:
     """Assemble focused prompt for current stage and language.
-    user_gender: 'male', 'female', or None - from user dashboard. Affects אתה/את etc."""
+    user_gender: 'male', 'female', or None - from user dashboard. Affects אתה/את etc.
+    ux_version: 2 or 3 - when 3, includes v3_hybrid_addon.md."""
     lang = _normalize_language(language)
     prompts_dir = Path(__file__).parent
     core_dir = prompts_dir / "core"
@@ -152,6 +153,12 @@ def assemble_system_prompt(current_step: str, language: str = "he", user_gender:
     for core_file in core_files:
         resolved = _resolve_prompt_file(core_dir, lang, core_file)
         core_sections.append(_load_file(str(resolved)).strip())
+
+    # V3 hybrid addon: include extra instructions for structured UI
+    if ux_version >= 3:
+        v3_addon_path = core_dir / "v3_hybrid_addon.md"
+        if v3_addon_path.exists():
+            core_sections.append(_load_file(str(v3_addon_path)).strip())
 
     # Inject only the gate relevant for THIS stage
     gates_dict = STAGE_GATES_HE if lang == "he" else STAGE_GATES_EN

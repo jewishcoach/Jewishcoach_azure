@@ -1,6 +1,11 @@
 import type { ActiveInlineTool } from '../types';
 import { CardShell } from './shared/CardShell';
 import { TraitCardBuilder } from './tools/TraitCardBuilder';
+import { EventForm } from './tools/EventForm';
+import { EmotionSelector } from './tools/EmotionSelector';
+import { ActionField } from './tools/ActionField';
+import { MatzuiSummary } from './tools/MatzuiSummary';
+import { ComparisonCard } from './tools/ComparisonCard';
 
 interface InlineToolProps {
   tool: ActiveInlineTool;
@@ -9,8 +14,49 @@ interface InlineToolProps {
 }
 
 export function InlineTool({ tool, onSubmit, isSubmitting }: InlineToolProps) {
-  // Dispatch to specific tool component
   switch (tool.tool_type) {
+    case 'event_form':
+      return (
+        <EventForm
+          onSubmit={onSubmit}
+          isSubmitting={isSubmitting}
+        />
+      );
+
+    case 'emotion_selector':
+      return (
+        <EmotionSelector
+          onSubmit={onSubmit}
+          isSubmitting={isSubmitting}
+        />
+      );
+
+    case 'action_field':
+      return (
+        <ActionField
+          onSubmit={onSubmit}
+          isSubmitting={isSubmitting}
+        />
+      );
+
+    case 'matzui_summary':
+      return (
+        <MatzuiSummary
+          data={tool.data as { emotions?: string[]; thought?: string; action?: string } | undefined}
+          onSubmit={onSubmit}
+          isSubmitting={isSubmitting}
+        />
+      );
+
+    case 'comparison_card':
+      return (
+        <ComparisonCard
+          data={tool.data as { emotions?: string[]; thought?: string; action_actual?: string } | undefined}
+          onSubmit={onSubmit}
+          isSubmitting={isSubmitting}
+        />
+      );
+
     case 'trait_card_builder':
       return (
         <CardShell>
@@ -25,7 +71,6 @@ export function InlineTool({ tool, onSubmit, isSubmitting }: InlineToolProps) {
     default:
       return (
         <CardShell titleHe={tool.title_he} instructionHe={tool.instruction_he}>
-          {/* Placeholder — real tool components replace this per tool_type in later phases */}
           <div className="text-center py-8 space-y-4">
             <div className="w-12 h-12 rounded-full bg-[rgba(3,255,230,0.15)] flex items-center justify-center mx-auto">
               <span className="text-[#03ffe6] text-lg">✦</span>

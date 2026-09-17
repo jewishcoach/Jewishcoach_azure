@@ -275,6 +275,20 @@ async def send_message_v2(
         state, state_version = load_v2_state(body.conversation_id, db)
         ensure_training_started_at(state)
         inject_onboarding_topics_into_state(state, current_user.preferences or {}, body.language)
+
+        # V3: store ux_version in state so prompts and coach logic can branch
+        ux_version = int(request.headers.get("x-ux-version", "2") or "2")
+        if ux_version >= 3:
+            state["ux_version"] = ux_version
+            # Skip S0-S1: if conversation is new (S0), jump to S2
+            if state.get("current_step") in ("S0", "S1"):
+                state["current_step"] = "S2"
+                # Set topic from onboarding context if available
+                onboarding_ctx = state.get("stage_intro_context", {}).get("identification", "")
+                if onboarding_ctx and not state["collected_data"].get("topic"):
+                    state["collected_data"]["topic"] = onboarding_ctx[:200]
+                logger.info("[BSD V2 API] V3: skipped S0-S1, starting at S2")
+
         t2 = time.time()
         logger.debug("[PERF API] Load state from DB: %.0fms", (t2 - t1) * 1000)
         logger.debug(
@@ -349,7 +363,6 @@ async def send_message_v2(
         try_autotitle_conversation(db, body.conversation_id, body.language or "he")
         
         # Interactive tools: S11 on entry; S12 deferred (booklet order — see stage_tool_triggers).
-        ux_version = int(request.headers.get("x-ux-version", "2") or "2")
         tool_call = resolve_post_turn_tool_call(prev_step, updated_state, ux_version=ux_version)
         if tool_call and tool_call.get("tool_type") in ("trait_picker", "trait_card_builder"):
             mark_trait_picker_sent(updated_state)
@@ -368,10 +381,10 @@ async def send_message_v2(
                 ux_version,
             )
 
-        # UX V2: detect macro-stage completion signal
+        # UX V2/V3: detect macro-stage completion signal
         stage_complete_payload = None
-        ux_v2 = request.headers.get("x-ux-version") == "2"
-        if ux_v2:
+        ux_v2_or_v3 = int(request.headers.get("x-ux-version", "1") or "1") >= 2
+        if ux_v2_or_v3:
             last_msg = updated_state.get("messages", [{}])[-1] if updated_state.get("messages") else {}
             last_internal = last_msg.get("internal_state") or {}
             if last_internal.get("stage_ready_to_complete"):

@@ -199,6 +199,7 @@ def _get_system_prompt(
     BSD_V2_PROMPT_MODE=compact  -> legacy compact prompt + dynamic examples
     """
     current_step = state.get("current_step", "S1")
+    ux_version = state.get("ux_version", 2)
     prompt_mode = os.getenv("BSD_V2_PROMPT_MODE", "markdown").strip().lower()
 
     if prompt_mode == "compact":
@@ -219,8 +220,8 @@ def _get_system_prompt(
         logger.info("[PROMPT] Using compact mode")
         return prompt
 
-    logger.info("[PROMPT] Using markdown stage mode")
-    assembled = assemble_system_prompt(current_step=current_step, language=language, user_gender=user_gender)
+    logger.info("[PROMPT] Using markdown stage mode (ux_v%s)", ux_version)
+    assembled = assemble_system_prompt(current_step=current_step, language=language, user_gender=user_gender, ux_version=ux_version)
     return assembled + build_session_flow_prompt_addon(state, language) + build_station_wrap_instruction(state, language)
 
 
