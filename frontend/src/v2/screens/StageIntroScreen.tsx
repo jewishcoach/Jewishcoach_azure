@@ -64,8 +64,8 @@ export function StageIntroScreen({ payload, onSubmit, isSubmitting, previousInsi
         {/* Main card */}
         <div className="bg-white rounded-lg shadow-[0px_0px_6.25px_rgba(0,0,0,0.14)] flex flex-col items-center py-8 px-6">
           {/* Tree image */}
-          <div className="w-[175px] h-[212px] mb-4">
-            <img src={treeImg} alt="" className="w-full h-full object-contain" />
+          <div className="w-[252px] h-[235px] flex items-center justify-center mb-4">
+            <img src={treeImg} alt="" className="w-[188px] h-[212px] object-contain" />
           </div>
 
           {/* Stage name */}

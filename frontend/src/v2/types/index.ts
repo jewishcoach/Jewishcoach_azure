@@ -52,7 +52,7 @@ export const MACRO_STAGES: MacroStage[] = [
   },
   {
     id: 'kamaz',
-    title_he: 'כמ"ז',
+    title_he: 'כרטיס מהות זהות',
     title_en: 'Forces (KMZ)',
     description_he: 'כוחות מקור וטבע — בניית מצפן אישי',
     description_en: 'Source & Nature forces — building a personal identity card',

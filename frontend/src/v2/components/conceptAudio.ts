@@ -13,25 +13,34 @@ const CONCEPT_AUDIO_MAP: Record<string, ConceptAudio[]> = {
   S6: [
     { file: '/voice/03_ratzui.mp3', label: 'הרצוי' },
   ],
-  S7: [
-    { file: '/voice/04_dfus.mp3', label: 'הדפוס' },
-    { file: '/voice/05_paradigma.mp3', label: 'הפרדיגמא' },
-  ],
+  S7: [],
   S8: [
-    { file: '/voice/06_emda.mp3', label: 'העמדה' },
-    { file: '/voice/07_revach.mp3', label: 'רווח והפסד' },
+    { file: '/voice/04_dfus.mp3', label: 'הדפוס' },
   ],
   S9: [
+    { file: '/voice/05_paradigma.mp3', label: 'הפרדיגמא' },
+  ],
+  S10: [
+    { file: '/voice/06_emda.mp3', label: 'העמדה' },
+  ],
+  S11: [
+    { file: '/voice/07_revach.mp3', label: 'רווח והפסד' },
+    { file: '/voice/08_kupsa.mp3', label: 'הקופסא' },
+  ],
+  S12: [
     { file: '/voice/09_makor.mp3', label: 'קומת המקור' },
     { file: '/voice/10_teva.mp3', label: 'קומת הטבע' },
     { file: '/voice/11_kamaz.mp3', label: 'הכמ"ז' },
   ],
-  S11: [
-    { file: '/voice/08_kupsa.mp3', label: 'הקופסא' },
+  S13: [
     { file: '/voice/12_bhira.mp3', label: 'בחירה חדשה' },
   ],
-  S12: [{ file: '/voice/14_hazon.mp3', label: 'חזון' }],
-  S10: [{ file: '/voice/13_bakasha.mp3', label: 'בקשה לאימון' }],
+  S14: [
+    { file: '/voice/14_hazon.mp3', label: 'חזון' },
+  ],
+  S15: [
+    { file: '/voice/13_bakasha.mp3', label: 'נוסחת המחויבות' },
+  ],
 };
 
 const CONCEPT_KEYWORDS: Record<string, string[]> = {

@@ -36,12 +36,13 @@ INSIGHT_CARD_PROMPT_HE = """אתה מייצר "כרטיס תובנה" אישי �
 3. להיות כתוב בגוף שני, חם ואישי, 2-3 משפטים בלבד
 4. לא לייעץ, לא להורות — רק לשקף בצורה שמרגישה כמו גילוי
 
-פורמט התשובה — בדיוק 3 שורות, כל שורה היא insight אחד:
-שורה 1: תובנה מרכזית (עם ציטוט מהמתאמן)
-שורה 2: מה התגלה בשלב הזה
+פורמט התשובה — בדיוק 3 שורות נפרדות, מופרדות בירידת שורה:
+שורה 1: תובנה מרכזית (עם ציטוט מהמתאמן) — 1-2 משפטים בלבד
+שורה 2: מה התגלה בשלב הזה — 1-2 משפטים בלבד
 שורה 3: משפט אחד מעצים שנותן כוח להמשך
 
-אין כותרות, אין מספור, אין נקודות — רק 3 שורות טקסט."""
+חשוב מאוד: כל שורה חייבת להיות קצרה (עד 2 משפטים). אין לכתוב פסקה אחת ארוכה.
+אין כותרות, אין מספור, אין נקודות — רק 3 שורות טקסט קצרות."""
 
 INSIGHT_CARD_PROMPT_EN = """You generate a personal "insight card" for a trainee who completed a BSD coaching stage.
 
@@ -51,12 +52,13 @@ The card should:
 3. Be written in 2nd person, warm and personal, 2-3 sentences only
 4. No advice, no instructions — just reflect in a way that feels like discovery
 
-Response format — exactly 3 lines, each is one insight:
-Line 1: Key insight (with a quote from the trainee)
-Line 2: What was discovered in this stage
+Response format — exactly 3 separate lines, each on its own line:
+Line 1: Key insight (with a quote from the trainee) — 1-2 sentences max
+Line 2: What was discovered in this stage — 1-2 sentences max
 Line 3: One empowering sentence for the road ahead
 
-No headers, no numbering, no bullets — just 3 lines of text."""
+Important: each line must be short (max 2 sentences). Do NOT write one long paragraph.
+No headers, no numbering, no bullets — just 3 short lines of text."""
 
 
 async def generate_stage_summary(
@@ -98,6 +100,15 @@ async def generate_stage_summary(
     )
 
 
+_STAGE_RELEVANT_KEYS: dict[str, list[str]] = {
+    "identification": ["topic", "emotions", "event", "thought", "action_actual", "desired", "gap_name", "gap_score", "pattern"],
+    "discovery": ["paradigm", "stance"],
+    "kamaz": ["forces"],
+    "choice": ["renewal", "new_paradigm"],
+    "vision": ["vision", "commitment"],
+}
+
+
 async def _generate_insight_card(
     state: dict[str, Any],
     collected: dict[str, Any],
@@ -111,22 +122,26 @@ async def _generate_insight_card(
     user_messages = [m["content"] for m in history if m.get("sender") == "user"]
     user_quotes = "\n".join(f"- {msg}" for msg in user_messages[-5:])
 
+    relevant_keys = _STAGE_RELEVANT_KEYS.get(macro_id, [])
     collected_summary_parts = []
     for key, val in collected.items():
-        if val and key != "entities" and val != []:
-            if isinstance(val, list):
-                collected_summary_parts.append(f"{key}: {', '.join(str(v) for v in val)}")
-            elif isinstance(val, dict):
-                collected_summary_parts.append(f"{key}: {val}")
-            else:
-                collected_summary_parts.append(f"{key}: {val}")
+        if not relevant_keys or key in relevant_keys:
+            if val and key != "entities" and val != []:
+                if isinstance(val, list):
+                    collected_summary_parts.append(f"{key}: {', '.join(str(v) for v in val)}")
+                elif isinstance(val, dict):
+                    collected_summary_parts.append(f"{key}: {val}")
+                else:
+                    collected_summary_parts.append(f"{key}: {val}")
     collected_str = "\n".join(collected_summary_parts)
 
     context = f"""שלב שהושלם: {macro_id}
+חשוב: כתוב תובנות רק על מה שהתגלה בשלב הזה, לא משלבים קודמים.
+
 מה המתאמן כתב (ציטוטים):
 {user_quotes}
 
-נתונים שנאספו:
+נתונים שנאספו בשלב הזה:
 {collected_str}"""
 
     system_prompt = INSIGHT_CARD_PROMPT_HE if is_he else INSIGHT_CARD_PROMPT_EN
@@ -143,6 +158,23 @@ async def _generate_insight_card(
 
     if not lines:
         raise ValueError("Empty LLM response for insight card")
+
+    # LLM sometimes returns everything as one paragraph — split into 3 insights
+    if len(lines) < 3 and len(lines[0]) > 120:
+        import re
+        full = " ".join(lines)
+        # Split on sentence-ending punctuation followed by a space
+        sentences = [s.strip() for s in re.split(r'(?<=[.!?。])\s+', full) if s.strip()]
+        if len(sentences) >= 3:
+            # Group sentences into 3 roughly-equal insights
+            third = len(sentences) // 3
+            lines = [
+                " ".join(sentences[:third]),
+                " ".join(sentences[third:2 * third]),
+                " ".join(sentences[2 * third:]),
+            ]
+        elif len(sentences) == 2:
+            lines = sentences
 
     return lines[:4]
 

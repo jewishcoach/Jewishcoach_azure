@@ -16,6 +16,8 @@ import {
   loadConversation,
   sendMessageV2,
   submitStageIntroAnswers,
+  QuotaExceededError,
+  ConflictError,
 } from '../services/api';
 import { getApiBase } from '../../config';
 
@@ -25,6 +27,36 @@ const INITIAL_FLOW_STATE: FlowState = {
   currentStep: 'S0',
 };
 
+const SESSION_KEY = 'v2_session_state';
+
+interface PersistedSession {
+  conversationId: number;
+  flowState: FlowState;
+  messages: ChatMessage[];
+  collectedData: CollectedData;
+  saturationScore: number;
+}
+
+function saveSession(data: PersistedSession) {
+  try {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(data));
+  } catch { /* storage full or unavailable */ }
+}
+
+function loadSession(): PersistedSession | null {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as PersistedSession;
+  } catch {
+    return null;
+  }
+}
+
+function clearSession() {
+  try { sessionStorage.removeItem(SESSION_KEY); } catch { /* */ }
+}
+
 export function useStageFlow(language: string = 'he') {
   const { getToken, isSignedIn } = useAuth();
   const [flowState, setFlowState] = useState<FlowState>(INITIAL_FLOW_STATE);
@@ -33,6 +65,7 @@ export function useStageFlow(language: string = 'he') {
   const [isLoading, setIsLoading] = useState(false);
   const [saturationScore, setSaturationScore] = useState(0);
   const [collectedData, setCollectedData] = useState<CollectedData>({});
+  const [quotaExceeded, setQuotaExceeded] = useState(false);
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -86,7 +119,41 @@ export function useStageFlow(language: string = 'he') {
             summary: response.stage_complete as StageSummaryPayload,
           }));
         }
+
+        // Persist to sessionStorage for refresh recovery
+        setMessages((msgs) => {
+          setCollectedData((cd) => {
+            saveSession({
+              conversationId: convId!,
+              flowState: {
+                phase: response.stage_complete ? 'stage_complete' : 'chatting',
+                currentMacroStage: stepToMacroStage(response.current_step || 'S0'),
+                currentStep: response.current_step,
+                ...(response.stage_complete ? { summary: response.stage_complete as StageSummaryPayload } : {}),
+              },
+              messages: msgs,
+              collectedData: response.collected_data ? { ...cd, ...response.collected_data } : cd,
+              saturationScore: response.saturation_score,
+            });
+            return cd;
+          });
+          return msgs;
+        });
       } catch (err) {
+        if (err instanceof QuotaExceededError) {
+          setQuotaExceeded(true);
+          setMessages((prev) => prev.filter((m) => m.id !== `u-${Date.now()}`));
+          return;
+        }
+        if (err instanceof ConflictError) {
+          const retryMsg: ChatMessage = {
+            id: `e-${Date.now()}`,
+            role: 'assistant',
+            content: 'ההודעה נשלחה פעמיים — שלח שוב בבקשה.',
+          };
+          setMessages((prev) => [...prev, retryMsg]);
+          return;
+        }
         console.error('[V2 Chat] sendMessage error:', err);
         const errorMsg: ChatMessage = {
           id: `e-${Date.now()}`,
@@ -211,6 +278,44 @@ export function useStageFlow(language: string = 'he') {
           introPayload: undefined,
           summary: undefined,
         }));
+
+        // Send automatic opening message to get coach's first response for this stage
+        try {
+          setIsLoading(true);
+          const response: ChatResponseV2 = await sendMessageV2(
+            'אני מוכן, בוא נתחיל',
+            conversationId,
+            language,
+            getToken,
+          );
+          const openingMsg: ChatMessage = {
+            id: `a-stage-open-${Date.now()}`,
+            role: 'assistant',
+            content: response.coach_message,
+            phase: response.current_step,
+            suggestions: response.suggestions,
+          };
+          setMessages([openingMsg]);
+          if (response.collected_data) {
+            setCollectedData((prev) => ({ ...prev, ...response.collected_data }));
+          }
+          setFlowState((prev) => ({
+            ...prev,
+            currentStep: response.current_step,
+            currentMacroStage: stepToMacroStage(response.current_step || prev.currentStep || 'S0'),
+          }));
+        } catch (err) {
+          console.error('[V2 Chat] stage opening message error:', err);
+          const fallbackMsg: ChatMessage = {
+            id: `a-stage-open-${Date.now()}`,
+            role: 'assistant',
+            content: 'בוא נתחיל את השלב הבא. ספר לי מה עובר עליך.',
+            phase: macroStage === 'discovery' ? 'S9' : macroStage === 'kamaz' ? 'S12' : macroStage === 'choice' ? 'S13' : 'S14',
+          };
+          setMessages([fallbackMsg]);
+        } finally {
+          setIsLoading(false);
+        }
       } catch {
         setFlowState((prev) => ({ ...prev, phase: 'answering_intro' }));
       }
@@ -241,6 +346,7 @@ export function useStageFlow(language: string = 'he') {
   }, [getToken]);
 
   const startNewConversation = useCallback(() => {
+    clearSession();
     setMessages([]);
     setConversationId(null);
     setCollectedData({});
@@ -255,6 +361,18 @@ export function useStageFlow(language: string = 'he') {
   useEffect(() => {
     if (!isSignedIn) return;
     let cancelled = false;
+
+    // Try to restore from sessionStorage first (page refresh)
+    const saved = loadSession();
+    if (saved && saved.conversationId && saved.messages.length > 0) {
+      setConversationId(saved.conversationId);
+      setMessages(saved.messages);
+      setCollectedData(saved.collectedData || {});
+      setSaturationScore(saved.saturationScore || 0);
+      setFlowState(saved.flowState);
+      return;
+    }
+
     const timeout = setTimeout(() => {
       if (!cancelled) {
         console.warn('[V2 StageFlow] Init timed out — falling back to onboarding');
@@ -290,6 +408,8 @@ export function useStageFlow(language: string = 'he') {
     isLoading,
     saturationScore,
     collectedData,
+    quotaExceeded,
+    dismissQuotaExceeded: () => setQuotaExceeded(false),
     sendMessage,
     startOnboarding,
     startNewConversation,

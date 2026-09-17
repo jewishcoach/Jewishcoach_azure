@@ -32,7 +32,7 @@ MACRO_STAGES = [
     },
     {
         "id": "kamaz",
-        "title_he": 'כמ"ז',
+        "title_he": 'כרטיס מהות זהות',
         "title_en": "Forces (KMZ)",
         "s_start": "S12",
         "s_end": "S12",
