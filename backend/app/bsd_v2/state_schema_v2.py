@@ -168,7 +168,21 @@ def add_message(
                                     existing_entities.setdefault(sub_k, []).append(item)
                                     seen.add(item)
                     continue
-                # For other nested dicts (stance, forces): merge instead of overwrite
+                # forces: union-merge each sub-list (source, nature) to accumulate traits
+                if key == "forces" and isinstance(value, dict):
+                    existing_forces = state["collected_data"].setdefault("forces", {
+                        "source": [], "nature": []
+                    })
+                    for sub_k in ("source", "nature"):
+                        new_items = value.get(sub_k) or []
+                        if new_items:
+                            seen = set(existing_forces.get(sub_k, []))
+                            for item in new_items:
+                                if item and item not in seen:
+                                    existing_forces.setdefault(sub_k, []).append(item)
+                                    seen.add(item)
+                    continue
+                # For other nested dicts (stance): merge instead of overwrite
                 if isinstance(value, dict) and isinstance(state["collected_data"].get(key), dict):
                     existing = state["collected_data"][key]
                     for sub_k, sub_v in value.items():

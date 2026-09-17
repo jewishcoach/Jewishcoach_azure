@@ -729,16 +729,29 @@ def get_s1_explanation_for_missing_info(reason: str, language: str) -> str:
 
 
 def _s12_fallback_question(state: Optional[Dict[str, Any]], language: str) -> str:
-    """S12 fallback: ask about nature if source already has 3+ items, otherwise ask about source."""
+    """S12 fallback: decide whether to ask about source or nature based on what's been collected."""
     forces = (state or {}).get("collected_data", {}).get("forces", {})
     src = forces.get("source", [])
+    nat = forces.get("nature", [])
+    if len(src) >= 6 and len(nat) >= 6:
+        if language == "he":
+            return "יש לנו כרטיס כוחות מלא — 6 מקור ו-6 טבע. בוא נסכם ונמשיך."
+        return "We have a full forces card — 6 source and 6 nature. Let's summarize and continue."
+    if len(src) >= 6:
+        if len(nat) == 0:
+            if language == "he":
+                return "עכשיו לצד הטבע — מה הדבר הכבד, ההגנה או הדחף שמוכר לך בחיים? מה מושך אותך למטה?"
+            return "Now for the nature side — what is the heavy thing, the defense or urge you recognize? What pulls you down?"
+        if language == "he":
+            return f"יש לנו כבר {len(nat)} תכונות טבע. מעבר לאלה, מה עוד מושך אותך למטה או מקשה עלייך?"
+        return f"We have {len(nat)} nature traits so far. Beyond those, what else pulls you down?"
     if len(src) >= 3:
         if language == "he":
-            return "עכשיו לצד הטבע — מה הדבר הכבד, ההגנה או הדחף שמוכר לך? מה מושך אותך למטה?"
-        return "Now for the nature side — what is the heavy thing, the defense or urge you recognize? What pulls you down?"
+            return "עכשיו לצד הטבע — איזה צרכים, הגנות או דחפים את מזהה אצלך בדרך כלל, שמושכים אותך למטה?"
+        return "Now for the nature side — what needs, defenses or urges do you recognize that pull you down?"
     if language == "he":
-        return "מה כאן בשבילך מקור — אור או ערך שמדליק אותך?"
-    return "What here is source for you — light or a value that lifts you?"
+        return "איזה אור או ערכים את מזהה בעצמך כשאת במיטבך?"
+    return "What light or values do you recognize in yourself when you're at your best?"
 
 
 def get_next_step_question(current_step: str, language: str = "he", state: Optional[Dict[str, Any]] = None) -> str:
@@ -1754,7 +1767,7 @@ def _merged_forces_after_turn(
     state: Dict[str, Any],
     proposed_collected_data: Optional[Dict[str, Any]],
 ) -> Tuple[List[str], List[str]]:
-    """Simulate add_message merge for forces.source / forces.nature (same rules as state_schema_v2)."""
+    """Simulate add_message merge for forces.source / forces.nature (union-merge, matching state_schema_v2)."""
     base_cd = state.get("collected_data") or {}
     existing = dict(base_cd.get("forces") or {})
     src = _nonempty_trait_list(existing.get("source"))
@@ -1766,10 +1779,19 @@ def _merged_forces_after_turn(
         return src, nat
     for sub_k, sub_v in value.items():
         if sub_v is not None and sub_v != [] and isinstance(sub_v, list):
+            new_items = _nonempty_trait_list(sub_v)
             if sub_k == "source":
-                src = _nonempty_trait_list(sub_v)
+                seen = set(src)
+                for item in new_items:
+                    if item not in seen:
+                        src.append(item)
+                        seen.add(item)
             elif sub_k == "nature":
-                nat = _nonempty_trait_list(sub_v)
+                seen = set(nat)
+                for item in new_items:
+                    if item not in seen:
+                        nat.append(item)
+                        seen.add(item)
     return src, nat
 
 
