@@ -46,6 +46,7 @@ class Conversation(Base):
     current_phase = Column(String, default="S0")  # Coaching phase tracking (S0-S10)
     phase_history = Column(JSON, default=[])  # Track phase transitions
     v2_state = Column(JSON, default=None)  # V2: Full conversation state (replaces phase tracking)
+    v2_state_version = Column(Integer, default=0, nullable=False)  # Optimistic lock for concurrent writes
     
     user = relationship("User", back_populates="conversations")
     messages = relationship("Message", back_populates="conversation", cascade="all, delete-orphan")
