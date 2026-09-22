@@ -150,10 +150,26 @@ def _resolve_prompt_file(base_dir: Path, language: str, filename: str) -> Path:
     raise FileNotFoundError(f"Prompt file not found for language={language}: {filename}")
 
 
-def assemble_system_prompt(current_step: str, language: str = "he", user_gender: str = None, ux_version: int = 2) -> str:
+_V3_TOOL_DATA_KEYS: Dict[str, str] = {
+    "S2": "event_description",
+    "S3": "emotions",
+    "S5": "action_actual",
+    "S6": "action_desired",
+    "S7": "gap_name",
+    "S9": "paradigm",
+    "S10": "paradigm",
+    "S11": "stance",
+    "S12": "forces",
+    "S13": "renewal",
+    "S15": "commitment",
+}
+
+
+def assemble_system_prompt(current_step: str, language: str = "he", user_gender: str = None, ux_version: int = 2, collected_data: dict = None) -> str:
     """Assemble focused prompt for current stage and language.
     user_gender: 'male', 'female', or None - from user dashboard. Affects אתה/את etc.
-    ux_version: 2 or 3 - when 3, includes v3_hybrid_addon.md."""
+    ux_version: 2 or 3 - when 3, includes v3_hybrid_addon.md.
+    collected_data: current collected_data dict — used in V3 to detect pre-tool vs post-tool."""
     lang = _normalize_language(language)
     prompts_dir = Path(__file__).parent
     core_dir = prompts_dir / "core"
@@ -184,16 +200,34 @@ def assemble_system_prompt(current_step: str, language: str = "he", user_gender:
     safety_en = "**Safety:** No repeated questions. \"I already said\" → Apologize and move on. Questions only."
     gate_section = f"\n\n{gate_content}\n\n---\n\n{safety_he if lang == 'he' else safety_en}"
 
-    # V3: use V3 stage prompt if available, otherwise fall back to V2
+    # V3: choose between pre-tool prompt (data not yet collected) and post-tool prompt (data collected)
     if ux_version >= 3 and current_step in V3_STAGE_FILES:
-        v3_file = V3_STAGE_FILES[current_step]
-        v3_path = stages_dir / v3_file
-        if v3_path.exists():
-            stage_content = _load_file(str(v3_path)).strip()
+        cd = collected_data or {}
+        data_key = _V3_TOOL_DATA_KEYS.get(current_step)
+        tool_data_present = False
+        if data_key and cd.get(data_key):
+            val = cd[data_key]
+            tool_data_present = bool(val) and val != [] and val != {}
+
+        if tool_data_present:
+            # Post-tool: use V3 validation prompt
+            v3_file = V3_STAGE_FILES[current_step]
+            v3_path = stages_dir / v3_file
+            if v3_path.exists():
+                stage_content = _load_file(str(v3_path)).strip()
+            else:
+                stage_file = STAGE_FILES.get(current_step, "s1_topic.md")
+                stage_path = _resolve_prompt_file(stages_dir, lang, stage_file)
+                stage_content = _load_file(str(stage_path)).strip()
         else:
-            stage_file = STAGE_FILES.get(current_step, "s1_topic.md")
-            stage_path = _resolve_prompt_file(stages_dir, lang, stage_file)
-            stage_content = _load_file(str(stage_path)).strip()
+            # Pre-tool: brief warm transition before the UI card appears
+            pre_tool_path = stages_dir / "v3" / "pre_tool.md"
+            if pre_tool_path.exists():
+                stage_content = _load_file(str(pre_tool_path)).strip()
+            else:
+                stage_file = STAGE_FILES.get(current_step, "s1_topic.md")
+                stage_path = _resolve_prompt_file(stages_dir, lang, stage_file)
+                stage_content = _load_file(str(stage_path)).strip()
     else:
         stage_file = STAGE_FILES.get(current_step, "s1_topic.md")
         stage_path = _resolve_prompt_file(stages_dir, lang, stage_file)

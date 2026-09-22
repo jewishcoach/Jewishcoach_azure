@@ -221,7 +221,7 @@ def _get_system_prompt(
         return prompt
 
     logger.info("[PROMPT] Using markdown stage mode (ux_v%s)", ux_version)
-    assembled = assemble_system_prompt(current_step=current_step, language=language, user_gender=user_gender, ux_version=ux_version)
+    assembled = assemble_system_prompt(current_step=current_step, language=language, user_gender=user_gender, ux_version=ux_version, collected_data=state.get("collected_data"))
     return assembled + build_session_flow_prompt_addon(state, language) + build_station_wrap_instruction(state, language)
 
 
