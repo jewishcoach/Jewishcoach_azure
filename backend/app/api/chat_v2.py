@@ -276,6 +276,9 @@ async def send_message_v2(
         ensure_training_started_at(state)
         inject_onboarding_topics_into_state(state, current_user.preferences or {}, body.language)
 
+        # Snapshot previous step BEFORE any V3 skip or handle_conversation.
+        prev_step = state.get("current_step", "S0")
+
         # V3: store ux_version in state so prompts and coach logic can branch
         ux_version = int(request.headers.get("x-ux-version", "2") or "2")
         if ux_version >= 3:
@@ -296,10 +299,6 @@ async def send_message_v2(
             state["current_step"],
             len(state.get("messages", [])),
         )
-        
-        # Snapshot previous step BEFORE handle_conversation mutates state in-place.
-        # This is required for reliable "stage entry" detection and tool activation.
-        prev_step = state.get("current_step", "S0")
 
         # Handle conversation (pass user gender from dashboard for אתה/את)
         t3 = time.time()
