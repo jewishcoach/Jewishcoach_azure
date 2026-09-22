@@ -156,6 +156,24 @@ except Exception as e:
     print(f'⚠️  support email column migration: {e}')
 " 2>&1 || true
 
+# Conversations: v2_state_version for optimistic locking (V2/V3 concurrent writes)
+"$PYTHON" -c "
+from app.database import engine
+from sqlalchemy import text, inspect as sa_inspect
+try:
+    insp = sa_inspect(engine)
+    cols = [c['name'] for c in insp.get_columns('conversations')]
+    if 'v2_state_version' not in cols:
+        with engine.connect() as conn:
+            conn.execute(text('ALTER TABLE conversations ADD COLUMN v2_state_version INTEGER DEFAULT 0 NOT NULL'))
+            conn.commit()
+        print('✓ Added v2_state_version to conversations')
+    else:
+        print('✓ v2_state_version already present')
+except Exception as e:
+    print(f'⚠️  v2_state_version migration: {e}')
+" 2>&1 || true
+
 # Coupons: optional per-code message cap (e.g. SHELA001 → 2000)
 "$PYTHON" -c "
 from app.database import engine
