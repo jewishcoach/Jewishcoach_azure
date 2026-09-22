@@ -225,9 +225,13 @@ async def submit_tool_response(
                         timestamp=utc_now(),
                     ))
 
-                tool_call = resolve_post_turn_tool_call(prev_step, updated_state)
-                if tool_call and tool_call.get("tool_type") == "trait_picker":
+                ux_version = v2_state.get("ux_version", 2)
+                tool_call = resolve_post_turn_tool_call(prev_step, updated_state, ux_version=ux_version)
+                if tool_call and tool_call.get("tool_type") in ("trait_picker", "trait_card_builder"):
                     mark_trait_picker_sent(updated_state)
+                    conversation.v2_state = updated_state
+                if tool_call and tool_call.get("tool_type") == "matzui_summary":
+                    mark_matzui_summary_sent(updated_state)
                     conversation.v2_state = updated_state
             else:
                 conversation.v2_state = v2_state
