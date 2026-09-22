@@ -20,6 +20,23 @@ STAGE_FILES: Dict[str, str] = {
     "S12": "s9_forces.md", "S13": "s10_choice.md", "S14": "s11_vision.md", "S15": "s12_commitment.md",
 }
 
+# V3 stage prompts — shorter, tool-aware versions for hybrid UI.
+# When ux_version >= 3 and a V3 prompt exists, it replaces the V2 stage prompt.
+# Stages without a V3 prompt (S4, S8, S14) use the V2 prompt as-is.
+V3_STAGE_FILES: Dict[str, str] = {
+    "S2": "v3/s2_event.md",
+    "S3": "v3/s3_emotions.md",
+    "S5": "v3/s5_action.md",
+    "S6": "v3/s6_desired.md",
+    "S7": "v3/s7_gap.md",
+    "S9": "v3/s9_paradigm_stance.md",   # merged S9+S10
+    "S10": "v3/s9_paradigm_stance.md",  # same file — V3 merges these stages
+    "S11": "v3/s11_gains_losses.md",
+    "S12": "v3/s12_forces.md",
+    "S13": "v3/s13_choice.md",
+    "S15": "v3/s15_commitment.md",
+}
+
 SUPPORTED_LANGUAGES = {"he", "en"}
 
 # Per-stage collected_data instructions — only the relevant fields.
@@ -167,9 +184,20 @@ def assemble_system_prompt(current_step: str, language: str = "he", user_gender:
     safety_en = "**Safety:** No repeated questions. \"I already said\" → Apologize and move on. Questions only."
     gate_section = f"\n\n{gate_content}\n\n---\n\n{safety_he if lang == 'he' else safety_en}"
 
-    stage_file = STAGE_FILES.get(current_step, "s1_topic.md")
-    stage_path = _resolve_prompt_file(stages_dir, lang, stage_file)
-    stage_content = _load_file(str(stage_path)).strip()
+    # V3: use V3 stage prompt if available, otherwise fall back to V2
+    if ux_version >= 3 and current_step in V3_STAGE_FILES:
+        v3_file = V3_STAGE_FILES[current_step]
+        v3_path = stages_dir / v3_file
+        if v3_path.exists():
+            stage_content = _load_file(str(v3_path)).strip()
+        else:
+            stage_file = STAGE_FILES.get(current_step, "s1_topic.md")
+            stage_path = _resolve_prompt_file(stages_dir, lang, stage_file)
+            stage_content = _load_file(str(stage_path)).strip()
+    else:
+        stage_file = STAGE_FILES.get(current_step, "s1_topic.md")
+        stage_path = _resolve_prompt_file(stages_dir, lang, stage_file)
+        stage_content = _load_file(str(stage_path)).strip()
 
     stage_title = f"# שלב נוכחי: {current_step}" if lang == "he" else f"# Current Stage: {current_step}"
     response_format = core_sections[-1]
