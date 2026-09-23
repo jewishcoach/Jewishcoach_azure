@@ -131,7 +131,12 @@ def _build_v3_tool_call(tool_key: str, state: Dict[str, Any]) -> Dict[str, Any]:
     base = dict(V3_TOOL_DEFS[tool_key])
     cd = state.get("collected_data") or {}
 
-    if tool_key == "comparison_card":
+    if tool_key == "emotion_selector":
+        base["data"] = {
+            "suggested_emotions": _suggest_emotions_for_event(cd),
+            "event_summary": cd.get("event_description", ""),
+        }
+    elif tool_key == "comparison_card":
         base["data"] = {
             "emotions": cd.get("emotions", []),
             "thought": cd.get("thought", ""),
@@ -158,6 +163,45 @@ def _build_v3_tool_call(tool_key: str, state: Dict[str, Any]) -> Dict[str, Any]:
         }
 
     return base
+
+
+def _suggest_emotions_for_event(cd: Dict[str, Any]) -> List[str]:
+    """Suggest relevant emotions based on the event description."""
+    event = (cd.get("event_description") or "").lower()
+
+    # Conflict/argument keywords
+    conflict_emotions = ["כעס", "תסכול", "עלבון", "אכזבה", "חוסר אונים"]
+    rejection_emotions = ["עלבון", "בושה", "בדידות", "עצב", "פחד"]
+    loss_emotions = ["עצב", "אבל", "ריקנות", "בדידות", "חרדה"]
+    pressure_emotions = ["חרדה", "לחץ", "תסכול", "חוסר אונים", "פחד"]
+    betrayal_emotions = ["עלבון", "כעס", "אכזבה", "בושה", "אשמה"]
+
+    conflict_words = ["מריבה", "ריב", "ויכוח", "צעקות", "צעק", "כעס", "התנגש"]
+    rejection_words = ["דחה", "דחייה", "התעלם", "לא ראה", "לא שמע", "ביטל"]
+    loss_words = ["עזב", "נפרד", "איבד", "מת", "הלך", "נגמר"]
+    pressure_words = ["לחץ", "דרש", "ציפ", "מועד", "מבחן", "החליט בשבילי"]
+    betrayal_words = ["שיקר", "בגד", "הפר", "לא קיים", "אמר ולא"]
+
+    suggested = []
+    if any(w in event for w in conflict_words):
+        suggested.extend(conflict_emotions)
+    if any(w in event for w in rejection_words):
+        suggested.extend(rejection_emotions)
+    if any(w in event for w in loss_words):
+        suggested.extend(loss_emotions)
+    if any(w in event for w in pressure_words):
+        suggested.extend(pressure_emotions)
+    if any(w in event for w in betrayal_words):
+        suggested.extend(betrayal_emotions)
+
+    # Deduplicate while preserving order, limit to 6
+    seen = set()
+    result = []
+    for e in suggested:
+        if e not in seen:
+            seen.add(e)
+            result.append(e)
+    return result[:6] if result else ["כעס", "עצב", "תסכול", "חרדה", "עלבון", "אכזבה"]
 
 
 def _generate_trait_suggestions(cd: Dict[str, Any]) -> Dict[str, List[str]]:

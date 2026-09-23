@@ -2,7 +2,7 @@ import type { ActiveInlineTool } from '../types';
 import { CardShell } from './shared/CardShell';
 import { TraitCardBuilder } from './tools/TraitCardBuilder';
 import { EventForm } from './tools/EventForm';
-import { EmotionSelector } from './tools/EmotionSelector';
+import { EmotionSelector, type EmotionSelectorProps } from './tools/EmotionSelector';
 import { ActionField } from './tools/ActionField';
 import { MatzuiSummary } from './tools/MatzuiSummary';
 import { ComparisonCard } from './tools/ComparisonCard';
@@ -31,6 +31,7 @@ export function InlineTool({ tool, onSubmit, isSubmitting }: InlineToolProps) {
     case 'emotion_selector':
       return (
         <EmotionSelector
+          data={tool.data as EmotionSelectorProps['data']}
           onSubmit={onSubmit}
           isSubmitting={isSubmitting}
         />

@@ -2,27 +2,26 @@ import { useState } from 'react';
 import { CardShell } from '../shared/CardShell';
 import { ChipGroup } from '../shared/ChipGroup';
 
-const EMOTION_OPTIONS = [
-  { id: 'כעס', label: 'כעס' },
-  { id: 'עצב', label: 'עצב' },
-  { id: 'חרדה', label: 'חרדה' },
-  { id: 'תסכול', label: 'תסכול' },
-  { id: 'בושה', label: 'בושה' },
-  { id: 'פחד', label: 'פחד' },
-  { id: 'עלבון', label: 'עלבון' },
-  { id: 'אשמה', label: 'אשמה' },
-  { id: 'אכזבה', label: 'אכזבה' },
-  { id: 'בדידות', label: 'בדידות' },
-  { id: 'חוסר אונים', label: 'חוסר אונים' },
-  { id: 'ריקנות', label: 'ריקנות' },
+const ALL_EMOTIONS = [
+  'כעס', 'עצב', 'חרדה', 'תסכול', 'בושה', 'פחד',
+  'עלבון', 'אשמה', 'אכזבה', 'בדידות', 'חוסר אונים', 'ריקנות',
 ];
 
-interface EmotionSelectorProps {
+export interface EmotionSelectorProps {
+  data?: { suggested_emotions?: string[]; event_summary?: string };
   onSubmit: (toolType: string, data: { emotions: string[] }) => void;
   isSubmitting: boolean;
 }
 
-export function EmotionSelector({ onSubmit, isSubmitting }: EmotionSelectorProps) {
+export function EmotionSelector({ data, onSubmit, isSubmitting }: EmotionSelectorProps) {
+  // Build emotion list: suggested first (highlighted), then the rest
+  const suggested = data?.suggested_emotions || [];
+  const suggestedSet = new Set(suggested);
+  const remaining = ALL_EMOTIONS.filter((e) => !suggestedSet.has(e));
+  const EMOTION_OPTIONS = [
+    ...suggested.map((e) => ({ id: e, label: e })),
+    ...remaining.map((e) => ({ id: e, label: e })),
+  ];
   const [selected, setSelected] = useState<string[]>([]);
 
   const handleToggle = (id: string) => {
