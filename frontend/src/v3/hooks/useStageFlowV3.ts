@@ -164,7 +164,12 @@ export function useStageFlowV3(language: string = 'he') {
           role: 'user',
           content: text,
         };
-        setMessages((prev) => [...prev, userMsg]);
+        setMessages((prev) => {
+          // Deduplicate: skip if last message is same user text
+          const last = prev[prev.length - 1];
+          if (last && last.role === 'user' && last.content === text) return prev;
+          return [...prev, userMsg];
+        });
 
         const response = await sendMessageV3(text, convId, language, getToken);
         processResponse(response, convId);
