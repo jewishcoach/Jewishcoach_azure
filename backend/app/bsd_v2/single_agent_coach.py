@@ -2703,14 +2703,24 @@ async def handle_conversation(
         logger.info(f"[PERF] LLM call: {llm_ms:.0f}ms")
 
         coach_message = _sanitize_coach_message(coach_message)
-        
+
+        # V3 tool submission bypass: skip repetition/re-ask/mismatch checks
+        # After a structured tool submission, the coach's response is validation —
+        # not repetition. The safety nets would incorrectly flag it.
+        _tool_just_submitted = state.pop("_tool_just_submitted", None)
+        if _tool_just_submitted:
+            logger.info(f"[Safety Net] Skipping repetition/re-ask/mismatch checks (tool_just_submitted={_tool_just_submitted})")
+
         # 5. Safety Net: Check for repeated questions
         t7 = time.time()
-        history_for_check = get_conversation_history(state, last_n=10)
-        repeated_check = check_repeated_question(coach_message, history_for_check, state['current_step'], language, user_message=user_message)
+        if not _tool_just_submitted:
+            history_for_check = get_conversation_history(state, last_n=10)
+            repeated_check = check_repeated_question(coach_message, history_for_check, state['current_step'], language, user_message=user_message)
+        else:
+            repeated_check = None
         t8 = time.time()
         logger.info(f"[PERF] Repeated check: {(t8-t7)*1000:.0f}ms")
-        
+
         # Repetition and re-ask checks run ALWAYS (not gated by SAFETY_NET_DISABLED)
         if repeated_check:
             overrides_applied.append("repetition")
@@ -2724,20 +2734,26 @@ async def handle_conversation(
             internal_state["saturation_score"] = state.get("saturation_score", 0.3)
 
         # 5.5. Coach re-asking for event when user already gave it (always active)
-        re_ask_check = detect_re_asking_for_event(coach_message, state, language, user_message=user_message)
+        if not _tool_just_submitted:
+            re_ask_check = detect_re_asking_for_event(coach_message, state, language, user_message=user_message)
+        else:
+            re_ask_check = None
         if re_ask_check:
             overrides_applied.append("re_ask_event")
             coach_message, next_step_for_reask = re_ask_check
             _bsd_log("RE_ASK_OVERRIDE", step=next_step_for_reask, reason="user_already_gave_event")
             internal_state["current_step"] = next_step_for_reask
             internal_state["saturation_score"] = 0.3
-        
+
         # 6. Safety Net: Check for stage/question mismatch
         t9 = time.time()
-        mismatch_stage = detect_stage_question_mismatch(coach_message, state["current_step"], language, state=state)
+        if not _tool_just_submitted:
+            mismatch_stage = detect_stage_question_mismatch(coach_message, state["current_step"], language, state=state)
+        else:
+            mismatch_stage = None
         t10 = time.time()
         logger.info(f"[PERF] Stage mismatch check: {(t10-t9)*1000:.0f}ms")
-        
+
         # Stage mismatch correction runs ALWAYS (not gated by SAFETY_NET_DISABLED)
         if mismatch_stage:
             overrides_applied.append("stage_mismatch")

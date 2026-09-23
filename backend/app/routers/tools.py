@@ -203,6 +203,7 @@ async def submit_tool_response(
             if summary:
                 language = v2_state.get("language", "he")
                 inject_onboarding_topics_into_state(v2_state, user.preferences or {}, language)
+                v2_state["_tool_just_submitted"] = request.tool_type
                 user_gender = getattr(user, "gender", None) or None
                 coach_message, updated_state = await handle_conversation(
                     user_message=summary,
