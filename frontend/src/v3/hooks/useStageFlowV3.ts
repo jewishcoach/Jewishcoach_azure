@@ -164,15 +164,42 @@ export function useStageFlowV3(language: string = 'he') {
           role: 'user',
           content: text,
         };
-        setMessages((prev) => {
-          // Deduplicate: skip if last message is same user text
-          const last = prev[prev.length - 1];
-          if (last && last.role === 'user' && last.content === text) return prev;
-          return [...prev, userMsg];
-        });
+        setMessages((prev) => [...prev, userMsg]);
 
         const response = await sendMessageV3(text, convId, language, getToken);
-        processResponse(response, convId);
+
+        // Inline response processing (not via callback — avoids React 18 batching issues)
+        const assistantMsg: V3ChatMessage = {
+          id: `a-${Date.now()}`,
+          role: 'assistant',
+          content: response.coach_message,
+          phase: response.current_step,
+          suggestions: response.suggestions,
+        };
+        setMessages((prev) => [...prev, assistantMsg]);
+        setSaturationScore(response.saturation_score);
+        if (response.collected_data) {
+          setCollectedData((prev) => ({ ...prev, ...response.collected_data }));
+        }
+
+        setFlowState((prev) => ({
+          ...prev,
+          currentStep: response.current_step,
+          currentMacroStage: stepToMacroStage(response.current_step || prev.currentStep || 'S0'),
+        }));
+
+        if (response.tool_call) {
+          const tool = toolCallToActiveTool(response.tool_call);
+          if (tool) setActiveTool(tool);
+        }
+
+        if (response.stage_complete) {
+          setFlowState((prev) => ({
+            ...prev,
+            phase: 'stage_complete',
+            summary: response.stage_complete as StageSummaryPayload,
+          }));
+        }
       } catch (err) {
         if (err instanceof QuotaExceededError) {
           setQuotaExceeded(true);
@@ -196,7 +223,7 @@ export function useStageFlowV3(language: string = 'he') {
         setIsLoading(false);
       }
     },
-    [conversationId, language, getToken, processResponse],
+    [conversationId, language, getToken],
   );
 
   // ---------------------------------------------------------------------------
