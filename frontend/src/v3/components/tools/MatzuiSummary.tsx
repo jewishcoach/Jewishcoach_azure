@@ -4,6 +4,7 @@ interface MatzuiSummaryProps {
   data?: {
     emotions?: string[];
     thought?: string;
+    action_actual?: string;
     action?: string;
   };
   onSubmit: (toolType: string, data: { confirmed: boolean }) => void;
@@ -13,7 +14,7 @@ interface MatzuiSummaryProps {
 export function MatzuiSummary({ data, onSubmit, isSubmitting }: MatzuiSummaryProps) {
   const emotions = data?.emotions?.join(', ') || '—';
   const thought = data?.thought || '—';
-  const action = data?.action || '—';
+  const action = data?.action_actual || data?.action || '—';
 
   return (
     <CardShell

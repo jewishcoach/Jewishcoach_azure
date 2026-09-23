@@ -215,24 +215,30 @@ export function useStageFlowV3(language: string = 'he') {
 
         const response = await submitToolResponse(conversationId, toolType, data, getToken);
 
-        const assistantMsg: V3ChatMessage = {
-          id: `a-${Date.now()}`,
-          role: 'assistant',
-          content: response.coach_message,
-          phase: response.current_step,
-        };
-        setMessages((prev) => [...prev, assistantMsg]);
-        setSaturationScore(response.saturation_score);
+        if (response.coach_message) {
+          const assistantMsg: V3ChatMessage = {
+            id: `a-${Date.now()}`,
+            role: 'assistant',
+            content: response.coach_message,
+            phase: response.current_step,
+          };
+          setMessages((prev) => [...prev, assistantMsg]);
+        }
+        if (response.saturation_score != null) {
+          setSaturationScore(response.saturation_score);
+        }
 
         if (response.collected_data) {
           setCollectedData((prev) => ({ ...prev, ...response.collected_data }));
         }
 
-        setFlowState((prev) => ({
-          ...prev,
-          currentStep: response.current_step,
-          currentMacroStage: stepToMacroStage(response.current_step || prev.currentStep || 'S0'),
-        }));
+        if (response.current_step) {
+          setFlowState((prev) => ({
+            ...prev,
+            currentStep: response.current_step,
+            currentMacroStage: stepToMacroStage(response.current_step || prev.currentStep || 'S0'),
+          }));
+        }
 
         // Check for chained tool_call
         if (response.tool_call) {
@@ -375,7 +381,15 @@ export function useStageFlowV3(language: string = 'he') {
         };
 
         setMessages([openingMsg]);
-        setActiveTool(null);
+
+        // V3: check for tool_call in stage-intro response
+        if (result.tool_call) {
+          const tool = toolCallToActiveTool(result.tool_call as Record<string, unknown>);
+          if (tool) setActiveTool(tool);
+        } else {
+          setActiveTool(null);
+        }
+
         setFlowState((prev) => ({
           ...prev,
           phase: 'chatting',

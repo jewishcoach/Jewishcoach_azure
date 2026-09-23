@@ -819,16 +819,29 @@ async def submit_stage_intro_answers(
             conversation_id=body.conversation_id,
         )
         updated_state.pop("_stage_opening", None)
+
+        # V3: resolve tool_call for the new stage opening
+        ux_version = int(request.headers.get("x-ux-version", "2") or "2")
+        opening_tool_call = resolve_post_turn_tool_call(
+            prev_step="__stage_intro__",
+            state=updated_state,
+            ux_version=ux_version,
+        )
+        if opening_tool_call and opening_tool_call.get("tool_type") in ("trait_picker", "trait_card_builder"):
+            mark_trait_picker_sent(updated_state)
+
         save_v2_state(body.conversation_id, updated_state, db, expected_version=ver_fresh)
         opening_message = coach_msg
     except Exception as e:
         logger.warning("[BSD V2 API] Failed to generate stage opening message: %s", e)
+        opening_tool_call = None
 
     return {
         "ok": True,
         "stage": body.macro_stage,
         "current_step": first_step,
         "opening_message": opening_message,
+        "tool_call": opening_tool_call if ux_version >= 3 else None,
     }
 
 

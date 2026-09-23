@@ -42,9 +42,9 @@ export interface CompletedToolResult {
 }
 
 export interface ToolSubmitResponse {
-  coach_message: string;
-  current_step: string;
-  saturation_score: number;
+  coach_message: string | null;
+  current_step: string | null;
+  saturation_score: number | null;
   tool_call?: ToolCallV3 | null;
   collected_data?: Record<string, unknown> | null;
 }

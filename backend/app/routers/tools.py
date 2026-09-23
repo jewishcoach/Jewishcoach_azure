@@ -32,6 +32,7 @@ class ToolResponseModel(BaseModel):
     current_step: str | None = None
     saturation_score: float | None = None
     tool_call: Dict[str, Any] | None = None
+    collected_data: Dict[str, Any] | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -185,7 +186,10 @@ async def submit_tool_response(
 
             elif request.tool_type == "declaration_card":
                 cd = dict(v2_state.get("collected_data") or {})
-                cd["renewal"] = request.data.get("renewal", "")
+                renewal_parts = [request.data.get("renewal", "")]
+                if request.data.get("next_action"):
+                    renewal_parts.append(f"מה אעשה אחרת: {request.data['next_action']}")
+                cd["renewal"] = " | ".join(p for p in renewal_parts if p)
                 v2_state["collected_data"] = cd
 
             elif request.tool_type == "commitment_card":
@@ -244,6 +248,13 @@ async def submit_tool_response(
     db.commit()
     db.refresh(tool_response)
 
+    # Extract collected_data from updated state for frontend sidebar
+    result_collected_data = None
+    if conversation.v2_state and isinstance(conversation.v2_state, dict):
+        cd = conversation.v2_state.get("collected_data")
+        if cd and isinstance(cd, dict):
+            result_collected_data = {k: v for k, v in cd.items() if v and v != [] and v != {}}
+
     return ToolResponseModel(
         id=tool_response.id,
         conversation_id=tool_response.conversation_id,
@@ -254,6 +265,7 @@ async def submit_tool_response(
         current_step=current_step,
         saturation_score=saturation_score,
         tool_call=tool_call,
+        collected_data=result_collected_data,
     )
 
 

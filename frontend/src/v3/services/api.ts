@@ -99,7 +99,7 @@ export async function submitStageIntroAnswers(
   answers: Record<string, string[]>,
   language: string,
   getToken: (opts?: { skipCache?: boolean }) => Promise<string | null>,
-): Promise<{ opening_message?: string }> {
+): Promise<{ opening_message?: string; tool_call?: Record<string, unknown> | null }> {
   const base = getApiBase();
   const res = await fetchWithAuthRetry(`${base}/chat/v2/stage-intro-answers`, getToken, {
     method: 'POST',
