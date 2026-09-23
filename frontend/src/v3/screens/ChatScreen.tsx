@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import { Heart, Send } from 'lucide-react';
 import type { V3ChatMessage, ActiveInlineTool } from '../types';
 import { MessageBubble } from '../../v2/components/MessageBubble';
@@ -70,11 +70,14 @@ export function ChatScreen({
   const showQuickReplies = lastMessage?.role === 'assistant' && !isLoading && !activeTool;
   const quickReplies = showQuickReplies ? lastMessage.suggestions : undefined;
 
-  const handleSend = () => {
-    if (!inputText.trim() || inputDisabled) return;
+  const sendingRef = useRef(false);
+  const handleSend = useCallback(() => {
+    if (!inputText.trim() || inputDisabled || sendingRef.current) return;
+    sendingRef.current = true;
     onSend(inputText.trim());
     setInputText('');
-  };
+    setTimeout(() => { sendingRef.current = false; }, 300);
+  }, [inputText, inputDisabled, onSend]);
 
   return (
     <div className="flex-1 flex flex-col min-h-0 pb-14 lg:pb-0">
@@ -145,8 +148,8 @@ export function ChatScreen({
             );
           })}
 
-          {/* Loading indicator */}
-          {isLoading && !activeTool && (
+          {/* Loading indicator — shows during chat AND after tool submission */}
+          {(isLoading || toolSubmitting) && !activeTool && (
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2" dir="rtl">
                 <Heart size={16} className="text-[#03ffe6]" />
