@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import hmac
+import logging
 import os
 import re
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException
@@ -255,7 +258,17 @@ async def generate_article(body: GenerateRequest, _=Depends(require_admin)):
     )
 
     db.create_post(post)
-    return {"slug": post.slug, "title": post.title, "word_count": post.word_count, "status": "draft"}
+
+    try:
+        from .blog_images import generate_cover_image
+        cover_url = generate_cover_image(body.keyword, parsed["title"])
+        if cover_url:
+            db.update_post(slug, {"cover_image": cover_url})
+            post.cover_image = cover_url
+    except Exception as e:
+        logger.warning(f"Cover image generation failed for {slug}: {e}")
+
+    return {"slug": post.slug, "title": post.title, "word_count": post.word_count, "status": "draft", "cover_image": post.cover_image}
 
 
 @router.post("/cron/daily")
@@ -300,7 +313,13 @@ async def daily_cron(_=Depends(_require_cron_secret)) -> CronResponse:
 
     db.create_post(post)
 
-    # TODO: trigger video job
-    # TODO: post to Facebook
+    try:
+        from .blog_images import generate_cover_image
+        cover_url = generate_cover_image(keyword, parsed["title"])
+        if cover_url:
+            db.update_post(slug, {"cover_image": cover_url})
+            post.cover_image = cover_url
+    except Exception as e:
+        logger.warning(f"Cover image generation failed for {slug}: {e}")
 
     return CronResponse(status="published", post_slug=post.slug, title=post.title)
