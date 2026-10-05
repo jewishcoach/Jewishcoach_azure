@@ -66,7 +66,7 @@ export function DragList({ items, onReorder, onRemove, renderItem }: DragListPro
             onDragEnd={handleDragEnd}
             onDragOver={(e) => handleDragOver(e, idx)}
             className={`
-              flex items-center gap-2 px-3 py-2.5 rounded-lg bg-white
+              flex items-center gap-2 px-3 py-2.5 rounded-lg bg-white min-h-[44px]
               border transition-all duration-150 cursor-grab active:cursor-grabbing
               ${isDragOver ? 'border-[#03ffe6] bg-[rgba(3,255,230,0.05)]' : 'border-[#e0ddd8]'}
               ${isLeading ? 'border-[#03ffe6]' : ''}
@@ -115,7 +115,7 @@ export function DragList({ items, onReorder, onRemove, renderItem }: DragListPro
                 type="button"
                 onClick={() => moveItem(idx, idx - 1)}
                 disabled={idx === 0}
-                className="w-5 h-5 flex items-center justify-center text-[10px] text-[rgba(45,70,88,0.4)] disabled:opacity-20"
+                className="w-8 h-8 flex items-center justify-center text-xs text-[rgba(45,70,88,0.4)] disabled:opacity-20 rounded active:bg-[rgba(3,255,230,0.1)]"
               >
                 ▲
               </button>
@@ -123,7 +123,7 @@ export function DragList({ items, onReorder, onRemove, renderItem }: DragListPro
                 type="button"
                 onClick={() => moveItem(idx, idx + 1)}
                 disabled={idx === items.length - 1}
-                className="w-5 h-5 flex items-center justify-center text-[10px] text-[rgba(45,70,88,0.4)] disabled:opacity-20"
+                className="w-8 h-8 flex items-center justify-center text-xs text-[rgba(45,70,88,0.4)] disabled:opacity-20 rounded active:bg-[rgba(3,255,230,0.1)]"
               >
                 ▼
               </button>

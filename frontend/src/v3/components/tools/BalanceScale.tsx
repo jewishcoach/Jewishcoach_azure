@@ -16,7 +16,7 @@ export function BalanceScale({ onSubmit, isSubmitting }: BalanceScaleProps) {
   return (
     <CardShell
       titleHe="מה אני מרוויח ומה אני מפסיד?"
-      instructionHe="הוסף רווחים והפסדים מהדפוס שזיהית"
+      instructionHe="הוסף רווחים והפסדים מהעמדה שגילית"
     >
       <div className="space-y-5">
         {/* Two columns — stack on mobile */}
@@ -28,7 +28,7 @@ export function BalanceScale({ onSubmit, isSubmitting }: BalanceScaleProps) {
                 className="text-sm font-semibold text-[#009081] text-right"
                 style={{ fontFamily: "'Heebo', sans-serif" }}
               >
-                מה אני מרוויח מהדפוס
+                מה אני מרוויח מהעמדה
               </h4>
             </div>
             <TagInput
@@ -53,7 +53,7 @@ export function BalanceScale({ onSubmit, isSubmitting }: BalanceScaleProps) {
                 className="text-sm font-semibold text-[#c04040] text-right"
                 style={{ fontFamily: "'Heebo', sans-serif" }}
               >
-                מה אני מפסיד מהדפוס
+                מה אני מפסיד מהעמדה
               </h4>
             </div>
             <TagInput

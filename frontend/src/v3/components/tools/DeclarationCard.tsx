@@ -151,10 +151,7 @@ export function DeclarationCard({ data, onSubmit, isSubmitting }: DeclarationCar
               w-full max-w-[300px] h-[48px] rounded-xl text-white text-sm font-medium
               transition-colors disabled:opacity-50
               drop-shadow-[0px_4px_2px_rgba(0,0,0,0.08)]
-              ${feelsRight
-                ? 'bg-[#9747ff] hover:bg-[#8035e6]'
-                : 'bg-[#6b6b6b] hover:bg-[#555]'
-              }
+              bg-[#9747ff] hover:bg-[#8035e6]
             `}
             style={{ fontFamily: "'Heebo', sans-serif" }}
           >

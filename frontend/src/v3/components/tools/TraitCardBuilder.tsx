@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { TagInput } from '../shared/TagInput';
 import { DragList } from '../shared/DragList';
 
@@ -20,6 +20,11 @@ const MIN_TRAITS = 6;
 export function TraitCardBuilder({ data, onSubmit, isSubmitting }: TraitCardBuilderProps) {
   const [source, setSource] = useState<string[]>(data?.existing_source || []);
   const [nature, setNature] = useState<string[]>(data?.existing_nature || []);
+
+  useEffect(() => {
+    if (data?.existing_source) setSource(data.existing_source);
+    if (data?.existing_nature) setNature(data.existing_nature);
+  }, [data?.existing_source, data?.existing_nature]);
 
   const sourceSuggestions = data?.suggestions?.source || [];
   const natureSuggestions = data?.suggestions?.nature || [];

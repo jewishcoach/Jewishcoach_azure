@@ -25,9 +25,10 @@ export function CompletedToolCard({ result }: CompletedToolCardProps) {
   return (
     <div
       dir="rtl"
-      className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-[#f6f4f0] border border-[#e0ddd8] w-full max-w-[662px]"
+      className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-[rgba(3,255,230,0.08)] border border-[#04c4b1] w-full max-w-[662px]
+                 animate-[fadeIn_0.3s_ease-out]"
     >
-      <CheckCircle size={16} className="text-[#01897b] flex-shrink-0" />
+      <CheckCircle size={16} className="text-[#01897b] flex-shrink-0 animate-[scaleIn_0.4s_ease-out]" />
       <div className="flex-1 min-w-0">
         <span
           className="text-xs font-semibold text-[#01897b]"

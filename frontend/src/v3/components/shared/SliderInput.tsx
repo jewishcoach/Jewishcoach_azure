@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 
 interface SliderInputProps {
   value: number;
@@ -11,16 +11,42 @@ interface SliderInputProps {
 export function SliderInput({ value, onChange, min = 1, max = 10, label }: SliderInputProps) {
   const steps = max - min + 1;
   const pct = ((value - min) / (max - min)) * 100;
+  const trackRef = useRef<HTMLDivElement>(null);
+
+  const valueFromPointer = useCallback(
+    (clientX: number) => {
+      const rect = trackRef.current?.getBoundingClientRect();
+      if (!rect) return value;
+      const x = clientX - rect.left;
+      const ratio = x / rect.width;
+      const raw = min + ratio * (max - min);
+      return Math.round(Math.min(max, Math.max(min, raw)));
+    },
+    [min, max, value],
+  );
 
   const handleClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const ratio = x / rect.width;
-      const raw = min + ratio * (max - min);
-      onChange(Math.round(Math.min(max, Math.max(min, raw))));
+      onChange(valueFromPointer(e.clientX));
     },
-    [min, max, onChange],
+    [onChange, valueFromPointer],
+  );
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      onChange(valueFromPointer(e.clientX));
+    },
+    [onChange, valueFromPointer],
+  );
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        onChange(valueFromPointer(e.clientX));
+      }
+    },
+    [onChange, valueFromPointer],
   );
 
   return (
@@ -47,8 +73,12 @@ export function SliderInput({ value, onChange, min = 1, max = 10, label }: Slide
 
       {/* Track */}
       <div
+        ref={trackRef}
         className="relative h-[28px] flex items-center cursor-pointer select-none"
+        style={{ touchAction: 'none' }}
         onClick={handleClick}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
       >
         {/* Background track */}
         <div className="absolute inset-x-0 h-[6px] rounded-full bg-[#e0ddd8] top-1/2 -translate-y-1/2" />
@@ -61,7 +91,7 @@ export function SliderInput({ value, onChange, min = 1, max = 10, label }: Slide
 
         {/* Thumb */}
         <div
-          className="absolute w-[24px] h-[24px] rounded-full bg-[#03ffe6] shadow-[0px_2px_4px_rgba(0,0,0,0.2)] top-1/2 -translate-y-1/2 -translate-x-1/2 transition-[left] duration-100"
+          className="absolute w-[24px] h-[24px] rounded-full bg-[#03ffe6] shadow-[0px_2px_4px_rgba(0,0,0,0.2)] top-1/2 -translate-y-1/2 -translate-x-1/2"
           style={{ left: `${pct}%` }}
         />
       </div>

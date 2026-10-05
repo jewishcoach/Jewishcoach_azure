@@ -31,7 +31,7 @@ export function ComparisonCard({ data, onSubmit, isSubmitting }: ComparisonCardP
         {/* Desktop: two columns, Mobile: stacked */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Left column: Matzui (read-only) */}
-          <div className="space-y-3 order-2 sm:order-1">
+          <div className="space-y-3 order-1 sm:order-1">
             <h4
               className="text-xs font-bold uppercase tracking-wider text-[rgba(45,70,88,0.5)] text-right"
               style={{ fontFamily: "'Heebo', sans-serif" }}
@@ -44,7 +44,7 @@ export function ComparisonCard({ data, onSubmit, isSubmitting }: ComparisonCardP
           </div>
 
           {/* Right column: Ratzui (editable) */}
-          <div className="space-y-3 order-1 sm:order-2">
+          <div className="space-y-3 order-2 sm:order-2">
             <h4
               className="text-xs font-bold uppercase tracking-wider text-[#009081] text-right"
               style={{ fontFamily: "'Heebo', sans-serif" }}

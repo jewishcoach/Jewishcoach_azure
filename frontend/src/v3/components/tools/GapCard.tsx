@@ -98,11 +98,17 @@ export function GapCard({ onSubmit, isSubmitting }: GapCardProps) {
 
           {opportunityAnswer === 'yes' && (
             <div className="pt-1">
+              <label
+                className="block text-sm font-medium text-[#2d4658] text-right mb-1"
+                style={{ fontFamily: "'Heebo', sans-serif" }}
+              >
+                מהי ההזדמנות?
+              </label>
               <input
                 type="text"
                 value={opportunityText}
                 onChange={(e) => setOpportunityText(e.target.value)}
-                placeholder="מהי ההזדמנות?"
+                placeholder="תאר בקצרה..."
                 className="w-full h-[44px] px-3 rounded-xl border border-[#e0ddd8] text-sm text-[#2d4658] text-right
                            placeholder:text-[rgba(45,70,88,0.35)]
                            focus:outline-none focus:border-[#03ffe6] transition-colors

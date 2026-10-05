@@ -36,8 +36,8 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
 
   const toggleEmotion = useCallback((emotion: string) => {
     setSelectedEmotions((prev) => {
-      const next = prev.includes(emotion) ? [] : [emotion];
-      if (next.length > 0) {
+      const next = prev.includes(emotion) ? prev.filter((e) => e !== emotion) : [...prev, emotion];
+      if (next.length > 0 && step === 1) {
         setStep(2);
         setTimeout(() => {
           domainRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -45,7 +45,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
       }
       return next;
     });
-  }, []);
+  }, [step]);
 
   const selectDomain = (domain: string) => {
     setSelectedDomain((prev) => {
