@@ -103,7 +103,7 @@ async def blog_post(request: Request, slug: str):
     content_html = _md_to_html(post.content)
     faq_items = _extract_faq(content_html)
     content_before_cta, content_after_cta = _split_for_cta(content_html)
-    cover = post.cover_image or f"{BASE_URL}/api/public/blog-cover/{slug}"
+    cover = post.cover_image if post.cover_image and "blog-cover" not in post.cover_image else f"{BASE_URL}/api/public/blog-cover/{slug}"
 
     all_posts = db.list_posts(status="published", language="he")
     related = [p for p in all_posts if p.category == post.category and p.slug != slug][:3]

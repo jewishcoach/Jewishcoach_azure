@@ -115,7 +115,8 @@
     {% for post in posts %}
     <article class="post-card">
       <a href="/api/blog/{{ post.slug }}">
-        <img src="{{ post.cover_image or '/api/public/blog-cover/' ~ post.slug }}" alt="{{ post.title }}" class="post-card-img" loading="lazy" />
+        {% set cover_url = post.cover_image if post.cover_image and 'blog-cover' not in post.cover_image else '/api/public/blog-cover/' ~ post.slug %}
+        <img src="{{ cover_url }}" alt="{{ post.title }}" class="post-card-img" loading="lazy" />
         <div class="post-card-body">
           <p class="post-card-category">{{ category_labels.get(post.category, post.category) }}</p>
           <h2 class="post-card-title">{{ post.title }}</h2>
