@@ -35,6 +35,9 @@ export function ChipGroup({
     }
   };
 
+  const optionIds = new Set(options.map((o) => o.id));
+  const customSelected = selected.filter((id) => !optionIds.has(id));
+
   return (
     <div className="flex flex-wrap gap-2" dir="rtl">
       {options.map((opt) => {
@@ -63,6 +66,19 @@ export function ChipGroup({
           </button>
         );
       })}
+
+      {customSelected.map((id) => (
+        <button
+          key={`custom-${id}`}
+          type="button"
+          onClick={() => onToggle(id)}
+          className="h-[42px] px-4 rounded-xl text-sm transition-all duration-200
+            border-[1.5px] border-[#04c4b1] bg-[rgba(3,255,230,0.3)] text-[#2d4658] font-medium"
+          style={{ fontFamily: "'Heebo', sans-serif" }}
+        >
+          {id}
+        </button>
+      ))}
 
       {allowCustom && !customOpen && (
         <button

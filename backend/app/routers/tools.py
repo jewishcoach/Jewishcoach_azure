@@ -69,12 +69,13 @@ async def submit_tool_response(
 
     # Create a summary message so the messages table stays in sync.
     summary = _generate_tool_summary(request.tool_type, request.data)
-    if summary:
-        try:
-            summary = sanitize_chat_message(summary)
-        except ChatMessageRejected as e:
-            logger.warning("[Tools] Tool summary rejected: %s", e.reason)
-            summary = ""
+    if not summary:
+        summary = f"[הגשת כלי: {request.tool_type}]"
+    try:
+        summary = sanitize_chat_message(summary)
+    except ChatMessageRejected as e:
+        logger.warning("[Tools] Tool summary rejected: %s", e.reason)
+        summary = f"[הגשת כלי: {request.tool_type}]"
     if summary:
         system_message = Message(
             conversation_id=conversation_id,
@@ -377,8 +378,9 @@ def _generate_tool_summary(tool_type: str, data: Dict[str, Any]) -> str:
         parts = [f"הפער: {name} (ציון {score}/10)"]
         if belief:
             parts.append(f"אמונה בשינוי: {belief}")
-        if isinstance(opp, dict) and opp.get("has"):
-            parts.append(f"הזדמנות: {opp.get('what', 'כן')}")
+        if isinstance(opp, dict):
+            if opp.get("has"):
+                parts.append(f"הזדמנות: {opp.get('what', 'כן')}")
         elif opp:
             parts.append(f"הזדמנות: {opp}")
         return " | ".join(parts)

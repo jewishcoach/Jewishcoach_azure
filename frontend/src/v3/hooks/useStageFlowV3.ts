@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import type {
-  ChatResponseV2,
   CollectedData,
   FlowState,
   StageIntroPayload,
@@ -38,6 +37,7 @@ interface PersistedSession {
   messages: V3ChatMessage[];
   collectedData: CollectedData;
   saturationScore: number;
+  activeTool?: ActiveInlineTool | null;
 }
 
 function saveSession(data: PersistedSession) {
@@ -84,64 +84,6 @@ export function useStageFlowV3(language: string = 'he') {
   // V3-specific: inline tool state
   const [activeTool, setActiveTool] = useState<ActiveInlineTool | null>(null);
   const [toolSubmitting, setToolSubmitting] = useState(false);
-
-  // ---------------------------------------------------------------------------
-  // Process a chat response — shared by sendMessage and startOnboarding
-  // ---------------------------------------------------------------------------
-  const processResponse = useCallback((response: ChatResponseV2, convId: number) => {
-    const assistantMsg: V3ChatMessage = {
-      id: `a-${Date.now()}`,
-      role: 'assistant',
-      content: response.coach_message,
-      phase: response.current_step,
-      suggestions: response.suggestions,
-    };
-    setMessages((prev) => [...prev, assistantMsg]);
-    setSaturationScore(response.saturation_score);
-    if (response.collected_data) {
-      setCollectedData((prev) => ({ ...prev, ...response.collected_data }));
-    }
-
-    setFlowState((prev) => ({
-      ...prev,
-      currentStep: response.current_step,
-      currentMacroStage: stepToMacroStage(response.current_step || prev.currentStep || 'S0'),
-    }));
-
-    // Check for tool_call → activate inline tool
-    if (response.tool_call) {
-      const tool = toolCallToActiveTool(response.tool_call);
-      if (tool) setActiveTool(tool);
-    }
-
-    if (response.stage_complete) {
-      setFlowState((prev) => ({
-        ...prev,
-        phase: 'stage_complete',
-        summary: response.stage_complete as StageSummaryPayload,
-      }));
-    }
-
-    // Persist session
-    setMessages((msgs) => {
-      setCollectedData((cd) => {
-        saveSession({
-          conversationId: convId,
-          flowState: {
-            phase: response.stage_complete ? 'stage_complete' : 'chatting',
-            currentMacroStage: stepToMacroStage(response.current_step || 'S0'),
-            currentStep: response.current_step,
-            ...(response.stage_complete ? { summary: response.stage_complete as StageSummaryPayload } : {}),
-          },
-          messages: msgs,
-          collectedData: response.collected_data ? { ...cd, ...response.collected_data } : cd,
-          saturationScore: response.saturation_score,
-        });
-        return cd;
-      });
-      return msgs;
-    });
-  }, []);
 
   // ---------------------------------------------------------------------------
   // Send chat message
@@ -215,6 +157,7 @@ export function useStageFlowV3(language: string = 'he') {
               messages: msgs,
               collectedData: response.collected_data ? { ...cd, ...response.collected_data } : cd,
               saturationScore: response.saturation_score,
+              activeTool: response.tool_call ? toolCallToActiveTool(response.tool_call) : null,
             });
             return cd;
           });
@@ -361,6 +304,14 @@ export function useStageFlowV3(language: string = 'he') {
         setCollectedData((prev) => ({ ...prev, ...response.collected_data }));
       }
 
+      if (response.current_step) {
+        setFlowState((prev) => ({
+          ...prev,
+          currentStep: response.current_step,
+          currentMacroStage: stepToMacroStage(response.current_step || prev.currentStep || 'S0'),
+        }));
+      }
+
       // Check for tool_call on opening
       if (response.tool_call) {
         const tool = toolCallToActiveTool(response.tool_call);
@@ -391,7 +342,7 @@ export function useStageFlowV3(language: string = 'he') {
         const base = getApiBase();
         await fetch(`${base}/chat/v2/conversations/${conversationId}/statement`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...(await getToken() ? { Authorization: `Bearer ${await getToken()}` } : {}) },
+          headers: { 'Content-Type': 'application/json', ...((t => t ? { Authorization: `Bearer ${t}` } : {})(await getToken())) },
           body: JSON.stringify({ stage_id: flowState.currentMacroStage, statement: personalStatement }),
         });
       } catch { /* best effort */ }
@@ -511,6 +462,7 @@ export function useStageFlowV3(language: string = 'he') {
       setCollectedData(saved.collectedData || {});
       setSaturationScore(saved.saturationScore || 0);
       setFlowState(saved.flowState);
+      if (saved.activeTool) setActiveTool(saved.activeTool);
       return;
     }
 

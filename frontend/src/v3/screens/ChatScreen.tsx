@@ -109,7 +109,7 @@ export function ChatScreen({
               );
             }
 
-            const isLastAssistant = showQuickReplies && idx === messages.length - 1 && msg.role === 'assistant';
+            const isLastAssistant = showQuickReplies && msg.role === 'assistant' && msg.id === lastMessage?.id;
 
             // Selected reply detection (same as V2)
             const prevMsg = idx > 0 ? messages[idx - 1] : null;
