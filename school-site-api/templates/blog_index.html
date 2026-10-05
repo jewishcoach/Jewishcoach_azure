@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Blog",
+  "name": "בלוג בית הספר לאימון יהודי BSD",
+  "description": "מאמרים, תובנות וכלים מעולם האימון היהודי בשיטת BSD",
+  "url": {{ canonical_url | tojson }},
+  "inLanguage": "he",
+  "publisher": {
+    "@type": "Organization",
+    "name": "בית הספר לאימון יהודי BSD"
+  }
+}
+</script>
+{% endblock %}
+
+{% block extra_styles %}
+.blog-hero { padding: 3rem 0 1.5rem; text-align: center; }
+.blog-hero h1 { font-size: 3rem; margin-bottom: 0.5rem; }
+.blog-hero p { color: var(--brown-muted); font-size: 1.125rem; }
+
+/* Search */
+.search-bar {
+  max-width: 32rem; margin: 1.5rem auto; position: relative;
+}
+.search-bar input {
+  width: 100%; padding: 0.75rem 1rem 0.75rem 2.5rem;
+  border: 1px solid rgba(26,40,56,0.15); border-radius: 9999px;
+  font-family: inherit; font-size: 0.95rem;
+  background: white; color: var(--navy); outline: none;
+  direction: rtl;
+}
+.search-bar input:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(3,255,230,0.15); }
+.search-bar svg {
+  position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%);
+  width: 1.1rem; height: 1.1rem; color: var(--brown-muted); pointer-events: none;
+}
+
+/* Category chips */
+.category-chips {
+  display: flex; flex-wrap: wrap; gap: 0.5rem;
+  justify-content: center; margin-bottom: 2rem;
+}
+.chip {
+  display: inline-flex; align-items: center;
+  padding: 0.4rem 1rem; border-radius: 9999px;
+  font-size: 0.85rem; font-weight: 500;
+  border: 1px solid rgba(26,40,56,0.15);
+  background: white; color: var(--navy);
+  text-decoration: none; transition: all 0.15s;
+}
+.chip:hover { border-color: var(--cyan); text-decoration: none; }
+.chip.active { background: var(--cyan); color: var(--navy); border-color: var(--cyan); font-weight: 600; }
+
+/* Results count */
+.results-info { text-align: center; font-size: 0.85rem; color: var(--brown-muted); margin-bottom: 1.5rem; }
+
+/* Grid */
+.posts-grid { display: grid; gap: 1.5rem; padding-bottom: 4rem; }
+@media (min-width: 640px) { .posts-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1024px) { .posts-grid { grid-template-columns: repeat(3, 1fr); } }
+.post-card {
+  background: white; border: 1px solid rgba(40,30,15,0.08);
+  border-radius: 0.75rem; overflow: hidden; transition: box-shadow 0.2s;
+}
+.post-card:hover { box-shadow: 0 0 12px rgba(0,0,0,0.1); }
+.post-card-img { width: 100%; height: 12rem; object-fit: cover; }
+.post-card-body { padding: 1.25rem; }
+.post-card-category { font-size: 0.75rem; font-weight: 600; color: var(--teal); margin-bottom: 0.25rem; }
+.post-card-title { font-family: 'Karantina', system-ui; font-size: 1.5rem; color: var(--navy); margin-bottom: 0.5rem; line-height: 1.2; }
+.post-card-excerpt { font-size: 0.875rem; color: rgba(26,40,56,0.7); line-height: 1.6; margin-bottom: 0.75rem; }
+.post-card-meta { font-size: 0.75rem; color: var(--brown-muted); }
+.post-card a { color: inherit; text-decoration: none; }
+.post-card a:hover { text-decoration: none; }
+.empty-state { text-align: center; color: var(--brown-muted); padding: 3rem 0; }
+{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 72rem;">
+  <div class="blog-hero">
+    <h1 class="font-display">בלוג</h1>
+    <p>מאמרים, תובנות וכלים מעולם האימון היהודי בשיטת BSD</p>
+  </div>
+
+  <!-- Search -->
+  <form class="search-bar" action="/api/blog" method="get">
+    {% if active_category %}<input type="hidden" name="category" value="{{ active_category }}" />{% endif %}
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+    <input type="text" name="q" value="{{ search_query }}" placeholder="חיפוש מאמרים..." autocomplete="off" />
+  </form>
+
+  <!-- Category chips -->
+  <div class="category-chips">
+    <a href="/api/blog" class="chip {{ 'active' if not active_category else '' }}">הכל</a>
+    {% for cat in all_categories %}
+    <a href="/api/blog?category={{ cat }}" class="chip {{ 'active' if active_category == cat else '' }}">
+      {{ category_labels.get(cat, cat) }}
+    </a>
+    {% endfor %}
+  </div>
+
+  {% if search_query or active_category %}
+  <p class="results-info">
+    {{ posts | length }} מאמרים
+    {% if active_category %} בקטגוריה "{{ category_labels.get(active_category, active_category) }}"{% endif %}
+    {% if search_query %} עבור "{{ search_query }}"{% endif %}
+    · <a href="/api/blog">הצג הכל</a>
+  </p>
+  {% endif %}
+
+  <div class="posts-grid">
+    {% for post in posts %}
+    <article class="post-card">
+      <a href="/api/blog/{{ post.slug }}">
+        <img src="{{ post.cover_image or '/api/public/blog-cover/' ~ post.slug }}" alt="{{ post.title }}" class="post-card-img" loading="lazy" />
+        <div class="post-card-body">
+          <p class="post-card-category">{{ category_labels.get(post.category, post.category) }}</p>
+          <h2 class="post-card-title">{{ post.title }}</h2>
+          <p class="post-card-excerpt">{{ post.excerpt[:160] }}</p>
+          <p class="post-card-meta">
+            {{ post.author_name }}
+            {% if post.published_at %} · {{ post.published_at[:10] }}{% endif %}
+          </p>
+        </div>
+      </a>
+    </article>
+    {% endfor %}
+  </div>
+
+  {% if not posts %}
+  <p class="empty-state">
+    {% if search_query %}לא נמצאו מאמרים עבור "{{ search_query }}". <a href="/api/blog">נסו חיפוש אחר</a>{% else %}עוד לא פורסמו מאמרים. חזרו בקרוב!{% endif %}
+  </p>
+  {% endif %}
+
+  <!-- Email Capture -->
+  <div style="background:var(--cream-warm);border:1px solid rgba(26,40,56,0.1);border-radius:1rem;padding:2rem 2.5rem;margin:2rem 0 3rem;text-align:center;" id="email-capture">
+    <h3 class="font-display" style="font-size:2rem;color:var(--navy);margin-bottom:0.4rem;">תובנות ישירות למייל</h3>
+    <p style="font-size:0.9rem;color:var(--brown-muted);margin-bottom:1.25rem;">מאמרים חדשים, כלים מעשיים ותובנות מעולם האימון היהודי — פעם בשבוע.</p>
+    <form id="subscribe-form" onsubmit="return handleSubscribe(event)" style="display:flex;gap:0.5rem;max-width:28rem;margin:0 auto;">
+      <input type="email" name="email" placeholder="הכנס כתובת מייל..." required style="flex:1;padding:0.65rem 1rem;border:1px solid rgba(26,40,56,0.15);border-radius:9999px;font-family:inherit;font-size:0.9rem;direction:rtl;outline:none;" />
+      <button type="submit" style="background:var(--cyan);color:var(--navy);font-weight:600;padding:0.65rem 1.5rem;border-radius:9999px;border:none;font-family:inherit;font-size:0.9rem;cursor:pointer;white-space:nowrap;">הרשמה</button>
+    </form>
+  </div>
+  <script>
+  function handleSubscribe(e) {
+    e.preventDefault();
+    var form = document.getElementById('subscribe-form');
+    var email = form.querySelector('input[name=email]').value;
+    var capture = document.getElementById('email-capture');
+    fetch('/api/subscribe', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email})})
+      .then(function(r){return r.json()})
+      .then(function(d){if(d.ok){capture.innerHTML='<h3 class="font-display" style="font-size:2rem;color:var(--navy);">תודה!</h3><p style="color:var(--teal);font-weight:500;">נרשמת בהצלחה. נשלח לך תובנות ישירות למייל.</p>';}})
+      .catch(function(){});
+    return false;
+  }
+  </script>
+</div>
+{% endblock %}

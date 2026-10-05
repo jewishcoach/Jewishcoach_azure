@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": {{ post.title | tojson }},
+  "description": {{ (post.meta_description or post.excerpt) | tojson }},
+  {% if post.cover_image %}"image": {{ post.cover_image | tojson }},{% endif %}
+  "datePublished": {{ (post.published_at or post.created_at) | tojson }},
+  "dateModified": {{ post.updated_at | tojson }},
+  "author": {
+    "@type": "Person",
+    "name": {{ post.author_name | tojson }}
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "בית הספר לאימון יהודי BSD",
+    "url": {{ base_url | tojson }}
+  },
+  "inLanguage": "he",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": {{ canonical_url | tojson }}
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {"@type": "ListItem", "position": 1, "name": "בית", "item": {{ base_url | tojson }}},
+    {"@type": "ListItem", "position": 2, "name": "בלוג", "item": {{ (base_url + "/blog") | tojson }}},
+    {"@type": "ListItem", "position": 3, "name": {{ post.title | tojson }}, "item": {{ canonical_url | tojson }}}
+  ]
+}
+</script>
+{% if faq_items %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {% for faq in faq_items %}
+    {
+      "@type": "Question",
+      "name": {{ faq.question | tojson }},
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": {{ faq.answer | tojson }}
+      }
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ]
+}
+</script>
+{% endif %}
+{% endblock %}
+
+{% block extra_styles %}
+.post-header { padding: 3rem 0 2rem; text-align: center; }
+.post-title { font-size: 2.5rem; line-height: 1.15; margin-bottom: 1rem; }
+.post-meta { color: var(--brown-muted); font-size: 0.875rem; }
+.post-cover { width: 100%; max-height: 24rem; object-fit: cover; border-radius: 0.75rem; margin-bottom: 2rem; }
+.post-body { padding-bottom: 4rem; }
+.post-body h2 { font-family: 'Karantina', system-ui; font-size: 2rem; margin: 2rem 0 0.75rem; color: var(--navy); }
+.post-body h3 { font-size: 1.25rem; font-weight: 600; margin: 1.5rem 0 0.5rem; }
+.post-body p { margin-bottom: 1rem; }
+.post-body ul, .post-body ol { margin: 0 0 1rem; padding-right: 1.5rem; }
+.post-body li { margin-bottom: 0.5rem; }
+.post-body blockquote {
+  border-right: 4px solid var(--cyan);
+  padding: 0.75rem 1rem;
+  margin: 1.5rem 0;
+  background: var(--cream-warm);
+  color: var(--brown);
+}
+.post-body strong { color: var(--navy); }
+.post-body a { color: var(--teal); }
+.back-link { display: inline-block; margin-bottom: 1rem; font-size: 0.875rem; }
+.video-embed { position: relative; padding-bottom: 56.25%; margin: 1.5rem 0; }
+.video-embed iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; border-radius: 0.75rem; }
+
+/* Share */
+.share-bar { display: flex; gap: 0.75rem; justify-content: center; align-items: center; padding: 2rem 0; border-top: 1px solid rgba(26,40,56,0.1); margin-top: 2rem; }
+.share-label { font-size: 0.85rem; color: var(--brown-muted); margin-left: 0.5rem; }
+.share-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2.75rem; height: 2.75rem; border-radius: 50%;
+  text-decoration: none; border: none; cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.share-btn:hover { transform: scale(1.1); box-shadow: 0 4px 12px rgba(0,0,0,0.15); text-decoration: none; }
+.share-btn svg { width: 1.25rem; height: 1.25rem; }
+.share-btn.wa { background: #25D366; }
+.share-btn.wa svg { fill: white; }
+.share-btn.fb { background: #1877F2; }
+.share-btn.fb svg { fill: white; }
+.share-btn.tw { background: #1DA1F2; }
+.share-btn.tw svg { fill: white; }
+.share-btn.copy { background: var(--navy); }
+.share-btn.copy svg { fill: var(--cyan); }
+.share-btn.copy.copied { background: var(--teal); }
+.share-btn.copy.copied svg { fill: white; }
+
+/* Related */
+.related-section { padding: 3rem 0 2rem; }
+.related-section h3 { font-size: 2rem; text-align: center; margin-bottom: 1.5rem; color: var(--navy); }
+.related-grid { display: grid; gap: 1.25rem; }
+@media (min-width: 640px) { .related-grid { grid-template-columns: repeat(3, 1fr); } }
+.related-card {
+  background: white; border: 1px solid rgba(40,30,15,0.08);
+  border-radius: 0.75rem; overflow: hidden; transition: box-shadow 0.15s;
+}
+.related-card:hover { box-shadow: 0 0 10px rgba(0,0,0,0.08); }
+.related-card a { color: inherit; text-decoration: none; }
+.related-card-body { padding: 1rem; }
+.related-card-cat { font-size: 0.7rem; font-weight: 600; color: var(--teal); margin-bottom: 0.2rem; }
+.related-card-title { font-family: 'Karantina', system-ui; font-size: 1.25rem; color: var(--navy); line-height: 1.2; }
+
+/* Inline CTA */
+.inline-cta {
+  background: var(--navy); border-radius: 1rem; padding: 2rem 2.5rem;
+  margin: 2.5rem 0; text-align: center; color: white;
+}
+.inline-cta h4 { font-family: 'Karantina', system-ui; font-size: 1.75rem; margin-bottom: 0.5rem; color: var(--cyan); }
+.inline-cta p { font-size: 0.95rem; margin-bottom: 1.25rem; opacity: 0.85; }
+.inline-cta .cta-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--cyan); color: var(--navy); font-weight: 600;
+  padding: 0.65rem 2rem; border-radius: 9999px; font-size: 0.95rem;
+  text-decoration: none; transition: filter 0.15s;
+}
+.inline-cta .cta-btn:hover { filter: brightness(0.9); text-decoration: none; }
+
+/* Email Capture */
+.email-capture {
+  background: var(--cream-warm); border: 1px solid rgba(26,40,56,0.1);
+  border-radius: 1rem; padding: 2rem 2.5rem; margin: 2.5rem 0; text-align: center;
+}
+.email-capture h4 { font-family: 'Karantina', system-ui; font-size: 1.75rem; color: var(--navy); margin-bottom: 0.4rem; }
+.email-capture p { font-size: 0.9rem; color: var(--brown-muted); margin-bottom: 1.25rem; }
+.email-capture form { display: flex; gap: 0.5rem; max-width: 28rem; margin: 0 auto; }
+.email-capture input {
+  flex: 1; padding: 0.65rem 1rem; border: 1px solid rgba(26,40,56,0.15);
+  border-radius: 9999px; font-family: inherit; font-size: 0.9rem;
+  direction: rtl; outline: none;
+}
+.email-capture input:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(3,255,230,0.15); }
+.email-capture button {
+  background: var(--cyan); color: var(--navy); font-weight: 600;
+  padding: 0.65rem 1.5rem; border-radius: 9999px; border: none;
+  font-family: inherit; font-size: 0.9rem; cursor: pointer; white-space: nowrap;
+  transition: filter 0.15s;
+}
+.email-capture button:hover { filter: brightness(0.9); }
+.email-capture .success { color: var(--teal); font-weight: 500; font-size: 0.9rem; }
+.email-capture .error { color: #c0392b; font-size: 0.85rem; }
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="post-header">
+    <a href="/api/blog" class="back-link">→ חזרה לבלוג</a>
+    <h1 class="post-title font-display">{{ post.title }}</h1>
+    <p class="post-meta">
+      {% if post.word_count %}{{ (post.word_count / 250) | int }} דקות קריאה{% endif %}
+      {% if post.published_at %} · {{ post.published_at[:10] }}{% endif %}
+      · {{ post.author_name }}
+    </p>
+  </div>
+
+  <img src="{{ post.cover_image or '/api/public/blog-cover/' ~ post.slug }}" alt="{{ post.title }}" class="post-cover" />
+
+  {% if post.video_url %}
+  <div class="video-embed">
+    <iframe src="{{ post.video_url }}" allowfullscreen loading="lazy"></iframe>
+  </div>
+  {% endif %}
+
+  <article class="post-body">
+    {{ content_before_cta | safe }}
+
+    <!-- Inline CTA (after 3rd heading) -->
+    <div class="inline-cta">
+      <h4>רוצה לחוות את התהליך בעצמך?</h4>
+      <p>שיטת האימון היהודי של בני גל — עכשיו זמינה גם אונליין, בקצב שלך.</p>
+      <a href="/bsd-ai" class="cta-btn">גלה את האימון היהודי AI</a>
+    </div>
+
+    {{ content_after_cta | safe }}
+  </article>
+
+  <!-- Email Capture -->
+  <div class="email-capture" id="email-capture">
+    <h4>תובנות ישירות למייל</h4>
+    <p>מאמרים חדשים, כלים מעשיים ותובנות מעולם האימון היהודי — פעם בשבוע, ישר אליך.</p>
+    <form id="subscribe-form" onsubmit="return handleSubscribe(event)">
+      <input type="email" name="email" placeholder="הכנס כתובת מייל..." required />
+      <button type="submit">הרשמה</button>
+    </form>
+  </div>
+
+  <script>
+  function handleSubscribe(e) {
+    e.preventDefault();
+    const form = document.getElementById('subscribe-form');
+    const email = form.querySelector('input[name=email]').value;
+    const capture = document.getElementById('email-capture');
+    fetch('/api/subscribe', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({email: email})
+    }).then(r => r.json()).then(d => {
+      if (d.ok) {
+        capture.innerHTML = '<h4>תודה! נרשמת בהצלחה</h4><p class="success">נשלח לך מאמרים חדשים ישירות למייל.</p>';
+      } else {
+        capture.querySelector('form').insertAdjacentHTML('afterend', '<p class="error">' + (d.detail || 'שגיאה, נסה שוב') + '</p>');
+      }
+    }).catch(() => {
+      capture.querySelector('form').insertAdjacentHTML('afterend', '<p class="error">שגיאה בחיבור, נסה שוב</p>');
+    });
+    return false;
+  }
+  </script>
+
+  <!-- Share -->
+  <div class="share-bar">
+    <span class="share-label">שתפו:</span>
+    <a class="share-btn wa" href="https://wa.me/?text={{ title }}%20{{ canonical_url }}" target="_blank" rel="noreferrer" title="שתף בוואטסאפ">
+      <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+    </a>
+    <a class="share-btn fb" href="https://www.facebook.com/sharer/sharer.php?u={{ canonical_url }}" target="_blank" rel="noreferrer" title="שתף בפייסבוק">
+      <svg viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+    </a>
+    <a class="share-btn tw" href="https://twitter.com/intent/tweet?text={{ title }}&url={{ canonical_url }}" target="_blank" rel="noreferrer" title="שתף בטוויטר">
+      <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+    </a>
+    <button class="share-btn copy" onclick="navigator.clipboard.writeText('{{ canonical_url }}');this.classList.add('copied');setTimeout(()=>this.classList.remove('copied'),2000)" title="העתק קישור">
+      <svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+    </button>
+  </div>
+
+  <!-- Related Posts -->
+  {% if related_posts %}
+  <div class="related-section">
+    <h3 class="font-display">מאמרים נוספים</h3>
+    <div class="related-grid">
+      {% for rp in related_posts %}
+      <article class="related-card">
+        <a href="/api/blog/{{ rp.slug }}">
+          <img src="{{ rp.cover_image or '/api/public/blog-cover/' ~ rp.slug }}" alt="{{ rp.title }}" style="width:100%;height:8rem;object-fit:cover;" loading="lazy" />
+          <div class="related-card-body">
+            <p class="related-card-cat">{{ rp.category }}</p>
+            <h4 class="related-card-title">{{ rp.title }}</h4>
+          </div>
+        </a>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

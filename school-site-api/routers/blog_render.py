@@ -88,7 +88,7 @@ async def blog_index(request: Request, q: str = "", category: str = ""):
         "search_query": q,
         "title": "בלוג · בית הספר לאימון יהודי BSD",
         "description": "מאמרים, תובנות וכלים מעולם האימון היהודי בשיטת BSD",
-        "canonical_url": f"{BASE_URL}/blog",
+        "canonical_url": f"{BASE_URL}/api/blog",
         "og_image": None,
         "year": datetime.utcnow().year,
     })
@@ -117,7 +117,7 @@ async def blog_post(request: Request, slug: str):
         "related_posts": related,
         "title": post.meta_title or post.title,
         "description": post.meta_description or post.excerpt or post.content[:160],
-        "canonical_url": f"{BASE_URL}/blog/{slug}",
+        "canonical_url": f"{BASE_URL}/api/blog/{slug}",
         "base_url": BASE_URL,
         "og_type": "article",
         "og_image": cover,

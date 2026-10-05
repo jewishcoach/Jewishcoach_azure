@@ -18,6 +18,7 @@ async def robots_txt():
     content = f"""User-agent: *
 Allow: /
 Allow: /blog/
+Allow: /api/blog/
 Allow: /bsd-ai
 Allow: /about
 Allow: /contact
@@ -25,7 +26,8 @@ Allow: /programs/
 Allow: /book
 Allow: /testimonials
 
-Disallow: /api/
+Disallow: /api/admin/
+Disallow: /api/internal/
 
 Sitemap: {BASE_URL}/sitemap.xml
 """
@@ -39,7 +41,7 @@ async def sitemap_xml():
 
     static_pages = [
         {"loc": "", "priority": "1.0", "changefreq": "weekly"},
-        {"loc": "/blog", "priority": "0.8", "changefreq": "daily"},
+        {"loc": "/api/blog", "priority": "0.8", "changefreq": "daily"},
         {"loc": "/bsd-ai", "priority": "0.9", "changefreq": "monthly"},
         {"loc": "/about", "priority": "0.6", "changefreq": "monthly"},
         {"loc": "/contact", "priority": "0.5", "changefreq": "monthly"},
@@ -62,7 +64,7 @@ async def sitemap_xml():
     for post in posts:
         lastmod = (post.updated_at or post.published_at or post.created_at)[:10]
         urls.append(f"""  <url>
-    <loc>{BASE_URL}/blog/{post.slug}</loc>
+    <loc>{BASE_URL}/api/blog/{post.slug}</loc>
     <lastmod>{lastmod}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -83,7 +85,7 @@ async def video_sitemap_xml():
     entries = []
     for post in video_posts:
         entries.append(f"""  <url>
-    <loc>{BASE_URL}/blog/{post.slug}</loc>
+    <loc>{BASE_URL}/api/blog/{post.slug}</loc>
     <video:video>
       <video:thumbnail_loc>{post.cover_image or f"{BASE_URL}/api/public/blog-cover/{post.slug}"}</video:thumbnail_loc>
       <video:title>{post.title}</video:title>
