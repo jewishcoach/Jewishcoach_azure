@@ -90,7 +90,7 @@ export function useStageFlowV3(language: string = 'he') {
   // ---------------------------------------------------------------------------
   const sendMessage = useCallback(
     async (text: string) => {
-      if (!text.trim()) return;
+      if (!text.trim() || isLoading) return;
       setIsLoading(true);
       setActiveTool(null);
 
@@ -186,7 +186,7 @@ export function useStageFlowV3(language: string = 'he') {
         setIsLoading(false);
       }
     },
-    [conversationId, language, getToken],
+    [conversationId, language, getToken, isLoading],
   );
 
   // ---------------------------------------------------------------------------

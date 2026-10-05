@@ -23,7 +23,7 @@ export function SentenceBuilder({ data, onSubmit, isSubmitting }: SentenceBuilde
               className="text-[10px] font-semibold uppercase tracking-wider text-[rgba(45,70,88,0.5)] mb-1"
               style={{ fontFamily: "'Heebo', sans-serif" }}
             >
-              הדפוס שזיהית
+              הדפוס שזיהית (מה שאתה עושה)
             </p>
             <p
               className="text-sm text-[#2d4658] leading-relaxed"
@@ -43,10 +43,10 @@ export function SentenceBuilder({ data, onSubmit, isSubmitting }: SentenceBuilde
             ככה זה אצלי —
           </label>
           <p
-            className="text-xs text-[rgba(45,70,88,0.5)] text-right"
+            className="text-xs text-[rgba(45,70,88,0.5)] text-right leading-relaxed"
             style={{ fontFamily: "'Assistant', sans-serif" }}
           >
-            מהו החוק הפנימי שמנהל אותך? השלם את המשפט
+            לא מה שאתה <strong>עושה</strong> (זה הדפוס למעלה), אלא <strong>הלוגיקה</strong> שגורמת לך להאמין שזו הדרך הנכונה. למשל: "אם לא ארים קול — לא יקשיבו לי"
           </p>
           <textarea
             value={paradigm}
@@ -69,13 +69,13 @@ export function SentenceBuilder({ data, onSubmit, isSubmitting }: SentenceBuilde
             className="block text-sm font-semibold text-[#2d4658] text-right"
             style={{ fontFamily: "'Heebo', sans-serif" }}
           >
-            מהי האמונה שמאחורי החוק?
+            מהי האמונה העמוקה שמאחורי החוק?
           </label>
           <p
-            className="text-xs text-[rgba(45,70,88,0.5)] text-right"
+            className="text-xs text-[rgba(45,70,88,0.5)] text-right leading-relaxed"
             style={{ fontFamily: "'Assistant', sans-serif" }}
           >
-            מהי האמונה על העולם או על עצמך שגורמת לחוק הזה להרגיש אמיתי?
+            לא החוק עצמו, אלא <strong>האמונה על העולם או על עצמך</strong> שגורמת לחוק להרגיש אמיתי. למשל: "העולם הוא מקום שבו רק חזקים שורדים"
           </p>
           <textarea
             value={realityBelief}
