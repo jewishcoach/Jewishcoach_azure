@@ -11,6 +11,7 @@ from ..bsd_v2.single_agent_coach import handle_conversation
 from ..bsd_v2.stage_tool_triggers import resolve_post_turn_tool_call, mark_trait_picker_sent, mark_matzui_summary_sent
 from ..bsd_v2.onboarding_topics_context import inject_onboarding_topics_into_state
 from ..security.chat_input import ChatMessageRejected, sanitize_chat_message
+from ..api.chat_v2 import save_v2_state
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +94,7 @@ async def submit_tool_response(
     if conversation.v2_state and isinstance(conversation.v2_state, dict):
         try:
             v2_state = dict(conversation.v2_state)
+            state_version = conversation.v2_state_version or 0
             prev_step = v2_state.get("current_step", "S0")
 
             # Persist structured data directly into collected_data for insights panel
@@ -216,8 +218,6 @@ async def submit_tool_response(
                     user_gender=user_gender,
                     conversation_id=conversation_id,
                 )
-                conversation.v2_state = updated_state
-                conversation.current_phase = updated_state.get("current_step", conversation.current_phase)
 
                 current_step = updated_state.get("current_step")
                 saturation_score = float(updated_state.get("saturation_score", 0.0))
@@ -230,18 +230,20 @@ async def submit_tool_response(
                         timestamp=utc_now(),
                     ))
 
-                ux_version = v2_state.get("ux_version", 2)
+                ux_version = updated_state.get("ux_version", 2)
                 tool_call = resolve_post_turn_tool_call(prev_step, updated_state, ux_version=ux_version)
                 if tool_call and tool_call.get("tool_type") in ("trait_picker", "trait_card_builder"):
                     mark_trait_picker_sent(updated_state)
-                    conversation.v2_state = updated_state
                 if tool_call and tool_call.get("tool_type") == "matzui_summary":
                     mark_matzui_summary_sent(updated_state)
-                    conversation.v2_state = updated_state
+
+                save_v2_state(conversation_id, updated_state, db, expected_version=state_version)
             else:
-                conversation.v2_state = v2_state
+                save_v2_state(conversation_id, v2_state, db, expected_version=state_version)
 
             logger.info(f"[Tools] Processed {request.tool_type} submission in V2 state for conv {conversation_id}")
+        except HTTPException:
+            raise
         except Exception as e:
             logger.warning(f"[Tools] Could not process tool submission in V2 state: {e}")
 

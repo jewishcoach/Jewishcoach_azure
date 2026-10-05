@@ -200,6 +200,26 @@ export function useStageFlowV3(language: string = 'he') {
             summary: response.stage_complete as StageSummaryPayload,
           }));
         }
+
+        // Persist session (must use functional updaters to get latest state)
+        setMessages((msgs) => {
+          setCollectedData((cd) => {
+            saveSession({
+              conversationId: convId!,
+              flowState: {
+                phase: response.stage_complete ? 'stage_complete' : 'chatting',
+                currentMacroStage: stepToMacroStage(response.current_step || 'S0'),
+                currentStep: response.current_step,
+                ...(response.stage_complete ? { summary: response.stage_complete as StageSummaryPayload } : {}),
+              },
+              messages: msgs,
+              collectedData: response.collected_data ? { ...cd, ...response.collected_data } : cd,
+              saturationScore: response.saturation_score,
+            });
+            return cd;
+          });
+          return msgs;
+        });
       } catch (err) {
         if (err instanceof QuotaExceededError) {
           setQuotaExceeded(true);
@@ -234,10 +254,12 @@ export function useStageFlowV3(language: string = 'he') {
       if (!conversationId || toolSubmitting) return;
       setToolSubmitting(true);
 
+      const previousTool = activeTool;
+      const toolMsgId = `t-${Date.now()}`;
+
       try {
-        // Add a completed tool card to messages
         const toolMsg: V3ChatMessage = {
-          id: `t-${Date.now()}`,
+          id: toolMsgId,
           role: 'tool_result',
           content: '',
           toolResult: { tool_type: toolType, data },
@@ -279,18 +301,20 @@ export function useStageFlowV3(language: string = 'he') {
         }
       } catch (err) {
         console.error('[V3 Chat] submitTool error:', err);
+        // Remove the tool_result message that was optimistically added
+        setMessages((prev) => prev.filter((m) => m.id !== toolMsgId));
         setMessages((prev) => [...prev, {
           id: `e-${Date.now()}`,
           role: 'assistant',
           content: 'סליחה, משהו השתבש. נסה שוב בבקשה.',
         }]);
-        // Re-show the tool so user can retry
-        setActiveTool((prev) => prev);
+        // Restore the tool so user can retry with their filled data
+        setActiveTool(previousTool);
       } finally {
         setToolSubmitting(false);
       }
     },
-    [conversationId, toolSubmitting, getToken],
+    [conversationId, toolSubmitting, getToken, activeTool],
   );
 
   // ---------------------------------------------------------------------------
