@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-7Q5D9JSF4P"></script>
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-7Q5D9JSF4P');</script>
+  <title>{{ title }}</title>
+  <meta name="description" content="{{ description }}" />
+  <link rel="canonical" href="{{ canonical_url }}" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="{{ og_type|default('website') }}" />
+  <meta property="og:title" content="{{ title }}" />
+  <meta property="og:description" content="{{ description }}" />
+  <meta property="og:url" content="{{ canonical_url }}" />
+  <meta property="og:locale" content="he_IL" />
+  {% if og_image %}<meta property="og:image" content="{{ og_image }}" />{% endif %}
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="{{ title }}" />
+  <meta name="twitter:description" content="{{ description }}" />
+  {% if og_image %}<meta name="twitter:image" content="{{ og_image }}" />{% endif %}
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Karantina:wght@400;700&family=Heebo:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Structured Data -->
+  {% block structured_data %}{% endblock %}
+
+  <style>
+    :root {
+      --navy: #1a2838;
+      --cyan: #03ffe6;
+      --teal: #008577;
+      --teal-light: #00d6c0;
+      --cream: #faf7f0;
+      --cream-warm: #fdfaf4;
+      --brown: #281e0f;
+      --brown-muted: #7a6e5c;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Heebo', system-ui, sans-serif;
+      background: var(--cream);
+      color: var(--navy);
+      line-height: 1.7;
+    }
+    .font-display { font-family: 'Karantina', system-ui, sans-serif; }
+    a { color: var(--teal); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Header — synced with SPA SiteLayout.tsx */
+    .site-header {
+      background: var(--navy);
+      position: sticky; top: 0; z-index: 50;
+    }
+    .header-inner {
+      max-width: 72rem; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 1rem; padding: 0.75rem 1rem;
+    }
+    .header-logo { height: 2.5rem; width: auto; flex-shrink: 0; }
+    .header-nav { display: none; align-items: center; gap: 1.5rem; }
+    @media (min-width: 1024px) { .header-nav { display: flex; } }
+    .header-nav a { color: rgba(3,255,230,0.7); font-size: 0.875rem; font-weight: 500; white-space: nowrap; }
+    .header-nav a:hover { color: var(--cyan); text-decoration: none; }
+    .header-nav a.active { color: var(--cyan); }
+    .header-spacer { width: 2.5rem; flex-shrink: 0; }
+
+    /* Footer */
+    .site-footer {
+      background: var(--navy);
+      text-align: center; padding: 1.25rem;
+      font-size: 0.75rem; color: rgba(3,255,230,0.6);
+    }
+
+    /* Content */
+    .container { max-width: 48rem; margin: 0 auto; padding: 0 1rem; }
+
+    {% block extra_styles %}{% endblock %}
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="/">
+        <img src="/images/logo.svg" alt="BSD" class="header-logo" />
+      </a>
+      <nav class="header-nav">
+        <a href="/">בית</a>
+        <a href="/bsd-ai">אימון יהודי AI</a>
+        <a href="/programs/personal">מסלולים</a>
+        <a href="/book">הספר</a>
+        <a href="/api/blog" class="active">בלוג</a>
+        <a href="/testimonials">המלצות</a>
+        <a href="/about">אודות</a>
+        <a href="/contact">צור קשר</a>
+      </nav>
+      <div class="header-spacer"></div>
+    </div>
+  </header>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    © {{ year }} אימון יהודי | שיטת BSD של בני גל. כל הזכויות שמורות.
+  </footer>
+</body>
+</html>
