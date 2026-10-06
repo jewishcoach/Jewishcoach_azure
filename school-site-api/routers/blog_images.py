@@ -88,24 +88,24 @@ def generate_cover_image(keyword: str, title: str) -> str | None:
     day = date.today().timetuple().tm_yday
     composition = _COMPOSITIONS[day % len(_COMPOSITIONS)]
 
-    prompt = f"""Create a premium blog cover ILLUSTRATION about "{keyword}".
+    prompt = f"""Create a premium blog cover PHOTOGRAPH about "{keyword}".
 
-COLOR PALETTE (strict): muted sage green, warm gold, deep teal (#008577), cream (#faf7f0), olive green, earthy brown. NO bright neon colors.
-STYLE: Hand-drawn editorial illustration — NOT a photograph, NOT photorealistic. Think children's book illustration meets editorial magazine art. Flat colors with subtle texture, visible brushstrokes or woodcut feel, layered paper-cut aesthetic. Similar to vintage Jewish art or Bezalel school illustration style.
+COLOR TONES: warm golden hour, soft natural light, muted earth tones, Mediterranean warmth. Deep shadows with warm highlights.
+STYLE: Professional editorial photography — real textures, natural depth of field, cinematic feel. Like a premium lifestyle magazine cover photo. Warm, authentic, thoughtful.
 COMPOSITION: {composition}
 
 Scene based on topic:
-- coaching/personal growth → stylized figure on a winding path, tree of life motif, warm golden glow
-- Jewish wisdom → illustrated books and candles, olive branches, pomegranates, stylized menorah elements
-- couples/relationships → two illustrated silhouettes facing each other, intertwined vines, window with warm light
-- crisis/midlife → illustrated crossroads with signposts, stylized mountains at dawn, hourglass
-- business/leadership → illustrated compass, stylized cityscape, ascending stairs with warm light
-- vision/goals → illustrated ladder reaching into clouds, open window with garden view, soaring bird
-- General → illustrated Mediterranean scene with olive tree, stone walls, warm golden hour sky
+- coaching/personal growth → person walking on a path at golden hour, back to camera, wide landscape
+- Jewish wisdom → old leather-bound books on wooden table, soft candlelight, vintage study room
+- couples/relationships → two people silhouetted against warm light, hands almost touching, intimate moment
+- crisis/midlife → person standing at crossroads, mountain dawn, dramatic sky breaking through clouds
+- business/leadership → boardroom with warm light, compass on map, person looking at city from rooftop
+- vision/goals → open road leading to horizon, ladder against sky, door opening to bright garden
+- General → Mediterranean landscape with olive tree, stone path, warm golden hour lighting
 
 MUST: No text, no words, no letters, no logos, no numbers in the image.
-MUST: Illustrated art style — NOT a photo, NOT 3D render, NOT photorealistic. Think flat illustration with warmth and depth.
-GOAL: Should look like it belongs in a curated Jewish art book or a premium Hebrew editorial magazine."""
+MUST: Photographic style — real camera look, natural lighting, depth of field, film grain texture.
+GOAL: Should feel like a premium Jewish lifestyle magazine photograph — warm, deep, authentic, cinematic."""
 
     fname = f"blog-{_safe_filename(keyword)}-{uuid.uuid4().hex[:6]}.png"
     return _generate_image(prompt, fname)
