@@ -234,14 +234,18 @@ def assemble_system_prompt(current_step: str, language: str = "he", user_gender:
                     stage_path = _resolve_prompt_file(stages_dir, lang, stage_file)
                     stage_content = _load_file(str(stage_path)).strip()
             else:
-                # Pre-tool: brief warm transition before the UI card appears
-                pre_tool_path = stages_dir / "v3" / "pre_tool.md"
-                if pre_tool_path.exists():
-                    stage_content = _load_file(str(pre_tool_path)).strip()
+                # Pre-tool: check for stage-specific pre-tool first, then generic
+                stage_pre_tool_path = stages_dir / "v3" / f"pre_tool_{current_step.lower()}.md"
+                if stage_pre_tool_path.exists():
+                    stage_content = _load_file(str(stage_pre_tool_path)).strip()
                 else:
-                    stage_file = STAGE_FILES.get(current_step, "s1_topic.md")
-                    stage_path = _resolve_prompt_file(stages_dir, lang, stage_file)
-                    stage_content = _load_file(str(stage_path)).strip()
+                    pre_tool_path = stages_dir / "v3" / "pre_tool.md"
+                    if pre_tool_path.exists():
+                        stage_content = _load_file(str(pre_tool_path)).strip()
+                    else:
+                        stage_file = STAGE_FILES.get(current_step, "s1_topic.md")
+                        stage_path = _resolve_prompt_file(stages_dir, lang, stage_file)
+                        stage_content = _load_file(str(stage_path)).strip()
     else:
         stage_file = STAGE_FILES.get(current_step, "s1_topic.md")
         stage_path = _resolve_prompt_file(stages_dir, lang, stage_file)
