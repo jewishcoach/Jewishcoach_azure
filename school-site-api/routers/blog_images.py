@@ -88,36 +88,37 @@ def generate_cover_image(keyword: str, title: str) -> str | None:
     day = date.today().timetuple().tm_yday
     composition = _COMPOSITIONS[day % len(_COMPOSITIONS)]
 
-    prompt = f"""Create a premium blog cover illustration about "{keyword}".
+    prompt = f"""Create a premium blog cover ILLUSTRATION about "{keyword}".
 
-COLOR PALETTE (strict): #1a2838 (deep navy), #03ffe6 (cyan/turquoise), #008577 (teal), #faf7f0 (warm cream), soft gold accents.
-STYLE: Warm, thoughtful, Jewish-Israeli aesthetic. Natural textures, organic shapes, a sense of inner depth and growth.
+COLOR PALETTE (strict): muted sage green, warm gold, deep teal (#008577), cream (#faf7f0), olive green, earthy brown. NO bright neon colors.
+STYLE: Hand-drawn editorial illustration — NOT a photograph, NOT photorealistic. Think children's book illustration meets editorial magazine art. Flat colors with subtle texture, visible brushstrokes or woodcut feel, layered paper-cut aesthetic. Similar to vintage Jewish art or Bezalel school illustration style.
 COMPOSITION: {composition}
 
 Scene based on topic:
-- coaching/personal growth → person looking at horizon, path leading forward, warm light
-- Jewish wisdom → ancient books, soft candle light, scroll elements, tree of life
-- couples/relationships → two silhouettes, intertwined paths, warm tones
-- crisis/midlife → crossroads, mountains, dawn breaking through clouds
-- business/leadership → boardroom, city skyline, compass, mountain peak
-- vision/goals → ladder reaching upward, open door, road disappearing into light
-- General → Mediterranean landscape with olive tree, warm golden hour
+- coaching/personal growth → stylized figure on a winding path, tree of life motif, warm golden glow
+- Jewish wisdom → illustrated books and candles, olive branches, pomegranates, stylized menorah elements
+- couples/relationships → two illustrated silhouettes facing each other, intertwined vines, window with warm light
+- crisis/midlife → illustrated crossroads with signposts, stylized mountains at dawn, hourglass
+- business/leadership → illustrated compass, stylized cityscape, ascending stairs with warm light
+- vision/goals → illustrated ladder reaching into clouds, open window with garden view, soaring bird
+- General → illustrated Mediterranean scene with olive tree, stone walls, warm golden hour sky
 
-MUST: No text, no words, no letters, no logos in the image.
-GOAL: Should feel like a premium Jewish lifestyle magazine illustration — warm, deep, authentic."""
+MUST: No text, no words, no letters, no logos, no numbers in the image.
+MUST: Illustrated art style — NOT a photo, NOT 3D render, NOT photorealistic. Think flat illustration with warmth and depth.
+GOAL: Should look like it belongs in a curated Jewish art book or a premium Hebrew editorial magazine."""
 
     fname = f"blog-{_safe_filename(keyword)}-{uuid.uuid4().hex[:6]}.png"
     return _generate_image(prompt, fname)
 
 
 def generate_inline_image(keyword: str, context: str) -> str | None:
-    prompt = f"""Create a supporting illustration for a Hebrew article about "{keyword}".
+    prompt = f"""Create a supporting ILLUSTRATION for a Hebrew article about "{keyword}".
 Context in the article: {context[:200]}
 
-COLOR PALETTE: #1a2838 (navy), #03ffe6 (cyan), warm cream tones, soft gold.
-STYLE: Warm, editorial illustration. Soft brushstrokes or watercolor feel.
+COLOR PALETTE: muted sage green, warm gold, deep teal, cream, olive tones.
+STYLE: Hand-drawn editorial illustration — NOT a photograph. Flat colors, subtle texture, paper-cut or woodcut feel. One key visual metaphor.
 MUST: No text, no words, no letters.
-Keep it simple and evocative — one key visual metaphor."""
+Keep it simple, warm, and evocative — like a page from an illustrated Jewish art book."""
 
     fname = f"inline-{_safe_filename(keyword)}-{uuid.uuid4().hex[:6]}.png"
     return _generate_image(prompt, fname, size="1024x1024")
