@@ -1,0 +1,20 @@
+{
+  "routes": [
+    { "route": "/blog", "rewrite": "/api/blog" },
+    { "route": "/sitemap.xml", "rewrite": "/api/sitemap.xml" },
+    { "route": "/robots.txt", "rewrite": "/api/robots.txt" },
+    { "route": "/video-sitemap.xml", "rewrite": "/api/video-sitemap.xml" }
+  ],
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": [
+      "/assets/*",
+      "/*.{png,ico,svg,jpg,jpeg,webp,css,js}",
+      "/blog",
+      "/api/*",
+      "/sitemap.xml",
+      "/robots.txt",
+      "/video-sitemap.xml"
+    ]
+  }
+}
