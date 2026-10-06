@@ -234,6 +234,27 @@ def _generate_trait_suggestions(cd: Dict[str, Any]) -> Dict[str, List[str]]:
     return {"source": source_hints[:6], "nature": nature_hints[:6]}
 
 
+_INTERPRETIVE_ONLY = {
+    "ויתרתי", "נסגרתי", "נאטמתי", "ברחתי", "כלום",
+    "שום דבר", "נשברתי", "התפרקתי", "התרסקתי", "נפלתי",
+    "קרסתי", "לא עשיתי כלום", "הרגשתי חלש", "הרגשתי רע",
+}
+
+
+def _action_looks_interpretive(action: str) -> bool:
+    """Heuristic: short vague actions that need grounding before summary.
+    A long description with multiple concrete details is likely observable."""
+    action = action.strip()
+    if not action:
+        return True
+    if len(action) < 12:
+        return True
+    # Long descriptions with commas/conjunctions are likely multi-part observable actions
+    if len(action) > 30 and ("," in action or " ו" in action):
+        return False
+    return action in _INTERPRETIVE_ONLY
+
+
 def _resolve_v3_tool_call(prev_step: str, state: Dict[str, Any], from_tool_submission: Optional[str] = None) -> Optional[Dict[str, Any]]:
     """V3-specific tool resolution with broader stage triggers."""
     new_step = state.get("current_step", "S0")
@@ -246,12 +267,14 @@ def _resolve_v3_tool_call(prev_step: str, state: Dict[str, Any], from_tool_submi
     # Only trigger on step transitions (new_step != prev_step)
     if new_step == prev_step:
         # Special case: S5 with action_actual already filled → matzui_summary
-        # BUT: skip on the action_field submission turn — the coach may need to
-        # ask a grounding question first for interpretive actions (e.g. "ויתרתי").
-        # The summary will trigger on the next chat turn instead.
+        # On action_field submission: only show if the action looks observable.
+        # Interpretive actions (short, no verb of motion/speech) get delayed
+        # so the coach can ask a grounding question first.
         if new_step == "S5" and cd.get("action_actual") and not state.get("_matzui_summary_sent"):
             if from_tool_submission == "action_field":
-                return None
+                action = cd.get("action_actual", "")
+                if _action_looks_interpretive(action):
+                    return None
             return _build_v3_tool_call("matzui_summary", state)
         return None
 
