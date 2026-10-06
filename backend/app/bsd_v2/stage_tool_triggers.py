@@ -234,7 +234,7 @@ def _generate_trait_suggestions(cd: Dict[str, Any]) -> Dict[str, List[str]]:
     return {"source": source_hints[:6], "nature": nature_hints[:6]}
 
 
-def _resolve_v3_tool_call(prev_step: str, state: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _resolve_v3_tool_call(prev_step: str, state: Dict[str, Any], from_tool_submission: Optional[str] = None) -> Optional[Dict[str, Any]]:
     """V3-specific tool resolution with broader stage triggers."""
     new_step = state.get("current_step", "S0")
     cd = state.get("collected_data") or {}
@@ -246,7 +246,12 @@ def _resolve_v3_tool_call(prev_step: str, state: Dict[str, Any]) -> Optional[Dic
     # Only trigger on step transitions (new_step != prev_step)
     if new_step == prev_step:
         # Special case: S5 with action_actual already filled → matzui_summary
+        # BUT: skip on the action_field submission turn — the coach may need to
+        # ask a grounding question first for interpretive actions (e.g. "ויתרתי").
+        # The summary will trigger on the next chat turn instead.
         if new_step == "S5" and cd.get("action_actual") and not state.get("_matzui_summary_sent"):
+            if from_tool_submission == "action_field":
+                return None
             return _build_v3_tool_call("matzui_summary", state)
         return None
 
@@ -273,6 +278,7 @@ def resolve_post_turn_tool_call(
     prev_step: str,
     state: Dict[str, Any],
     ux_version: int = 2,
+    from_tool_submission: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     """
     Decide whether this response should include a tool_call for the client.
@@ -280,9 +286,10 @@ def resolve_post_turn_tool_call(
     prev_step: current_step before the coach turn (from API snapshot).
     state: full V2 state after handle_conversation (includes merged collected_data).
     ux_version: UX version from X-UX-Version header (2 or 3).
+    from_tool_submission: tool_type if this call originated from a tool submit endpoint.
     """
     if ux_version >= 3:
-        return _resolve_v3_tool_call(prev_step, state)
+        return _resolve_v3_tool_call(prev_step, state, from_tool_submission=from_tool_submission)
 
     # V2 behavior (unchanged)
     new_step = state.get("current_step", "S0")

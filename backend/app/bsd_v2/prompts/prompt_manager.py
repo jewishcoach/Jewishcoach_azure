@@ -26,6 +26,7 @@ STAGE_FILES: Dict[str, str] = {
 V3_STAGE_FILES: Dict[str, str] = {
     "S2": "v3/s2_event.md",
     "S3": "v3/s3_emotions.md",
+    "S4": "v3/s4_thought.md",
     "S5": "v3/s5_action.md",
     "S6": "v3/s6_desired.md",
     "S7": "v3/s7_gap.md",
@@ -34,6 +35,7 @@ V3_STAGE_FILES: Dict[str, str] = {
     "S11": "v3/s11_gains_losses.md",
     "S12": "v3/s12_forces.md",
     "S13": "v3/s13_choice.md",
+    "S14": "v3/s14_vision.md",
     "S15": "v3/s15_commitment.md",
 }
 
@@ -204,13 +206,9 @@ def assemble_system_prompt(current_step: str, language: str = "he", user_gender:
     if ux_version >= 3 and current_step in V3_STAGE_FILES:
         cd = collected_data or {}
         data_key = _V3_TOOL_DATA_KEYS.get(current_step)
-        tool_data_present = False
-        if data_key and cd.get(data_key):
-            val = cd[data_key]
-            tool_data_present = bool(val) and val != [] and val != {}
 
-        if tool_data_present:
-            # Post-tool: use V3 validation prompt
+        if data_key is None:
+            # Chat-only V3 stage (no tool card, e.g. S4) — always use V3 stage prompt
             v3_file = V3_STAGE_FILES[current_step]
             v3_path = stages_dir / v3_file
             if v3_path.exists():
@@ -220,14 +218,30 @@ def assemble_system_prompt(current_step: str, language: str = "he", user_gender:
                 stage_path = _resolve_prompt_file(stages_dir, lang, stage_file)
                 stage_content = _load_file(str(stage_path)).strip()
         else:
-            # Pre-tool: brief warm transition before the UI card appears
-            pre_tool_path = stages_dir / "v3" / "pre_tool.md"
-            if pre_tool_path.exists():
-                stage_content = _load_file(str(pre_tool_path)).strip()
+            tool_data_present = False
+            if cd.get(data_key):
+                val = cd[data_key]
+                tool_data_present = bool(val) and val != [] and val != {}
+
+            if tool_data_present:
+                # Post-tool: use V3 validation prompt
+                v3_file = V3_STAGE_FILES[current_step]
+                v3_path = stages_dir / v3_file
+                if v3_path.exists():
+                    stage_content = _load_file(str(v3_path)).strip()
+                else:
+                    stage_file = STAGE_FILES.get(current_step, "s1_topic.md")
+                    stage_path = _resolve_prompt_file(stages_dir, lang, stage_file)
+                    stage_content = _load_file(str(stage_path)).strip()
             else:
-                stage_file = STAGE_FILES.get(current_step, "s1_topic.md")
-                stage_path = _resolve_prompt_file(stages_dir, lang, stage_file)
-                stage_content = _load_file(str(stage_path)).strip()
+                # Pre-tool: brief warm transition before the UI card appears
+                pre_tool_path = stages_dir / "v3" / "pre_tool.md"
+                if pre_tool_path.exists():
+                    stage_content = _load_file(str(pre_tool_path)).strip()
+                else:
+                    stage_file = STAGE_FILES.get(current_step, "s1_topic.md")
+                    stage_path = _resolve_prompt_file(stages_dir, lang, stage_file)
+                    stage_content = _load_file(str(stage_path)).strip()
     else:
         stage_file = STAGE_FILES.get(current_step, "s1_topic.md")
         stage_path = _resolve_prompt_file(stages_dir, lang, stage_file)

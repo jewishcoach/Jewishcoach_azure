@@ -232,7 +232,7 @@ async def submit_tool_response(
                     ))
 
                 ux_version = updated_state.get("ux_version", 2)
-                tool_call = resolve_post_turn_tool_call(prev_step, updated_state, ux_version=ux_version)
+                tool_call = resolve_post_turn_tool_call(prev_step, updated_state, ux_version=ux_version, from_tool_submission=request.tool_type)
                 if tool_call and tool_call.get("tool_type") in ("trait_picker", "trait_card_builder"):
                     mark_trait_picker_sent(updated_state)
                 if tool_call and tool_call.get("tool_type") == "matzui_summary":
