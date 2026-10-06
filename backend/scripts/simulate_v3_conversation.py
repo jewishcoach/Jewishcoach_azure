@@ -25,7 +25,7 @@ load_dotenv()
 
 from app.bsd_v2.single_agent_coach import handle_conversation
 from app.bsd_v2.state_schema_v2 import create_initial_state
-from app.bsd_v2.stage_tool_triggers import resolve_post_turn_tool_call
+from app.bsd_v2.stage_tool_triggers import resolve_post_turn_tool_call, mark_matzui_summary_sent
 
 # ─── Simulated scenario: conflict with a colleague ───────────────────────────
 
@@ -90,15 +90,46 @@ RE_ASK_PATTERNS = {
 }
 
 
-def check_response(stage: str, response: str) -> list[dict]:
+CARD_STAGES = {"S2", "S3", "S5", "S6", "S7", "S9", "S11", "S12", "S13", "S15"}
+CHAT_STAGES = {"S4", "S8", "S14"}
+
+# Expected bridging: stage → next stage's keywords (these are ALLOWED, not bugs)
+EXPECTED_BRIDGING = {
+    "S3": {"S4": ["מה עבר לך", "אמירה פנימית", "בראש"]},
+    "S7": {"S8": ["דפוס", "מזהה את עצמך", "עוד מקומות"]},
+}
+
+# What the card collects — used to detect "open then closed"
+CARD_TOPICS = {
+    "emotion_selector": ["רגש", "הרגשת", "מה הרגשת"],
+    "action_field": ["עשית", "פעולה", "מה עשית"],
+    "comparison_card": ["היית רוצה", "רצוי"],
+    "gap_card": ["פער", "שם לפער", "כותרת"],
+    "sentence_builder": ["ככה זה אצלי", "פרדיגמה", "חוק פנימי"],
+    "balance_scale": ["מרוויח", "מפסיד", "רווח", "הפסד"],
+    "commitment_card": ["מחויבות", "מתחייב", "צעד"],
+}
+
+
+def check_response(stage: str, response: str, new_step: str = None,
+                   tool_call: dict = None, is_tool_submission: bool = False) -> list[dict]:
     """Check a coach response for problems. Returns list of issues."""
     issues = []
     resp_lower = response.lower() if response else ""
+    has_question = "?" in response
 
-    # 1. Stage jumping: check if response asks next-stage questions
+    # 1. Stage jumping — but exclude EXPECTED bridging questions
     next_markers = NEXT_STAGE_MARKERS.get(stage, [])
+    expected = EXPECTED_BRIDGING.get(stage, {})
+    expected_keywords = []
+    for target_stage, keywords in expected.items():
+        if new_step == target_stage or new_step == stage:
+            expected_keywords.extend(keywords)
+
     for marker in next_markers:
-        if marker in resp_lower and "?" in response:
+        if marker in resp_lower and has_question:
+            if marker in expected_keywords:
+                continue  # This is an expected bridging question, not a bug
             issues.append({
                 "type": "STAGE_JUMP",
                 "severity": "HIGH",
@@ -130,7 +161,50 @@ def check_response(stage: str, response: str) -> list[dict]:
                     "quote": nearby.strip()[:120],
                 })
 
-    # 4. Generic/vague (very short response with no substance)
+    # 4. STATEMENT_NO_CARD: coach gives statement (no ?) but no card attached
+    # Only applies when transitioning to a card stage
+    target = new_step or stage
+    if not has_question and not tool_call and target in CARD_STAGES:
+        issues.append({
+            "type": "STATEMENT_NO_CARD",
+            "severity": "HIGH",
+            "detail": f"Coach gives statement without question, and no card attached (target={target}). User stuck.",
+            "quote": response[-100:].strip(),
+        })
+
+    # 5. OPEN_THEN_CLOSED: coach asks a question AND card is about to appear on same topic
+    if has_question and tool_call:
+        tool_type = tool_call.get("tool_type", "")
+        card_keywords = CARD_TOPICS.get(tool_type, [])
+        for kw in card_keywords:
+            if kw in resp_lower:
+                # Find the question containing this keyword
+                sentences = re.split(r'[.!\n]', response)
+                for s in sentences:
+                    if kw in s.lower() and "?" in s:
+                        issues.append({
+                            "type": "OPEN_THEN_CLOSED",
+                            "severity": "HIGH",
+                            "detail": f"Coach asks '{kw}' in text AND {tool_type} card asks the same",
+                            "quote": s.strip()[:120],
+                        })
+                        break
+                break
+
+    # 6. REPETITION: same phrase (8+ chars) appears twice
+    words = response.split()
+    for i in range(len(words) - 3):
+        phrase = " ".join(words[i:i+4])
+        if len(phrase) >= 8 and response.count(phrase) > 1:
+            issues.append({
+                "type": "REPETITION",
+                "severity": "MEDIUM",
+                "detail": f"Phrase repeated: '{phrase}'",
+                "quote": phrase,
+            })
+            break  # One repetition finding is enough
+
+    # 7. Generic/vague (very short response)
     if len(response.strip()) < 30:
         issues.append({
             "type": "GENERIC",
@@ -138,6 +212,17 @@ def check_response(stage: str, response: str) -> list[dict]:
             "detail": f"Response too short ({len(response.strip())} chars)",
             "quote": response.strip(),
         })
+
+    # 8. ANALYTICAL_QUESTION: forbidden causal/analytical patterns
+    analytical_patterns = ["איך.*השפיע", "מה גרם ל", "למה הגבת", "מה בהתנהגות.*גרם"]
+    for pat in analytical_patterns:
+        if re.search(pat, resp_lower):
+            issues.append({
+                "type": "ANALYTICAL_Q",
+                "severity": "HIGH",
+                "detail": f"Forbidden analytical question pattern: '{pat}'",
+                "quote": _extract_question(response, pat.split(".*")[0]),
+            })
 
     return issues
 
@@ -189,7 +274,9 @@ async def run_simulation(stages: list[str], verbose: bool):
             print(f"  ⚠️  No data for {stage}, skipping")
             continue
 
+        prev_step = state.get("current_step", stage)
         state["current_step"] = stage
+        is_tool_sub = stage in TOOL_SUBMISSIONS
 
         t0 = time.time()
         try:
@@ -207,11 +294,23 @@ async def run_simulation(stages: list[str], verbose: bool):
         elapsed = time.time() - t0
 
         new_step = state.get("current_step", stage)
-        issues = check_response(stage, coach_msg)
+
+        # Resolve tool_call — same as production flow
+        tool_sub_type = stage if is_tool_sub else None
+        tool_call = resolve_post_turn_tool_call(
+            prev_step, state, ux_version=3,
+            from_tool_submission=tool_sub_type,
+        )
+        if tool_call and tool_call.get("tool_type") == "matzui_summary":
+            mark_matzui_summary_sent(state)
+
+        issues = check_response(stage, coach_msg, new_step=new_step,
+                                tool_call=tool_call, is_tool_submission=is_tool_sub)
         status = "FAIL" if any(i["severity"] == "HIGH" for i in issues) else "WARN" if issues else "PASS"
         icon = "❌" if status == "FAIL" else "⚠️" if status == "WARN" else "✅"
+        tool_info = f" + {tool_call['tool_type']}" if tool_call else ""
 
-        print(f"  {icon} {status} | step: {stage}→{new_step} | {elapsed:.1f}s | {len(coach_msg)} chars")
+        print(f"  {icon} {status} | step: {stage}→{new_step}{tool_info} | {elapsed:.1f}s | {len(coach_msg)} chars")
 
         if verbose or status != "PASS":
             print(f"  Coach: {coach_msg[:300]}{'...' if len(coach_msg) > 300 else ''}")
