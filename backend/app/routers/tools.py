@@ -229,15 +229,10 @@ async def submit_tool_response(
                 current_step = updated_state.get("current_step")
                 saturation_score = float(updated_state.get("saturation_score", 0.0))
 
-                # Deterministic gate check: after card submission, if the LLM didn't
-                # advance but the gate IS met AND the next stage has a card that
-                # should appear immediately, auto-advance so card chaining works.
-                # Only for stages where the card IS the data collection — not stages
-                # where post-card coaching (deep exploration) is expected.
-                _CARD_CHAIN_STAGES = {"S3", "S5", "S6"}
+                # Deterministic gate check: backend is the authority on step advancement.
                 cd = updated_state.get("collected_data") or {}
                 gate_next = _check_gate_met(current_step, cd)
-                if gate_next and current_step != gate_next and current_step in _CARD_CHAIN_STAGES:
+                if gate_next and current_step != gate_next:
                     logger.info(f"[Tools] Gate auto-advance: {current_step}→{gate_next} (gate met after {request.tool_type} submission)")
                     updated_state["current_step"] = gate_next
                     current_step = gate_next

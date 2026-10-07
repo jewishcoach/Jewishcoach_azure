@@ -217,8 +217,13 @@ def test_gate_met_all_card_stages():
     }) == "S7"
     assert _check_gate_met("S6", {"action_desired": "לנשום"}) is None
 
-    # S7 → S8: gap_name + gap_score
-    assert _check_gate_met("S7", {"gap_name": "פחד", "gap_score": "5"}) == "S8"
+    # S7 → S8: gap_name + gap_score + belief + opportunity explored
+    assert _check_gate_met("S7", {
+        "gap_name": "פחד", "gap_score": "5",
+        "gap_booklet_moves": ["belief", "opportunity"],
+    }) == "S8"
+    # Only name+score without deep exploration → NOT ready
+    assert _check_gate_met("S7", {"gap_name": "פחד", "gap_score": "5"}) is None
     assert _check_gate_met("S7", {"gap_name": "פחד"}) is None
 
 
@@ -257,16 +262,18 @@ async def test_handle_conversation_basic_flow():
 # Test 6: S7 should not auto-advance (post-card coaching needed)
 # ---------------------------------------------------------------------------
 
-def test_s7_no_auto_advance_after_gap_card():
-    """S7 is NOT in _CARD_CHAIN_STAGES, so gate auto-advance should not fire
-    even when gap_name + gap_score are present. The coach needs 3 turns."""
-    _CARD_CHAIN_STAGES = {"S3", "S5", "S6"}
+def test_s7_requires_deep_exploration():
+    """S7 gate requires belief + opportunity in gap_booklet_moves,
+    not just gap_name + gap_score. This ensures the coach does 3 turns
+    of deep exploration before advancing."""
+    # Just card data — NOT enough
+    cd_card_only = {"gap_name": "פחד", "gap_score": "5"}
+    assert _check_gate_met("S7", cd_card_only) is None
 
-    cd = {"gap_name": "פחד", "gap_score": "5"}
-    gate_next = _check_gate_met("S7", cd)
+    # Card data + partial exploration — NOT enough
+    cd_partial = {"gap_name": "פחד", "gap_score": "5", "gap_booklet_moves": ["belief"]}
+    assert _check_gate_met("S7", cd_partial) is None
 
-    # Gate IS met (S7 → S8)
-    assert gate_next == "S8"
-
-    # But S7 is NOT in the card-chain stages, so auto-advance should NOT fire
-    assert "S7" not in _CARD_CHAIN_STAGES
+    # Card data + full exploration — ready to advance
+    cd_full = {"gap_name": "פחד", "gap_score": "5", "gap_booklet_moves": ["belief", "opportunity"]}
+    assert _check_gate_met("S7", cd_full) == "S8"

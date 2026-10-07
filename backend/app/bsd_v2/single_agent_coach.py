@@ -306,7 +306,10 @@ def _safe_get_topic_from_collected(collected_data: Any) -> str:
 def _check_gate_met(current_step: str, cd: Dict[str, Any]) -> str | None:
     """Check if collected_data already satisfies the gate for current_step.
     Returns the next step if gate is met, None otherwise.
-    Covers ALL steps where the LLM might forget to advance."""
+
+    This is the AUTHORITATIVE gate check — the backend uses it to advance
+    stages deterministically, regardless of what the LLM outputs for current_step.
+    The LLM's step is advisory; this function decides."""
     if current_step == "S3" and cd.get("emotions"):
         return "S4"
     if current_step == "S4" and cd.get("thought"):
@@ -315,16 +318,24 @@ def _check_gate_met(current_step: str, cd: Dict[str, Any]) -> str | None:
         return "S6"
     if current_step == "S6" and cd.get("action_desired") and (cd.get("emotion_desired") or cd.get("thought_desired")):
         return "S7"
+    # S7→S8: require deep exploration (not just card data).
+    # gap_booklet_moves tracks which questions were explored in depth.
     if current_step == "S7" and cd.get("gap_name") and cd.get("gap_score"):
-        return "S8"
+        moves = cd.get("gap_booklet_moves") or []
+        if "belief" in moves and "opportunity" in moves:
+            return "S8"
     if current_step == "S8" and cd.get("pattern"):
         return "S9"
     if current_step == "S9" and cd.get("paradigm"):
         return "S10"
-    if current_step == "S10" and cd.get("stance"):
-        return "S11"
-    if current_step == "S11" and cd.get("renewal"):
-        return "S12"
+    if current_step == "S10":
+        stance = cd.get("stance") or {}
+        if isinstance(stance, dict) and stance.get("reality_belief"):
+            return "S11"
+    if current_step == "S11":
+        stance = cd.get("stance") or {}
+        if isinstance(stance, dict) and stance.get("gains") and stance.get("losses"):
+            return "S12"
     return None
 
 

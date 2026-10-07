@@ -343,15 +343,15 @@ async def send_message_v2(
         # --- Atomic transaction: stage all DB changes, commit once at the end ---
         from app.database import utc_now
 
-        # Deterministic gate check: if LLM didn't advance but gate is met, auto-advance.
-        if ux_version >= 3:
-            _CARD_CHAIN_STAGES = {"S3", "S5", "S6"}
-            cur_step = updated_state.get("current_step", "S0")
-            cd = updated_state.get("collected_data") or {}
-            gate_next = _check_gate_met(cur_step, cd)
-            if gate_next and cur_step != gate_next and cur_step in _CARD_CHAIN_STAGES:
-                logger.info(f"[BSD V2 API] Gate auto-advance: {cur_step}→{gate_next} (collected_data satisfies gate)")
-                updated_state["current_step"] = gate_next
+        # Deterministic gate check: the backend is the AUTHORITY on step advancement.
+        # If collected_data satisfies the gate, advance — regardless of what the LLM decided.
+        # The LLM focuses on coaching quality; the backend manages flow control.
+        cur_step = updated_state.get("current_step", "S0")
+        cd = updated_state.get("collected_data") or {}
+        gate_next = _check_gate_met(cur_step, cd)
+        if gate_next and cur_step != gate_next:
+            logger.info(f"[BSD V2 API] Gate auto-advance: {cur_step}→{gate_next} (collected_data satisfies gate)")
+            updated_state["current_step"] = gate_next
 
         # Interactive tools: S11 on entry; S12 deferred (booklet order — see stage_tool_triggers).
         tool_call = resolve_post_turn_tool_call(prev_step, updated_state, ux_version=ux_version)
