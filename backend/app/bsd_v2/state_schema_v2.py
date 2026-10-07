@@ -106,7 +106,14 @@ def add_message(
     Returns:
         Updated state
     """
-    state["messages"].append({
+    # Dedup: skip if the last message is from the same sender with identical content.
+    # This catches retries after partial commit (frontend retries on 500, but state
+    # was already saved with this message from the first attempt).
+    msgs = state["messages"]
+    if msgs and msgs[-1].get("sender") == sender and msgs[-1].get("content") == content:
+        return state
+
+    msgs.append({
         "sender": sender,
         "content": content,
         "timestamp": datetime.now(timezone.utc).isoformat(),

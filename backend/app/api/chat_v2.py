@@ -276,6 +276,21 @@ async def send_message_v2(
         ensure_training_started_at(state)
         inject_onboarding_topics_into_state(state, current_user.preferences or {}, body.language)
 
+        # Dedup: if the last message in state is this exact user message, skip processing.
+        # This catches retries after partial commit (500 retry with already-saved state).
+        last_msgs = state.get("messages") or []
+        if last_msgs and last_msgs[-1].get("sender") == "user" and last_msgs[-1].get("content") == safe_message:
+            logger.warning("[BSD V2 API] Duplicate message detected (retry after partial commit), returning last coach response")
+            last_coach = next((m for m in reversed(last_msgs) if m.get("sender") == "coach"), None)
+            coach_text = last_coach["content"] if last_coach else ""
+            return ChatResponse(
+                coach_message=coach_text,
+                conversation_id=body.conversation_id,
+                current_step=state.get("current_step", "S0"),
+                saturation_score=float(state.get("saturation_score", 0)),
+                collected_data=state.get("collected_data"),
+            )
+
         # Snapshot previous step BEFORE any V3 skip or handle_conversation.
         prev_step = state.get("current_step", "S0")
 
