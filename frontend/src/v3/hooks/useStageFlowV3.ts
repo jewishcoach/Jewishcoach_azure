@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import type {
   CollectedData,
@@ -84,13 +84,15 @@ export function useStageFlowV3(language: string = 'he') {
   // V3-specific: inline tool state
   const [activeTool, setActiveTool] = useState<ActiveInlineTool | null>(null);
   const [toolSubmitting, setToolSubmitting] = useState(false);
+  const sendingRef = useRef(false);
 
   // ---------------------------------------------------------------------------
   // Send chat message
   // ---------------------------------------------------------------------------
   const sendMessage = useCallback(
     async (text: string) => {
-      if (!text.trim() || isLoading) return;
+      if (!text.trim() || isLoading || sendingRef.current) return;
+      sendingRef.current = true;
       setIsLoading(true);
       setActiveTool(null);
 
@@ -183,6 +185,7 @@ export function useStageFlowV3(language: string = 'he') {
           content: 'סליחה, משהו השתבש. נסה שוב בבקשה.',
         }]);
       } finally {
+        sendingRef.current = false;
         setIsLoading(false);
       }
     },

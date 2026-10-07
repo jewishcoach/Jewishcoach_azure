@@ -71,12 +71,14 @@ export function ChatScreen({
   const quickReplies = showQuickReplies ? lastMessage.suggestions : undefined;
 
   const sendingRef = useRef(false);
+  useEffect(() => {
+    if (!isLoading) sendingRef.current = false;
+  }, [isLoading]);
   const handleSend = useCallback(() => {
     if (!inputText.trim() || inputDisabled || sendingRef.current) return;
     sendingRef.current = true;
     onSend(inputText.trim());
     setInputText('');
-    setTimeout(() => { sendingRef.current = false; }, 300);
   }, [inputText, inputDisabled, onSend]);
 
   return (

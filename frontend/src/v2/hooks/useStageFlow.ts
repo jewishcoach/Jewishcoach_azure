@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import type {
   ChatMessage,
@@ -66,10 +66,12 @@ export function useStageFlow(language: string = 'he') {
   const [saturationScore, setSaturationScore] = useState(0);
   const [collectedData, setCollectedData] = useState<CollectedData>({});
   const [quotaExceeded, setQuotaExceeded] = useState(false);
+  const sendingRef = useRef(false);
 
   const sendMessage = useCallback(
     async (text: string) => {
-      if (!text.trim()) return;
+      if (!text.trim() || sendingRef.current) return;
+      sendingRef.current = true;
       setIsLoading(true);
 
       try {
@@ -162,6 +164,7 @@ export function useStageFlow(language: string = 'he') {
         };
         setMessages((prev) => [...prev, errorMsg]);
       } finally {
+        sendingRef.current = false;
         setIsLoading(false);
       }
     },

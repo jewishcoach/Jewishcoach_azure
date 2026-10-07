@@ -50,8 +50,13 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle, stageNumbe
   const showQuickReplies = lastMessage?.role === 'assistant' && !isLoading;
   const quickReplies = showQuickReplies ? (lastMessage.suggestions?.length ? lastMessage.suggestions : getQuickRepliesForMessage(lastMessage)) : undefined;
 
+  const sendingRef = useRef(false);
+  useEffect(() => {
+    if (!isLoading) sendingRef.current = false;
+  }, [isLoading]);
   const handleSend = () => {
-    if (!inputText.trim() || isLoading) return;
+    if (!inputText.trim() || isLoading || sendingRef.current) return;
+    sendingRef.current = true;
     onSend(inputText.trim());
     setInputText('');
   };

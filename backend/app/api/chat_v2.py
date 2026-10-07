@@ -21,7 +21,7 @@ from ..security.chat_input import (
     sanitize_chat_message,
 )
 from ..middleware.usage_limiter import require_message_quota
-from ..bsd_v2.single_agent_coach import handle_conversation, warm_prompt_cache
+from ..bsd_v2.single_agent_coach import handle_conversation, warm_prompt_cache, _check_gate_met
 from ..bsd_v2.stage_tool_triggers import resolve_post_turn_tool_call, mark_trait_picker_sent, mark_matzui_summary_sent
 from ..bsd_v2.state_schema_v2 import create_initial_state
 from ..bsd_v2.station_checkpoint import ensure_training_started_at, apply_station_intent
@@ -361,6 +361,20 @@ async def send_message_v2(
         # Same as V1: smart title after 4th user message (was missing on V2-only traffic)
         try_autotitle_conversation(db, body.conversation_id, body.language or "he")
         
+        # Deterministic gate check: if LLM didn't advance but gate is met, auto-advance.
+        # Only for card-chain stages where the next stage has a card that should appear.
+        # Do NOT auto-advance stages with post-card coaching (S7 deep exploration, etc.).
+        if ux_version >= 3:
+            _CARD_CHAIN_STAGES = {"S3", "S5", "S6"}
+            cur_step = updated_state.get("current_step", "S0")
+            cd = updated_state.get("collected_data") or {}
+            gate_next = _check_gate_met(cur_step, cd)
+            if gate_next and cur_step != gate_next and cur_step in _CARD_CHAIN_STAGES:
+                logger.info(f"[BSD V2 API] Gate auto-advance: {cur_step}→{gate_next} (collected_data satisfies gate)")
+                updated_state["current_step"] = gate_next
+                save_v2_state(body.conversation_id, updated_state, db, expected_version=state_version)
+                state_version += 1
+
         # Interactive tools: S11 on entry; S12 deferred (booklet order — see stage_tool_triggers).
         tool_call = resolve_post_turn_tool_call(prev_step, updated_state, ux_version=ux_version)
         if tool_call and tool_call.get("tool_type") in ("trait_picker", "trait_card_builder"):
