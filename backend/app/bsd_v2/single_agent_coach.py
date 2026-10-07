@@ -2903,6 +2903,15 @@ async def handle_conversation(
         state = add_message(state, "coach", coach_message, internal_state)
         consume_session_flow_flags(state)
 
+        # Gate auto-advance: backend is the authority on step advancement.
+        # If collected_data satisfies the gate, advance regardless of LLM decision.
+        cur_step = state.get("current_step", "S0")
+        cd = state.get("collected_data") or {}
+        gate_next = _check_gate_met(cur_step, cd)
+        if gate_next and cur_step != gate_next:
+            logger.info(f"[BSD V2] Gate auto-advance: {cur_step}→{gate_next}")
+            state["current_step"] = gate_next
+
         end_time = time.time()
         total_ms = (end_time - start_time) * 1000
         logger.info(f"[BSD V2] Updated to step: {state['current_step']}, saturation: {state['saturation_score']:.2f}")

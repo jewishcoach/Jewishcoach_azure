@@ -358,12 +358,13 @@ async def run_simulation(
         print(f"{DIM}   {persona['issue']}{RESET}")
         print(f"{'═'*70}")
 
-    # Initialize state
+    # Initialize state (V3 mode — uses V3 prompts with card-aware gates)
     state = create_initial_state(
         conversation_id=f"sim_{persona_key}_{int(time.time())}",
         user_id=f"sim_user_{persona_key}",
         language="he",
     )
+    state["ux_version"] = 3
 
     conversation_history: List[Dict[str, str]] = []
     prev_step = "S0"

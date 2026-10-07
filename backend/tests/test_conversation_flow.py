@@ -251,7 +251,8 @@ async def test_handle_conversation_basic_flow():
 
     assert coach_msg is not None
     assert len(coach_msg) > 0
-    assert updated_state["current_step"] == "S3"
+    # Gate auto-advance: LLM returned S3 with emotions → backend advances to S4
+    assert updated_state["current_step"] == "S4"
     # User message should be in state
     user_msgs = [m for m in updated_state["messages"] if m["sender"] == "user"]
     assert len(user_msgs) == 1
