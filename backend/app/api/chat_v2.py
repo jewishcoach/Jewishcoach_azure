@@ -152,11 +152,20 @@ def _prune_state_messages(state: Dict[str, Any]) -> None:
         state["messages"] = msgs[-TRIM_KEEP_RECENT:]
 
 
-def save_v2_state(conversation_id: int, state: Dict[str, Any], db: Session, expected_version: int | None = None) -> None:
+def save_v2_state(
+    conversation_id: int,
+    state: Dict[str, Any],
+    db: Session,
+    expected_version: int | None = None,
+    commit: bool = True,
+) -> None:
     """
     Save V2 state to database with optimistic locking.
     If expected_version is provided, the save fails with 409 if the DB version
     has changed since load (another request wrote in between).
+
+    When commit=False, stages changes on the session without committing.
+    The caller is responsible for calling db.commit() (atomic transaction pattern).
     """
     conv = db.query(ConversationModel).filter_by(id=conversation_id).first()
     if not conv:
@@ -177,7 +186,8 @@ def save_v2_state(conversation_id: int, state: Dict[str, Any], db: Session, expe
     conv.current_phase = state.get("current_step", "S0")
     conv.v2_state_version = (conv.v2_state_version or 0) + 1
 
-    db.commit()
+    if commit:
+        db.commit()
     logger.debug(f"[BSD V2 API] Saved state with {len(state.get('messages', []))} messages, version={conv.v2_state_version}")
 
 
@@ -330,55 +340,10 @@ async def send_message_v2(
 
         station_checkpoint = updated_state.pop("last_station_checkpoint_api", None)
 
-        # Save state
-        t5 = time.time()
-        logger.debug(
-            "[BSD V2 API] Saving state: step=%s, messages=%s",
-            updated_state["current_step"],
-            len(updated_state.get("messages", [])),
-        )
-        save_v2_state(body.conversation_id, updated_state, db, expected_version=state_version)
-        state_version += 1
-        t6 = time.time()
-        logger.debug("[PERF API] Save state to DB: %.0fms", (t6 - t5) * 1000)
-        logger.debug("[BSD V2 API] State saved successfully")
-        
-        # Also save messages to DB (for compatibility with UI)
-        t7 = time.time()
+        # --- Atomic transaction: stage all DB changes, commit once at the end ---
         from app.database import utc_now
-        
-        # Save user message
-        user_msg = Message(
-            conversation_id=body.conversation_id,
-            role="user",
-            content=safe_message,
-            timestamp=utc_now()
-        )
-        db.add(user_msg)
-        
-        # Save coach message (meta.phase for smart scroll in frontend)
-        coach_meta: Dict[str, Any] = {"phase": updated_state["current_step"]}
-        if station_checkpoint:
-            coach_meta["station_checkpoint"] = station_checkpoint
-        coach_msg = Message(
-            conversation_id=body.conversation_id,
-            role="assistant",
-            content=coach_message,
-            timestamp=utc_now(),
-            meta=coach_meta,
-        )
-        db.add(coach_msg)
-        
-        db.commit()
-        t8 = time.time()
-        logger.debug("[PERF API] Save messages to DB: %.0fms", (t8 - t7) * 1000)
 
-        # Same as V1: smart title after 4th user message (was missing on V2-only traffic)
-        try_autotitle_conversation(db, body.conversation_id, body.language or "he")
-        
         # Deterministic gate check: if LLM didn't advance but gate is met, auto-advance.
-        # Only for card-chain stages where the next stage has a card that should appear.
-        # Do NOT auto-advance stages with post-card coaching (S7 deep exploration, etc.).
         if ux_version >= 3:
             _CARD_CHAIN_STAGES = {"S3", "S5", "S6"}
             cur_step = updated_state.get("current_step", "S0")
@@ -387,19 +352,13 @@ async def send_message_v2(
             if gate_next and cur_step != gate_next and cur_step in _CARD_CHAIN_STAGES:
                 logger.info(f"[BSD V2 API] Gate auto-advance: {cur_step}→{gate_next} (collected_data satisfies gate)")
                 updated_state["current_step"] = gate_next
-                save_v2_state(body.conversation_id, updated_state, db, expected_version=state_version)
-                state_version += 1
 
         # Interactive tools: S11 on entry; S12 deferred (booklet order — see stage_tool_triggers).
         tool_call = resolve_post_turn_tool_call(prev_step, updated_state, ux_version=ux_version)
         if tool_call and tool_call.get("tool_type") in ("trait_picker", "trait_card_builder"):
             mark_trait_picker_sent(updated_state)
-            save_v2_state(body.conversation_id, updated_state, db, expected_version=state_version)
-            state_version += 1
         if tool_call and tool_call.get("tool_type") == "matzui_summary":
             mark_matzui_summary_sent(updated_state)
-            save_v2_state(body.conversation_id, updated_state, db, expected_version=state_version)
-            state_version += 1
         if tool_call:
             logger.debug(
                 "[BSD V2 API] tool_call: %s (step %s→%s, ux_v%s)",
@@ -430,6 +389,38 @@ async def send_message_v2(
                             stage_complete_payload = summary.model_dump()
                         except Exception:
                             logger.exception("[BSD V2 API] Failed to generate stage summary on completion")
+
+        # --- SINGLE ATOMIC COMMIT: save everything together ---
+        t5 = time.time()
+        save_v2_state(body.conversation_id, updated_state, db, expected_version=state_version, commit=False)
+        state_version += 1
+
+        # Save user + coach messages to Messages table (for UI compatibility)
+        user_msg = Message(
+            conversation_id=body.conversation_id,
+            role="user",
+            content=safe_message,
+            timestamp=utc_now()
+        )
+        db.add(user_msg)
+        coach_meta: Dict[str, Any] = {"phase": updated_state["current_step"]}
+        if station_checkpoint:
+            coach_meta["station_checkpoint"] = station_checkpoint
+        coach_msg = Message(
+            conversation_id=body.conversation_id,
+            role="assistant",
+            content=coach_message,
+            timestamp=utc_now(),
+            meta=coach_meta,
+        )
+        db.add(coach_msg)
+
+        db.commit()
+        t6 = time.time()
+        logger.debug("[PERF API] Atomic commit (state + messages): %.0fms", (t6 - t5) * 1000)
+
+        # Auto-title runs AFTER the atomic commit (non-critical, can fail independently)
+        try_autotitle_conversation(db, body.conversation_id, body.language or "he")
 
         suggestions = updated_state.pop("_suggestions", [])
         collected_data = updated_state.get("collected_data")
@@ -473,6 +464,7 @@ async def send_message_v2(
             detail={"error": e.reason, "message": "Invalid message content"},
         )
     except Exception as e:
+        db.rollback()
         logger.exception("[BSD V2 API] Error")
         try:
             from ..bsd_v2.error_buffer import capture_error

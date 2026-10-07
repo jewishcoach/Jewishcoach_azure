@@ -110,9 +110,13 @@ def utc_now():
 
 
 def get_db():
-    """FastAPI dependency: one session per request, always closed."""
+    """FastAPI dependency: one session per request, always closed.
+    Rolls back uncommitted changes on error to prevent partial state."""
     db = SessionLocal()
     try:
         yield db
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()

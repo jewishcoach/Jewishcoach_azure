@@ -257,9 +257,9 @@ async def submit_tool_response(
                 if tool_call and tool_call.get("tool_type") == "matzui_summary":
                     mark_matzui_summary_sent(updated_state)
 
-                save_v2_state(conversation_id, updated_state, db, expected_version=state_version)
+                save_v2_state(conversation_id, updated_state, db, expected_version=state_version, commit=False)
             else:
-                save_v2_state(conversation_id, v2_state, db, expected_version=state_version)
+                save_v2_state(conversation_id, v2_state, db, expected_version=state_version, commit=False)
 
             logger.info(f"[Tools] Processed {request.tool_type} submission in V2 state for conv {conversation_id}")
         except HTTPException:
