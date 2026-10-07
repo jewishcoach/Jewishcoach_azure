@@ -160,9 +160,15 @@ async def submit_tool_response(
                 if request.data.get("belief") is not None:
                     if "belief" not in moves:
                         moves.append("belief")
+                    cd["gap_belief"] = request.data["belief"]
                 if request.data.get("opportunity") is not None:
                     if "opportunity" not in moves:
                         moves.append("opportunity")
+                    opp = request.data["opportunity"]
+                    if isinstance(opp, dict):
+                        cd["gap_opportunity"] = opp.get("what", "כן") if opp.get("has") else "לא"
+                    else:
+                        cd["gap_opportunity"] = str(opp)
                 cd["gap_booklet_moves"] = moves
                 v2_state["collected_data"] = cd
 

@@ -2351,6 +2351,10 @@ def build_conversation_context(
                 already_done.append(f"✓ שם הפער: {cd['gap_name']}")
             if cd.get('gap_score'):
                 already_done.append(f"✓ ציון הפער: {cd['gap_score']}")
+            if cd.get('gap_belief'):
+                already_done.append(f"✓ תשובת אמונה מהכרטיס: {cd['gap_belief']}")
+            if cd.get('gap_opportunity'):
+                already_done.append(f"✓ תשובת הזדמנות מהכרטיס: {cd['gap_opportunity']}")
             if moves:
                 move_labels = {"belief": "אמונה", "opportunity": "הזדמנות", "dwelling": "שהייה", "authenticity": "אותנטיות/3 מסכים"}
                 done_labels = [move_labels.get(m, m) for m in moves]
