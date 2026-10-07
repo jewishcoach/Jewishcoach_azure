@@ -2433,44 +2433,11 @@ def build_conversation_context(
 # MAIN HANDLER
 # ══════════════════════════════════════════════════════════════════════════════
 
-async def handle_conversation(
-    user_message: str,
-    state: Dict[str, Any],
-    language: str = "he",
-    user_gender: Optional[str] = None,
-    conversation_id: Optional[int] = None,
-) -> Tuple[str, Dict[str, Any]]:
-    """
-    Handle single conversation turn in V2.
-    
-    Flow:
-    1. Build context from state + history + new message
-    2. Call LLM with system prompt
-    3. Parse JSON response
-    4. Extract coach message and internal state
-    5. Update state
-    6. Return (coach_message, updated_state)
-    
-    Args:
-        user_message: User's message
-        state: Current conversation state
-        language: "he" or "en"
-    
-    Returns:
-        (coach_message, updated_state)
-    """
-    # Per-turn debug: repetition & stage transition tracking
-    overrides_applied: List[str] = []
-    if SAFETY_NET_DISABLED:
-        logger.warning("[Safety Net] DISABLED (BSD_V2_SAFETY_NET_DISABLED=1)")
-    _bsd_log("TURN_START", step=state['current_step'], saturation=state['saturation_score'],
-             msg_count=len(state.get('messages', [])), user_preview=user_message[:80])
-    logger.info(f"[BSD V2] Handling message: '{user_message[:50]}...'")
-    logger.info(f"[BSD V2] Current step: {state['current_step']}, saturation: {state['saturation_score']:.2f}")
-    logger.info(f"[BSD V2] Message count in state: {len(state.get('messages', []))}")
-    
-    # 🚨 CRITICAL: Clarification requests ("אתה יכול להסביר?", "מה כוונתך?") ≠ frustration!
-    # Per s1_topic.md: user wants EXPLANATION, not to move on. Give explanation, stay in S1.
+def _handle_early_returns(
+    user_message: str, state: Dict[str, Any], language: str
+) -> Optional[Tuple[str, Dict[str, Any]]]:
+    """Handle clarification requests and frustrated users before the LLM call.
+    Returns (coach_message, updated_state) if handled, None to continue to LLM."""
     clarification_only_phrases_he = ["מה כוונה", "מה הכוונה", "לא הבנתי", "מה כוונתך", "אתה יכול להסביר", "מה חסר", "למה אתה חוקר"]
     clarification_only_phrases_en = ["what do you mean", "i don't understand", "can you explain", "what's missing", "why are you asking"]
     user_msg_lower = (user_message or "").lower()
@@ -2478,7 +2445,6 @@ async def handle_conversation(
         (language == "he" and any(p in user_msg_lower for p in clarification_only_phrases_he))
         or (language == "en" and any(p in user_msg_lower for p in clarification_only_phrases_en))
     )
-    # Real frustration = "אמרתי כבר", "די כבר" - wants to move on
     real_frustration_phrases_he = [
         "אמרתי כבר", "אמרתי לך", "כבר אמרתי", "כבר סיפרתי",
         "ספרתי לך", "ספרתי לך על", "עשינו זאת כבר", "בוא נתקדם",
@@ -2498,8 +2464,8 @@ async def handle_conversation(
         or (language == "en" and any(p in user_msg_lower for p in real_frustration_phrases_en))
     )
 
+    # S1 clarification request — explain, stay in S1
     if not SAFETY_NET_DISABLED and is_clarification_only and not has_real_frustration and state.get("current_step") == "S1":
-        # User asked for explanation - give it, stay in S1. Do NOT jump to S2!
         logger.info(f"[Safety Net] User asked for clarification ('{user_message[:40]}...') - explaining, staying in S1")
         if language == "he":
             explanation = "אני שואל עוד כי הנושא צריך להיות מוגדר היטב לפני שנמשיך. כדי לאמן אותך, אני צריך להבין במדויק על מה אתה רוצה להתאמן."
@@ -2520,435 +2486,427 @@ async def handle_conversation(
         state = add_message(state, "coach", explanation, {"current_step": "S1", "saturation_score": state.get("saturation_score", 0.3), "reflection": "Explained why we need more clarity"})
         return explanation, state
 
-    # Check if user is frustrated (wants to move on) - Use EXPLICIT phrases only
+    # Frustrated user — progress to next step
     user_frustrated = has_real_frustration and not SAFETY_NET_DISABLED
-
     if user_frustrated:
         _bsd_log("USER_FRUSTRATED", step=state['current_step'], user_msg=user_message[:60])
         logger.warning(f"[Safety Net] User is frustrated ('{user_message}') - checking if can progress")
         current_step = state['current_step']
-        
-        # Add user message first
         state = add_message(state, "user", user_message)
-        
-        # 🎯 SPECIAL HANDLING FOR S1 - check if topic/event before progressing
+
         if current_step == "S1":
             has_event, _ = has_sufficient_event_details(state)
             has_topic, reason = has_clear_topic_for_s2(state)
-            
             if has_event:
-                # ✅ User already gave event - move to S3 (emotions)!
                 logger.info(f"[Safety Net] User frustrated in S1, but already gave event → moving to S3")
-                if language == "he":
-                    apology_message = "מצטער על החזרה! שמעתי על האירוע. עכשיו – מה הרגשת באותו רגע?"
-                else:
-                    apology_message = "Sorry for repeating! I heard about the event. Now – what did you feel in that moment?"
+                apology_message = "מצטער על החזרה! שמעתי על האירוע. עכשיו – מה הרגשת באותו רגע?" if language == "he" else "Sorry for repeating! I heard about the event. Now – what did you feel in that moment?"
                 next_step = "S3"
             elif has_topic:
-                # ✅ Topic is clear - can progress to S2
                 logger.info(f"[Safety Net] User frustrated/confused in S1, but topic is clear → moving to S2")
                 confusion_phrases = ["מה הכונה", "מה הכוונה", "לא הבנתי", "מה כוונתך", "what do you mean", "i don't understand"]
                 is_confusion = any(p in user_message.lower() for p in confusion_phrases)
-                if language == "he":
-                    prefix = "סליחה על השאלה המסובכת. " if is_confusion else "אני מבין. "
-                else:
-                    prefix = "Sorry for the confusing question. " if is_confusion else "I understand. "
+                prefix = ("סליחה על השאלה המסובכת. " if is_confusion else "אני מבין. ") if language == "he" else ("Sorry for the confusing question. " if is_confusion else "I understand. ")
                 apology_message = f"{prefix}{get_next_step_question(current_step, language, state=state)}"
                 next_step = "S2"
             else:
-                # ⚠️ Topic not clear - EXPLAIN why we need more info
                 logger.warning(f"[Safety Net] User frustrated in S1, but topic not clear ({reason}) → explaining")
                 apology_message = get_s1_explanation_for_missing_info(reason, language)
-                next_step = "S1"  # Stay in S1 but with explanation
+                next_step = "S1"
         else:
-            # For other stages, use standard progression
-            if language == "he":
-                apology_message = f"מצטער על החזרה! {get_next_step_question(current_step, language, state=state)}"
-            else:
-                apology_message = f"Sorry for repeating! {get_next_step_question(current_step, language, state=state)}"
-            
-            # Determine next step
+            apology_message = f"מצטער על החזרה! {get_next_step_question(current_step, language, state=state)}" if language == "he" else f"Sorry for repeating! {get_next_step_question(current_step, language, state=state)}"
             step_progression = {
                 "S0": "S1", "S1": "S2", "S2": "S3", "S3": "S4",
                 "S4": "S5", "S5": "S6", "S6": "S7", "S7": "S8",
                 "S8": "S9", "S9": "S10", "S10": "S11", "S11": "S12", "S12": "S13", "S13": "S14", "S14": "S15"
             }
             next_step = step_progression.get(current_step, current_step)
-        
-        # Add coach response
+
         internal_state = {
             "current_step": next_step,
             "saturation_score": 0.3,
             "reflection": f"User frustrated - moving from {current_step} to {next_step}"
         }
         state = add_message(state, "coach", apology_message, internal_state)
-        
         return apology_message, state
-    
-    try:
-        start_time = time.time()
-        
-        # 1. Build context
-        t1 = time.time()
-        context = build_conversation_context(state, user_message, language)
-        t2 = time.time()
-        logger.info(f"[PERF] Build context: {(t2-t1)*1000:.0f}ms ({len(context)} chars)")
-        
-        # 2. Prepare messages using modular stage-aware prompt assembly.
-        current_step = state.get("current_step", "S1")
-        system_prompt = _get_system_prompt(state=state, user_message=user_message, language=language, user_gender=user_gender)
-        logger.info(
-            "[PERF] System prompt chars from prompt_manager: %s",
-            len(system_prompt),
-        )
-        
-        messages = [
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=context)
-        ]
-        
-        # 3. Call LLM (gpt-4o-mini, strict structured output)
-        t3 = time.time()
-        coach_message = ""
-        suggestions: List[str] = []
-        internal_state: Dict[str, Any] = {}
 
-        llm = get_azure_chat_llm_4o_mini()
-        # Use function_calling — most reliable for structured output with Azure OpenAI.
-        # json_schema fails with optional nested fields; json_mode requires "JSON" in prompt.
-        # function_calling sends schema as a tool definition and is universally supported.
-        structured_llm = llm.with_structured_output(
-            CoachResponseSchema,
-            method="function_calling",
-            include_raw=True,
-        )
-        response_dict = await invoke_structured_coach_llm(
-            structured_llm,
-            messages,
-            context=context,
-            system_prompt=system_prompt,
-            language=language,
-        )
-        raw_message = response_dict.get("raw")
-        raw_text = (raw_message.content if raw_message else "") or ""
-        parsed_obj = response_dict.get("parsed")
-        parsing_error = response_dict.get("parsing_error")
+    return None
 
-        # When using function_calling, content is empty — data lives in tool_calls
-        tool_call_args: dict | None = None
-        if raw_message and hasattr(raw_message, "tool_calls") and raw_message.tool_calls:
-            tool_call_args = raw_message.tool_calls[0].get("args") if isinstance(raw_message.tool_calls[0], dict) else getattr(raw_message.tool_calls[0], "args", None)
 
-        effective_raw = raw_text or (json.dumps(tool_call_args, ensure_ascii=False) if tool_call_args else "")
-        logger.info(f"[BSD V2] Raw LLM response length: {len(effective_raw)} chars (content={len(raw_text)}, tool_call={'yes' if tool_call_args else 'no'})")
-        if parsing_error:
-            logger.warning(f"[BSD V2] Parsing error from structured output: {parsing_error}")
+async def _call_llm_and_parse(
+    state: Dict[str, Any], user_message: str, language: str, user_gender: Optional[str]
+) -> Tuple[str, List[str], Dict[str, Any]]:
+    """Build context, call LLM, parse response. Returns (coach_message, suggestions, internal_state)."""
+    t1 = time.time()
+    context = build_conversation_context(state, user_message, language)
+    t2 = time.time()
+    logger.info(f"[PERF] Build context: {(t2-t1)*1000:.0f}ms ({len(context)} chars)")
 
-        if parsed_obj:
-            coach_message = (parsed_obj.coach_message or "").strip()
-            suggestions = parsed_obj.suggestions or []
-            internal_state = parsed_obj.internal_state.model_dump()
-            # Enforce: after first 2 turns, allow suggestions only for binary questions (2 options)
-            user_msg_count = sum(1 for m in state.get("messages", []) if m.get("sender") == "user")
-            if user_msg_count >= 2 and len(suggestions) > 2:
-                suggestions = []
-        else:
-            logger.error("[BSD V2] Model failed to return matching JSON Schema.")
-            logger.error(f"[BSD V2] RAW OUTPUT PREVIEW: {effective_raw[:500]}...")
+    system_prompt = _get_system_prompt(state=state, user_message=user_message, language=language, user_gender=user_gender)
+    logger.info("[PERF] System prompt chars from prompt_manager: %s", len(system_prompt))
 
-            # Try extracting from tool_call args directly (most common failure path)
-            fallback_resolved = False
-            if tool_call_args and isinstance(tool_call_args, dict):
-                logger.info("[BSD V2] Attempting recovery from tool_call args...")
-                tc_msg = (tool_call_args.get("coach_message") or "").strip()
-                tc_state = tool_call_args.get("internal_state")
-                if tc_msg and isinstance(tc_state, dict):
-                    coach_message = tc_msg
-                    suggestions = tool_call_args.get("suggestions") or []
-                    internal_state = tc_state
-                    # Ensure collected_data is a plain dict
-                    if "collected_data" in internal_state and hasattr(internal_state["collected_data"], "model_dump"):
-                        internal_state["collected_data"] = internal_state["collected_data"].model_dump()
-                    fallback_resolved = True
-                    logger.info("[BSD V2] Recovered coach_message + internal_state from tool_call args.")
+    messages = [
+        SystemMessage(content=system_prompt),
+        HumanMessage(content=context)
+    ]
 
-            if not fallback_resolved:
-                logger.info("[BSD V2] Initiating manual fallback parsing (_parse_json_response)...")
-                try:
-                    coach_message, internal_state = _parse_json_response(effective_raw, state, user_message, language)
-                    logger.info("[BSD V2] Manual fallback parsing succeeded.")
-                except (json.JSONDecodeError, Exception) as parse_err:
-                    logger.error(f"[BSD V2] Manual fallback parsing also failed: {parse_err}")
-                    coach_message = get_next_step_question(state.get("current_step", "S1"), language, state=state)
-                    internal_state = {
-                        "current_step": state.get("current_step", "S1"),
-                        "saturation_score": state.get("saturation_score", 0.3),
-                        "reflection": "Fallback after both structured and manual parse failed",
-                    }
+    t3 = time.time()
+    coach_message = ""
+    suggestions: List[str] = []
+    internal_state: Dict[str, Any] = {}
 
-        # Fallback: ensure collected_data has topic when LLM omits it (S1)
-        cd = internal_state.get("collected_data") or {}
-        if not cd.get("topic") and state.get("current_step") in ("S0", "S1") and user_message.strip():
-            inferred = _extract_topic_from_conversation(state, user_message, language)
-            if not inferred and 3 <= len(user_message.strip()) <= 80:
-                skip = ("מה שמך", "שלום", "היי", "what's your name", "hello", "hi")
-                if not any(s in user_message.lower() for s in skip):
-                    inferred = user_message.strip()[:80]
-            if inferred:
-                cd = {**cd, "topic": inferred}
-                internal_state["collected_data"] = cd
-        _bsd_log("LLM_DECISION", step=internal_state.get("current_step"),
-                 saturation=internal_state.get("saturation_score"),
-                 collected_data_keys=list(_safe_collected_dict(internal_state.get("collected_data")).keys()),
-                 coach_preview=(coach_message or "")[:60])
+    llm = get_azure_chat_llm_4o_mini()
+    structured_llm = llm.with_structured_output(
+        CoachResponseSchema,
+        method="function_calling",
+        include_raw=True,
+    )
+    response_dict = await invoke_structured_coach_llm(
+        structured_llm,
+        messages,
+        context=context,
+        system_prompt=system_prompt,
+        language=language,
+    )
+    raw_message = response_dict.get("raw")
+    raw_text = (raw_message.content if raw_message else "") or ""
+    parsed_obj = response_dict.get("parsed")
+    parsing_error = response_dict.get("parsing_error")
 
-        t4 = time.time()
-        llm_ms = (t4 - t3) * 1000
-        logger.info(f"[PERF] LLM call: {llm_ms:.0f}ms")
+    tool_call_args: dict | None = None
+    if raw_message and hasattr(raw_message, "tool_calls") and raw_message.tool_calls:
+        tool_call_args = raw_message.tool_calls[0].get("args") if isinstance(raw_message.tool_calls[0], dict) else getattr(raw_message.tool_calls[0], "args", None)
 
-        coach_message = _sanitize_coach_message(coach_message)
+    effective_raw = raw_text or (json.dumps(tool_call_args, ensure_ascii=False) if tool_call_args else "")
+    logger.info(f"[BSD V2] Raw LLM response length: {len(effective_raw)} chars (content={len(raw_text)}, tool_call={'yes' if tool_call_args else 'no'})")
+    if parsing_error:
+        logger.warning(f"[BSD V2] Parsing error from structured output: {parsing_error}")
 
-        # V3 tool submission bypass: skip repetition/re-ask/mismatch checks
-        # After a structured tool submission, the coach's response is validation —
-        # not repetition. The safety nets would incorrectly flag it.
-        _tool_just_submitted = state.pop("_tool_just_submitted", None)
-        if _tool_just_submitted:
-            logger.info(f"[Safety Net] Skipping repetition/re-ask/mismatch checks (tool_just_submitted={_tool_just_submitted})")
+    if parsed_obj:
+        coach_message = (parsed_obj.coach_message or "").strip()
+        suggestions = parsed_obj.suggestions or []
+        internal_state = parsed_obj.internal_state.model_dump()
+        user_msg_count = sum(1 for m in state.get("messages", []) if m.get("sender") == "user")
+        if user_msg_count >= 2 and len(suggestions) > 2:
+            suggestions = []
+    else:
+        logger.error("[BSD V2] Model failed to return matching JSON Schema.")
+        logger.error(f"[BSD V2] RAW OUTPUT PREVIEW: {effective_raw[:500]}...")
 
-        # 5. Safety Net: Check for repeated questions
-        t7 = time.time()
-        if not _tool_just_submitted:
-            history_for_check = get_conversation_history(state, last_n=10)
-            repeated_check = check_repeated_question(coach_message, history_for_check, state['current_step'], language, user_message=user_message)
-        else:
-            repeated_check = None
-        t8 = time.time()
-        logger.info(f"[PERF] Repeated check: {(t8-t7)*1000:.0f}ms")
+        fallback_resolved = False
+        if tool_call_args and isinstance(tool_call_args, dict):
+            logger.info("[BSD V2] Attempting recovery from tool_call args...")
+            tc_msg = (tool_call_args.get("coach_message") or "").strip()
+            tc_state = tool_call_args.get("internal_state")
+            if tc_msg and isinstance(tc_state, dict):
+                coach_message = tc_msg
+                suggestions = tool_call_args.get("suggestions") or []
+                internal_state = tc_state
+                if "collected_data" in internal_state and hasattr(internal_state["collected_data"], "model_dump"):
+                    internal_state["collected_data"] = internal_state["collected_data"].model_dump()
+                fallback_resolved = True
+                logger.info("[BSD V2] Recovered coach_message + internal_state from tool_call args.")
 
-        # Repetition and re-ask checks run ALWAYS (not gated by SAFETY_NET_DISABLED)
-        if repeated_check:
-            overrides_applied.append("repetition")
-            repl_msg = repeated_check[0] if isinstance(repeated_check, tuple) else repeated_check
-            step_override = repeated_check[1] if isinstance(repeated_check, tuple) and len(repeated_check) > 1 else None
-            _bsd_log("REPETITION_OVERRIDE", original=coach_message[:80], replacement=repl_msg[:80],
-                     step=state['current_step'])
-            logger.warning(f"[Safety Net] Overriding repeated question")
-            coach_message = repl_msg
-            internal_state["current_step"] = step_override if step_override else state["current_step"]
-            internal_state["saturation_score"] = state.get("saturation_score", 0.3)
+        if not fallback_resolved:
+            logger.info("[BSD V2] Initiating manual fallback parsing (_parse_json_response)...")
+            try:
+                coach_message, internal_state = _parse_json_response(effective_raw, state, user_message, language)
+                logger.info("[BSD V2] Manual fallback parsing succeeded.")
+            except (json.JSONDecodeError, Exception) as parse_err:
+                logger.error(f"[BSD V2] Manual fallback parsing also failed: {parse_err}")
+                coach_message = get_next_step_question(state.get("current_step", "S1"), language, state=state)
+                internal_state = {
+                    "current_step": state.get("current_step", "S1"),
+                    "saturation_score": state.get("saturation_score", 0.3),
+                    "reflection": "Fallback after both structured and manual parse failed",
+                }
 
-        # 5.5. Coach re-asking for event when user already gave it (always active)
-        if not _tool_just_submitted:
-            re_ask_check = detect_re_asking_for_event(coach_message, state, language, user_message=user_message)
-        else:
-            re_ask_check = None
-        if re_ask_check:
-            overrides_applied.append("re_ask_event")
-            coach_message, next_step_for_reask = re_ask_check
-            _bsd_log("RE_ASK_OVERRIDE", step=next_step_for_reask, reason="user_already_gave_event")
-            internal_state["current_step"] = next_step_for_reask
-            internal_state["saturation_score"] = 0.3
+    # Fallback: ensure collected_data has topic when LLM omits it (S1)
+    cd = internal_state.get("collected_data") or {}
+    if not cd.get("topic") and state.get("current_step") in ("S0", "S1") and user_message.strip():
+        inferred = _extract_topic_from_conversation(state, user_message, language)
+        if not inferred and 3 <= len(user_message.strip()) <= 80:
+            skip = ("מה שמך", "שלום", "היי", "what's your name", "hello", "hi")
+            if not any(s in user_message.lower() for s in skip):
+                inferred = user_message.strip()[:80]
+        if inferred:
+            cd = {**cd, "topic": inferred}
+            internal_state["collected_data"] = cd
+    _bsd_log("LLM_DECISION", step=internal_state.get("current_step"),
+             saturation=internal_state.get("saturation_score"),
+             collected_data_keys=list(_safe_collected_dict(internal_state.get("collected_data")).keys()),
+             coach_preview=(coach_message or "")[:60])
 
-        # 6. Safety Net: Check for stage/question mismatch
-        t9 = time.time()
-        if not _tool_just_submitted:
-            mismatch_stage = detect_stage_question_mismatch(coach_message, state["current_step"], language, state=state)
-        else:
-            mismatch_stage = None
-        t10 = time.time()
-        logger.info(f"[PERF] Stage mismatch check: {(t10-t9)*1000:.0f}ms")
+    t4 = time.time()
+    logger.info(f"[PERF] LLM call: {(t4-t3)*1000:.0f}ms")
 
-        # Stage mismatch correction runs ALWAYS (not gated by SAFETY_NET_DISABLED)
-        if mismatch_stage:
-            overrides_applied.append("stage_mismatch")
-            _bsd_log("STAGE_MISMATCH", llm_step=internal_state.get("current_step"), corrected=mismatch_stage,
-                     coach_preview=coach_message[:60])
-            logger.warning(f"[Safety Net] Auto-correcting stage mismatch: {state['current_step']} → {mismatch_stage}")
-            internal_state["current_step"] = mismatch_stage
-        
-        # 6.5. Safety Net: Validate situation quality (S2→S3 only)
-        old_step = state["current_step"]
-        new_step = internal_state.get("current_step", old_step)
-        
-        t11 = time.time()
-        if not SAFETY_NET_DISABLED and old_step == "S2" and new_step == "S3":
-            # Check if situation meets all 4 criteria
-            logger.info(f"[Safety Net] Validating S2 situation quality before S2→S3...")
-            situation_valid, guidance = await validate_situation_quality(state, llm, language)
-            logger.info(f"[Safety Net] Validation result: valid={situation_valid}")
-            if not situation_valid and guidance:
-                overrides_applied.append("s2_quality_block")
-                _bsd_log("S2_QUALITY_BLOCK", reason="situation_not_meet_criteria")
-                logger.warning(f"[Safety Net] Situation doesn't meet criteria, blocking S2→S3")
-                coach_message = guidance
-                internal_state["current_step"] = "S2"  # Stay in S2
-        t12 = time.time()
-        if old_step == "S2" and new_step == "S3":
-            logger.info(f"[PERF] S2 validation: {(t12-t11)*1000:.0f}ms")
-        
-        # 7. Safety Net: Validate stage transition
-        t13 = time.time()
-        is_valid, correction = validate_stage_transition(
-            old_step,
-            new_step,
-            state,
-            language,
-            coach_message,
-            user_message=user_message,
-            proposed_collected_data=internal_state.get("collected_data"),
-            proposed_reflection=str(internal_state.get("reflection") or ""),
-        )
-        t14 = time.time()
-        logger.info(f"[PERF] Stage transition validation: {(t14-t13)*1000:.0f}ms")
-        if old_step != new_step:
-            _bsd_log("TRANSITION_ATTEMPT", old_step=old_step, new_step=new_step, allowed=is_valid)
+    coach_message = _sanitize_coach_message(coach_message)
+    return coach_message, suggestions, internal_state
 
-        if not SAFETY_NET_DISABLED and not is_valid and correction:
-            overrides_applied.append("transition_block")
-            _bsd_log("TRANSITION_BLOCK", old_step=old_step, new_step=new_step, reason=correction[:80])
-            logger.warning(f"[Safety Net] Overriding transition {old_step}→{new_step}")
-            coach_message = correction
-            # Keep current step (don't advance)
-            internal_state["current_step"] = old_step
 
-        # 6.4 S3 emotional congruence: enforce prompt rule when LLM skips probing (e.g. joy + anger same breath)
-        if (
-            not SAFETY_NET_DISABLED
-            and state["current_step"] == "S3"
-            and user_message
-        ):
-            pend = s3_emotional_congruence_emotion_needed(user_message, state, language)
-            if pend and not coach_addresses_s3_emotional_congruence(coach_message, pend, language):
-                coach_message = s3_emotional_congruence_followup_message(pend, language)
-                internal_state["current_step"] = "S3"
-                internal_state["saturation_score"] = min(
-                    float(internal_state.get("saturation_score") or 0.5),
-                    0.85,
-                )
-                overrides_applied.append("s3_congruence")
-                _bsd_log("S3_CONGRUENCE_OVERRIDE", emotion=pend, user_preview=(user_message or "")[:60])
-                logger.warning(
-                    f"[Safety Net] S3 emotional congruence — overriding coach reply to probe '{pend}'"
-                )
-        
-        # 6b. Replace placeholder [נושא] in coach_message with actual topic
-        topic_for_msg = _safe_get_topic_from_collected(internal_state.get("collected_data"))
-        if topic_for_msg and ("[" in topic_for_msg or topic_for_msg.strip() in ("[נושא]", "[topic]")):
-            topic_for_msg = ""
-        if "[נושא]" in coach_message or "[topic]" in coach_message:
-            # Don't use meta-questions (הסביר, מה חסר) or greetings as topic - extract from history
-            meta_patterns = ("הסביר", "מה חסר", "מה כוונתך", "לא הבנתי", "מה כוונה", "can you explain", "what do you mean")
-            skip_for_topic = ("מה שמך", "שלום", "היי", "what's your name", "hello", "hi")
-            is_meta = user_message and any(p in (user_message or "").lower() for p in meta_patterns)
-            if not topic_for_msg:
-                for msg in reversed(state.get("messages", [])):
-                    if isinstance(msg, dict) and msg.get("sender") == "user":
-                        c = (msg.get("content") or "").strip()
-                        if c and len(c) >= 10 and not any(p in c.lower() for p in meta_patterns) and not any(s in c.lower() for s in skip_for_topic):
-                            topic_for_msg = c[:50] + "..." if len(c) > 50 else c
-                            break
-            replacement = topic_for_msg or ((user_message[:50] + "..." if len(user_message) > 50 else user_message) if user_message and not is_meta and len((user_message or "").strip()) >= 10 else "הנושא")
-            coach_message = coach_message.replace("[נושא]", replacement).replace("[topic]", replacement)
-        
-        # 7. Update state
-        logger.info(f"[BSD V2] Parsed coach_message: {coach_message[:100]}...")
-        logger.info(f"[BSD V2] Parsed internal_state: {json.dumps(internal_state, ensure_ascii=False)[:200]}...")
+async def _apply_safety_nets(
+    coach_message: str,
+    internal_state: Dict[str, Any],
+    state: Dict[str, Any],
+    user_message: str,
+    language: str,
+    llm: Any,
+    old_step: str,
+) -> Tuple[str, Dict[str, Any], List[str]]:
+    """Run all safety nets on the LLM output. Returns (coach_message, internal_state, overrides_applied)."""
+    overrides_applied: List[str] = []
 
-        _refresh_topic_for_insights_s1_s2(state, internal_state, user_message)
+    _tool_just_submitted = state.pop("_tool_just_submitted", None)
+    if _tool_just_submitted:
+        logger.info(f"[Safety Net] Skipping repetition/re-ask/mismatch checks (tool_just_submitted={_tool_just_submitted})")
 
-        # Ensure topic is populated when past S0 (LLM may omit it in later stages)
-        cd = state.get("collected_data") or {}
-        if not cd.get("topic") and state.get("current_step") not in ("S0",):
-            inferred = _extract_topic_from_conversation(state, user_message, language)
-            if inferred:
-                cd = {**cd, "topic": inferred}
-                state["collected_data"] = cd
-                internal_state["collected_data"] = {**internal_state.get("collected_data", {}), "topic": inferred}
+    # Repetition check
+    t7 = time.time()
+    if not _tool_just_submitted:
+        history_for_check = get_conversation_history(state, last_n=10)
+        repeated_check = check_repeated_question(coach_message, history_for_check, state['current_step'], language, user_message=user_message)
+    else:
+        repeated_check = None
+    t8 = time.time()
+    logger.info(f"[PERF] Repeated check: {(t8-t7)*1000:.0f}ms")
 
-        new_step_final = internal_state.get("current_step", old_step)
-        # Station checkpoints disabled — UX V2 handles pacing via UI
-        station_api_payload = None
+    if repeated_check:
+        overrides_applied.append("repetition")
+        repl_msg = repeated_check[0] if isinstance(repeated_check, tuple) else repeated_check
+        step_override = repeated_check[1] if isinstance(repeated_check, tuple) and len(repeated_check) > 1 else None
+        _bsd_log("REPETITION_OVERRIDE", original=coach_message[:80], replacement=repl_msg[:80],
+                 step=state['current_step'])
+        logger.warning(f"[Safety Net] Overriding repeated question")
+        coach_message = repl_msg
+        internal_state["current_step"] = step_override if step_override else state["current_step"]
+        internal_state["saturation_score"] = state.get("saturation_score", 0.3)
 
-        # S7/S8 anti-loop safety net: if stuck with high saturation, force stage advancement
-        current = state.get("current_step", "")
-        sat = state.get("saturation_score", 0)
-        if current in ("S7", "S8") and sat >= 0.8:
-            recent_coach = [
-                m for m in state.get("messages", [])[-10:]
-                if m.get("sender") == "coach"
-                and (m.get("internal_state") or {}).get("saturation_score", 0) >= 0.8
-            ]
-            if len(recent_coach) >= 3:
-                if current == "S7":
-                    next_step = "S8"
-                    logger.info("[Safety Net] S7 anti-loop: sat>=0.8 for 3+ turns → forcing advance to S8")
-                    internal_state["current_step"] = next_step
-                    state["current_step"] = next_step
-                else:
-                    # S8 is the end of the "identification" macro-stage — signal completion, don't cross boundary
-                    logger.info("[Safety Net] S8 anti-loop: sat>=0.8 for 3+ turns → forcing stage_ready_to_complete")
-                    internal_state["stage_ready_to_complete"] = True
+    # Re-ask event check
+    if not _tool_just_submitted:
+        re_ask_check = detect_re_asking_for_event(coach_message, state, language, user_message=user_message)
+    else:
+        re_ask_check = None
+    if re_ask_check:
+        overrides_applied.append("re_ask_event")
+        coach_message, next_step_for_reask = re_ask_check
+        _bsd_log("RE_ASK_OVERRIDE", step=next_step_for_reask, reason="user_already_gave_event")
+        internal_state["current_step"] = next_step_for_reask
+        internal_state["saturation_score"] = 0.3
 
-        # S15 anti-loop safety net: if stuck at S15 with saturation 1.0 for 2+ coach turns, force completion
-        if state.get("current_step") == "S15" and state.get("saturation_score", 0) >= 1.0:
-            s15_high_sat_turns = sum(
-                1 for m in state.get("messages", [])[-8:]
-                if m.get("sender") == "coach"
-                and (m.get("internal_state") or {}).get("saturation_score", 0) >= 1.0
+    # Stage/question mismatch
+    t9 = time.time()
+    if not _tool_just_submitted:
+        mismatch_stage = detect_stage_question_mismatch(coach_message, state["current_step"], language, state=state)
+    else:
+        mismatch_stage = None
+    t10 = time.time()
+    logger.info(f"[PERF] Stage mismatch check: {(t10-t9)*1000:.0f}ms")
+
+    if mismatch_stage:
+        overrides_applied.append("stage_mismatch")
+        _bsd_log("STAGE_MISMATCH", llm_step=internal_state.get("current_step"), corrected=mismatch_stage,
+                 coach_preview=coach_message[:60])
+        logger.warning(f"[Safety Net] Auto-correcting stage mismatch: {state['current_step']} → {mismatch_stage}")
+        internal_state["current_step"] = mismatch_stage
+
+    # S2→S3 quality validation
+    new_step = internal_state.get("current_step", old_step)
+    t11 = time.time()
+    if not SAFETY_NET_DISABLED and old_step == "S2" and new_step == "S3":
+        logger.info(f"[Safety Net] Validating S2 situation quality before S2→S3...")
+        situation_valid, guidance = await validate_situation_quality(state, llm, language)
+        logger.info(f"[Safety Net] Validation result: valid={situation_valid}")
+        if not situation_valid and guidance:
+            overrides_applied.append("s2_quality_block")
+            _bsd_log("S2_QUALITY_BLOCK", reason="situation_not_meet_criteria")
+            logger.warning(f"[Safety Net] Situation doesn't meet criteria, blocking S2→S3")
+            coach_message = guidance
+            internal_state["current_step"] = "S2"
+    t12 = time.time()
+    if old_step == "S2" and new_step == "S3":
+        logger.info(f"[PERF] S2 validation: {(t12-t11)*1000:.0f}ms")
+
+    # Stage transition validation
+    t13 = time.time()
+    is_valid, correction = validate_stage_transition(
+        old_step,
+        new_step,
+        state,
+        language,
+        coach_message,
+        user_message=user_message,
+        proposed_collected_data=internal_state.get("collected_data"),
+        proposed_reflection=str(internal_state.get("reflection") or ""),
+    )
+    t14 = time.time()
+    logger.info(f"[PERF] Stage transition validation: {(t14-t13)*1000:.0f}ms")
+    if old_step != new_step:
+        _bsd_log("TRANSITION_ATTEMPT", old_step=old_step, new_step=new_step, allowed=is_valid)
+
+    if not SAFETY_NET_DISABLED and not is_valid and correction:
+        overrides_applied.append("transition_block")
+        _bsd_log("TRANSITION_BLOCK", old_step=old_step, new_step=new_step, reason=correction[:80])
+        logger.warning(f"[Safety Net] Overriding transition {old_step}→{new_step}")
+        coach_message = correction
+        internal_state["current_step"] = old_step
+
+    # S3 emotional congruence
+    if (
+        not SAFETY_NET_DISABLED
+        and state["current_step"] == "S3"
+        and user_message
+    ):
+        pend = s3_emotional_congruence_emotion_needed(user_message, state, language)
+        if pend and not coach_addresses_s3_emotional_congruence(coach_message, pend, language):
+            coach_message = s3_emotional_congruence_followup_message(pend, language)
+            internal_state["current_step"] = "S3"
+            internal_state["saturation_score"] = min(
+                float(internal_state.get("saturation_score") or 0.5),
+                0.85,
             )
-            if s15_high_sat_turns >= 2:
-                logger.info("[Safety Net] S15 anti-loop: saturation 1.0 for 2+ turns → forcing stage_ready_to_complete")
+            overrides_applied.append("s3_congruence")
+            _bsd_log("S3_CONGRUENCE_OVERRIDE", emotion=pend, user_preview=(user_message or "")[:60])
+            logger.warning(
+                f"[Safety Net] S3 emotional congruence — overriding coach reply to probe '{pend}'"
+            )
+
+    # Replace placeholder [נושא] in coach_message
+    topic_for_msg = _safe_get_topic_from_collected(internal_state.get("collected_data"))
+    if topic_for_msg and ("[" in topic_for_msg or topic_for_msg.strip() in ("[נושא]", "[topic]")):
+        topic_for_msg = ""
+    if "[נושא]" in coach_message or "[topic]" in coach_message:
+        meta_patterns = ("הסביר", "מה חסר", "מה כוונתך", "לא הבנתי", "מה כוונה", "can you explain", "what do you mean")
+        skip_for_topic = ("מה שמך", "שלום", "היי", "what's your name", "hello", "hi")
+        is_meta = user_message and any(p in (user_message or "").lower() for p in meta_patterns)
+        if not topic_for_msg:
+            for msg in reversed(state.get("messages", [])):
+                if isinstance(msg, dict) and msg.get("sender") == "user":
+                    c = (msg.get("content") or "").strip()
+                    if c and len(c) >= 10 and not any(p in c.lower() for p in meta_patterns) and not any(s in c.lower() for s in skip_for_topic):
+                        topic_for_msg = c[:50] + "..." if len(c) > 50 else c
+                        break
+        replacement = topic_for_msg or ((user_message[:50] + "..." if len(user_message) > 50 else user_message) if user_message and not is_meta and len((user_message or "").strip()) >= 10 else "הנושא")
+        coach_message = coach_message.replace("[נושא]", replacement).replace("[topic]", replacement)
+
+    # Topic refresh
+    logger.info(f"[BSD V2] Parsed coach_message: {coach_message[:100]}...")
+    logger.info(f"[BSD V2] Parsed internal_state: {json.dumps(internal_state, ensure_ascii=False)[:200]}...")
+    _refresh_topic_for_insights_s1_s2(state, internal_state, user_message)
+
+    # Ensure topic populated past S0
+    cd = state.get("collected_data") or {}
+    if not cd.get("topic") and state.get("current_step") not in ("S0",):
+        inferred = _extract_topic_from_conversation(state, user_message, language)
+        if inferred:
+            cd = {**cd, "topic": inferred}
+            state["collected_data"] = cd
+            internal_state["collected_data"] = {**internal_state.get("collected_data", {}), "topic": inferred}
+
+    # S7/S8 anti-loop
+    current = state.get("current_step", "")
+    sat = state.get("saturation_score", 0)
+    if current in ("S7", "S8") and sat >= 0.8:
+        recent_coach = [
+            m for m in state.get("messages", [])[-10:]
+            if m.get("sender") == "coach"
+            and (m.get("internal_state") or {}).get("saturation_score", 0) >= 0.8
+        ]
+        if len(recent_coach) >= 3:
+            if current == "S7":
+                next_step = "S8"
+                logger.info("[Safety Net] S7 anti-loop: sat>=0.8 for 3+ turns → forcing advance to S8")
+                internal_state["current_step"] = next_step
+                state["current_step"] = next_step
+            else:
+                logger.info("[Safety Net] S8 anti-loop: sat>=0.8 for 3+ turns → forcing stage_ready_to_complete")
                 internal_state["stage_ready_to_complete"] = True
 
-        # Block stage completion on stage-opening turns (first turn after stage intro)
-        if state.get("_stage_opening"):
-            if internal_state.get("stage_ready_to_complete"):
-                logger.warning("[Safety Net] Blocked stage_ready_to_complete on stage-opening turn")
-                internal_state["stage_ready_to_complete"] = False
-            internal_state["current_step"] = old_step
-
-        # Hard clamp: prevent crossing macro-stage boundary without stage_ready_to_complete.
-        # This runs regardless of SAFETY_NET_DISABLED.
-        from .stage_intro_schema import step_to_macro_stage, MACRO_STAGE_END_STEPS
-        final_step = internal_state.get("current_step", old_step)
-        old_macro = step_to_macro_stage(old_step)
-        new_macro = step_to_macro_stage(final_step)
-        if old_macro and new_macro and old_macro != new_macro:
-            end_step = MACRO_STAGE_END_STEPS.get(old_macro, old_step)
-            logger.warning(
-                "[Macro Clamp] Model crossed %s→%s boundary (%s→%s). Clamping to %s + stage_ready_to_complete.",
-                old_macro, new_macro, old_step, final_step, end_step,
-            )
-            internal_state["current_step"] = end_step
+    # S15 anti-loop
+    if state.get("current_step") == "S15" and state.get("saturation_score", 0) >= 1.0:
+        s15_high_sat_turns = sum(
+            1 for m in state.get("messages", [])[-8:]
+            if m.get("sender") == "coach"
+            and (m.get("internal_state") or {}).get("saturation_score", 0) >= 1.0
+        )
+        if s15_high_sat_turns >= 2:
+            logger.info("[Safety Net] S15 anti-loop: saturation 1.0 for 2+ turns → forcing stage_ready_to_complete")
             internal_state["stage_ready_to_complete"] = True
 
-        # Add user message
+    # Block stage completion on stage-opening turns
+    if state.get("_stage_opening"):
+        if internal_state.get("stage_ready_to_complete"):
+            logger.warning("[Safety Net] Blocked stage_ready_to_complete on stage-opening turn")
+            internal_state["stage_ready_to_complete"] = False
+        internal_state["current_step"] = old_step
+
+    # Macro-stage boundary clamp
+    from .stage_intro_schema import step_to_macro_stage, MACRO_STAGE_END_STEPS
+    final_step = internal_state.get("current_step", old_step)
+    old_macro = step_to_macro_stage(old_step)
+    new_macro = step_to_macro_stage(final_step)
+    if old_macro and new_macro and old_macro != new_macro:
+        end_step = MACRO_STAGE_END_STEPS.get(old_macro, old_step)
+        logger.warning(
+            "[Macro Clamp] Model crossed %s→%s boundary (%s→%s). Clamping to %s + stage_ready_to_complete.",
+            old_macro, new_macro, old_step, final_step, end_step,
+        )
+        internal_state["current_step"] = end_step
+        internal_state["stage_ready_to_complete"] = True
+
+    return coach_message, internal_state, overrides_applied
+
+
+async def handle_conversation(
+    user_message: str,
+    state: Dict[str, Any],
+    language: str = "he",
+    user_gender: Optional[str] = None,
+    conversation_id: Optional[int] = None,
+) -> Tuple[str, Dict[str, Any]]:
+    """Handle single conversation turn in V2."""
+    if SAFETY_NET_DISABLED:
+        logger.warning("[Safety Net] DISABLED (BSD_V2_SAFETY_NET_DISABLED=1)")
+    _bsd_log("TURN_START", step=state['current_step'], saturation=state['saturation_score'],
+             msg_count=len(state.get('messages', [])), user_preview=user_message[:80])
+    logger.info(f"[BSD V2] Handling message: '{user_message[:50]}...'")
+    logger.info(f"[BSD V2] Current step: {state['current_step']}, saturation: {state['saturation_score']:.2f}")
+    logger.info(f"[BSD V2] Message count in state: {len(state.get('messages', []))}")
+
+    early = _handle_early_returns(user_message, state, language)
+    if early:
+        return early
+
+    try:
+        start_time = time.time()
+
+        coach_message, suggestions, internal_state = await _call_llm_and_parse(
+            state, user_message, language, user_gender
+        )
+
+        old_step = state["current_step"]
+        llm = get_azure_chat_llm_4o_mini()
+        coach_message, internal_state, overrides_applied = await _apply_safety_nets(
+            coach_message, internal_state, state, user_message, language, llm, old_step
+        )
+
         state = add_message(state, "user", user_message)
-
-        # Add coach message with internal state
         state = add_message(state, "coach", coach_message, internal_state)
-
         consume_session_flow_flags(state)
-        if station_api_payload:
-            state["last_station_checkpoint_api"] = station_api_payload
 
         end_time = time.time()
         total_ms = (end_time - start_time) * 1000
-
         logger.info(f"[BSD V2] Updated to step: {state['current_step']}, saturation: {state['saturation_score']:.2f}")
         logger.info(f"[BSD V2] Total messages now: {len(state['messages'])}")
         logger.info(f"[PERF] ⏱️  TOTAL TIME: {total_ms:.0f}ms ({total_ms/1000:.1f}s)")
         _bsd_log("TURN_END", final_step=state['current_step'], overrides=overrides_applied,
                  collected_data_keys=[k for k, v in _safe_collected_dict(state.get('collected_data')).items() if v])
 
-        # Inject 1-10 scale for gap score question (S7, has gap_name but no gap_score)
         cd = state.get("collected_data") or {}
         if state.get("current_step") == "S7" and cd.get("gap_name") and not cd.get("gap_score"):
             suggestions = [str(i) for i in range(1, 11)]
 
         state["_suggestions"] = suggestions
         return coach_message, state
-        
+
     except ContentFilterBlockedError:
         logger.warning("[BSD V2] Content filter blocked coach response after retry")
         return content_filter_user_message(language), state
@@ -2962,7 +2920,6 @@ async def handle_conversation(
         except Exception:
             pass
 
-        # Graceful fallback for provider rate limiting
         err_text = str(e)
         if "RateLimitReached" in err_text or "Error code: 429" in err_text or "429" in err_text:
             if language == "he":
@@ -2972,7 +2929,6 @@ async def handle_conversation(
         if is_content_filter_error(e):
             return content_filter_user_message(language), state
 
-        # Generic fallback
         if language == "he":
             fallback = "מצטער, היתה בעיה טכנית. האם נוכל לנסות שוב?"
         else:
