@@ -84,8 +84,8 @@ STAGE_COLLECTED_DATA_EN: Dict[str, str] = {
 STAGE_GATES_HE: Dict[str, str] = {
     "S0": "**Gate (S0→S1):** רשות מפורשת להתחיל (כן/בסדר/בוא נתחיל).",
     "S1": "**Gate (S1→S2):** נושא ברור אחרי 2–3 תורות (מספיק להבין על מה להתאמן).",
-    "S2": "**Gate (S2→S3):** 5 תנאים: ✓ מתי ✓ מעורבות ✓ רגש ✓ מגע אינטראקטיבי ✓ **פירוט מספיק** (לא רק שם כמו 'מריבה' — צריך תיאור של מה קרה/נאמר).",
-    "S3": "**Gate (S3→S4):** 2 רגשות + תור הכרה רגשית (שהמשתמש הרגיש שנשמע) — עבור ל-S4.",
+    "S2": "**Gate (S2→S3):** 5 תנאים: ✓ מתי ✓ מעורבות ✓ רגש ✓ מגע אינטראקטיבי ✓ **פירוט מספיק** (לא רק שם כמו 'מריבה' — צריך תיאור של מה קרה/נאמר). ⛔ **S3 = שלב כרטיס — סיים בהצהרה חמה בלבד ('עכשיו נזהה יחד את הרגשות...'), אסור לשאול 'מה הרגשת?' או כל שאלה — כרטיס בחירת רגשות יופיע מיד.**",
+    "S3": "**Gate (S3→S4):** 2 רגשות + תור הכרה רגשית (שהמשתמש הרגיש שנשמע) — עבור ל-S4. ⛔ **S4 = שלב צ'אט — סיים בשאלת המחשבה: 'ומה עבר לך בפנים, בראש — מה האמירה הפנימית?'**",
     "S4": "**Gate (S4→S5):** משפט מחשבה ברור באותו רגע.",
     "S5": "**Gate (S5→S6):** מעשה בפועל ברור + סיכום מצוי (רגש+מחשבה+מעשה) מאושר בטקסט או בכרטיס.",
     "S6": "**Gate (S6→S7):** יש רצוי (מעשה+רגש+מחשבה) מהכרטיס? → שקף בחום, הגדר `current_step: \"S7\"` **תמיד**, ללא וולידציה חוסמת. כרטיס הפער יופיע מיד.",
@@ -102,8 +102,8 @@ STAGE_GATES_HE: Dict[str, str] = {
 STAGE_GATES_EN: Dict[str, str] = {
     "S0": "**Gate (S0→S1):** Explicit permission to start (yes/okay/let's go).",
     "S1": "**Gate (S1→S2):** Clear topic after 2–3 turns.",
-    "S2": "**Gate (S2→S3):** 5 conditions: ✓ when ✓ involvement ✓ emotion ✓ interactive contact ✓ **sufficient detail** (not just a label like 'argument' — need description of what happened/was said).",
-    "S3": "**Gate (S3→S4):** 2 emotions + emotional recognition turn (user felt heard) — advance to S4.",
+    "S2": "**Gate (S2→S3):** 5 conditions: ✓ when ✓ involvement ✓ emotion ✓ interactive contact ✓ **sufficient detail**. ⛔ **S3 = card stage — end with warm statement only ('now let's identify the emotions...'), NEVER ask 'what did you feel?' — emotion card appears automatically.**",
+    "S3": "**Gate (S3→S4):** 2 emotions + emotional recognition turn — advance to S4. ⛔ **S4 = chat stage — end with the thought question.**",
     "S4": "**Gate (S4→S5):** Clear thought sentence in that moment.",
     "S5": "**Gate (S5→S6):** Clear actual action + summary of present state (emotion+thought+action) confirmed via text or card.",
     "S6": "**Gate (S6→S7):** Desired (action+emotion+thought) collected from card? → Reflect warmly, set `current_step: \"S7\"` **always**, no blocking validation. Gap card appears immediately.",
@@ -244,7 +244,7 @@ def assemble_system_prompt(current_step: str, language: str = "he", user_gender:
                 overlay_dir = stages_dir / "v2_card_overlays"
                 if overlay_file and (overlay_dir / overlay_file).exists():
                     overlay_content = _load_file(str(overlay_dir / overlay_file)).strip()
-                    stage_content = f"{v2_content}\n\n---\n\n{overlay_content}"
+                    stage_content = f"{overlay_content}\n\n---\n\n{v2_content}"
                 else:
                     stage_content = v2_content
             else:
