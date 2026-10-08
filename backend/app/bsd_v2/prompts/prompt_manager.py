@@ -246,18 +246,29 @@ def assemble_system_prompt(current_step: str, language: str = "he", user_gender:
                 tool_data_present = bool(val) and val != [] and val != {}
 
             if tool_data_present:
-                # Post-card: V2 base prompt (full coaching depth) + card overlay
-                stage_file = STAGE_FILES.get(current_step, "s1_topic.md")
-                stage_path = _resolve_prompt_file(stages_dir, lang, stage_file)
-                v2_content = _load_file(str(stage_path)).strip()
-
-                overlay_file = _V2_CARD_OVERLAY_FILES.get(current_step)
-                overlay_dir = stages_dir / "v2_card_overlays"
-                if overlay_file and (overlay_dir / overlay_file).exists():
-                    overlay_content = _load_file(str(overlay_dir / overlay_file)).strip()
-                    stage_content = f"{overlay_content}\n\n---\n\n{v2_content}"
+                # Post-card: prefer card_aware (single file) over overlay+V2 (two files)
+                card_aware_dir = stages_dir / "v2_card_aware"
+                stage_base = STAGE_FILES.get(current_step, "s1_topic.md")
+                # Map stage file to card_aware name
+                _card_aware_map = {
+                    "S6": "s6_desired.md", "S7": "s7_gap.md",
+                }
+                ca_file = _card_aware_map.get(current_step)
+                if ca_file and (card_aware_dir / ca_file).exists():
+                    stage_content = _load_file(str(card_aware_dir / ca_file)).strip()
                 else:
-                    stage_content = v2_content
+                    # Fallback: overlay + V2
+                    stage_file = STAGE_FILES.get(current_step, "s1_topic.md")
+                    stage_path = _resolve_prompt_file(stages_dir, lang, stage_file)
+                    v2_content = _load_file(str(stage_path)).strip()
+
+                    overlay_file = _V2_CARD_OVERLAY_FILES.get(current_step)
+                    overlay_dir = stages_dir / "v2_card_overlays"
+                    if overlay_file and (overlay_dir / overlay_file).exists():
+                        overlay_content = _load_file(str(overlay_dir / overlay_file)).strip()
+                        stage_content = f"{overlay_content}\n\n---\n\n{v2_content}"
+                    else:
+                        stage_content = v2_content
             else:
                 # Pre-card: check for stage-specific pre-tool first, then generic
                 stage_pre_tool_path = stages_dir / "v3" / f"pre_tool_{current_step.lower()}.md"
