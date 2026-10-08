@@ -816,6 +816,17 @@ async def send_message(
             detail={"error": e.reason, "message": "Invalid message content"},
         )
     
+    # Dedup: reject identical message sent within 5 seconds
+    from datetime import datetime, timedelta
+    recent_dup = db.query(Message).filter(
+        Message.conversation_id == conversation_id,
+        Message.role == "user",
+        Message.content == safe_content,
+        Message.created_at >= datetime.utcnow() - timedelta(seconds=5)
+    ).first()
+    if recent_dup:
+        raise HTTPException(status_code=409, detail="Duplicate message")
+
     # Save user message
     user_msg = Message(
         conversation_id=conversation_id,

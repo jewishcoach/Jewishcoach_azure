@@ -213,7 +213,7 @@ export const BSDWorkspace = ({
       console.error('Error sending message:', error);
       inputRef.current?.focus();
     } finally {
-      setTimeout(() => { isSendingRef.current = false; }, 300);
+      setTimeout(() => { isSendingRef.current = false; }, 2000);
     }
   };
 

@@ -373,6 +373,12 @@ export const useChat = (
             }
           }
 
+          // 409 = duplicate message — silently ignore (message already sent)
+          if (response.status === 409) {
+            setMessages((prev) => prev.filter((m) => m.id !== userMessage.id));
+            setLoading(false);
+            return;
+          }
           // For 429, embed quota info in error message so catch block can show the right message
           if (response.status === 429 && errBody.includes('quota_exceeded')) {
             throw new Error('V2_ERROR_429_QUOTA');
