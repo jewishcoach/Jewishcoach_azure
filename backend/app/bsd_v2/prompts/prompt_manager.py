@@ -152,6 +152,22 @@ def _resolve_prompt_file(base_dir: Path, language: str, filename: str) -> Path:
     raise FileNotFoundError(f"Prompt file not found for language={language}: {filename}")
 
 
+# V2 card overlays — appended to V2 prompt when card data is present.
+# V2 provides full coaching depth; overlay adds card-specific instructions.
+_V2_CARD_OVERLAY_FILES: Dict[str, str] = {
+    "S2": "s2_event.md",
+    "S3": "s3_emotions.md",
+    "S5": "s5_action.md",
+    "S6": "s6_desired.md",
+    "S7": "s7_gap.md",
+    "S9": "s9_paradigm_stance.md",
+    "S10": "s9_paradigm_stance.md",
+    "S11": "s11_gains_losses.md",
+    "S12": "s12_forces.md",
+    "S13": "s13_choice.md",
+    "S15": "s15_commitment.md",
+}
+
 _V3_TOOL_DATA_KEYS: Dict[str, str] = {
     "S2": "event_description",
     "S3": "emotions",
@@ -208,15 +224,10 @@ def assemble_system_prompt(current_step: str, language: str = "he", user_gender:
         data_key = _V3_TOOL_DATA_KEYS.get(current_step)
 
         if data_key is None:
-            # Chat-only V3 stage (no tool card, e.g. S4) — always use V3 stage prompt
-            v3_file = V3_STAGE_FILES[current_step]
-            v3_path = stages_dir / v3_file
-            if v3_path.exists():
-                stage_content = _load_file(str(v3_path)).strip()
-            else:
-                stage_file = STAGE_FILES.get(current_step, "s1_topic.md")
-                stage_path = _resolve_prompt_file(stages_dir, lang, stage_file)
-                stage_content = _load_file(str(stage_path)).strip()
+            # Chat-only stage (no card, e.g. S4) — use V2 prompt for full coaching depth
+            stage_file = STAGE_FILES.get(current_step, "s1_topic.md")
+            stage_path = _resolve_prompt_file(stages_dir, lang, stage_file)
+            stage_content = _load_file(str(stage_path)).strip()
         else:
             tool_data_present = False
             if cd.get(data_key):
@@ -224,17 +235,20 @@ def assemble_system_prompt(current_step: str, language: str = "he", user_gender:
                 tool_data_present = bool(val) and val != [] and val != {}
 
             if tool_data_present:
-                # Post-tool: use V3 validation prompt
-                v3_file = V3_STAGE_FILES[current_step]
-                v3_path = stages_dir / v3_file
-                if v3_path.exists():
-                    stage_content = _load_file(str(v3_path)).strip()
+                # Post-card: V2 base prompt (full coaching depth) + card overlay
+                stage_file = STAGE_FILES.get(current_step, "s1_topic.md")
+                stage_path = _resolve_prompt_file(stages_dir, lang, stage_file)
+                v2_content = _load_file(str(stage_path)).strip()
+
+                overlay_file = _V2_CARD_OVERLAY_FILES.get(current_step)
+                overlay_dir = stages_dir / "v2_card_overlays"
+                if overlay_file and (overlay_dir / overlay_file).exists():
+                    overlay_content = _load_file(str(overlay_dir / overlay_file)).strip()
+                    stage_content = f"{v2_content}\n\n---\n\n{overlay_content}"
                 else:
-                    stage_file = STAGE_FILES.get(current_step, "s1_topic.md")
-                    stage_path = _resolve_prompt_file(stages_dir, lang, stage_file)
-                    stage_content = _load_file(str(stage_path)).strip()
+                    stage_content = v2_content
             else:
-                # Pre-tool: check for stage-specific pre-tool first, then generic
+                # Pre-card: check for stage-specific pre-tool first, then generic
                 stage_pre_tool_path = stages_dir / "v3" / f"pre_tool_{current_step.lower()}.md"
                 if stage_pre_tool_path.exists():
                     stage_content = _load_file(str(stage_pre_tool_path)).strip()
