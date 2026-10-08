@@ -199,6 +199,200 @@ async def test_s7_clarification_no_skip():
     return coach2, issues
 
 
+# ── S5: interpretive action should be grounded ───────────────────────────────
+
+@regression("s5_interpretive_action", "S5: 'ויתרתי' should trigger grounding question, not be accepted as-is")
+async def test_s5_interpretive_action():
+    state = _make_state("S5", {
+        "emotions": ["כעס", "עלבון"],
+        "thought": "אני בעל גרוע",
+        "action_actual": "ויתרתי",
+        "event_description": "מריבה עם אשתי",
+    })
+    coach, state = await handle_conversation("", state, "he")
+
+    issues = []
+    if "ויתרתי" in coach and not _has_question(coach):
+        issues.append("ACCEPTED_INTERPRETIVE: Accepted 'ויתרתי' without grounding question")
+    if not _contains_any(coach, ["צופה מהצד", "רואה אותך", "בפועל", "פיזית", "מה עשית ממש"]):
+        if not _has_question(coach):
+            issues.append("NO_GROUNDING: Didn't ask grounding question for interpretive action")
+    return coach, issues
+
+
+# ── S5→S6: warm statement, no question ───────────────────────────────────────
+
+@regression("s5_to_s6_no_question", "S5→S6: Observable action should get warm summary, NOT 'מה היית רוצה?'")
+async def test_s5_to_s6_no_question():
+    state = _make_state("S5", {
+        "emotions": ["כעס", "עלבון"],
+        "thought": "אני בעל גרוע",
+        "action_actual": "קמתי וטרקתי את הדלת ויצאתי מהבית",
+        "event_description": "מריבה עם אשתי",
+    })
+    coach, state = await handle_conversation("", state, "he")
+
+    issues = []
+    if _contains_any(coach, ["מה היית רוצה", "איך היית רוצה"]) and _has_question(coach):
+        issues.append("ASKED_DESIRED: Asked desired question instead of warm statement + card")
+    return coach, issues
+
+
+# ── S8: pattern confirmed → S9 warm statement ───────────────────────────────
+
+@regression("s8_to_s9_no_question", "S8→S9: After pattern confirmed, warm statement — NOT 'מהי הפרדיגמה?'")
+async def test_s8_to_s9_no_question():
+    state = _make_state("S8", {
+        "emotions": ["כעס", "עלבון"],
+        "thought": "אני בעל גרוע",
+        "action_actual": "יצאתי מהבית",
+        "gap_name": "ביטול עצמי",
+        "gap_score": "8",
+        "pattern": "כל פעם שמישהו מעיר לי — כעס, 'אני גרוע', ובריחה",
+        "event_description": "מריבה עם אשתי",
+    })
+    coach, state = await handle_conversation("כן, בדיוק ככה — גם בעבודה כשהבוס מעיר לי, וגם מול ההורים", state, "he")
+
+    issues = []
+    if _contains_any(coach, ["מהי הפרדיגמה", "ככה זה אצלי", "חוק פנימי", "טייס אוטומטי"]):
+        if _has_question(coach):
+            issues.append("ASKED_PARADIGM: Asked paradigm question instead of warm statement + card")
+    return coach, issues
+
+
+# ── S9: pattern written in paradigm field → should correct ───────────────────
+
+@regression("s9_pattern_in_paradigm", "S9: User writes pattern in paradigm field — coach should correct to paradigm level")
+async def test_s9_pattern_in_paradigm():
+    state = _make_state("S9", {
+        "paradigm": "אני צועק ויוצא מהחדר",
+        "stance": {"reality_belief": "העולם מסוכן"},
+        "pattern": "כל פעם שמעירים — כעס ובריחה",
+        "event_description": "מריבה עם אשתי",
+    })
+    coach, state = await handle_conversation("", state, "he")
+
+    issues = []
+    if "אני צועק ויוצא מהחדר" in coach and "מדויק" in coach:
+        issues.append("ACCEPTED_PATTERN_AS_PARADIGM: Confirmed pattern-level content as paradigm")
+    return coach, issues
+
+
+# ── S11: gains about behavior, not belief → should redirect ──────────────────
+
+@regression("s11_behavior_gains", "S11: Gains about behavior (not belief) should prompt redirect to belief level")
+async def test_s11_behavior_gains():
+    state = _make_state("S11", {
+        "stance": {
+            "reality_belief": "אנשים תמיד ישפטו אותי",
+            "gains": ["השתיקה נותנת לי שקט", "לא נכנס לריבים"],
+            "losses": ["בדידות", "לא מתקדם בעבודה"],
+        },
+        "paradigm": "ככה זה אצלי — עדיף לשתוק",
+        "pattern": "שתיקה והימנעות",
+    })
+    coach, state = await handle_conversation("", state, "he")
+
+    issues = []
+    # Coach should notice gains are about the BEHAVIOR (שתיקה) not the BELIEF
+    if "השתיקה נותנת" in coach and not _contains_any(coach, ["אמונה", "תפיסה", "האמונה"]):
+        issues.append("BEHAVIOR_LEVEL: Reflected behavior-level gains without redirecting to belief level")
+    return coach, issues
+
+
+# ── S14→S15: warm statement, no question ────────────────────────────────────
+
+@regression("s14_to_s15_no_question", "S14→S15: After vision, warm statement — NOT 'מה המחויבות?'")
+async def test_s14_to_s15_no_question():
+    state = _make_state("S14", {
+        "renewal": "אני בוחר להאמין שאני ראוי",
+        "vision": "",
+        "event_description": "מריבה עם אשתי",
+        "pattern": "בריחה מביקורת",
+    })
+    coach, state = await handle_conversation(
+        "אני רואה את עצמי מגיע הביתה, מדבר עם אשתי ברוגע, מקשיב לה בלי לברוח. יש לנו ערב שקט יחד.",
+        state, "he"
+    )
+
+    issues = []
+    if _contains_any(coach, ["מה המחויבות", "מה הצעד", "מה תעשה מחר"]) and _has_question(coach):
+        issues.append("ASKED_COMMITMENT: Asked commitment question instead of warm statement + card")
+    return coach, issues
+
+
+# ── S15: vague commitment should not pass ────────────────────────────────────
+
+@regression("s15_vague_commitment", "S15: 'אנסה להשתפר' should trigger specificity request")
+async def test_s15_vague_commitment():
+    state = _make_state("S15", {
+        "commitment": "אנסה להשתפר",
+        "renewal": "אני בוחר להאמין שאני ראוי",
+        "event_description": "מריבה עם אשתי",
+    })
+    coach, state = await handle_conversation("", state, "he")
+
+    issues = []
+    if "אנסה להשתפר" in coach and not _has_question(coach):
+        issues.append("ACCEPTED_VAGUE: Accepted vague commitment without asking for specifics")
+    return coach, issues
+
+
+# ── Cross-cutting: response length ──────────────────────────────────────────
+
+@regression("response_length", "General: Coach response should not exceed 500 chars in V3")
+async def test_response_length():
+    state = _make_state("S3", {
+        "emotions": ["כעס", "תסכול", "עלבון"],
+        "event_description": "אתמול אשתי צעקה עלי שאני לא עושה כלום בבית"
+    })
+    coach, state = await handle_conversation("", state, "he")
+
+    issues = []
+    if len(coach) > 500:
+        issues.append(f"TOO_LONG: Response is {len(coach)} chars (max 500 for V3)")
+    return coach, issues
+
+
+# ── Cross-cutting: no inventing content ─────────────────────────────────────
+
+@regression("no_invented_content", "General: Coach should not add details user never said")
+async def test_no_invented_content():
+    state = _make_state("S4", {
+        "emotions": ["כעס"],
+        "event_description": "מריבה עם אשתי",
+        "topic": "זוגיות"
+    })
+    coach, state = await handle_conversation("חשבתי שאני כישלון", state, "he")
+
+    issues = []
+    # Coach should not add things like "בגלל ש...", "כנראה ש...", "אתה מרגיש ש..."
+    invented_patterns = ["כנראה ש", "ייתכן ש", "נראה שאתה", "בגלל ש", "זה מראה ש"]
+    for pat in invented_patterns:
+        if pat in coach:
+            issues.append(f"INVENTED: Coach added '{pat}' — interpreting beyond what user said")
+            break
+    return coach, issues
+
+
+# ── Cross-cutting: no technical terms leaked ────────────────────────────────
+
+@regression("no_technical_leak", "General: No S0/S1/current_step/gate/saturation in coach response")
+async def test_no_technical_leak():
+    state = _make_state("S7", {
+        "gap_name": "ביטול עצמי",
+        "gap_score": "7",
+        "event_description": "מריבה עם אשתי",
+    })
+    coach, state = await handle_conversation("", state, "he")
+
+    issues = []
+    for term in ["current_step", "gate", "saturation", "S7", "S8", "collected_data"]:
+        if term in coach:
+            issues.append(f"TECHNICAL_LEAK: '{term}' appeared in coach response")
+    return coach, issues
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # RUNNER
 # ═══════════════════════════════════════════════════════════════════════════════
