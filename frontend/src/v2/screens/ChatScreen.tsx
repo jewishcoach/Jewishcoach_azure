@@ -46,6 +46,11 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle, stageNumbe
     });
   }, [messages.length]);
 
+  const dedupedMessages = messages.filter((msg, idx, arr) => {
+    if (idx === 0 || msg.role !== 'user') return true;
+    const prev = arr[idx - 1];
+    return !(prev.role === 'user' && prev.content === msg.content);
+  });
   const lastMessage = messages[messages.length - 1];
   const showQuickReplies = lastMessage?.role === 'assistant' && !isLoading;
   const quickReplies = showQuickReplies ? (lastMessage.suggestions?.length ? lastMessage.suggestions : getQuickRepliesForMessage(lastMessage)) : undefined;
@@ -83,7 +88,7 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle, stageNumbe
         className="flex-1 overflow-y-auto py-4 flex flex-col items-center"
       >
         <div className="w-full max-w-[662px] px-5 lg:px-4 space-y-6">
-          {messages.map((msg, idx) => {
+          {dedupedMessages.map((msg, idx) => {
             const isLastAssistant = showQuickReplies && idx === messages.length - 1 && msg.role === 'assistant';
 
             // For user messages following an assistant with suggestions,

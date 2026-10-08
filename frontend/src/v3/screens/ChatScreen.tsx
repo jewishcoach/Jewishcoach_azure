@@ -66,6 +66,11 @@ export function ChatScreen({
   }, [messages.length, activeTool]);
 
   const chatMessages = messages.filter((m) => m.role !== 'tool_result');
+  const dedupedMessages = messages.filter((msg, idx, arr) => {
+    if (idx === 0 || msg.role !== 'user') return true;
+    const prev = arr[idx - 1];
+    return !(prev.role === 'user' && prev.content === msg.content);
+  });
   const lastMessage = chatMessages[chatMessages.length - 1];
   const showQuickReplies = lastMessage?.role === 'assistant' && !isLoading && !activeTool;
   const quickReplies = showQuickReplies ? lastMessage.suggestions : undefined;
@@ -103,7 +108,7 @@ export function ChatScreen({
         className="flex-1 overflow-y-auto py-4 flex flex-col items-center"
       >
         <div className="w-full max-w-[662px] px-5 lg:px-4 space-y-6">
-          {messages.map((msg, idx) => {
+          {dedupedMessages.map((msg, idx) => {
             // Render completed tool cards
             if (msg.role === 'tool_result' && msg.toolResult) {
               return (
