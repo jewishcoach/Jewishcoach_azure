@@ -58,20 +58,11 @@ export async function sendMessageV3(
   const base = getApiBase();
   const body = JSON.stringify({ message, conversation_id: conversationId, language });
 
-  let lastStatus = 0;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const res = await fetchWithAuthRetry(`${base}/chat/v2/message`, getToken, { method: 'POST', body });
-    if (res.ok) return res.json();
-    lastStatus = res.status;
-    if (res.status === 429) throw new QuotaExceededError();
-    if (res.status === 409) throw new ConflictError();
-    if (res.status >= 500 && attempt === 0) {
-      await new Promise((r) => setTimeout(r, 1500));
-      continue;
-    }
-    break;
-  }
-  throw new Error(`Chat failed: ${lastStatus}`);
+  const res = await fetchWithAuthRetry(`${base}/chat/v2/message`, getToken, { method: 'POST', body });
+  if (res.ok) return res.json();
+  if (res.status === 429) throw new QuotaExceededError();
+  if (res.status === 409) throw new ConflictError();
+  throw new Error(`Chat failed: ${res.status}`);
 }
 
 // ---------------------------------------------------------------------------
