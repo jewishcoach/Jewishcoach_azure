@@ -2924,6 +2924,9 @@ async def handle_conversation(
         if state.get("current_step") == "S7" and cd.get("gap_name") and not cd.get("gap_score"):
             suggestions = [str(i) for i in range(1, 11)]
 
+        if state.get("current_step") == "S3" and cd.get("emotions") and isinstance(cd["emotions"], list):
+            suggestions = cd["emotions"]
+
         state["_suggestions"] = suggestions
         return coach_message, state
 
