@@ -2921,10 +2921,11 @@ async def handle_conversation(
                  collected_data_keys=[k for k, v in _safe_collected_dict(state.get('collected_data')).items() if v])
 
         cd = state.get("collected_data") or {}
-        if state.get("current_step") == "S7" and cd.get("gap_name") and not cd.get("gap_score"):
+        # Use cur_step (before gate advance) — suggestions are for the CURRENT turn's response
+        if cur_step == "S7" and cd.get("gap_name") and not cd.get("gap_score"):
             suggestions = [str(i) for i in range(1, 11)]
 
-        if state.get("current_step") == "S3" and cd.get("emotions") and isinstance(cd["emotions"], list):
+        if cur_step == "S3" and cd.get("emotions") and isinstance(cd["emotions"], list):
             suggestions = cd["emotions"]
 
         state["_suggestions"] = suggestions
