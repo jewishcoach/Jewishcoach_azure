@@ -157,14 +157,17 @@ def _resolve_prompt_file(base_dir: Path, language: str, filename: str) -> Path:
 _V2_CARD_OVERLAY_FILES: Dict[str, str] = {
     "S2": "s2_event.md",
     "S3": "s3_emotions.md",
+    "S4": "s4_thought.md",
     "S5": "s5_action.md",
     "S6": "s6_desired.md",
     "S7": "s7_gap.md",
+    "S8": "s8_pattern.md",
     "S9": "s9_paradigm_stance.md",
     "S10": "s9_paradigm_stance.md",
     "S11": "s11_gains_losses.md",
     "S12": "s12_forces.md",
     "S13": "s13_choice.md",
+    "S14": "s14_vision.md",
     "S15": "s15_commitment.md",
 }
 
@@ -219,15 +222,23 @@ def assemble_system_prompt(current_step: str, language: str = "he", user_gender:
     gate_section = f"\n\n{gate_content}\n\n---\n\n{safety_he if lang == 'he' else safety_en}"
 
     # V3: choose between pre-tool prompt (data not yet collected) and post-tool prompt (data collected)
-    if ux_version >= 3 and current_step in V3_STAGE_FILES:
+    if ux_version >= 3 and (current_step in V3_STAGE_FILES or current_step in _V2_CARD_OVERLAY_FILES):
         cd = collected_data or {}
         data_key = _V3_TOOL_DATA_KEYS.get(current_step)
 
         if data_key is None:
-            # Chat-only stage (no card, e.g. S4) — use V2 prompt for full coaching depth
+            # Chat-only stage (no card, e.g. S4) — V2 prompt + overlay for card transitions
             stage_file = STAGE_FILES.get(current_step, "s1_topic.md")
             stage_path = _resolve_prompt_file(stages_dir, lang, stage_file)
-            stage_content = _load_file(str(stage_path)).strip()
+            v2_content = _load_file(str(stage_path)).strip()
+
+            overlay_file = _V2_CARD_OVERLAY_FILES.get(current_step)
+            overlay_dir = stages_dir / "v2_card_overlays"
+            if overlay_file and (overlay_dir / overlay_file).exists():
+                overlay_content = _load_file(str(overlay_dir / overlay_file)).strip()
+                stage_content = f"{overlay_content}\n\n---\n\n{v2_content}"
+            else:
+                stage_content = v2_content
         else:
             tool_data_present = False
             if cd.get(data_key):
