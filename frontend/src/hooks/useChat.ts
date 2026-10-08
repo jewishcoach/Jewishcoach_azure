@@ -185,8 +185,9 @@ export const useChat = (
       // Filter out metadata and undefined from all messages; enrich phase for smart scroll
       const phaseNow = conv.current_phase || 'S0';
       const raw = conv.messages || [];
-      const lastAssistantIdx = raw.map((m: Message) => m.role).lastIndexOf('assistant');
-      const cleanMessages = raw.map((msg: Message, idx: number) => {
+      const filtered = raw.filter((msg: Message) => !(msg.meta && (msg.meta as Record<string, unknown>).tool_submission));
+      const lastAssistantIdx = filtered.map((m: Message) => m.role).lastIndexOf('assistant');
+      const cleanMessages = filtered.map((msg: Message, idx: number) => {
         let cleanContent = msg.content ?? '';
         cleanContent = cleanContent.replace(/\n\n__METADATA__:.*$/s, '');
         cleanContent = cleanContent.replace(/__SOURCES__:.*$/s, '');
