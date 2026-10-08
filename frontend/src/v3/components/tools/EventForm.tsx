@@ -11,7 +11,7 @@ export function EventForm({ onSubmit, isSubmitting }: EventFormProps) {
   const [withWhom, setWithWhom] = useState('');
   const [whatHappened, setWhatHappened] = useState('');
 
-  const canSubmit = when.trim() && withWhom.trim() && whatHappened.trim().length >= 5;
+  const canSubmit = when.trim() && withWhom.trim() && whatHappened.trim().length >= 20;
 
   return (
     <CardShell
