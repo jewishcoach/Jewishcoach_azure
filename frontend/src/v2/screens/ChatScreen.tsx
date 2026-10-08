@@ -46,11 +46,16 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle, stageNumbe
     });
   }, [messages.length]);
 
-  const dedupedMessages = messages.filter((msg, idx, arr) => {
-    if (idx === 0 || msg.role !== 'user') return true;
-    const prev = arr[idx - 1];
-    return !(prev.role === 'user' && prev.content === msg.content);
-  });
+  const dedupedMessages = (() => {
+    const seen = new Set<string>();
+    return messages.filter((msg) => {
+      if (msg.role !== 'user') return true;
+      const key = `${msg.role}:${msg.content}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  })();
   const lastMessage = messages[messages.length - 1];
   const showQuickReplies = lastMessage?.role === 'assistant' && !isLoading;
   const quickReplies = showQuickReplies ? (lastMessage.suggestions?.length ? lastMessage.suggestions : getQuickRepliesForMessage(lastMessage)) : undefined;

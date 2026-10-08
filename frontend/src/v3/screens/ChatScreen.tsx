@@ -66,11 +66,16 @@ export function ChatScreen({
   }, [messages.length, activeTool]);
 
   const chatMessages = messages.filter((m) => m.role !== 'tool_result');
-  const dedupedMessages = messages.filter((msg, idx, arr) => {
-    if (idx === 0 || msg.role !== 'user') return true;
-    const prev = arr[idx - 1];
-    return !(prev.role === 'user' && prev.content === msg.content);
-  });
+  const dedupedMessages = (() => {
+    const seen = new Set<string>();
+    return messages.filter((msg) => {
+      if (msg.role !== 'user') return true;
+      const key = `${msg.role}:${msg.content}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  })();
   const lastMessage = chatMessages[chatMessages.length - 1];
   const showQuickReplies = lastMessage?.role === 'assistant' && !isLoading && !activeTool;
   const quickReplies = showQuickReplies ? lastMessage.suggestions : undefined;
