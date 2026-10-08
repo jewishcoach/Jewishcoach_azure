@@ -84,7 +84,7 @@ STAGE_COLLECTED_DATA_EN: Dict[str, str] = {
 STAGE_GATES_HE: Dict[str, str] = {
     "S0": "**Gate (S0→S1):** רשות מפורשת להתחיל (כן/בסדר/בוא נתחיל).",
     "S1": "**Gate (S1→S2):** נושא ברור אחרי 2–3 תורות (מספיק להבין על מה להתאמן).",
-    "S2": "**Gate (S2→S3):** אירוע ספציפי עם מתי/איפה/עם מי/מה קרה — **קשר אינטראקטיבי** (לא רק נוכחות משותפת).",
+    "S2": "**Gate (S2→S3):** 5 תנאים: ✓ מתי ✓ מעורבות ✓ רגש ✓ מגע אינטראקטיבי ✓ **פירוט מספיק** (לא רק שם כמו 'מריבה' — צריך תיאור של מה קרה/נאמר).",
     "S3": "**Gate (S3→S4):** 2 רגשות + תור הכרה רגשית (שהמשתמש הרגיש שנשמע) — עבור ל-S4.",
     "S4": "**Gate (S4→S5):** משפט מחשבה ברור באותו רגע.",
     "S5": "**Gate (S5→S6):** מעשה בפועל ברור + סיכום מצוי (רגש+מחשבה+מעשה) מאושר בטקסט או בכרטיס.",
@@ -102,7 +102,7 @@ STAGE_GATES_HE: Dict[str, str] = {
 STAGE_GATES_EN: Dict[str, str] = {
     "S0": "**Gate (S0→S1):** Explicit permission to start (yes/okay/let's go).",
     "S1": "**Gate (S1→S2):** Clear topic after 2–3 turns.",
-    "S2": "**Gate (S2→S3):** Specific event with when/where/who/what — **interactive contact** (not just co-presence).",
+    "S2": "**Gate (S2→S3):** 5 conditions: ✓ when ✓ involvement ✓ emotion ✓ interactive contact ✓ **sufficient detail** (not just a label like 'argument' — need description of what happened/was said).",
     "S3": "**Gate (S3→S4):** 2 emotions + emotional recognition turn (user felt heard) — advance to S4.",
     "S4": "**Gate (S4→S5):** Clear thought sentence in that moment.",
     "S5": "**Gate (S5→S6):** Clear actual action + summary of present state (emotion+thought+action) confirmed via text or card.",
