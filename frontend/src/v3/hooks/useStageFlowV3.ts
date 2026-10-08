@@ -221,6 +221,7 @@ export function useStageFlowV3(language: string = 'he') {
             role: 'assistant',
             content: response.coach_message,
             phase: response.current_step,
+            suggestions: response.suggestions,
           };
           setMessages((prev) => [...prev, assistantMsg]);
         }

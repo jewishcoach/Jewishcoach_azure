@@ -34,6 +34,7 @@ class ToolResponseModel(BaseModel):
     saturation_score: float | None = None
     tool_call: Dict[str, Any] | None = None
     collected_data: Dict[str, Any] | None = None
+    suggestions: list[str] = []
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -272,6 +273,10 @@ async def submit_tool_response(
         if cd and isinstance(cd, dict):
             result_collected_data = {k: v for k, v in cd.items() if v and v != [] and v != {}}
 
+    result_suggestions = []
+    if conversation.v2_state and isinstance(conversation.v2_state, dict):
+        result_suggestions = conversation.v2_state.pop("_suggestions", [])
+
     return ToolResponseModel(
         id=tool_response.id,
         conversation_id=tool_response.conversation_id,
@@ -283,6 +288,7 @@ async def submit_tool_response(
         saturation_score=saturation_score,
         tool_call=tool_call,
         collected_data=result_collected_data,
+        suggestions=result_suggestions,
     )
 
 

@@ -47,6 +47,7 @@ export interface ToolSubmitResponse {
   saturation_score: number | null;
   tool_call?: ToolCallV3 | null;
   collected_data?: Record<string, unknown> | null;
+  suggestions?: string[];
 }
 
 export interface V3ChatMessage {
