@@ -2874,15 +2874,19 @@ async def _apply_safety_nets(
                 logger.info("[Safety Net] S8 anti-loop: sat>=0.8 for 3+ turns → forcing stage_ready_to_complete")
                 internal_state["stage_ready_to_complete"] = True
 
-    # S15 anti-loop
-    if state.get("current_step") == "S15" and state.get("saturation_score", 0) >= 1.0:
-        s15_high_sat_turns = sum(
+    # S15 anti-loop: force completion when commitment exists or stuck too long
+    if state.get("current_step") == "S15":
+        s15_commitment = (state.get("collected_data") or {}).get("commitment")
+        s15_coach_turns = sum(
             1 for m in state.get("messages", [])[-8:]
             if m.get("sender") == "coach"
-            and (m.get("internal_state") or {}).get("saturation_score", 0) >= 1.0
+            and (m.get("internal_state") or {}).get("current_step") == "S15"
         )
-        if s15_high_sat_turns >= 2:
-            logger.info("[Safety Net] S15 anti-loop: saturation 1.0 for 2+ turns → forcing stage_ready_to_complete")
+        if s15_commitment and s15_coach_turns >= 1:
+            logger.info("[Safety Net] S15: commitment filled + %d coach turns → forcing stage_ready_to_complete", s15_coach_turns)
+            internal_state["stage_ready_to_complete"] = True
+        elif s15_coach_turns >= 3 and state.get("saturation_score", 0) >= 0.8:
+            logger.info("[Safety Net] S15 anti-loop: sat>=0.8 for 3+ turns without commitment → forcing stage_ready_to_complete")
             internal_state["stage_ready_to_complete"] = True
 
     # Block stage completion on stage-opening turns
