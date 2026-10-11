@@ -346,12 +346,19 @@ async def send_message_v2(
         # Deterministic gate check: the backend is the AUTHORITY on step advancement.
         # If collected_data satisfies the gate, advance — regardless of what the LLM decided.
         # The LLM focuses on coaching quality; the backend manages flow control.
-        cur_step = updated_state.get("current_step", "S0")
+        # BUT: skip when stage_ready_to_complete is signaled — the frontend
+        # stage-complete screen must show before crossing macro boundaries.
+        last_msg_for_gate = (updated_state.get("messages") or [{}])[-1] if updated_state.get("messages") else {}
+        stage_completing = (last_msg_for_gate.get("internal_state") or {}).get("stage_ready_to_complete", False)
+        pre_gate_step = updated_state.get("current_step", "S0")
+        cur_step = pre_gate_step
         cd = updated_state.get("collected_data") or {}
         gate_next = _check_gate_met(cur_step, cd)
-        if gate_next and cur_step != gate_next:
+        if gate_next and cur_step != gate_next and not stage_completing:
             logger.info(f"[BSD V2 API] Gate auto-advance: {cur_step}→{gate_next} (collected_data satisfies gate)")
             updated_state["current_step"] = gate_next
+        elif gate_next and stage_completing:
+            logger.info(f"[BSD V2 API] Gate met {cur_step}→{gate_next} but stage_ready_to_complete — deferring to frontend")
 
         # Interactive tools: S11 on entry; S12 deferred (booklet order — see stage_tool_triggers).
         tool_call = resolve_post_turn_tool_call(prev_step, updated_state, ux_version=ux_version)
@@ -369,22 +376,23 @@ async def send_message_v2(
             )
 
         # UX V2/V3: detect macro-stage completion signal
+        # Use pre_gate_step (step BEFORE any gate auto-advance) to identify
+        # the correct macro-stage — gate may have already pushed into the next one.
         stage_complete_payload = None
         ux_v2_or_v3 = int(request.headers.get("x-ux-version", "1") or "1") >= 2
         if ux_v2_or_v3:
             last_msg = updated_state.get("messages", [{}])[-1] if updated_state.get("messages") else {}
             last_internal = last_msg.get("internal_state") or {}
             if last_internal.get("stage_ready_to_complete"):
-                current_step = updated_state.get("current_step", "S0")
-                current_macro_id = step_to_macro_stage(current_step)
-                if current_macro_id:
-                    end_step = MACRO_STAGE_END_STEPS.get(current_macro_id)
-                    step_num = int(current_step.replace("S", ""))
+                completing_macro_id = step_to_macro_stage(pre_gate_step)
+                if completing_macro_id:
+                    end_step = MACRO_STAGE_END_STEPS.get(completing_macro_id)
+                    step_num = int(pre_gate_step.replace("S", ""))
                     end_num = int(end_step.replace("S", "")) if end_step else -1
                     if step_num >= end_num:
                         try:
                             summary = await generate_stage_summary(
-                                updated_state, current_macro_id, body.language
+                                updated_state, completing_macro_id, body.language
                             )
                             stage_complete_payload = summary.model_dump()
                         except Exception:

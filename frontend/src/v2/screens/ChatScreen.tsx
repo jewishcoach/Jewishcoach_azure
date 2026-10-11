@@ -94,17 +94,14 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle, stageNumbe
       >
         <div className="w-full max-w-[662px] px-5 lg:px-4 space-y-6">
           {dedupedMessages.map((msg, idx) => {
-            const isLastAssistant = showQuickReplies && idx === messages.length - 1 && msg.role === 'assistant';
+            const isLastAssistant = showQuickReplies && msg === lastMessage && msg.role === 'assistant';
 
-            // For user messages following an assistant with suggestions,
-            // the user message is the "selected reply" shown as a teal chip
-            const prevMsg = idx > 0 ? messages[idx - 1] : null;
-            const prevHadSuggestions = prevMsg?.role === 'assistant' && (prevMsg.suggestions?.length || getQuickRepliesForMessage(prevMsg));
+            const prevDeduped = idx > 0 ? dedupedMessages[idx - 1] : null;
+            const nextDeduped = idx < dedupedMessages.length - 1 ? dedupedMessages[idx + 1] : null;
+            const prevHadSuggestions = prevDeduped?.role === 'assistant' && (prevDeduped.suggestions?.length || getQuickRepliesForMessage(prevDeduped));
             const isSelectedReply = msg.role === 'user' && prevHadSuggestions;
 
-            // Show chips on the assistant message that preceded a user selection
-            const nextMsg = idx < messages.length - 1 ? messages[idx + 1] : null;
-            const hasUserReply = msg.role === 'assistant' && nextMsg?.role === 'user';
+            const hasUserReply = msg.role === 'assistant' && nextDeduped?.role === 'user';
             const msgSuggestions = msg.suggestions?.length ? msg.suggestions : getQuickRepliesForMessage(msg);
             const repliesForCompleted = hasUserReply ? msgSuggestions : undefined;
 
@@ -133,7 +130,7 @@ export function ChatScreen({ messages, onSend, isLoading, stageTitle, stageNumbe
                 message={msg}
                 quickReplies={isLastAssistant ? quickReplies : repliesForCompleted}
                 onQuickReply={isLastAssistant ? onSend : undefined}
-                selectedReply={hasUserReply && repliesForCompleted ? nextMsg!.content : undefined}
+                selectedReply={hasUserReply && repliesForCompleted ? nextDeduped!.content : undefined}
                 conceptAudio={conceptAudio}
               />
             );

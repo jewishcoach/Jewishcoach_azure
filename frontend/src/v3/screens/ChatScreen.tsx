@@ -123,14 +123,13 @@ export function ChatScreen({
 
             const isLastAssistant = showQuickReplies && msg.role === 'assistant' && msg.id === lastMessage?.id;
 
-            // Selected reply detection (same as V2)
-            const prevMsg = idx > 0 ? messages[idx - 1] : null;
-            const prevHadSuggestions = prevMsg?.role === 'assistant' && prevMsg.suggestions?.length;
+            const prevDeduped = idx > 0 ? dedupedMessages[idx - 1] : null;
+            const nextDeduped = idx < dedupedMessages.length - 1 ? dedupedMessages[idx + 1] : null;
+            const prevHadSuggestions = prevDeduped?.role === 'assistant' && prevDeduped.suggestions?.length;
             const isSelectedReply = msg.role === 'user' && prevHadSuggestions;
 
-            const nextMsg = idx < messages.length - 1 ? messages[idx + 1] : null;
-            const hasUserReply = msg.role === 'assistant' && nextMsg?.role === 'user';
-            const repliesForCompleted = hasUserReply ? msg.suggestions : undefined;
+            const hasUserReply = msg.role === 'assistant' && nextDeduped?.role === 'user';
+            const repliesForCompleted = hasUserReply && msg.suggestions?.length ? msg.suggestions : undefined;
 
             if (isSelectedReply) return null;
 
@@ -154,7 +153,7 @@ export function ChatScreen({
                 message={msg}
                 quickReplies={isLastAssistant ? quickReplies : repliesForCompleted}
                 onQuickReply={isLastAssistant ? onSend : undefined}
-                selectedReply={hasUserReply && repliesForCompleted ? nextMsg!.content : undefined}
+                selectedReply={hasUserReply && repliesForCompleted ? nextDeduped!.content : undefined}
                 conceptAudio={conceptAudio}
               />
             );

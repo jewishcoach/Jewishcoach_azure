@@ -2905,12 +2905,17 @@ async def handle_conversation(
 
         # Gate auto-advance: backend is the authority on step advancement.
         # If collected_data satisfies the gate, advance regardless of LLM decision.
+        # BUT: skip when stage_ready_to_complete is signaled — the frontend
+        # stage-complete screen must show before crossing macro boundaries.
+        stage_completing = internal_state.get("stage_ready_to_complete", False)
         cur_step = state.get("current_step", "S0")
         cd = state.get("collected_data") or {}
         gate_next = _check_gate_met(cur_step, cd)
-        if gate_next and cur_step != gate_next:
+        if gate_next and cur_step != gate_next and not stage_completing:
             logger.info(f"[BSD V2] Gate auto-advance: {cur_step}→{gate_next}")
             state["current_step"] = gate_next
+        elif gate_next and stage_completing:
+            logger.info(f"[BSD V2] Gate met {cur_step}→{gate_next} but stage_ready_to_complete — deferring to frontend")
 
         end_time = time.time()
         total_ms = (end_time - start_time) * 1000
