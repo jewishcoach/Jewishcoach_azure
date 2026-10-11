@@ -2780,6 +2780,49 @@ async def _apply_safety_nets(
                 f"[Safety Net] S3 emotional congruence — overriding coach reply to probe '{pend}'"
             )
 
+    # S6 desired-state validation: reject negative/suppressive "desired" values
+    if not SAFETY_NET_DISABLED and state.get("current_step") in ("S6",):
+        _s6_cd = internal_state.get("collected_data") or {}
+        _neg_emotions = {"פחד", "בושה", "אשמה", "כעס", "עלבון", "חרדה", "ייאוש", "עצב", "תסכול", "שנאה", "גועל", "חוסר אונים",
+                         "fear", "shame", "guilt", "anger", "anxiety", "despair", "sadness", "frustration", "hatred", "disgust", "helplessness"}
+        _suppress_patterns_he = ["תשתוק", "אל תגיב", "אל תרגיש", "סתום", "לשתוק", "לברוח", "להתעלם", "לא לעשות כלום", "לא לומר כלום"]
+        _suppress_patterns_en = ["shut up", "don't respond", "don't feel", "be silent", "run away", "ignore", "do nothing", "say nothing"]
+
+        for field_key, field_label_he in [("emotion_desired", "רגש"), ("thought_desired", "מחשבה"), ("action_desired", "פעולה")]:
+            val = _s6_cd.get(field_key, "")
+            if not val:
+                continue
+            val_lower = val.strip().lower() if isinstance(val, str) else ""
+            is_negative = False
+
+            if field_key == "emotion_desired" and any(neg in val_lower for neg in _neg_emotions):
+                is_negative = True
+            if field_key in ("thought_desired", "action_desired"):
+                patterns = _suppress_patterns_he if language == "he" else _suppress_patterns_en
+                if any(p in val_lower for p in patterns):
+                    is_negative = True
+
+            if is_negative:
+                logger.warning(f"[Safety Net] S6 desired validation: rejecting {field_key}='{val}' (negative/suppressive)")
+                internal_state.get("collected_data", {}).pop(field_key, None)
+                overrides_applied.append(f"s6_desired_reject_{field_key}")
+                if language == "he":
+                    coach_message = (
+                        f"רגע — '{val}' זה עדיין מהמקום של המצוי, לא הרצוי. "
+                        f"ברצוי אנחנו מחפשים את מה שהיית **באמת רוצה** — לא בריחה או דיכוי, אלא בחירה חופשית. "
+                        f"תדמיין שבאותה סיטואציה הכל הולך בדיוק כמו שהיית חולם — "
+                        f"{'איזה רגש היית מרגיש?' if field_key == 'emotion_desired' else 'מה היית אומר לעצמך?' if field_key == 'thought_desired' else 'מה היית עושה?'}"
+                    )
+                else:
+                    coach_message = (
+                        f"Wait — '{val}' is still from the 'found' place, not the 'desired'. "
+                        f"In the desired state, we're looking for what you'd truly WANT — not avoidance or suppression, but a free choice. "
+                        f"Imagine that same situation going exactly as you'd dream it — "
+                        f"{'what emotion would you feel?' if field_key == 'emotion_desired' else 'what would you tell yourself?' if field_key == 'thought_desired' else 'what would you do?'}"
+                    )
+                internal_state["current_step"] = "S6"
+                break
+
     # Replace placeholder [נושא] in coach_message
     topic_for_msg = _safe_get_topic_from_collected(internal_state.get("collected_data"))
     if topic_for_msg and ("[" in topic_for_msg or topic_for_msg.strip() in ("[נושא]", "[topic]")):

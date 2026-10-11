@@ -26,7 +26,7 @@ const DOMAIN_OPTIONS = [
 ];
 
 export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
-  const [selectedEmotions, setSelectedEmotions] = useState<string[]>([]);
+  const [selectedEmotion, setSelectedEmotion] = useState<string>('');
   const [selectedDomain, setSelectedDomain] = useState<string>('');
   const [freeText, setFreeText] = useState('');
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -34,10 +34,10 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   const domainRef = useRef<HTMLDivElement>(null);
   const freeTextRef = useRef<HTMLDivElement>(null);
 
-  const toggleEmotion = useCallback((emotion: string) => {
-    setSelectedEmotions((prev) => {
-      const next = prev.includes(emotion) ? prev.filter((e) => e !== emotion) : [...prev, emotion];
-      if (next.length > 0 && step === 1) {
+  const selectEmotion = useCallback((emotion: string) => {
+    setSelectedEmotion((prev) => {
+      const next = prev === emotion ? '' : emotion;
+      if (next && step === 1) {
         setStep(2);
         setTimeout(() => {
           domainRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -61,17 +61,17 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   };
 
   const handleContinue = () => {
-    if (step === 1 && selectedEmotions.length > 0) {
+    if (step === 1 && selectedEmotion) {
       setStep(2);
     } else if (step === 2 && selectedDomain) {
       setStep(3);
     } else if (step === 3) {
-      onComplete(selectedEmotions, selectedDomain, freeText || undefined);
+      onComplete([selectedEmotion], selectedDomain, freeText || undefined);
     }
   };
 
   const canContinue = step === 1
-    ? selectedEmotions.length > 0
+    ? selectedEmotion !== ''
     : step === 2
       ? selectedDomain !== ''
       : true;
@@ -138,12 +138,12 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
 
           <div className="grid grid-cols-2 gap-4">
             {EMOTION_OPTIONS.map((emotion) => {
-              const isSelected = selectedEmotions.includes(emotion);
+              const isSelected = selectedEmotion === emotion;
               return (
                 <button
                   key={emotion}
                   type="button"
-                  onClick={() => toggleEmotion(emotion)}
+                  onClick={() => selectEmotion(emotion)}
                   className={`
                     h-[68px] px-6 rounded-xl border text-base text-center
                     transition-all duration-200

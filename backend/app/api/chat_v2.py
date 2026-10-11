@@ -354,14 +354,31 @@ async def send_message_v2(
         cur_step = pre_gate_step
         cd = updated_state.get("collected_data") or {}
         gate_next = _check_gate_met(cur_step, cd)
+        gate_advanced = False
         if gate_next and cur_step != gate_next and not stage_completing:
             logger.info(f"[BSD V2 API] Gate auto-advance: {cur_step}→{gate_next} (collected_data satisfies gate)")
             updated_state["current_step"] = gate_next
+            gate_advanced = True
         elif gate_next and stage_completing:
             logger.info(f"[BSD V2 API] Gate met {cur_step}→{gate_next} but stage_ready_to_complete — deferring to frontend")
 
-        # Interactive tools: S11 on entry; S12 deferred (booklet order — see stage_tool_triggers).
-        tool_call = resolve_post_turn_tool_call(prev_step, updated_state, ux_version=ux_version)
+        # Check for deferred tool from previous turn's gate advance
+        tool_call = updated_state.pop("_deferred_tool", None)
+        if tool_call:
+            logger.info(f"[BSD V2 API] Firing deferred tool: {tool_call.get('tool_type')}")
+
+        if not tool_call:
+            tool_call = resolve_post_turn_tool_call(prev_step, updated_state, ux_version=ux_version)
+            # When gate just advanced in this chat turn, defer the tool so the
+            # coach's message (often a confirmation question) lands first.
+            # The deferred tool fires on the NEXT turn.
+            if tool_call and gate_advanced:
+                logger.info(
+                    f"[BSD V2 API] Deferring tool {tool_call['tool_type']} — gate just advanced {cur_step}→{gate_next}"
+                )
+                updated_state["_deferred_tool"] = tool_call
+                tool_call = None
+
         if tool_call and tool_call.get("tool_type") in ("trait_picker", "trait_card_builder"):
             mark_trait_picker_sent(updated_state)
         if tool_call and tool_call.get("tool_type") == "matzui_summary":

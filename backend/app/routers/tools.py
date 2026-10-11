@@ -17,6 +17,26 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/tools", tags=["tools"])
 
+import re
+import unicodedata
+
+def _is_gibberish(text: str) -> bool:
+    """Detect obviously nonsensical text in tool submissions."""
+    if not text or not isinstance(text, str):
+        return False
+    s = text.strip()
+    if len(s) < 2:
+        return True
+    letters = re.sub(r'[\s\d\W_]+', '', unicodedata.normalize('NFC', s))
+    if len(letters) < 2:
+        return True
+    if len(set(letters)) == 1:
+        return True
+    word_chars = re.findall(r'[֐-׿a-zA-Z]{2,}', s)
+    if not word_chars:
+        return True
+    return False
+
 
 class ToolSubmitRequest(BaseModel):
     tool_type: str
@@ -98,6 +118,25 @@ async def submit_tool_response(
             v2_state = dict(conversation.v2_state)
             state_version = conversation.v2_state_version or 0
             prev_step = v2_state.get("current_step", "S0")
+
+            # Validate text quality in tool submissions — reject gibberish
+            _text_fields_to_check = {
+                "gap_card": ["gap_name"],
+                "comparison_card": ["action_desired", "emotion_desired", "thought_desired"],
+                "sentence_builder": ["paradigm"],
+                "declaration_card": ["renewal"],
+                "commitment_card": ["commitment"],
+            }
+            fields_to_check = _text_fields_to_check.get(request.tool_type, [])
+            for field in fields_to_check:
+                val = request.data.get(field, "")
+                if isinstance(val, str) and _is_gibberish(val):
+                    logger.warning(f"[Tools] Gibberish detected in {request.tool_type}.{field}: '{val[:30]}'")
+                    raise HTTPException(
+                        status_code=422,
+                        detail={"error": "gibberish", "field": field,
+                                "message": "התשובה לא ברורה — נסה לנסח אחרת"}
+                    )
 
             # Persist structured data directly into collected_data for insights panel
             if request.tool_type == "profit_loss":
@@ -247,7 +286,12 @@ async def submit_tool_response(
                     ))
 
                 ux_version = updated_state.get("ux_version", 2)
-                tool_call = resolve_post_turn_tool_call(prev_step, updated_state, ux_version=ux_version, from_tool_submission=request.tool_type)
+                # Check for deferred tool from a previous gate advance
+                tool_call = updated_state.pop("_deferred_tool", None)
+                if tool_call:
+                    logger.info(f"[Tools] Firing deferred tool: {tool_call.get('tool_type')}")
+                if not tool_call:
+                    tool_call = resolve_post_turn_tool_call(prev_step, updated_state, ux_version=ux_version, from_tool_submission=request.tool_type)
                 if tool_call and tool_call.get("tool_type") in ("trait_picker", "trait_card_builder"):
                     mark_trait_picker_sent(updated_state)
                 if tool_call and tool_call.get("tool_type") == "matzui_summary":
