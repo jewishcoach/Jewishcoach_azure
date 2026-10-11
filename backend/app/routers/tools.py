@@ -270,12 +270,19 @@ async def submit_tool_response(
                 saturation_score = float(updated_state.get("saturation_score", 0.0))
 
                 # Deterministic gate check: backend is the authority on step advancement.
+                # Suppress when stage_ready_to_complete — let frontend stage-complete screen handle it.
+                last_tool_msg = (updated_state.get("messages") or [{}])[-1] if updated_state.get("messages") else {}
+                tool_stage_completing = (last_tool_msg.get("internal_state") or {}).get("stage_ready_to_complete", False)
                 cd = updated_state.get("collected_data") or {}
                 gate_next = _check_gate_met(current_step, cd)
-                if gate_next and current_step != gate_next:
+                gate_advanced = False
+                if gate_next and current_step != gate_next and not tool_stage_completing:
                     logger.info(f"[Tools] Gate auto-advance: {current_step}→{gate_next} (gate met after {request.tool_type} submission)")
                     updated_state["current_step"] = gate_next
                     current_step = gate_next
+                    gate_advanced = True
+                elif gate_next and tool_stage_completing:
+                    logger.info(f"[Tools] Gate met {current_step}→{gate_next} but stage_ready_to_complete — deferring")
 
                 if coach_message:
                     db.add(Message(
@@ -292,6 +299,11 @@ async def submit_tool_response(
                     logger.info(f"[Tools] Firing deferred tool: {tool_call.get('tool_type')}")
                 if not tool_call:
                     tool_call = resolve_post_turn_tool_call(prev_step, updated_state, ux_version=ux_version, from_tool_submission=request.tool_type)
+                    # Defer tool when gate just advanced — let coach's question land first
+                    if tool_call and gate_advanced:
+                        logger.info(f"[Tools] Deferring tool {tool_call['tool_type']} — gate just advanced {current_step}")
+                        updated_state["_deferred_tool"] = tool_call
+                        tool_call = None
                 if tool_call and tool_call.get("tool_type") in ("trait_picker", "trait_card_builder"):
                     mark_trait_picker_sent(updated_state)
                 if tool_call and tool_call.get("tool_type") == "matzui_summary":
