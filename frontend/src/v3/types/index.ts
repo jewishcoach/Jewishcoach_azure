@@ -1,4 +1,5 @@
 // Re-export all V2 types — V3 extends, never duplicates
+import type { StageSummaryPayload } from '../../v2/types';
 export type {
   IntroAnswerOption,
   IntroQuestion,

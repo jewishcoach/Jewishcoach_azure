@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { Heart, Send } from 'lucide-react';
-import type { V3ChatMessage, ActiveInlineTool } from '../types';
+import type { V3ChatMessage, ActiveInlineTool, ChatMessage } from '../types';
 import { MessageBubble } from '../../v2/components/MessageBubble';
 import { getConceptAudioForMessage } from '../../v2/components/conceptAudio';
 import { InlineTool } from '../components/InlineTool';
@@ -150,7 +150,7 @@ export function ChatScreen({
             return (
               <MessageBubble
                 key={msg.id}
-                message={msg}
+                message={msg as ChatMessage}
                 quickReplies={isLastAssistant ? quickReplies : repliesForCompleted}
                 onQuickReply={isLastAssistant ? onSend : undefined}
                 selectedReply={hasUserReply && repliesForCompleted ? nextDeduped!.content : undefined}

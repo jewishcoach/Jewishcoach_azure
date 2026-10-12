@@ -220,7 +220,7 @@ export function useStageFlowV3(language: string = 'he') {
             id: `a-${Date.now()}`,
             role: 'assistant',
             content: response.coach_message,
-            phase: response.current_step,
+            phase: response.current_step ?? undefined,
             suggestions: response.suggestions,
           };
           setMessages((prev) => [...prev, assistantMsg]);
@@ -233,17 +233,18 @@ export function useStageFlowV3(language: string = 'he') {
           setCollectedData((prev) => ({ ...prev, ...response.collected_data }));
         }
 
-        if (response.current_step) {
+        const newStep = response.current_step;
+        if (newStep) {
           setFlowState((prev) => ({
             ...prev,
-            currentStep: response.current_step,
-            currentMacroStage: stepToMacroStage(response.current_step || prev.currentStep || 'S0'),
+            currentStep: newStep,
+            currentMacroStage: stepToMacroStage(newStep),
           }));
         }
 
         // Check for chained tool_call
         const nextTool = response.tool_call
-          ? toolCallToActiveTool(response.tool_call as Record<string, unknown>)
+          ? toolCallToActiveTool(response.tool_call as unknown as Record<string, unknown>)
           : null;
         if (nextTool) setActiveTool(nextTool);
 
@@ -374,9 +375,12 @@ export function useStageFlowV3(language: string = 'he') {
     if (personalStatement) {
       try {
         const base = getApiBase();
+        const token = await getToken();
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (token) headers.Authorization = `Bearer ${token}`;
         await fetch(`${base}/chat/v2/conversations/${conversationId}/statement`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...((t => t ? { Authorization: `Bearer ${t}` } : {})(await getToken())) },
+          headers,
           body: JSON.stringify({ stage_id: flowState.currentMacroStage, statement: personalStatement }),
         });
       } catch { /* best effort */ }
