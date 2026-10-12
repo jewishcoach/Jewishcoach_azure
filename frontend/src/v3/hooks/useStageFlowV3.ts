@@ -242,10 +242,40 @@ export function useStageFlowV3(language: string = 'he') {
         }
 
         // Check for chained tool_call
-        if (response.tool_call) {
-          const next = toolCallToActiveTool(response.tool_call as Record<string, unknown>);
-          if (next) setActiveTool(next);
+        const nextTool = response.tool_call
+          ? toolCallToActiveTool(response.tool_call as Record<string, unknown>)
+          : null;
+        if (nextTool) setActiveTool(nextTool);
+
+        // A card can be the step that ends a macro-stage (e.g. declaration/commitment card)
+        if (response.stage_complete) {
+          setFlowState((prev) => ({
+            ...prev,
+            phase: 'stage_complete',
+            summary: response.stage_complete as StageSummaryPayload,
+          }));
         }
+
+        // Persist session so a refresh doesn't restore the already-submitted card
+        setMessages((msgs) => {
+          setCollectedData((cd) => {
+            saveSession({
+              conversationId,
+              flowState: {
+                phase: response.stage_complete ? 'stage_complete' : 'chatting',
+                currentMacroStage: stepToMacroStage(response.current_step || flowState.currentStep || 'S0'),
+                currentStep: response.current_step || flowState.currentStep,
+                ...(response.stage_complete ? { summary: response.stage_complete as StageSummaryPayload } : {}),
+              },
+              messages: msgs,
+              collectedData: response.collected_data ? { ...cd, ...response.collected_data } : cd,
+              saturationScore: response.saturation_score ?? 0,
+              activeTool: nextTool,
+            });
+            return cd;
+          });
+          return msgs;
+        });
       } catch (err) {
         console.error('[V3 Chat] submitTool error:', err);
         // Remove the tool_result message that was optimistically added
@@ -261,7 +291,7 @@ export function useStageFlowV3(language: string = 'he') {
         setToolSubmitting(false);
       }
     },
-    [conversationId, toolSubmitting, getToken, activeTool],
+    [conversationId, toolSubmitting, getToken, activeTool, flowState.currentStep],
   );
 
   // ---------------------------------------------------------------------------

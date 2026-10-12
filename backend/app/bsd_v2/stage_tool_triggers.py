@@ -208,30 +208,55 @@ def _suggest_emotions_for_event(cd: Dict[str, Any]) -> List[str]:
     return result[:6] if result else ["כעס", "עצב", "תסכול", "חרדה", "עלבון", "אכזבה"]
 
 
+# BSD: source = values (נפש אלוקית), nature = needs/defenses (נפש טבעית) — traits of life
+# as a whole, not of the coaching event. Book example card — source: חסד, תמימות, אמון,
+# אהבה, ישרות, אומץ; nature: הכבוד שלי = אני, להיות ראשון בכל, לא משתייך, מחפש מחמאות.
+_SOURCE_TRAITS = [
+    "אהבה", "חסד", "אמת", "ישרות", "אומץ", "אמון", "נתינה", "אחריות",
+    "נאמנות", "שמחה", "ענווה", "תמימות", "חכמה", "שליחות", "רגישות לאחרים", "התמדה",
+]
+_NATURE_TRAITS = [
+    "צורך באישור ובמחמאות", "פחד מדחייה", "צורך בשליטה", "הימנעות מעימות", "צורך לרצות",
+    "להיות ראשון בכל", "הכבוד שלי = אני", "לקחת בכוח", "צורך להיות צודק", "פחד מכישלון",
+    "צורך בשקט ובנוחות", "לא משתייך",
+]
+# Pattern/belief words → the needs and values most likely in play, listed first
+_NATURE_HINTS = [
+    (("שותק", "שתקתי", "נסגר", "בולע", "לא אומר", "לא אמרתי", "מחייך", "בלגן", "עניין"), ["הימנעות מעימות", "צורך לרצות"]),
+    (("צועק", "צעקתי", "מתפרץ", "כעס", "בכוח", "שולט"), ["צורך בשליטה", "לקחת בכוח"]),
+    (("לא רואים", "שקוף", "לא סופרים", "לא חשוב", "לא נספר"), ["צורך באישור ובמחמאות", "פחד מדחייה"]),
+    (("נכשל", "כישלון", "לא מספיק", "גרוע"), ["פחד מכישלון", "צורך להיות צודק"]),
+]
+_SOURCE_HINTS = [
+    (("להגיד", "לומר", "קול", "לבטא", "ישיר"), ["אומץ", "אמת"]),
+    (("קרבה", "קשר", "ביחד", "חיבוק"), ["אהבה", "נתינה"]),
+    (("רגוע", "סבלנות", "להקשיב"), ["חסד", "רגישות לאחרים"]),
+    (("אחריות", "לעמוד", "גבול"), ["אחריות", "ישרות"]),
+]
+
+
+def _ordered(defaults: List[str], hints, text: str) -> List[str]:
+    picked: List[str] = []
+    for words, traits in hints:
+        if any(w in text for w in words):
+            picked.extend(t for t in traits if t not in picked)
+    return picked + [t for t in defaults if t not in picked]
+
+
 def _generate_trait_suggestions(cd: Dict[str, Any]) -> Dict[str, List[str]]:
-    """Generate trait suggestions for TraitCardBuilder from collected_data."""
-    source_hints: List[str] = []
-    nature_hints: List[str] = []
-
-    # Derive source hints from positive/desired elements
-    if cd.get("emotion_desired"):
-        source_hints.append(cd["emotion_desired"])
-    if cd.get("thought_desired"):
-        source_hints.append(cd["thought_desired"])
-
-    # Derive nature hints from pattern/negative elements
-    if cd.get("pattern"):
-        nature_hints.append(cd["pattern"])
-    emotions = cd.get("emotions") or []
-    nature_hints.extend(emotions[:3])
-
+    """Trait suggestions for TraitCardBuilder: BSD values (source) and needs (nature),
+    ordered by what the user's pattern / belief / desired state point to."""
     stance = cd.get("stance") or {}
-    for gain in (stance.get("gains") or [])[:2]:
-        nature_hints.append(gain)
-    for loss in (stance.get("losses") or [])[:2]:
-        source_hints.append(loss)
-
-    return {"source": source_hints[:6], "nature": nature_hints[:6]}
+    pattern_text = " ".join(str(v or "") for v in (
+        cd.get("pattern"), cd.get("paradigm"), stance.get("reality_belief"), cd.get("thought"),
+    ))
+    desired_text = " ".join(str(v or "") for v in (
+        cd.get("action_desired"), cd.get("thought_desired"), cd.get("emotion_desired"),
+    ))
+    return {
+        "source": _ordered(_SOURCE_TRAITS, _SOURCE_HINTS, desired_text)[:12],
+        "nature": _ordered(_NATURE_TRAITS, _NATURE_HINTS, pattern_text)[:12],
+    }
 
 
 _INTERPRETIVE_ONLY = {
@@ -260,9 +285,12 @@ def _resolve_v3_tool_call(prev_step: str, state: Dict[str, Any], from_tool_submi
     new_step = state.get("current_step", "S0")
     cd = state.get("collected_data") or {}
 
-    # S12 with offer_trait_picker → trait_card_builder (V3 version)
-    if new_step == "S12" and _trait_picker_eligible(state):
-        return _build_v3_tool_call("trait_card_builder", state)
+    # S12: the card opens the stage right after a short explanation (design: docs/bsd-redesign/synthesis.md)
+    # — no chat collection of 6+6 first. offer_trait_picker is the V2 chat-first signal.
+    if new_step == "S12" and not state.get("trait_picker_tool_sent"):
+        forces = cd.get("forces") or {}
+        if _trait_picker_eligible(state) or not forces.get("source"):
+            return _build_v3_tool_call("trait_card_builder", state)
 
     # Only trigger on step transitions (new_step != prev_step)
     if new_step == prev_step:

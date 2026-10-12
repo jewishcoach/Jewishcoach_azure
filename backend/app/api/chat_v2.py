@@ -7,8 +7,9 @@ Side-by-side with V1 - experimental single-agent architecture.
 import asyncio
 import json
 import logging
+import re
 import time
-from typing import Dict, Any, Literal
+from typing import Dict, Any, Literal, Optional
 from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -99,6 +100,52 @@ def _get_conversation_or_404(
     if not conv:
         raise HTTPException(status_code=404, detail="Conversation not found")
     return conv
+
+
+def strip_question_before_card(state: Dict[str, Any], coach_message: str) -> str:
+    """V3: when a card or the stage-complete screen follows the coach message, drop its
+    closing question — the user can't answer it in chat (the card replaces the input).
+    Keeps the state's stored coach message in sync."""
+    if not coach_message or "?" not in coach_message.rstrip()[-3:]:
+        return coach_message
+    def _drop_trailing_questions(parts: list) -> list:
+        while parts and "?" in parts[-1].rstrip()[-3:]:
+            parts = parts[:-1]
+        return parts
+
+    paragraphs = _drop_trailing_questions([p for p in coach_message.strip().split("\n") if p.strip()])
+    if paragraphs:
+        stripped = "\n".join(paragraphs).strip()
+    else:
+        sentences = _drop_trailing_questions(re.split(r"(?<=[.!?])\s+", coach_message.strip()))
+        stripped = " ".join(sentences).strip()
+    if not stripped:
+        return coach_message
+    msgs = state.get("messages") or []
+    if msgs and msgs[-1].get("sender") == "coach" and msgs[-1].get("content") == coach_message:
+        msgs[-1]["content"] = stripped
+    return stripped
+
+
+async def build_stage_complete_payload(state: Dict[str, Any], step: str, language: str) -> Optional[Dict[str, Any]]:
+    """Stage summary payload when the last coach turn signaled stage_ready_to_complete
+    at (or past) the end step of its macro-stage; None otherwise."""
+    last_msg = state.get("messages", [{}])[-1] if state.get("messages") else {}
+    if not (last_msg.get("internal_state") or {}).get("stage_ready_to_complete"):
+        return None
+    completing_macro_id = step_to_macro_stage(step)
+    if not completing_macro_id:
+        return None
+    end_step = MACRO_STAGE_END_STEPS.get(completing_macro_id)
+    end_num = int(end_step.replace("S", "")) if end_step else -1
+    if int(step.replace("S", "")) < end_num:
+        return None
+    try:
+        summary = await generate_stage_summary(state, completing_macro_id, language)
+        return summary.model_dump()
+    except Exception:
+        logger.exception("[BSD V2 API] Failed to generate stage summary on completion")
+        return None
 
 
 def load_v2_state(conversation_id: int, db: Session) -> tuple[Dict[str, Any], int]:
@@ -353,7 +400,8 @@ async def send_message_v2(
         pre_gate_step = updated_state.get("current_step", "S0")
         cur_step = pre_gate_step
         cd = updated_state.get("collected_data") or {}
-        gate_next = _check_gate_met(cur_step, cd)
+        # V3: handle_conversation already applied the (V3) gate — a second pass would double-hop
+        gate_next = None if ux_version >= 3 else _check_gate_met(cur_step, cd)
         gate_advanced = False
         if gate_next and cur_step != gate_next and not stage_completing:
             logger.info(f"[BSD V2 API] Gate auto-advance: {cur_step}→{gate_next} (collected_data satisfies gate)")
@@ -398,22 +446,9 @@ async def send_message_v2(
         stage_complete_payload = None
         ux_v2_or_v3 = int(request.headers.get("x-ux-version", "1") or "1") >= 2
         if ux_v2_or_v3:
-            last_msg = updated_state.get("messages", [{}])[-1] if updated_state.get("messages") else {}
-            last_internal = last_msg.get("internal_state") or {}
-            if last_internal.get("stage_ready_to_complete"):
-                completing_macro_id = step_to_macro_stage(pre_gate_step)
-                if completing_macro_id:
-                    end_step = MACRO_STAGE_END_STEPS.get(completing_macro_id)
-                    step_num = int(pre_gate_step.replace("S", ""))
-                    end_num = int(end_step.replace("S", "")) if end_step else -1
-                    if step_num >= end_num:
-                        try:
-                            summary = await generate_stage_summary(
-                                updated_state, completing_macro_id, body.language
-                            )
-                            stage_complete_payload = summary.model_dump()
-                        except Exception:
-                            logger.exception("[BSD V2 API] Failed to generate stage summary on completion")
+            stage_complete_payload = await build_stage_complete_payload(updated_state, pre_gate_step, body.language)
+        if ux_version >= 3 and (tool_call or stage_complete_payload):
+            coach_message = strip_question_before_card(updated_state, coach_message)
 
         # --- SINGLE ATOMIC COMMIT: save everything together ---
         t5 = time.time()
@@ -875,6 +910,8 @@ async def submit_stage_intro_answers(
         )
         if opening_tool_call and opening_tool_call.get("tool_type") in ("trait_picker", "trait_card_builder"):
             mark_trait_picker_sent(updated_state)
+        if ux_version >= 3 and opening_tool_call:
+            coach_msg = strip_question_before_card(updated_state, coach_msg)
 
         save_v2_state(body.conversation_id, updated_state, db, expected_version=ver_fresh)
         opening_message = coach_msg

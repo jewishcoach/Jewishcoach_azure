@@ -179,11 +179,25 @@ _V3_TOOL_DATA_KEYS: Dict[str, str] = {
     "S7": "gap_name",
     "S9": "paradigm",
     "S10": "paradigm",
-    "S11": "stance",
-    "S12": "forces",
+    # Nested keys: stance/forces are initialized as non-empty dicts, so check the card's own field
+    "S11": "stance.gains",
+    "S12": "forces.source",
     "S13": "renewal",
     "S15": "commitment",
 }
+
+# V3 merges S9+S10 (design: docs/bsd-redesign/synthesis.md) — S10 must not load the V2
+# stance file, whose mandatory Pre-Check and 3 trigger questions the redesign removed.
+_V3_V2_STAGE_FILE_ALIAS: Dict[str, str] = {"S10": "S9"}
+
+
+def _get_collected_value(cd: dict, data_key: str):
+    value = cd
+    for part in data_key.split("."):
+        if not isinstance(value, dict):
+            return None
+        value = value.get(part)
+    return value
 
 
 def assemble_system_prompt(current_step: str, language: str = "he", user_gender: str = None, ux_version: int = 2, collected_data: dict = None) -> str:
@@ -240,10 +254,8 @@ def assemble_system_prompt(current_step: str, language: str = "he", user_gender:
             else:
                 stage_content = v2_content
         else:
-            tool_data_present = False
-            if cd.get(data_key):
-                val = cd[data_key]
-                tool_data_present = bool(val) and val != [] and val != {}
+            val = _get_collected_value(cd, data_key)
+            tool_data_present = bool(val) and val != [] and val != {}
 
             if tool_data_present:
                 # Post-card: prefer card_aware (single file) over overlay+V2 (two files)
@@ -258,7 +270,8 @@ def assemble_system_prompt(current_step: str, language: str = "he", user_gender:
                     stage_content = _load_file(str(card_aware_dir / ca_file)).strip()
                 else:
                     # Fallback: overlay + V2
-                    stage_file = STAGE_FILES.get(current_step, "s1_topic.md")
+                    v2_step = _V3_V2_STAGE_FILE_ALIAS.get(current_step, current_step)
+                    stage_file = STAGE_FILES.get(v2_step, "s1_topic.md")
                     stage_path = _resolve_prompt_file(stages_dir, lang, stage_file)
                     v2_content = _load_file(str(stage_path)).strip()
 

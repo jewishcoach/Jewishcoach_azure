@@ -48,6 +48,7 @@ export interface ToolSubmitResponse {
   tool_call?: ToolCallV3 | null;
   collected_data?: Record<string, unknown> | null;
   suggestions?: string[];
+  stage_complete?: StageSummaryPayload | null;
 }
 
 export interface V3ChatMessage {

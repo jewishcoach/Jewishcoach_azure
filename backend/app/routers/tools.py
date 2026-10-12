@@ -11,7 +11,7 @@ from ..bsd_v2.single_agent_coach import handle_conversation, _check_gate_met
 from ..bsd_v2.stage_tool_triggers import resolve_post_turn_tool_call, mark_trait_picker_sent, mark_matzui_summary_sent
 from ..bsd_v2.onboarding_topics_context import inject_onboarding_topics_into_state
 from ..security.chat_input import ChatMessageRejected, sanitize_chat_message
-from ..api.chat_v2 import save_v2_state
+from ..api.chat_v2 import save_v2_state, build_stage_complete_payload, strip_question_before_card
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +55,7 @@ class ToolResponseModel(BaseModel):
     tool_call: Dict[str, Any] | None = None
     collected_data: Dict[str, Any] | None = None
     suggestions: list[str] = []
+    stage_complete: Dict[str, Any] | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -111,6 +112,7 @@ async def submit_tool_response(
     current_step: str | None = None
     saturation_score: float | None = None
     tool_call: Dict[str, Any] | None = None
+    stage_complete_payload: Dict[str, Any] | None = None
 
     # Inject structured tool output into V2 state and run an immediate coach turn.
     if conversation.v2_state and isinstance(conversation.v2_state, dict):
@@ -274,7 +276,9 @@ async def submit_tool_response(
                 last_tool_msg = (updated_state.get("messages") or [{}])[-1] if updated_state.get("messages") else {}
                 tool_stage_completing = (last_tool_msg.get("internal_state") or {}).get("stage_ready_to_complete", False)
                 cd = updated_state.get("collected_data") or {}
-                gate_next = _check_gate_met(current_step, cd)
+                ux_version = updated_state.get("ux_version", 2)
+                # V3: handle_conversation already applied the (V3) gate — a second pass would double-hop
+                gate_next = None if ux_version >= 3 else _check_gate_met(current_step, cd)
                 gate_advanced = False
                 if gate_next and current_step != gate_next and not tool_stage_completing:
                     logger.info(f"[Tools] Gate auto-advance: {current_step}→{gate_next} (gate met after {request.tool_type} submission)")
@@ -284,15 +288,16 @@ async def submit_tool_response(
                 elif gate_next and tool_stage_completing:
                     logger.info(f"[Tools] Gate met {current_step}→{gate_next} but stage_ready_to_complete — deferring")
 
+                coach_db_msg = None
                 if coach_message:
-                    db.add(Message(
+                    coach_db_msg = Message(
                         conversation_id=conversation_id,
                         role="assistant",
                         content=coach_message,
                         timestamp=utc_now(),
-                    ))
+                    )
+                    db.add(coach_db_msg)
 
-                ux_version = updated_state.get("ux_version", 2)
                 # Check for deferred tool from a previous gate advance
                 tool_call = updated_state.pop("_deferred_tool", None)
                 if tool_call:
@@ -308,6 +313,14 @@ async def submit_tool_response(
                     mark_trait_picker_sent(updated_state)
                 if tool_call and tool_call.get("tool_type") == "matzui_summary":
                     mark_matzui_summary_sent(updated_state)
+
+                # A card can be the step that ends a macro-stage (e.g. declaration_card, commitment_card)
+                stage_complete_payload = await build_stage_complete_payload(updated_state, current_step, language)
+                if ux_version >= 3 and (tool_call or stage_complete_payload) and coach_message:
+                    stripped = strip_question_before_card(updated_state, coach_message)
+                    if stripped != coach_message and coach_db_msg is not None:
+                        coach_db_msg.content = stripped
+                        coach_message = stripped
 
                 save_v2_state(conversation_id, updated_state, db, expected_version=state_version, commit=False)
             else:
@@ -345,6 +358,7 @@ async def submit_tool_response(
         tool_call=tool_call,
         collected_data=result_collected_data,
         suggestions=result_suggestions,
+        stage_complete=stage_complete_payload,
     )
 
 
@@ -391,7 +405,7 @@ def _generate_tool_summary(tool_type: str, data: Dict[str, Any]) -> str:
 
         return summary.strip()
 
-    elif tool_type == "trait_picker":
+    elif tool_type in ("trait_picker", "trait_card_builder"):
         # Support both old keys (source_traits/nature_traits) and new keys (source_forces/nature_forces)
         source = data.get("source_forces") or data.get("source_traits") or []
         nature = data.get("nature_forces") or data.get("nature_traits") or []
@@ -399,12 +413,12 @@ def _generate_tool_summary(tool_type: str, data: Dict[str, Any]) -> str:
         summary = "💎 **כוחות מקור וטבע (כמ\"ז) - התשובות שלי:**\n\n"
 
         if source:
-            summary += "**כוחות מקור (ערכים ואמונות):**\n"
+            summary += "**כוחות מקור (אור, ערכים, שליחות):**\n"
             for trait in source:
                 summary += f"- {trait}\n"
 
         if nature:
-            summary += "\n**כוחות טבע (יכולות וכישרונות):**\n"
+            summary += "\n**כוחות טבע (צרכים, הגנות, דחפים):**\n"
             for trait in nature:
                 summary += f"- {trait}\n"
 
@@ -453,10 +467,10 @@ def _generate_tool_summary(tool_type: str, data: Dict[str, Any]) -> str:
         opp = data.get("opportunity", {})
         parts = [f"הפער: {name} (ציון {score}/10)"]
         if belief:
-            parts.append(f"אמונה בשינוי: {belief}")
+            belief_he = {"yes": "כן", "no": "לא", "unsure": "לא בטוח"}.get(belief, belief)
+            parts.append(f"אמונה בשינוי: {belief_he}")
         if isinstance(opp, dict):
-            if opp.get("has"):
-                parts.append(f"הזדמנות: {opp.get('what', 'כן')}")
+            parts.append(f"הזדמנות: {opp.get('what', 'כן')}" if opp.get("has") else "הזדמנות: לא מזהה כרגע")
         elif opp:
             parts.append(f"הזדמנות: {opp}")
         return " | ".join(parts)
@@ -489,6 +503,8 @@ def _generate_tool_summary(tool_type: str, data: Dict[str, Any]) -> str:
             parts.append(f"אני בוחר: {renewal}")
         if action:
             parts.append(f"מה אעשה אחרת: {action}")
+        if data.get("feels_right") is not None:
+            parts.append(f"מרגיש לי נכון ומשמח: {'כן' if data['feels_right'] else 'עדיין לא'}")
         return ". ".join(parts) if parts else ""
 
     elif tool_type == "commitment_card":

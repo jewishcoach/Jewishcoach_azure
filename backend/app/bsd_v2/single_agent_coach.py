@@ -225,6 +225,34 @@ def _get_system_prompt(
     return assembled + build_session_flow_prompt_addon(state, language) + build_station_wrap_instruction(state, language)
 
 
+# A paradigm is an inner rule ("עדיף לשתוק", "אני חייב...", "אם אדבר זה יחמיר"); a sentence
+# with none of these words usually just re-describes the reaction — i.e. the pattern.
+_PARADIGM_RULE_WORDS = ("חייב", "צריך", "עדיף", "אסור", "מותר", "אם ", "כדי", "הדרך", "אחרת",
+                        "אין טעם", "כדאי", "שווה", "רק כך", "נכון ל", "מוכרח", "אסור לי")
+
+
+def _build_v3_paradigm_hint(state: Dict[str, Any], language: str) -> str:
+    """S9 (once, before the trigger question): flag a 'ככה זה אצלי' that reads like the pattern."""
+    if state.get("current_step") not in ("S9", "S10") or state.get("_s9_paradigm_hint_given"):
+        return ""
+    cd = state.get("collected_data") or {}
+    paradigm = str(cd.get("paradigm") or "")
+    if not paradigm or (cd.get("stance") or {}).get("activation_trigger"):
+        return ""
+    body = paradigm.split("—", 1)[-1] if "—" in paradigm else paradigm.replace("ככה זה אצלי", "")
+    if any(w in body for w in _PARADIGM_RULE_WORDS):
+        return ""
+    state["_s9_paradigm_hint_given"] = True
+    if language != "he":
+        return ("\n\n**System check (S9):** the paradigm the user wrote has no inner-rule wording (must / better / if… then) — "
+                "it likely re-describes the reaction (the pattern). Run the pattern test: correct the floor gently and ask ONE "
+                "deepening question about the hidden rule. Do NOT ask the trigger question in this turn.")
+    return ("\n\n**בדיקת מערכת (S9):** ב'ככה זה אצלי' שהמשתמש כתב **אין ניסוח של חוק פנימי** (חייב / צריך / עדיף / אם… אז) — "
+            "סביר שזה **תיאור התגובה, כלומר הדפוס**, במילים אחרות. הפעל את **מבחן הדפוס**: הבהר בעדינות שזה מה שקורה בשטח, "
+            "ושאל **שאלת העמקה פתוחה אחת**, בלי להציע אפשרויות: \"איזה **חוק פנימי** שלך אומר שזו הדרך הנכונה להגיב שם?\" "
+            "**אל תשאל את שאלת הטריגר בתור הזה.**")
+
+
 def _sanitize_coach_message(coach_message: str) -> str:
     """Remove model artifacts like role prefixes from user-facing message."""
     if not isinstance(coach_message, str):
@@ -337,6 +365,101 @@ def _check_gate_met(current_step: str, cd: Dict[str, Any]) -> str | None:
         if isinstance(stance, dict) and stance.get("gains") and stance.get("losses"):
             return "S12"
     return None
+
+
+# V3: a macro-stage may only complete once its card data exists — otherwise the
+# stage-complete screen would replace the card (e.g. S14→S15 before the commitment card).
+_V3_STAGE_COMPLETE_REQUIRES = {
+    "S8": ("pattern",),
+    "S11": ("stance", "gains"),
+    "S12": ("forces", "source"),
+    "S13": ("renewal",),
+    "S15": ("commitment",),
+}
+
+
+def _apply_v3_stage_complete_guards(state: Dict[str, Any], internal_state: Dict[str, Any]) -> None:
+    from .stage_intro_schema import MACRO_STAGE_END_STEPS
+    step = state.get("current_step", "")
+    cd = state.get("collected_data") or {}
+    # Mid-macro completion signal (e.g. at S9) shows no screen but silences the gate — drop it
+    if internal_state.get("stage_ready_to_complete") and step not in MACRO_STAGE_END_STEPS.values():
+        logger.info(f"[BSD V3] Ignoring stage_ready_to_complete at {step} — not a macro-stage end step")
+        internal_state["stage_ready_to_complete"] = False
+    required = _V3_STAGE_COMPLETE_REQUIRES.get(step)
+    if internal_state.get("stage_ready_to_complete") and required:
+        value: Any = cd
+        for key in required:
+            value = value.get(key) if isinstance(value, dict) else None
+        if not value:
+            logger.info(f"[BSD V3] Blocked stage_ready_to_complete at {step} — card data {'.'.join(required)} missing")
+            internal_state["stage_ready_to_complete"] = False
+            return
+    # S12 anti-loop: card is full and the coach already reflected it — close the stage
+    if step == "S12" and not internal_state.get("stage_ready_to_complete"):
+        forces = cd.get("forces") or {}
+        if len(forces.get("source") or []) >= 6 and len(forces.get("nature") or []) >= 6:
+            # Count coach turns since the card was filled (the card turn = 1; one placement question allowed)
+            state["_s12_post_card_turns"] = state.get("_s12_post_card_turns", 0) + 1
+            if state["_s12_post_card_turns"] >= 3:
+                logger.info("[BSD V3] S12: full card + %d coach turns → forcing stage_ready_to_complete", state["_s12_post_card_turns"])
+                internal_state["stage_ready_to_complete"] = True
+
+
+def _check_gate_met_v3(state: Dict[str, Any]) -> str | None:
+    """V3 gate (design: docs/bsd-redesign/synthesis.md) — cards collect the data,
+    so gates differ from V2 only where a card answers more than the V2 gate assumes."""
+    step = state.get("current_step", "S0")
+    cd = state.get("collected_data") or {}
+    # S5: an interpretive action ("נסגרתי") gets one grounding question before moving on
+    if step == "S5" and cd.get("action_actual"):
+        from .stage_tool_triggers import _action_looks_interpretive
+        if _action_looks_interpretive(cd["action_actual"]) and not state.get("_s5_grounding_asked"):
+            state["_s5_grounding_asked"] = True
+            return None
+        return "S6"
+    # S2: event card filled and the coach closed with a warm statement (no question) — the
+    # transition protocol for a card stage — so the emotions card should follow now
+    if step == "S2" and cd.get("event_description"):
+        last = (state.get("messages") or [{}])[-1]
+        if last.get("sender") == "coach" and "?" not in (last.get("content") or ""):
+            return "S3"
+        return None
+    # S14 (chat): vision gets 2-3 turns at most, then the commitment card
+    if step == "S14":
+        s14_turns = sum(
+            1 for m in state.get("messages", [])[-8:]
+            if m.get("sender") == "coach" and (m.get("internal_state") or {}).get("current_step") == "S14"
+        )
+        return "S15" if s14_turns >= 3 else None
+    # S9+S10 are one step: sentence_builder fills paradigm + root belief, then the coach
+    # validates and asks one trigger question. Exit only once the trigger is answered.
+    if step in ("S9", "S10"):
+        stance = cd.get("stance") or {}
+        if not (cd.get("paradigm") and isinstance(stance, dict) and stance.get("reality_belief")):
+            return None
+        if not stance.get("activation_trigger"):
+            # The LLM often doesn't extract the trigger — if the previous coach turn asked the
+            # trigger question, the user's reply in this turn is the trigger.
+            msgs = state.get("messages", [])
+            prev_coach = next((m for m in reversed(msgs[:-1]) if m.get("sender") == "coach"), None)
+            last_user = next((m for m in reversed(msgs) if m.get("sender") == "user"), None)
+            prev_text = (prev_coach or {}).get("content") or ""
+            asked_trigger = "?" in prev_text and any(w in prev_text for w in ("כפתור", "טריגר", "מדליק"))
+            if asked_trigger and last_user and not state.get("_turn_from_card"):
+                stance["activation_trigger"] = (last_user.get("content") or "")[:300]
+                cd["stance"] = stance
+        if stance.get("activation_trigger"):
+            return "S11"
+        # Anti-loop: the trigger may not crystallize — don't hold the user past 3 coach turns
+        s9_turns = sum(
+            1 for m in state.get("messages", [])[-8:]
+            if m.get("sender") == "coach"
+            and (m.get("internal_state") or {}).get("current_step") in ("S9", "S10")
+        )
+        # One extra turn when the coach had to deepen a pattern-like paradigm first
+        return "S11" if s9_turns >= (4 if state.get("_s9_paradigm_hint_given") else 3) else None
+    return _check_gate_met(step, cd)
 
 
 def _safe_collected_dict(collected_data: Any) -> Dict[str, Any]:
@@ -1761,6 +1884,9 @@ def _build_recall_response(state: Dict[str, Any], old_step: str, language: str =
     return "\n".join(parts_en)
 
 
+_STAGE_ORDER = [f"S{i}" for i in range(16)]
+
+
 def _safe_stage_index(step: Any, stage_order: List[str]) -> int:
     """Return stage index or -1 if invalid. Never raises."""
     if step is None or not isinstance(step, str):
@@ -2549,6 +2675,9 @@ async def _call_llm_and_parse(
     """Build context, call LLM, parse response. Returns (coach_message, suggestions, internal_state)."""
     t1 = time.time()
     context = build_conversation_context(state, user_message, language)
+    if state.get("ux_version", 2) >= 3:
+        # Turn-specific coaching checks go next to the user's message, where the model weighs them
+        context += _build_v3_paradigm_hint(state, language)
     t2 = time.time()
     logger.info(f"[PERF] Build context: {(t2-t1)*1000:.0f}ms ({len(context)} chars)")
 
@@ -2579,6 +2708,26 @@ async def _call_llm_and_parse(
         language=language,
     )
     raw_message = response_dict.get("raw")
+    finish_reason = ((getattr(raw_message, "response_metadata", None) or {}).get("finish_reason")) if raw_message else None
+    if not response_dict.get("parsed") and finish_reason == "length":
+        # Output cap hit — usually the model echoed all collected_data from earlier stages.
+        # Retry once with an explicit instruction to return only this turn's fields.
+        logger.warning("[BSD V2] Structured output truncated (finish_reason=length) — retrying with minimal collected_data")
+        minimal_note = (
+            "\n\n**חשוב:** ב-`collected_data` החזר רק שדות שהשתנו בתור הזה — כל השאר null. "
+            "`coach_message` קצר. השאר `shehiya_mission_*` null אם לא התבקשה תחנה."
+            if language == "he" else
+            "\n\n**Important:** in `collected_data` return only fields that changed this turn — everything else null. "
+            "Keep `coach_message` short. Leave `shehiya_mission_*` null unless a station was requested."
+        )
+        response_dict = await invoke_structured_coach_llm(
+            structured_llm,
+            [SystemMessage(content=system_prompt + minimal_note), HumanMessage(content=context)],
+            context=context,
+            system_prompt=system_prompt + minimal_note,
+            language=language,
+        )
+        raw_message = response_dict.get("raw")
     raw_text = (raw_message.content if raw_message else "") or ""
     parsed_obj = response_dict.get("parsed")
     parsing_error = response_dict.get("parsing_error")
@@ -2667,6 +2816,7 @@ async def _apply_safety_nets(
     overrides_applied: List[str] = []
 
     _tool_just_submitted = state.pop("_tool_just_submitted", None)
+    state["_turn_from_card"] = bool(_tool_just_submitted)  # read by the V3 gate, cleared after it
     if _tool_just_submitted:
         logger.info(f"[Safety Net] Skipping repetition/re-ask/mismatch checks (tool_just_submitted={_tool_just_submitted})")
 
@@ -2711,6 +2861,13 @@ async def _apply_safety_nets(
         mismatch_stage = None
     t10 = time.time()
     logger.info(f"[PERF] Stage mismatch check: {(t10-t9)*1000:.0f}ms")
+
+    # Never correct backwards: a coach message that quotes earlier content ("what you did")
+    # isn't a sign the conversation belongs in that stage — and with SAFETY_NET_DISABLED
+    # nothing downstream blocks the backward jump (re-fires earlier cards).
+    if mismatch_stage and _safe_stage_index(mismatch_stage, _STAGE_ORDER) < _safe_stage_index(state["current_step"], _STAGE_ORDER):
+        logger.info(f"[Safety Net] Ignoring backward stage mismatch {state['current_step']} → {mismatch_stage}")
+        mismatch_stage = None
 
     if mismatch_stage:
         overrides_applied.append("stage_mismatch")
@@ -2882,7 +3039,13 @@ async def _apply_safety_nets(
             if m.get("sender") == "coach"
             and (m.get("internal_state") or {}).get("current_step") == "S15"
         )
-        if s15_commitment and s15_coach_turns >= 1:
+        # A vague commitment ("אנסה") gets the one specificity question first (s15_commitment overlay)
+        s15_vague = bool(s15_commitment) and any(
+            w in str(s15_commitment) for w in ("אנסה", "אשתדל", "אולי", "ננסה", "לנסות", "נשתדל", "להשתדל")
+        ) and not state.get("_s15_specificity_asked")
+        if s15_vague:
+            state["_s15_specificity_asked"] = True
+        elif s15_commitment and s15_coach_turns >= 1:
             logger.info("[Safety Net] S15: commitment filled + %d coach turns → forcing stage_ready_to_complete", s15_coach_turns)
             internal_state["stage_ready_to_complete"] = True
         elif s15_coach_turns >= 3 and state.get("saturation_score", 0) >= 0.8:
@@ -2954,15 +3117,25 @@ async def handle_conversation(
         # If collected_data satisfies the gate, advance regardless of LLM decision.
         # BUT: skip when stage_ready_to_complete is signaled — the frontend
         # stage-complete screen must show before crossing macro boundaries.
+        is_v3 = state.get("ux_version", 2) >= 3
+        if is_v3:
+            _apply_v3_stage_complete_guards(state, internal_state)
         stage_completing = internal_state.get("stage_ready_to_complete", False)
         cur_step = state.get("current_step", "S0")
         cd = state.get("collected_data") or {}
-        gate_next = _check_gate_met(cur_step, cd)
+        gate_next = _check_gate_met_v3(state) if is_v3 else _check_gate_met(cur_step, cd)
         if gate_next and cur_step != gate_next and not stage_completing:
-            logger.info(f"[BSD V2] Gate auto-advance: {cur_step}→{gate_next}")
-            state["current_step"] = gate_next
+            from .stage_intro_schema import step_to_macro_stage
+            if step_to_macro_stage(gate_next) != step_to_macro_stage(cur_step):
+                # Never cross a macro boundary silently — the stage-complete screen comes first
+                logger.info(f"[BSD V2] Gate met {cur_step}→{gate_next} at macro end — signaling stage_ready_to_complete")
+                internal_state["stage_ready_to_complete"] = True
+            else:
+                logger.info(f"[BSD V2] Gate auto-advance: {cur_step}→{gate_next}")
+                state["current_step"] = gate_next
         elif gate_next and stage_completing:
             logger.info(f"[BSD V2] Gate met {cur_step}→{gate_next} but stage_ready_to_complete — deferring to frontend")
+        state.pop("_turn_from_card", None)
 
         end_time = time.time()
         total_ms = (end_time - start_time) * 1000
@@ -2977,7 +3150,8 @@ async def handle_conversation(
         if cur_step == "S7" and cd.get("gap_name") and not cd.get("gap_score"):
             suggestions = [str(i) for i in range(1, 11)]
 
-        if cur_step == "S3" and cd.get("emotions") and isinstance(cd["emotions"], list):
+        # V2 only: in V3 the emotions came from the card and the coach moves on to the thought question
+        if not is_v3 and cur_step == "S3" and cd.get("emotions") and isinstance(cd["emotions"], list):
             suggestions = cd["emotions"]
 
         state["_suggestions"] = suggestions
