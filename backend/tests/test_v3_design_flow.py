@@ -22,15 +22,25 @@ def _v3_state(step: str, **cd) -> dict:
 # Gates
 # ---------------------------------------------------------------------------
 
-def test_s5_observable_action_advances():
+def test_s5_waits_for_matzui_summary_confirmation():
     state = _v3_state("S5", action_actual="קמתי, לקחתי את המפתחות ויצאתי מהבית בלי מילה")
-    assert _check_gate_met_v3(state) == "S6"
+    assert _check_gate_met_v3(state) is None  # summary card shows ("האם דייקתי?")
+    state["_matzui_summary_sent"] = True
+    assert _check_gate_met_v3(state) == "S6"  # confirmed → desired card
+
+
+def test_s5_matzui_card_shows_after_observable_action_card():
+    state = _v3_state("S5", action_actual="קמתי, לקחתי את המפתחות ויצאתי מהבית בלי מילה")
+    tool_call = resolve_post_turn_tool_call("S5", state, ux_version=3, from_tool_submission="action_field")
+    assert tool_call and tool_call["tool_type"] == "matzui_summary"
 
 
 def test_s5_interpretive_action_gets_one_grounding_turn():
     state = _v3_state("S5", action_actual="נסגרתי")
     assert _check_gate_met_v3(state) is None  # coach asks the grounding question
-    assert _check_gate_met_v3(state) == "S6"  # after the answer — move on
+    assert _check_gate_met_v3(state) is None  # after the answer — summary card shows
+    state["_matzui_summary_sent"] = True
+    assert _check_gate_met_v3(state) == "S6"
 
 
 def test_s9_card_alone_does_not_skip_validation_and_trigger():
@@ -164,3 +174,20 @@ def test_s14_capped_at_three_coach_turns():
     state = _v3_state("S14")
     state["messages"] = [{"sender": "coach", "content": "x", "internal_state": {"current_step": "S14"}}] * 3
     assert _check_gate_met_v3(state) == "S15"
+
+
+def test_llm_cannot_leave_s5_before_matzui_card():
+    import asyncio
+    from unittest.mock import patch
+    import app.bsd_v2.single_agent_coach as sac
+    state = _v3_state("S5", emotions=["כעס"], thought="שוב זה", action_actual="קמתי ויצאתי מהבית בלי מילה")
+
+    async def fake_llm(*a, **k):
+        return "סיכום המצוי.", [], {"current_step": "S6", "saturation_score": 0.5, "collected_data": {}}
+
+    async def passthrough(msg, internal, *a, **k):
+        return msg, internal, []
+
+    with patch.object(sac, "_call_llm_and_parse", fake_llm), patch.object(sac, "_apply_safety_nets", passthrough):
+        _, out = asyncio.run(sac.handle_conversation("קמתי ויצאתי מהבית בלי מילה", state, "he"))
+    assert out["current_step"] == "S5"

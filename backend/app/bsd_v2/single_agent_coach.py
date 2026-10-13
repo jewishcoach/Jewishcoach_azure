@@ -411,12 +411,19 @@ def _check_gate_met_v3(state: Dict[str, Any]) -> str | None:
     so gates differ from V2 only where a card answers more than the V2 gate assumes."""
     step = state.get("current_step", "S0")
     cd = state.get("collected_data") or {}
-    # S5: an interpretive action ("נסגרתי") gets one grounding question before moving on
+    # S5: an interpretive action ("נסגרתי") gets one grounding question; then the matzui summary
+    # card asks "האם דייקתי?" (as in the book) — advance only once it was shown and answered.
     if step == "S5" and cd.get("action_actual"):
         from .stage_tool_triggers import _action_looks_interpretive
         if _action_looks_interpretive(cd["action_actual"]) and not state.get("_s5_grounding_asked"):
             state["_s5_grounding_asked"] = True
             return None
+        if not state.get("_matzui_summary_sent"):
+            s5_turns = sum(
+                1 for m in state.get("messages", [])[-8:]
+                if m.get("sender") == "coach" and (m.get("internal_state") or {}).get("current_step") == "S5"
+            )
+            return "S6" if s5_turns >= 3 else None  # anti-loop if the card never showed
         return "S6"
     # S2: event card filled and the coach closed with a warm statement (no question) — the
     # transition protocol for a card stage — so the emotions card should follow now
@@ -3119,6 +3126,11 @@ async def handle_conversation(
         # stage-complete screen must show before crossing macro boundaries.
         is_v3 = state.get("ux_version", 2) >= 3
         if is_v3:
+            # The LLM may leave S5 on its own (V2 S5 gate) — hold until the matzui summary
+            # card ("האם דייקתי?") was shown; the V3 gate below decides when to move on
+            if old_step == "S5" and state.get("current_step") == "S6" and not state.get("_matzui_summary_sent"):
+                state["current_step"] = "S5"
+                internal_state["current_step"] = "S5"
             _apply_v3_stage_complete_guards(state, internal_state)
         stage_completing = internal_state.get("stage_ready_to_complete", False)
         cur_step = state.get("current_step", "S0")
