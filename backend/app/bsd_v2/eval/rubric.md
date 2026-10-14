@@ -468,8 +468,9 @@ budget is a fatigue signal (W3).
 - **Budget:** 1 turn, 2 with an exception.
 
 ### S14: Vision (חזון / חפץ הלב), chat stage
-- **Gate.** A vivid, concrete picture of the client's daily life when he lives the choice: a scene with people,
-  actions, and feelings. "יהיה טוב" is not a vision.
+- **Gate.** A **wide** picture of the life he chooses (method owner's ruling, Oct 2026, per the booklet's חזון —
+  "נקודת תצפית גבוהה", "מפת חיים"): home, relationships, work, who he is — vivid and in his words, with "permission
+  to dream". "יהיה טוב" is not a vision; neither is a single evening or one behavior (that belongs to S15).
 - **Source.** `BKL p.39`: the fourth option of the junction, "חזון — חפץ הלב", "יצירת תמונת עתיד נבחר ומרגש".
   `SYN` S14: "שאלה אחת חזקה... 2-3 תורות מקסימום".
 - **Coach.** Ask one strong question. If the answer is general, ask **one** question that grounds it in a daily
@@ -480,6 +481,7 @@ budget is a fatigue signal (W3).
   - (b) the coach painting the vision ("תדמיין שאתה...") (HF-SPOON);
   - (c) asking "מה המחויבות?" before the card;
   - (d) a vision that is disconnected from the choice, accepted without the one grounding question.
+  - (e) a narrow vision (one scene / one behavior) accepted without the one widening question.
 - **Budget:** 2–3 turns.
 
 ### S15: Commitment (מחויבות / בקשה לאימון)

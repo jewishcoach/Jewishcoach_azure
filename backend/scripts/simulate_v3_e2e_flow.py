@@ -134,10 +134,16 @@ async def user_reply(p, history):
 async def fill_card(p, tool, history):
     schema = CARD_SCHEMAS.get(tool["tool_type"], "{}")
     data_hint = json.dumps(tool.get("data") or {}, ensure_ascii=False)
-    out = await ask_llm(persona_sys(p) + " החזר/י JSON תקין בלבד, בלי טקסט נוסף.",
-                        f"השיחה:\n" + "\n".join(history[-6:]) + f"\n\nמלא/י את הכרטיס '{tool['tool_type']}' (נתוני רקע: {data_hint}).\nסכמה: {schema}")
-    out = re.sub(r"^```(json)?|```$", "", out.strip(), flags=re.M).strip()
-    data = json.loads(out)
+    data = {}
+    for _ in range(2):  # the sim-user occasionally emits broken JSON — retry once, then defaults
+        out = await ask_llm(persona_sys(p) + " החזר/י JSON תקין בלבד, בלי טקסט נוסף.",
+                            f"השיחה:\n" + "\n".join(history[-6:]) + f"\n\nמלא/י את הכרטיס '{tool['tool_type']}' (נתוני רקע: {data_hint}).\nסכמה: {schema}")
+        out = re.sub(r"^```(json)?|```$", "", out.strip(), flags=re.M).strip()
+        try:
+            data = json.loads(out)
+            break
+        except json.JSONDecodeError:
+            continue
     if len(data) == 1 and isinstance(next(iter(data.values())), dict):
         data = next(iter(data.values()))  # LLM sometimes wraps the card in {"<tool_type>": {...}}
     if tool["tool_type"] == "gap_card":

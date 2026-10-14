@@ -2434,6 +2434,17 @@ def build_conversation_context(
         )
         context_parts.append(intro_ctx_str)
 
+    # Stage opening: "אני מוכן להתחיל" is sent by the stage-intro button, not typed — the coach was reflecting it
+    # back ("אתה שוב אומר שאתה מוכן להתחיל")
+    if state.get("_stage_opening"):
+        context_parts.append(
+            "\n# פתיחת שלב\nההודעה האחרונה (\"אני מוכן להתחיל\") נשלחה אוטומטית מכפתור המעבר — לא המתאמן כתב אותה. "
+            "אל תשקף אותה ואל תתייחס אליה; פתח ישירות את השלב החדש."
+            if language == "he" else
+            "\n# Stage opening\nThe last message (\"I'm ready to start\") was sent automatically by the stage button — "
+            "the client did not type it. Do not reflect or mention it; open the new stage directly."
+        )
+
     # Right after the client answered a safety check-in that they're OK: one-turn note (not in the static
     # prompt — a permanent rule there shifted the coach's attention on every turn)
     from .safety_check import is_safety_message
