@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useAuth } from '@clerk/clerk-react';
+import { useV3Auth } from './useV3Auth';
 import type {
   CollectedData,
   FlowState,
@@ -20,6 +20,7 @@ import {
   submitToolResponse,
   QuotaExceededError,
   ConflictError,
+  ToolValidationError,
 } from '../services/api';
 import { getApiBase } from '../../config';
 
@@ -72,7 +73,7 @@ function toolCallToActiveTool(tc: Record<string, unknown>): ActiveInlineTool | n
 }
 
 export function useStageFlowV3(language: string = 'he') {
-  const { getToken, isSignedIn } = useAuth();
+  const { getToken, isSignedIn } = useV3Auth();
   const [flowState, setFlowState] = useState<FlowState>(INITIAL_FLOW_STATE);
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [messages, setMessages] = useState<V3ChatMessage[]>([]);
@@ -119,6 +120,7 @@ export function useStageFlowV3(language: string = 'he') {
           content: response.coach_message,
           phase: response.current_step,
           suggestions: response.suggestions,
+          safety: response.safety ?? undefined,
         };
         setMessages((prev) => [...prev, assistantMsg]);
         setSaturationScore(response.saturation_score);
@@ -138,33 +140,10 @@ export function useStageFlowV3(language: string = 'he') {
         }
 
         if (response.stage_complete) {
-          setFlowState((prev) => ({
-            ...prev,
-            phase: 'stage_complete',
-            summary: response.stage_complete as StageSummaryPayload,
-          }));
+          // Let the user read the coach's closing message before the summary screen covers it
+          setFlowState((prev) => ({ ...prev, pendingSummary: response.stage_complete as StageSummaryPayload }));
         }
 
-        // Persist session (must use functional updaters to get latest state)
-        setMessages((msgs) => {
-          setCollectedData((cd) => {
-            saveSession({
-              conversationId: convId!,
-              flowState: {
-                phase: response.stage_complete ? 'stage_complete' : 'chatting',
-                currentMacroStage: stepToMacroStage(response.current_step || 'S0'),
-                currentStep: response.current_step,
-                ...(response.stage_complete ? { summary: response.stage_complete as StageSummaryPayload } : {}),
-              },
-              messages: msgs,
-              collectedData: response.collected_data ? { ...cd, ...response.collected_data } : cd,
-              saturationScore: response.saturation_score,
-              activeTool: response.tool_call ? toolCallToActiveTool(response.tool_call) : null,
-            });
-            return cd;
-          });
-          return msgs;
-        });
       } catch (err) {
         if (err instanceof QuotaExceededError) {
           setQuotaExceeded(true);
@@ -200,20 +179,19 @@ export function useStageFlowV3(language: string = 'he') {
       if (!conversationId || toolSubmitting) return;
       setToolSubmitting(true);
 
-      const previousTool = activeTool;
-      const toolMsgId = `t-${Date.now()}`;
-
       try {
+        const response = await submitToolResponse(conversationId, toolType, data, getToken);
+
+        // Only now replace the card with its completed version — on failure the card stays
+        // mounted with the user's input intact so they can fix and resend.
         const toolMsg: V3ChatMessage = {
-          id: toolMsgId,
+          id: `t-${Date.now()}`,
           role: 'tool_result',
           content: '',
           toolResult: { tool_type: toolType, data },
         };
         setMessages((prev) => [...prev, toolMsg]);
         setActiveTool(null);
-
-        const response = await submitToolResponse(conversationId, toolType, data, getToken);
 
         if (response.coach_message) {
           const assistantMsg: V3ChatMessage = {
@@ -250,50 +228,29 @@ export function useStageFlowV3(language: string = 'he') {
 
         // A card can be the step that ends a macro-stage (e.g. declaration/commitment card)
         if (response.stage_complete) {
-          setFlowState((prev) => ({
-            ...prev,
-            phase: 'stage_complete',
-            summary: response.stage_complete as StageSummaryPayload,
-          }));
+          // Let the user read the coach's closing message before the summary screen covers it
+          setFlowState((prev) => ({ ...prev, pendingSummary: response.stage_complete as StageSummaryPayload }));
         }
 
-        // Persist session so a refresh doesn't restore the already-submitted card
-        setMessages((msgs) => {
-          setCollectedData((cd) => {
-            saveSession({
-              conversationId,
-              flowState: {
-                phase: response.stage_complete ? 'stage_complete' : 'chatting',
-                currentMacroStage: stepToMacroStage(response.current_step || flowState.currentStep || 'S0'),
-                currentStep: response.current_step || flowState.currentStep,
-                ...(response.stage_complete ? { summary: response.stage_complete as StageSummaryPayload } : {}),
-              },
-              messages: msgs,
-              collectedData: response.collected_data ? { ...cd, ...response.collected_data } : cd,
-              saturationScore: response.saturation_score ?? 0,
-              activeTool: nextTool,
-            });
-            return cd;
-          });
-          return msgs;
-        });
       } catch (err) {
-        console.error('[V3 Chat] submitTool error:', err);
-        // Remove the tool_result message that was optimistically added
-        setMessages((prev) => prev.filter((m) => m.id !== toolMsgId));
+        if (!(err instanceof ToolValidationError)) console.error('[V3 Chat] submitTool error:', err);
         setMessages((prev) => [...prev, {
           id: `e-${Date.now()}`,
           role: 'assistant',
-          content: 'סליחה, משהו השתבש. נסה שוב בבקשה.',
+          content: err instanceof ToolValidationError ? err.message : 'סליחה, משהו השתבש. נסה שוב בבקשה.',
         }]);
-        // Restore the tool so user can retry with their filled data
-        setActiveTool(previousTool);
       } finally {
         setToolSubmitting(false);
       }
     },
     [conversationId, toolSubmitting, getToken, activeTool, flowState.currentStep],
   );
+
+  const showStageSummary = useCallback(() => {
+    setFlowState((prev) => (prev.pendingSummary
+      ? { ...prev, phase: 'stage_complete', summary: prev.pendingSummary, pendingSummary: undefined }
+      : prev));
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Dismiss tool (skip to chat)
@@ -487,6 +444,29 @@ export function useStageFlowV3(language: string = 'he') {
   }, []);
 
   // ---------------------------------------------------------------------------
+  // Persist session on every state change — a reload must restore exactly what the user saw
+  // (stage transitions, intro answers and onboarding used to skip saving → stale screen on reload).
+  // Transient phases are saved as the stable screen they came from.
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    if (!conversationId || messages.length === 0) return;
+    const { phase } = flowState;
+    if (phase === 'initializing' || phase === 'onboarding' || phase === 'welcome_back') return;
+    const stablePhase =
+      phase === 'loading_intro' ? 'stage_complete'
+        : phase === 'submitting_answers' ? 'answering_intro'
+          : phase;
+    saveSession({
+      conversationId,
+      flowState: { ...flowState, phase: stablePhase },
+      messages,
+      collectedData,
+      saturationScore,
+      activeTool,
+    });
+  }, [conversationId, flowState, messages, collectedData, saturationScore, activeTool]);
+
+  // ---------------------------------------------------------------------------
   // Initialization (same as V2)
   // ---------------------------------------------------------------------------
   useEffect(() => {
@@ -543,6 +523,7 @@ export function useStageFlowV3(language: string = 'he') {
     quotaExceeded,
     dismissQuotaExceeded: () => setQuotaExceeded(false),
     sendMessage,
+    showStageSummary,
     startOnboarding,
     startNewConversation,
     resumeConversation,

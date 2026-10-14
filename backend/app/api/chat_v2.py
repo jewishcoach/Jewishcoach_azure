@@ -24,7 +24,8 @@ from ..security.chat_input import (
 from ..middleware.usage_limiter import require_message_quota
 from ..bsd_v2.single_agent_coach import handle_conversation, warm_prompt_cache, _check_gate_met
 from ..bsd_v2.stage_tool_triggers import resolve_post_turn_tool_call, mark_trait_picker_sent, mark_matzui_summary_sent
-from ..bsd_v2.state_schema_v2 import create_initial_state
+from ..bsd_v2.state_schema_v2 import create_initial_state, add_message
+from ..bsd_v2.safety_check import screen_message
 from ..bsd_v2.station_checkpoint import ensure_training_started_at, apply_station_intent
 from ..bsd_v2.onboarding_topics_context import inject_onboarding_topics_into_state
 from ..bsd_v2.stage_intro_schema import (
@@ -72,6 +73,7 @@ class ChatResponse(BaseModel):
     station_checkpoint: dict | None = None  # Sticky mission card + Insights (V2 stations)
     stage_complete: dict | None = None  # Macro-stage completion signal (UX V2)
     is_error: bool = False  # True when response is a fallback due to server error
+    safety: str | None = None  # Set when coach_message is a safety response (possible_risk | imminent)
 
 
 class StationIntentRequest(BaseModel):
@@ -346,6 +348,27 @@ async def send_message_v2(
                 current_step=state.get("current_step", "S0"),
                 saturation_score=float(state.get("saturation_score", 0)),
                 collected_data=state.get("collected_data"),
+            )
+
+        # Safety screen BEFORE the coach: a risk statement gets a check-in, not the next coaching step
+        safety_result = await screen_message(safe_message, state, request.headers.get("x-user-timezone"))
+        if safety_result.intercept:
+            from app.database import utc_now
+            add_message(state, "user", safe_message)
+            add_message(state, "coach", safety_result.message)
+            save_v2_state(body.conversation_id, state, db, expected_version=state_version, commit=False)
+            db.add(Message(conversation_id=body.conversation_id, role="user", content=safe_message, timestamp=utc_now()))
+            db.add(Message(conversation_id=body.conversation_id, role="assistant", content=safety_result.message,
+                           timestamp=utc_now(), meta={"phase": state.get("current_step", "S0"), "safety": safety_result.level}))
+            db.commit()
+            logger.warning("[BSD V2 API] Safety response (%s) for conv %s", safety_result.level, body.conversation_id)
+            return ChatResponse(
+                coach_message=safety_result.message,
+                conversation_id=body.conversation_id,
+                current_step=state.get("current_step", "S0"),
+                saturation_score=float(state.get("saturation_score", 0)),
+                collected_data=state.get("collected_data"),
+                safety=safety_result.level,
             )
 
         # Snapshot previous step BEFORE any V3 skip or handle_conversation.

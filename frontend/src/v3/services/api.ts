@@ -17,6 +17,19 @@ export type { ConversationListItem, ConversationLoadData, DeepViewLetter } from 
 
 const UX_VERSION_HEADER = { 'X-UX-Version': '3' };
 
+/** Browser time zone — the backend picks local help lines for safety responses. */
+const TIMEZONE_HEADER: Record<string, string> = ((): Record<string, string> => {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return tz ? { 'X-User-Timezone': tz } : {};
+  } catch {
+    return {};
+  }
+})();
+
+/** Card content rejected by the server (e.g. gibberish) — message is user-facing Hebrew. */
+export class ToolValidationError extends Error {}
+
 async function authHeaders(
   getToken: (opts?: { skipCache?: boolean }) => Promise<string | null>,
   skipCache = false,
@@ -26,6 +39,7 @@ async function authHeaders(
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...UX_VERSION_HEADER,
+    ...TIMEZONE_HEADER,
   };
 }
 
@@ -130,6 +144,11 @@ export async function submitToolResponse(
     method: 'POST',
     body: JSON.stringify({ tool_type: toolType, data }),
   });
+  if (res.status === 422) {
+    const body = await res.json().catch(() => null);
+    const message = body?.detail?.message;
+    if (message) throw new ToolValidationError(message);
+  }
   if (!res.ok) throw new Error(`Tool submit failed: ${res.status}`);
   return res.json();
 }

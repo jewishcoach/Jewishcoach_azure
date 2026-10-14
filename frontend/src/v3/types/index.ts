@@ -60,4 +60,6 @@ export interface V3ChatMessage {
   phase?: string;
   suggestions?: string[];
   toolResult?: CompletedToolResult;
+  /** Backend safety response level (possible_risk | imminent) — rendered as SafetyMessage */
+  safety?: string;
 }

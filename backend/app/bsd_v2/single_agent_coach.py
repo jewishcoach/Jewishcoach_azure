@@ -2434,6 +2434,19 @@ def build_conversation_context(
         )
         context_parts.append(intro_ctx_str)
 
+    # Right after the client answered a safety check-in that they're OK: one-turn note (not in the static
+    # prompt — a permanent rule there shifted the coach's attention on every turn)
+    from .safety_check import is_safety_message
+    last_coach = next((m for m in reversed(state.get("messages") or []) if m.get("sender") == "coach"), None)
+    if last_coach and is_safety_message(last_coach.get("content")) and (state.get("safety") or {}).get("status") == "cleared":
+        context_parts.append(
+            "\n# הערת בטיחות\nהמתאמן ענה הרגע לבדיקת הבטיחות שהוא בסדר. אל תשאל שוב על בטיחות ואל תחזור על קווי העזרה — "
+            "הכר בתשובה במשפט חם אחד (\"תודה שענית לי\"), והמשך בעדינות מאיפה שעצרתם."
+            if language == "he" else
+            "\n# Safety note\nThe client just answered the safety check-in that they are okay. Do not ask about safety "
+            "again or repeat the help lines — acknowledge in one warm sentence and gently continue where you left off."
+        )
+
     # Collected data (non-null only, excluding entities which are shown above)
     # In early stages, hide future-stage fields to prevent the LLM from "jumping ahead"
     _future_fields_by_stage = {

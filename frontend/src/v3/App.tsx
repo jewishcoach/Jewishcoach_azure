@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Heart, Menu, X, LogOut, MessageSquare, User, PlusCircle, Pause } from 'lucide-react';
-import { useAuth, useUser } from '@clerk/clerk-react';
+import { useV3Auth, useV3User } from './hooks/useV3Auth';
 import { MACRO_STAGES } from './types';
 import { useStageFlowV3 } from './hooks/useStageFlowV3';
 import { listConversations, fetchUserGender } from './services/api';
@@ -24,8 +24,8 @@ interface V3AppProps {
 }
 
 export function V3App({ language = 'he' }: V3AppProps) {
-  const { isSignedIn, isLoaded, signOut, getToken } = useAuth();
-  const { user } = useUser();
+  const { isSignedIn, isLoaded, signOut, getToken } = useV3Auth();
+  const { user } = useV3User();
   const [menuOpen, setMenuOpen] = useState(false);
   const [journeyOpen, setJourneyOpen] = useState(false);
   const [showPauseModal, setShowPauseModal] = useState(false);
@@ -62,6 +62,7 @@ export function V3App({ language = 'he' }: V3AppProps) {
     isLoading,
     collectedData,
     sendMessage,
+    showStageSummary,
     startOnboarding,
     startNewConversation,
     resumeConversation,
@@ -320,6 +321,7 @@ export function V3App({ language = 'he' }: V3AppProps) {
                 toolSubmitting={toolSubmitting}
                 onSubmitTool={submitTool}
                 onDismissTool={dismissTool}
+                onShowSummary={flowState.pendingSummary ? showStageSummary : undefined}
               />
             </div>
           )}

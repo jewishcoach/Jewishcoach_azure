@@ -97,6 +97,8 @@ export interface FlowState {
   currentMacroStage: string;
   currentStep: string;
   summary?: StageSummaryPayload;
+  /** V3: stage ended — the coach's closing message is shown first; summary opens on user click */
+  pendingSummary?: StageSummaryPayload;
   introPayload?: StageIntroPayload;
 }
 
@@ -137,4 +139,6 @@ export interface ChatResponseV2 {
   tool_call?: Record<string, unknown> | null;
   station_checkpoint?: Record<string, unknown> | null;
   stage_complete?: StageSummaryPayload | null;
+  /** Set when coach_message is a backend safety response */
+  safety?: string | null;
 }

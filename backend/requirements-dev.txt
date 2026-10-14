@@ -1,0 +1,4 @@
+# Dev/eval-only tools — NOT installed on the App Service (see requirements.txt for prod)
+-r requirements.txt
+playwright==1.64.0        # scripts/simulate_v3_browser_flow.py
+anthropic[bedrock]==1.13.0  # app/bsd_v2/eval/judge.py (Claude on Bedrock as LLM judge)

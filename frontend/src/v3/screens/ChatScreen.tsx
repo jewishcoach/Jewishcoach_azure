@@ -2,6 +2,7 @@ import { useRef, useEffect, useState, useCallback } from 'react';
 import { Heart, Send } from 'lucide-react';
 import type { V3ChatMessage, ActiveInlineTool, ChatMessage } from '../types';
 import { MessageBubble } from '../../v2/components/MessageBubble';
+import { SafetyMessage } from '../components/SafetyMessage';
 import { getConceptAudioForMessage } from '../../v2/components/conceptAudio';
 import { InlineTool } from '../components/InlineTool';
 import { CompletedToolCard } from '../components/CompletedToolCard';
@@ -19,6 +20,8 @@ interface ChatScreenProps {
   toolSubmitting: boolean;
   onSubmitTool: (toolType: string, data: Record<string, unknown>) => void;
   onDismissTool: () => void;
+  /** Set when the stage just ended: show a button to open the stage summary */
+  onShowSummary?: () => void;
 }
 
 export function ChatScreen({
@@ -32,14 +35,27 @@ export function ChatScreen({
   toolSubmitting,
   onSubmitTool,
   onDismissTool,
+  onShowSummary,
 }: ChatScreenProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputBarRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const [inputText, setInputText] = useState('');
   const [playedAudioFiles] = useState(() => new Set<string>());
   const [messageAudioMap] = useState(() => new Map<string, { file: string; label: string }>());
 
-  const inputDisabled = !!activeTool || isLoading;
+  const inputDisabled = !!activeTool || isLoading || !!onShowSummary;
+
+  // Mobile: the input bar is fixed over the page — reserve exactly its height (it grows with multi-line
+  // input) so the bottom of the last card (its submit button) is never hidden behind it.
+  useEffect(() => {
+    const bar = inputBarRef.current;
+    const root = rootRef.current;
+    if (!bar || !root || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => root.style.setProperty('--input-bar-h', `${bar.offsetHeight}px`));
+    ro.observe(bar);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     const vv = window.visualViewport;
@@ -66,16 +82,13 @@ export function ChatScreen({
   }, [messages.length, activeTool]);
 
   const chatMessages = messages.filter((m) => m.role !== 'tool_result');
-  const dedupedMessages = (() => {
-    const seen = new Set<string>();
-    return messages.filter((msg) => {
-      if (msg.role !== 'user') return true;
-      const key = `${msg.role}:${msg.content}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-  })();
+  // Drop only an immediate double-send (same user text twice in a row, no coach reply between).
+  // A user may legitimately give the same answer again later ("כן", a quick reply) — that must stay visible.
+  const dedupedMessages = messages.filter((msg, i) => {
+    if (msg.role !== 'user') return true;
+    const prev = messages[i - 1];
+    return !(prev && prev.role === 'user' && prev.content === msg.content);
+  });
   const lastMessage = chatMessages[chatMessages.length - 1];
   const showQuickReplies = lastMessage?.role === 'assistant' && !isLoading && !activeTool;
   const quickReplies = showQuickReplies ? lastMessage.suggestions : undefined;
@@ -92,7 +105,7 @@ export function ChatScreen({
   }, [inputText, inputDisabled, onSend]);
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 pb-14 lg:pb-0">
+    <div ref={rootRef} className="flex-1 flex flex-col min-h-0 pb-[var(--input-bar-h,56px)] lg:pb-0">
       {/* Stage title */}
       {stageTitle && (
         <div className="pt-4 lg:pt-6 flex justify-center">
@@ -122,6 +135,10 @@ export function ChatScreen({
             }
 
             const isLastAssistant = showQuickReplies && msg.role === 'assistant' && msg.id === lastMessage?.id;
+
+            if (msg.safety) {
+              return <SafetyMessage key={msg.id} content={msg.content} onQuickReply={isLastAssistant ? onSend : undefined} />;
+            }
 
             const prevDeduped = idx > 0 ? dedupedMessages[idx - 1] : null;
             const nextDeduped = idx < dedupedMessages.length - 1 ? dedupedMessages[idx + 1] : null;
@@ -173,6 +190,20 @@ export function ChatScreen({
                   <span className="animate-bounce" style={{ animationDelay: '300ms' }}>.</span>
                 </span>
               </div>
+            </div>
+          )}
+
+          {/* Stage ended — closing message is above; summary opens on click */}
+          {onShowSummary && !isLoading && !toolSubmitting && (
+            <div className="flex justify-center animate-[fadeIn_0.3s_ease-out]">
+              <button
+                type="button"
+                onClick={onShowSummary}
+                className="w-[239px] h-[53px] rounded-xl bg-[#9747ff] text-white text-base hover:bg-[#8035e6] drop-shadow-[0px_8px_2.9px_rgba(0,0,0,0.12)] transition-colors"
+                style={{ fontFamily: "'Heebo', sans-serif" }}
+              >
+                להמשך לסיכום השלב
+              </button>
             </div>
           )}
 
