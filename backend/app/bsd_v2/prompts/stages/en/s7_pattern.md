@@ -55,4 +55,4 @@ When you have 1–2 extra examples, summarize and invite refinement in open form
 
 **Gate:** 1–2 extra examples, pattern summarized, explicit user confirmation → transition to S9.
 
-**⚡ End of Identification floor:** S8 is the last step in the Identification floor. When Gate is satisfied, set `stage_ready_to_complete: true` in `internal_state`. In `coach_message` write a warm summary of what was discovered in this floor (topic, event, emotions, thought, action, gap, pattern) — **no** discovery question at the end. The system will handle the transition to the next floor.
+**⚡ End of Identification floor:** S8 is the last step in the Identification floor. When Gate is satisfied, set `stage_ready_to_complete: true` in `internal_state`. In `coach_message` write one short, warm closing sentence (e.g. "It looks like your pattern has become clear here") — **do not re-summarize** everything from this floor (event, emotions, thought, action, gap); the summary is shown on the stage-complete screen. **No** discovery question at the end. The system will handle the transition to the next floor.
