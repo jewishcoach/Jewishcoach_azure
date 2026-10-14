@@ -5,7 +5,9 @@ Generates contextual intro questions for macro-stage transitions using gpt-4o-mi
 Also produces rule-based stage summaries from collected_data.
 """
 
+import asyncio
 import logging
+import os
 from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -329,6 +331,9 @@ MACRO_STAGE_PROMPTS = {
 }
 
 
+STAGE_INTRO_TIMEOUT_SECONDS = float(os.getenv("STAGE_INTRO_TIMEOUT_SECONDS", "20"))
+
+
 async def generate_stage_intro(
     state: dict[str, Any],
     target_macro_id: str,
@@ -365,14 +370,21 @@ async def generate_stage_intro(
     )
 
     try:
-        result = await structured_llm.ainvoke([
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=user_message),
-        ])
+        # Cap the wait: the user is looking at a spinner after "continue" on the stage-complete
+        # screen, and a slow Azure call with retries can take minutes — fall back instead.
+        result = await asyncio.wait_for(
+            structured_llm.ainvoke([
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=user_message),
+            ]),
+            timeout=STAGE_INTRO_TIMEOUT_SECONDS,
+        )
         if result and isinstance(result, StageIntroPayload):
             result.stage_id = target_macro_id
             result.stage_title = macro["title_he"] if is_he else macro["title_en"]
             return result
+    except asyncio.TimeoutError:
+        logger.warning("Stage intro generation for %s timed out after %ss — using fallback", target_macro_id, STAGE_INTRO_TIMEOUT_SECONDS)
     except Exception:
         logger.exception("Failed to generate stage intro questions for %s", target_macro_id)
 

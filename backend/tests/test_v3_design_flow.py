@@ -191,3 +191,20 @@ def test_llm_cannot_leave_s5_before_matzui_card():
     with patch.object(sac, "_call_llm_and_parse", fake_llm), patch.object(sac, "_apply_safety_nets", passthrough):
         _, out = asyncio.run(sac.handle_conversation("קמתי ויצאתי מהבית בלי מילה", state, "he"))
     assert out["current_step"] == "S5"
+
+
+def test_stage_intro_falls_back_on_timeout():
+    import asyncio
+    from unittest.mock import patch
+    import app.bsd_v2.stage_intro_generator as gen
+
+    class SlowLLM:
+        def with_structured_output(self, *a, **k):
+            return self
+
+        async def ainvoke(self, *a, **k):
+            await asyncio.sleep(5)
+
+    with patch.object(gen, "get_azure_chat_llm_4o_mini", lambda: SlowLLM()), patch.object(gen, "STAGE_INTRO_TIMEOUT_SECONDS", 0.1):
+        result = asyncio.run(gen.generate_stage_intro({"collected_data": {}}, "discovery", "he"))
+    assert result.stage_id == "discovery" and result.questions
