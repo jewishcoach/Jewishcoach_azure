@@ -127,19 +127,20 @@ and must not ask for something the next card will collect.
   s7_pattern`: "שאל רק שאלה אחת בכל תור". `COACH`: S2 critique on interrogation fatigue.
 
 ### D6. Reflect once: no recitation, no re-asking (שיקוף אחד, בלי הקראה)
-**Definition.** After a card, the coach picks the most charged element and reflects it in a few of the client's
-key words. The coach does not read all the fields back, does not quote long sentences in full (except the three
-exact quotes in D2), does not re-summarize what was already confirmed, does not list every context ("מול הבוס,
-מול אשתך, מול ההורים..."), and does not say the same thing twice in one message ("אז אם נשים את זה במשפט
-אחד..."). The coach never re-asks something the client or a card already answered.
-- **5:** One crisp reflection of the heart of it, then forward.
-- **3:** A reflection that covers two or three fields when one would do, or a mild restatement of the previous
-  turn.
-- **1:** A field-by-field recitation of the card, a re-summary of an already-confirmed summary, or a repeated
-  question (HF-REPEAT if the question was already answered).
+**Definition.** Reflection is a core BSD tool ("שיקוף והדהוד כל הזמן"): reflecting back what the client wrote
+in a card — **including all of its fields** (e.g. the full desired state in S6, the traits in S12) — is a mirror
+in which the client sees himself, and is CORRECT method (method owner's ruling, Oct 2026). Do NOT penalize a full,
+warm reflection of a card. What D6 penalizes is **repetition**: the same content twice in one message ("אז אם
+נשים את זה במשפט אחד...", the trigger reflected and then repeated in the chain), re-summarizing something the
+client **already confirmed** (e.g. the מצוי after "זה מדויק"), and re-asking something already answered.
+- **5:** Each thing reflected once, in the client's words, then forward.
+- **3:** A mild restatement of the previous turn, or one element repeated within the message.
+- **1:** A re-summary of an already-confirmed summary, the same content reflected twice in one message, or a
+  repeated question (HF-REPEAT if the question was already answered).
 - **Source.** `BKL p.19`: "השימוש בכלי הוא בדרך של שיקוף, הצגה של הדברים והנכחתם בחדר". `APP persona` rule
   7: "לא תוכי... הקראה חוזרת... אסורה". `APP v3_hybrid_addon` §1: "שיקוף אחרי כרטיס = הלב, לא הקראה".
-  `SYN` S11: "המאמן מגיב בתגובה אחת משמעותית".
+  `SYN` S11: "המאמן מגיב בתגובה אחת משמעותית". `BOOK ~L5705`: "ברשותך, אשקף לך את תמונת הביניים של
+  התהליך" — the coach reads back the whole מצוי/רצוי picture and the client answers "כן, זה נכון!".
 
 ### D7. Warmth, human presence, natural length (חום ונוכחות)
 **Definition.** The coach sounds like a present, warm person at eye level. A short validation is fine ("זה
@@ -290,13 +291,13 @@ budget is a fatigue signal (W3).
   and a concrete desired action.
 - **Source.** `BKL p.12`: "יתאר הלקוח איך היה רוצה שהסיטואציה שלו תיראה [הצד הרצוי]" and "תפעול ב' — הצד של
   הרצוי: רגש–אמירה–פעולה".
-- **Coach after the card.** If it is sound: reflect the **heart of the change** in a few of the client's words
-  (not all three fields), then move to the gap card.
+- **Coach after the card.** If it is sound: reflect the desired state warmly in the client's words (all three
+  dimensions is correct), then move to the gap card.
 - **Deepen if:** a dimension does not hold up, for example a negative desired emotion ("הייתי רוצה להרגיש
   כעס"), a one-word desired thought, or a vague desired action. Ask one curious clarifying question about that
   dimension only.
-- **Failure modes:** (a) parroting nonsensical content back ("היית רוצה להרגיש דיכאון"); (b) reading all three
-  fields back; (c) blocking on imperfect but reasonable answers; (d) advising what the desired state *should* be
+- **Failure modes:** (a) parroting nonsensical content back ("היית רוצה להרגיש דיכאון"); (b) reflecting the
+  desired state twice in one message; (c) blocking on imperfect but reasonable answers; (d) advising what the desired state *should* be
   (HF-ADVICE).
 - **Budget:** 1–2 turns.
 
@@ -431,8 +432,8 @@ budget is a fatigue signal (W3).
   nature side or the reverse. Ask one open question about the most salient item ("מה הוא אומר עליך כשאתה מסתכל
   על החיים שלך בכלל?"). Do not correct it on the client's behalf, and do not offer "this or that".
 - **Failure modes:** (a) framing nature as negative or shameful; (b) the coach choosing or adding traits for the
-  client; (c) counting traits aloud, or "מה עוד?" loops; (d) accepting event emotions as traits; (e) a long list
-  recitation.
+  client; (c) counting traits aloud, or "מה עוד?" loops; (d) accepting event emotions as traits; (e) the
+  same traits reflected twice in one message. (Reflecting the client's traits back is correct, not a failure.)
 - **Budget:** 1 turn, 2 with an exception.
 
 ### S13: Choice / declaration (בחירה, התחדשות)

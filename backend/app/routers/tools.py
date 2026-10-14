@@ -271,6 +271,29 @@ async def submit_tool_response(
                 current_step = updated_state.get("current_step")
                 saturation_score = float(updated_state.get("saturation_score", 0.0))
 
+                # V3 S2: reflecting the event is method, but a sentence that ticks off the gate conditions
+                # ("רגע ברור בזמן, עם בן הזוג, ומגע ישיר") leaks the internal check (judge: 5/11 runs) — drop it.
+                if updated_state.get("ux_version", 2) >= 3 and request.tool_type == "event_form" and coach_message:
+                    kept = [s for s in re.split(r"(?<=[.!?])\s+|\n+", coach_message)
+                            if not (re.search(r"מגע", s) and re.search(r"זמן|מתי", s))]
+                    cleaned = "\n".join(s for s in kept if s.strip())
+                    if cleaned and cleaned != coach_message:
+                        logger.info("[Tools] S2: dropped gate-checklist sentence from coach reflection")
+                        coach_message = cleaned
+                        msgs = updated_state.get("messages") or []
+                        if msgs and msgs[-1].get("sender") == "coach":
+                            msgs[-1]["content"] = coach_message
+
+                # V3: after the client confirmed the מצוי card, the coach's only job is the one-sentence bridge to the
+                # רצוי card. The model re-summarized the just-confirmed מצוי in 7/11 judged runs despite the prompt —
+                # so the bridge is fixed text (also stored in state history).
+                if (updated_state.get("ux_version", 2) >= 3 and request.tool_type == "matzui_summary" and language == "he"
+                        and current_step == "S6" and coach_message):
+                    coach_message = "עכשיו נדמיין איך היית רוצה שזה ייראה באותו רגע."
+                    msgs = updated_state.get("messages") or []
+                    if msgs and msgs[-1].get("sender") == "coach":
+                        msgs[-1]["content"] = coach_message
+
                 # Deterministic gate check: backend is the authority on step advancement.
                 # Suppress when stage_ready_to_complete — let frontend stage-complete screen handle it.
                 last_tool_msg = (updated_state.get("messages") or [{}])[-1] if updated_state.get("messages") else {}
