@@ -29,6 +29,9 @@ export default defineConfig(({ mode }) => ({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // /eval/ = unlisted pages for expert review — not precached for every user, not SPA-redirected
+        globIgnores: ['eval/**'],
+        navigateFallbackDenylist: [/^\/eval\//],
         skipWaiting: true,
         clientsClaim: true,
       },
