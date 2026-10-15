@@ -129,6 +129,40 @@ def strip_question_before_card(state: Dict[str, Any], coach_message: str) -> str
     return stripped
 
 
+_HE_WORD = re.compile(r"[\u0590-\u05FF]{3,}")
+
+
+def drop_repeated_trigger_reflection(state: Dict[str, Any], coach_message: str, user_message: str) -> str:
+    """V3 S9→S11: the coach reflects the client's trigger answer almost verbatim and then repeats it as the first
+    link of the chain ("אז כש... נדלקת האמונה...") — the same content twice (judge: 10/11 runs; prompt fixes
+    failed). Keep the chain, drop earlier paragraphs that mostly re-state the client's answer."""
+    paragraphs = [p for p in (coach_message or "").split("\n") if p.strip()]
+    chain_idx = next((i for i, p in enumerate(paragraphs)
+                      if i > 0 and re.match(r"(אז|אם (אני )?נחבר|אם (אני )?מחבר|בוא נחבר)", p.strip())
+                      and re.search(r"נדלק|מדליק", p)), None)
+    if chain_idx is None:
+        return coach_message
+    user_words = set(_HE_WORD.findall(user_message or ""))
+
+    def _restates_answer(p: str) -> bool:
+        # A mini-chain before the chain ("...מדליק את האמונה...") is the same content; word overlap catches
+        # near-verbatim restatements (Hebrew inflection אותי→אותך lowers it, hence both checks)
+        if re.search(r"מדליק|נדלק|כפתור", p):
+            return True
+        words = set(_HE_WORD.findall(p))
+        return len(user_words) >= 4 and bool(words) and len(words & user_words) / len(words) >= 0.35
+
+    kept = [p for i, p in enumerate(paragraphs) if i >= chain_idx or not _restates_answer(p)]
+    if len(kept) == len(paragraphs):
+        return coach_message
+    cleaned = "\n\n".join(kept)
+    msgs = state.get("messages") or []
+    if msgs and msgs[-1].get("sender") == "coach" and msgs[-1].get("content") == coach_message:
+        msgs[-1]["content"] = cleaned
+    logger.info("[BSD V2 API] S9: dropped %d paragraph(s) repeating the trigger before the chain", len(paragraphs) - len(kept))
+    return cleaned
+
+
 async def build_stage_complete_payload(state: Dict[str, Any], step: str, language: str) -> Optional[Dict[str, Any]]:
     """Stage summary payload when the last coach turn signaled stage_ready_to_complete
     at (or past) the end step of its macro-stage; None otherwise."""
@@ -472,6 +506,8 @@ async def send_message_v2(
             stage_complete_payload = await build_stage_complete_payload(updated_state, pre_gate_step, body.language)
         if ux_version >= 3 and (tool_call or stage_complete_payload):
             coach_message = strip_question_before_card(updated_state, coach_message)
+        if ux_version >= 3 and prev_step in ("S9", "S10") and updated_state.get("current_step") == "S11":
+            coach_message = drop_repeated_trigger_reflection(updated_state, coach_message, safe_message)
 
         # --- SINGLE ATOMIC COMMIT: save everything together ---
         t5 = time.time()
