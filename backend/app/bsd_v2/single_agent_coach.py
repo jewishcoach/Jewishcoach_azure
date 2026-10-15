@@ -231,6 +231,21 @@ _PARADIGM_RULE_WORDS = ("חייב", "צריך", "עדיף", "אסור", "מות�
                         "אין טעם", "כדאי", "שווה", "רק כך", "נכון ל", "מוכרח", "אסור לי")
 
 
+def _reads_as_rule(body: str) -> bool:
+    """Inner-rule wording. "אם X — אני מתפוצץ" (if X, I react) describes the pattern, not a rule;
+    "אם אגיד — יחמיר" / "אם אני לא תוקף — לא רואים אותי" are rules."""
+    if any(w in body for w in _PARADIGM_RULE_WORDS if w != "אם "):
+        return True
+    if "מי ש" in body:  # general-law form: "מי שלוחץ עליי חוטף"
+        return True
+    if "אם " not in body:
+        return False
+    parts = re.split(r"\s[—–-]\s|,", body.split("אם ", 1)[1], maxsplit=1)
+    if len(parts) == 2:  # "אם <condition> — <consequence>": a pattern only if the consequence is "אני <act>"
+        return not re.match(r"\s*(ו?אז\s+)?אני\s", parts[1])
+    return not re.search(r"אם (?!אני)\S+[^—–]*?\sאני\s+\S+", body)
+
+
 def _build_v3_paradigm_hint(state: Dict[str, Any], language: str) -> str:
     """S9 (once, before the trigger question): flag a 'ככה זה אצלי' that reads like the pattern."""
     if state.get("current_step") not in ("S9", "S10") or state.get("_s9_paradigm_hint_given"):
@@ -240,7 +255,7 @@ def _build_v3_paradigm_hint(state: Dict[str, Any], language: str) -> str:
     if not paradigm or (cd.get("stance") or {}).get("activation_trigger"):
         return ""
     body = paradigm.split("—", 1)[-1] if "—" in paradigm else paradigm.replace("ככה זה אצלי", "")
-    if any(w in body for w in _PARADIGM_RULE_WORDS):
+    if _reads_as_rule(body):
         return ""
     state["_s9_paradigm_hint_given"] = True
     if language != "he":
