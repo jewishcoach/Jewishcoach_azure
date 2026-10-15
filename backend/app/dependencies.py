@@ -5,7 +5,7 @@ from typing import Any
 
 from fastapi import Depends, HTTPException, Header
 from jose import jwt as jose_jwt
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import OperationalError, TimeoutError as PoolTimeoutError
 from sqlalchemy.orm import Session
 
 from .database import get_db, utc_now
@@ -525,7 +525,7 @@ async def get_current_user(
 
     except HTTPException:
         raise
-    except OperationalError as e:
+    except (OperationalError, PoolTimeoutError) as e:  # pool exhausted = overload, not a bad session
         logger.error("Database error during auth: %s", type(e).__name__)
         raise HTTPException(status_code=503, detail=client_error_detail("Service temporarily unavailable", e))
     except Exception as e:

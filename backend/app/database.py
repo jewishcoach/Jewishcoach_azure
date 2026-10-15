@@ -109,6 +109,14 @@ def utc_now():
     return datetime.now(timezone.utc)
 
 
+def release_db_connection(db) -> None:
+    """End the read-only transaction so the pooled connection goes back to the pool before a long await
+    (an LLM call takes ~5-17s). Holding it across the await let ~8 concurrent turns exhaust the pool, and the
+    pool wait then blocked the event loop — freezing every request on the worker. The session re-acquires a
+    connection on next use. Commit expires loaded ORM objects: read any attributes you need BEFORE calling."""
+    db.commit()
+
+
 def get_db():
     """FastAPI dependency: one session per request, always closed.
     Rolls back uncommitted changes on error to prevent partial state."""

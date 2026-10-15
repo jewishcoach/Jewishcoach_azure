@@ -41,7 +41,7 @@ from ..bsd_v2.stage_intro_generator import (
     generate_stage_summary,
     format_intro_answers_as_context,
 )
-from ..database import get_db
+from ..database import SessionLocal, get_db, release_db_connection
 from ..limiter import limiter
 from ..models import User, Conversation as ConversationModel, Message
 from ..routers.chat import try_autotitle_conversation
@@ -102,6 +102,28 @@ def _get_conversation_or_404(
     if not conv:
         raise HTTPException(status_code=404, detail="Conversation not found")
     return conv
+
+
+# Strong refs to fire-and-forget tasks (the event loop only keeps weak references)
+_background_tasks: set = set()
+
+
+def _spawn(coro) -> None:
+    task = asyncio.create_task(coro)
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
+
+
+def _autotitle_in_thread(conversation_id: int, language: str) -> None:
+    """Title generation uses a SYNC OpenAI client — run it off the event loop with its own session, after the
+    response, so a slow/429-retrying call can't freeze the worker or hold a pooled connection."""
+    db = SessionLocal()
+    try:
+        try_autotitle_conversation(db, conversation_id, language)
+    except Exception:
+        logger.exception("[BSD V2 API] autotitle failed for conv %s", conversation_id)
+    finally:
+        db.close()
 
 
 def strip_question_before_card(state: Dict[str, Any], coach_message: str) -> str:
@@ -293,7 +315,7 @@ async def warmup_cache(request: Request, language: str = "he"):
     lang = (language or "he").lower().strip()
     if not lang.startswith("en"):
         lang = "he"
-    asyncio.create_task(warm_prompt_cache(language=lang, steps=("S0", "S1")))
+    _spawn(warm_prompt_cache(language=lang, steps=("S0", "S1")))
     return {"status": "warmup_started", "language": lang}
 
 
@@ -384,6 +406,10 @@ async def send_message_v2(
                 collected_data=state.get("collected_data"),
             )
 
+        # Don't hold a pooled DB connection across the LLM calls below (read ORM attributes first)
+        user_gender = getattr(current_user, "gender", None) or None
+        release_db_connection(db)
+
         # Safety screen BEFORE the coach: a risk statement gets a check-in, not the next coaching step
         safety_result = await screen_message(safe_message, state, request.headers.get("x-user-timezone"))
         if safety_result.intercept:
@@ -431,7 +457,6 @@ async def send_message_v2(
 
         # Handle conversation (pass user gender from dashboard for אתה/את)
         t3 = time.time()
-        user_gender = getattr(current_user, "gender", None) or None
         coach_message, updated_state = await handle_conversation(
             user_message=safe_message,
             state=state,
@@ -539,7 +564,7 @@ async def send_message_v2(
         logger.debug("[PERF API] Atomic commit (state + messages): %.0fms", (t6 - t5) * 1000)
 
         # Auto-title runs AFTER the atomic commit (non-critical, can fail independently)
-        try_autotitle_conversation(db, body.conversation_id, body.language or "he")
+        _spawn(asyncio.to_thread(_autotitle_in_thread, body.conversation_id, body.language or "he"))
 
         suggestions = updated_state.pop("_suggestions", [])
         collected_data = updated_state.get("collected_data")
@@ -883,6 +908,7 @@ async def get_stage_intro(
 
     _get_conversation_or_404(body.conversation_id, current_user.id, db)
     state, ver = load_v2_state(body.conversation_id, db)
+    release_db_connection(db)
 
     try:
         intro_payload = await generate_stage_intro(
@@ -951,6 +977,7 @@ async def submit_stage_intro_answers(
     try:
         user_gender = getattr(current_user, "gender", None) or None
         state_fresh, ver_fresh = load_v2_state(body.conversation_id, db)
+        release_db_connection(db)
         coach_msg, updated_state = await handle_conversation(
             "אני מוכן להתחיל" if body.language == "he" else "I'm ready to start",
             state_fresh,
@@ -1002,6 +1029,7 @@ async def get_stage_summary(
     """
     _get_conversation_or_404(body.conversation_id, current_user.id, db)
     state, _ver = load_v2_state(body.conversation_id, db)
+    release_db_connection(db)
 
     try:
         summary = await generate_stage_summary(

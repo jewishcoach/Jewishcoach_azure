@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from ..database import get_db, utc_now
+from ..database import get_db, release_db_connection, utc_now
 from ..models import ToolResponse, Conversation, Message, User
 from ..dependencies import get_current_user
 from pydantic import BaseModel, ConfigDict
@@ -260,13 +260,26 @@ async def submit_tool_response(
                 inject_onboarding_topics_into_state(v2_state, user.preferences or {}, language)
                 v2_state["_tool_just_submitted"] = request.tool_type
                 user_gender = getattr(user, "gender", None) or None
-                coach_message, updated_state = await handle_conversation(
-                    user_message=summary,
-                    state=v2_state,
-                    language=language,
-                    user_gender=user_gender,
-                    conversation_id=conversation_id,
-                )
+                # Release the pooled connection during the LLM call. The submission + summary rows are kept out
+                # of the session meanwhile so they are still committed atomically with the coach reply.
+                pending = [o for o in (tool_response, system_message) if o in db.new]
+                can_release = set(db.new) == set(pending) and not db.dirty and not db.deleted
+                if can_release:
+                    for o in pending:
+                        db.expunge(o)
+                    release_db_connection(db)
+                try:
+                    coach_message, updated_state = await handle_conversation(
+                        user_message=summary,
+                        state=v2_state,
+                        language=language,
+                        user_gender=user_gender,
+                        conversation_id=conversation_id,
+                    )
+                finally:
+                    if can_release:
+                        for o in pending:
+                            db.add(o)
 
                 current_step = updated_state.get("current_step")
                 saturation_score = float(updated_state.get("saturation_score", 0.0))

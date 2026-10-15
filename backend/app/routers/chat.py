@@ -327,13 +327,16 @@ Generate a title that captures the main theme the user wants to work on.
 Reply ONLY with the title, nothing else. No quotes."""
 
         response = _get_openai_client().chat.completions.create(
-            model=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o"),
+            # The "gpt-4o" deployment is a reasoning model (gpt-5.1) that rejects max_tokens/temperature — titles
+            # silently fell back to truncation. Use the coach's mini deployment.
+            model=os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME_TITLE") or os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME_4O_MINI", "gpt-4o-mini"),
             messages=[
                 {"role": "system", "content": "You are a helpful assistant that creates concise conversation titles. Be specific and capture the essence." if language == "en" else "אתה עוזר שיוצר כותרות תמציתיות לשיחות. היה ספציפי ותפוס את המהות."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.3,  # Lower temperature for more focused titles
-            max_tokens=60
+            max_tokens=60,
+            timeout=15.0,  # default is 10 min; a stuck title must not hang anything
         )
         
         title = response.choices[0].message.content.strip()
