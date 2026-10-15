@@ -414,7 +414,11 @@ class Driver:
                 self.shot("stage_complete")
                 if self.step == "S15":
                     print("\n✅ FLOW COMPLETE"); break
+                pg.wait_for_timeout(int(float(os.getenv("SIM_READ_SECONDS", "0")) * 1000))  # a human reads the summary
+                t0 = time.time()
                 self.click_and_wait("המשך לצעד הבא", expect_api=False)
+                if self.visible(pg.get_by_role("button", name="אני מוכן להתחיל"), 60000):
+                    print(f"   ⏱ stage intro ready {time.time() - t0:.1f}s after 'המשך לצעד הבא'")
             elif state == "summary_button":
                 self.click_and_wait("להמשך לסיכום השלב", expect_api=False)
             elif state == "stage_intro":

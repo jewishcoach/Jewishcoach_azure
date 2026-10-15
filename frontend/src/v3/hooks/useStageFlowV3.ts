@@ -86,6 +86,9 @@ export function useStageFlowV3(language: string = 'he') {
   const [activeTool, setActiveTool] = useState<ActiveInlineTool | null>(null);
   const [toolSubmitting, setToolSubmitting] = useState(false);
   const sendingRef = useRef(false);
+  // Next stage's intro questions, fetched in the background as soon as the stage ends (the LLM call takes
+  // ~12-16s; the user is reading the closing message + summary meanwhile)
+  const introPrefetchRef = useRef<{ stageId: string; promise: Promise<StageIntroPayload | null> } | null>(null);
 
   // ---------------------------------------------------------------------------
   // Send chat message
@@ -325,6 +328,15 @@ export function useStageFlowV3(language: string = 'he') {
   // ---------------------------------------------------------------------------
   // Stage transitions (same as V2)
   // ---------------------------------------------------------------------------
+  const endedStageSummary = flowState.pendingSummary ?? (flowState.phase === 'stage_complete' ? flowState.summary : undefined);
+  useEffect(() => {
+    const nextId = endedStageSummary?.next_stage_id;
+    if (!conversationId || !nextId || introPrefetchRef.current?.stageId === nextId) return;
+    introPrefetchRef.current = {
+      stageId: nextId,
+      promise: fetchStageIntro(conversationId, nextId, language, getToken).catch(() => null),
+    };
+  }, [conversationId, endedStageSummary?.next_stage_id, language, getToken]);
   const requestNextStageIntro = useCallback(async (personalStatement?: string) => {
     if (!conversationId || !flowState.summary?.next_stage_id) return;
     const nextStageId = flowState.summary.next_stage_id;
@@ -350,7 +362,9 @@ export function useStageFlowV3(language: string = 'he') {
     }));
 
     try {
-      const intro: StageIntroPayload = await fetchStageIntro(conversationId, nextStageId, language, getToken);
+      const prefetched = introPrefetchRef.current?.stageId === nextStageId ? await introPrefetchRef.current.promise : null;
+      introPrefetchRef.current = null;
+      const intro: StageIntroPayload = prefetched ?? await fetchStageIntro(conversationId, nextStageId, language, getToken);
       setFlowState((prev) => ({
         ...prev,
         phase: 'answering_intro',
