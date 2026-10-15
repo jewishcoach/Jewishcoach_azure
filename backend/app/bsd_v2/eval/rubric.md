@@ -354,7 +354,9 @@ budget is a fatigue signal (W3).
   1. **Paradigm.** The client states his own **operating rule**, "מחשבת המעשה": an automatic, taken-for-granted
      rule about how one must act ("עדיף לשתוק", "אם אני לא תוקף — לא רואים אותי", "חייבים להקשיח"). It is
      **not** a description of what he does when something happens (that is the pattern) and **not** a general
-     belief about reality (that is the stance).
+     belief about reality (that is the stance). **The literal words "ככה זה אצלי" are NOT required** (method
+     owner's ruling, Oct 2026): the essence is the client's own "ככה זה" — his self-evident inner rule. Pressing
+     for the literal wording after a valid rule was given is a D10 flaw.
   2. **Stance (עמדה).** A perception of reality about the world, people, or himself that makes the rule feel
      true ("החיים הם מאבק של 'או אני או אתה'", "אנשים שופטים"), in the client's words. It is not a repeat of the
      paradigm.
@@ -620,7 +622,8 @@ transcript.
 These are where the booklet or book disagree with the current prompts, or where the prompts disagree with each
 other. The judge follows **SYN and this rubric**. The items are listed so the prompts can be fixed.
 
-**X1. Paradigm wording: "ככה זה אצלי" required literally.** The V2 `s7_paradigm.md` gate says: "אל תאשר...
+**X1. Paradigm wording: "ככה זה אצלי" required literally.** *(Resolved Oct 2026: not required — the essence is
+the client's "ככה זה"; app prompts updated.)* The V2 `s7_paradigm.md` gate says: "אל תאשר...
 עד שהמשתמש מנסח... באמצעות המילים 'ככה זה אצלי'". The booklet uses "ככה זה" to *characterize* a paradigm, not
 as required wording. The book's own paradigms do not contain the phrase ("שכדי להבטיח את הקיום שלי עלי לתקוף",
 `BOOK ~L2026`; "כשאני תוקף מבחינים בקיומי", `BOOK ~L3661`). The judge should not fail a valid action-rule
