@@ -285,7 +285,13 @@ async def warm_prompt_cache(language: str = "he", steps: tuple = ("S0", "S1")) -
     Pre-warm Azure prompt cache for new conversations.
     Call when user opens/creates a conversation - before first message.
     Runs minimal LLM requests so the next real request hits cache.
+
+    Off by default (BSD_V2_PROMPT_WARMUP=1 to enable): it warmed S0/S1 (which V3 skips) without the coach's
+    tool schema, so its prefix never matched a real call — ~13K tokens of the shared Azure quota per new
+    conversation for nothing. Real traffic keeps the shared prefix warm.
     """
+    if os.getenv("BSD_V2_PROMPT_WARMUP", "0").strip() != "1":
+        return
     try:
         # Same deployment as handle_conversation (4o mini) so TLS pool / routing match real coach calls.
         llm = get_azure_chat_llm_4o_mini()
@@ -2741,6 +2747,11 @@ async def _call_llm_and_parse(
     internal_state: Dict[str, Any] = {}
 
     llm = get_azure_chat_llm_4o_mini()
+    # Route same-stage requests to the same Azure prompt cache (the prompt prefix is stage-specific; gender is last)
+    cache_key = (f"{os.getenv('AZURE_OPENAI_PROMPT_CACHE_KEY_PREFIX', 'bsd_v2')}:coach:{language}:"
+                 f"v{state.get('ux_version', 2)}:{state.get('current_step', 'S0')}")
+    if hasattr(llm, "model_copy"):  # test doubles aren't pydantic models
+        llm = llm.model_copy(update={"model_kwargs": {**(getattr(llm, "model_kwargs", None) or {}), "prompt_cache_key": cache_key}})
     structured_llm = llm.with_structured_output(
         CoachResponseSchema,
         method="function_calling",

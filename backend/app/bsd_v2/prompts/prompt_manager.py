@@ -303,11 +303,9 @@ def assemble_system_prompt(current_step: str, language: str = "he", user_gender:
     stage_title = f"# שלב נוכחי: {current_step}" if lang == "he" else f"# Current Stage: {current_step}"
     response_format = core_sections[-1]
 
-    # Append stage-specific collected_data instruction to response format
+    # Stage-specific collected_data instruction (appended to the response format below)
     cd_dict = STAGE_COLLECTED_DATA_HE if lang == "he" else STAGE_COLLECTED_DATA_EN
     cd_instruction = cd_dict.get(current_step, "")
-    if cd_instruction:
-        response_format = response_format + f"\n\n{cd_instruction}"
 
     # Gender instruction (from user dashboard) - critical for correct אתה/את
     gender_suffix = ""
@@ -322,9 +320,13 @@ def assemble_system_prompt(current_step: str, language: str = "he", user_gender:
         elif user_gender == "male":
             gender_suffix = "\n\n**Gender:** The coachee is male."
 
-    # Core: persona + process_map, then stage-specific gate only
+    # Azure prompt caching is a prefix match: the per-user gender line goes LAST so users of either gender share
+    # the cached stage prompt. (Moving the V3 addon ahead of the stage parts gave a longer cross-stage prefix but
+    # changed behavior — the s2_to_s3_no_question regression failed 3/5 — so the stage order is unchanged.)
     core_text = "\n\n---\n\n".join(core_sections[:-1])
-    return f"""{core_text}{gender_suffix}{gate_section}
+    if cd_instruction:
+        response_format = response_format + f"\n\n{cd_instruction}"
+    return f"""{core_text}{gate_section}
 
 {stage_title}
 
@@ -332,7 +334,7 @@ def assemble_system_prompt(current_step: str, language: str = "he", user_gender:
 
 ---
 
-{stage_content}
+{stage_content}{gender_suffix}
 """
 
 
