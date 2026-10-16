@@ -252,7 +252,8 @@ async def submit_tool_response(
                     parts.append(f"מתי: {request.data['when']}")
                 if request.data.get("where_who"):
                     parts.append(f"איפה/מול מי: {request.data['where_who']}")
-                cd["commitment"] = " | ".join(parts) if parts else ""
+                # Sentences, not "a | b | c" — the coach was pasting the pipes and field labels into its closing
+                cd["commitment"] = ". ".join(p.rstrip(".") for p in parts) + "." if parts else ""
                 v2_state["collected_data"] = cd
 
             if summary:
