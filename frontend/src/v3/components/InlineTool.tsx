@@ -111,6 +111,7 @@ export function InlineTool({ tool, onSubmit, isSubmitting }: InlineToolProps) {
     case 'commitment_card':
       return (
         <CommitmentCard
+          data={tool.data as Parameters<typeof CommitmentCard>[0]['data']}
           onSubmit={onSubmit}
           isSubmitting={isSubmitting}
         />

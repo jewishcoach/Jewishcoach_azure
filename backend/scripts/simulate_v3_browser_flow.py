@@ -28,7 +28,7 @@ CARD_TITLES = {
     "תמונת המצוי שלך": "matzui_summary", "באותו רגע בדיוק — מה היית רוצה?": "comparison_card",
     "הפער": "gap_card", "מה החוק הפנימי שלך?": "sentence_builder",
     "מה אני מרוויח ומה אני מפסיד?": "balance_scale", "כרטיס כוחות — מקור וטבע": "trait_card_builder",
-    "הבחירה החדשה שלך": "declaration_card", "המחויבות שלך": "commitment_card",
+    "הבחירה החדשה שלך": "declaration_card", "המחויבות שלך": "commitment_card", "הבקשה שלך לאימון": "commitment_card",
 }
 
 
@@ -279,17 +279,10 @@ class Driver:
             ph("למשל: ביטול עצמי").fill(s(data.get("gap_name")))
             score = max(1, min(10, int(data.get("gap_score") or 7)))
             btn(str(score)).click()
-            belief = {"yes": "כן", "no": "לא"}.get(data.get("belief"), "לא בטוח")
-            btn(belief).nth(0).click()
-            opp = data.get("opportunity") or {}
-            btn("כן" if opp.get("has") else "לא").nth(1).click()
-            if opp.get("has"):
-                ph("תאר בקצרה").fill(s(opp.get("what")))
-            submit = btn("המשך לדפוס")
+            submit = btn("המשך")
         elif tool_type == "sentence_builder":
             paradigm = re.sub(r"^\s*ככה זה אצלי\s*[—–-]?\s*", "", s(data.get("paradigm")))
             ph("כי... / כש...").fill(paradigm or "עדיף לשתוק")
-            ph("אני מאמין ש...").fill(s(data.get("reality_belief")))
             submit = btn("הבנתי את החוק שלי")
         elif tool_type == "balance_scale":
             tags("הוסף רווח", data.get("gains") or [], 2)
@@ -304,11 +297,22 @@ class Driver:
             ph("תאר פעולה קונקרטית").fill(s(data.get("next_action")))
             btn("כן, זה אני!").click()
             submit = btn("זו הבחירה שלי")
-        elif tool_type == "commitment_card":
-            ph("מה הצעד הקונקרטי").fill(s(data.get("commitment")))
-            ph("למשל: מחר בבוקר").fill(s(data.get("when")))
-            ph("למשל: בבית").fill(s(data.get("where_who")))
-            submit = btn("חותם על המחויבות שלי")
+        elif tool_type == "commitment_card":  # בקשה לאימון
+            floor = {"paradigm": "הפרדיגמה", "stance": "העמדה"}.get(data.get("floor"), "הדפוס")
+            btn(floor).click()
+            areas = card.locator("textarea")  # situation, old, new, result
+            areas.nth(0).fill(s(data.get("situation")))
+            for i, key in ((1, "old"), (2, "new")):
+                if not areas.nth(i).input_value().strip():
+                    areas.nth(i).fill(s(data.get(key)))
+            areas.nth(3).fill(s(data.get("result")))
+            tool_data = (tool or {}).get("data") or {}
+            for key in ("forces_source", "forces_nature"):
+                options = tool_data.get(key) or []
+                wanted = [o for o in (data.get("source" if key == "forces_source" else "nature") or []) if o in options]
+                for o in (wanted or options[:1]):
+                    btn(o).first.click()
+            submit = btn("זו הבקשה שלי")
         else:
             self.flag(f"unknown card '{tool_type}'")
             submit = card.get_by_role("button").last

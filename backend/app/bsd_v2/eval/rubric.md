@@ -32,6 +32,12 @@ method check fails**. Messages should have natural human length: warm, full sent
 one-liners nor lectures. What tires the client is repetition, not length (`APP v3_hybrid_addon`: "מה שמעייף הוא
 חזרה, לא אורך").
 
+### 0.25 Calibration (BSD expert review, Oct 2026)
+A BSD expert coach scored a transcript **method 2/5** and **warmth 2/5** where this judge gave ~3.5 and ~3.1.
+Be **strict by the booklet**, not by what the app's cards happen to collect: a stage is not "done well" just
+because its card was filled. Robotic repeated formulas, theory dumped on the client, mixed floors, and a vague
+ending are serious (≤2), even when the turn is polite and short.
+
 ### 0.3 Scale
 Use 1–5 for each dimension per coach turn. Use `null` (N/A) when the dimension cannot apply to the turn. For
 example, D5 is N/A on a turn where a card follows and no question is expected.
@@ -303,8 +309,9 @@ budget is a fatigue signal (W3).
 
 ### S7: Gap (פער): name, score, belief, opportunity
 - **Gate.** The client gives a meaningful 1–2-word gap name of his own and a 1–10 intensity score. He answers
-  the **belief question** ("האם אתה מאמין שאתה יכול לקחת את זה למקום אחר?") and the **opportunity question**
-  ("האם יש כאן הזדמנות בשבילך?"). Short answers are enough.
+  the **belief question** and the **opportunity question**, asked by the coach **in the chat** in the booklet's
+  wording (p.13, after the רצוי side): "**האם אתה מאמין שבפער הזה יש משהו טוב בשבילך?**" and "**האם יש בפער
+  הזדמנות בשבילך? אם כן — מהי?**". The gap card collects only the name and the score.
 - **Source.** `BKL p.12–13`: "שאלת האמונה: אתה מאמין שאתה יכול לקחת את זה למקום אחר?", "שאלת ההזדמנות: היש כאן
   הזדמנות בשבילך?", "תן לפער שם", "מהי עוצמת הפער". `BKL p.12`: "אם התשובה שלילית — המאמן לא יגיב" and
   "אמונה והזדמנות באות ממקום של העצמה ולא של שלילה... וכמובן שלא להאיץ בו".
@@ -318,7 +325,9 @@ budget is a fatigue signal (W3).
     does not react);
   - (b) "מה מונע ממך?" or "מה עוצר אותך?";
   - (c) demanding a deeper answer to the opportunity question;
-  - (d) skipping the belief or opportunity question entirely;
+  - (d) skipping the belief or opportunity question entirely, or moving on right after the card (expert: "זיהה
+    את הפער ועוצמתו אך התקדם מיד הלאה מבלי להעמיק");
+  - (d2) asking both questions in one message, or not deepening a bare "כן" ("מה הטוב שאתה רואה בו?");
   - (e) proposing a gap name for the client.
 - **Budget:** about 3 turns, not counting clarifications.
 
@@ -349,7 +358,7 @@ budget is a fatigue signal (W3).
   - (f) a long recap of the whole identification floor (D6).
 - **Budget:** 2–4 turns.
 
-### S9: Paradigm ("ככה זה אצלי") + stance (root belief) + trigger (merged S9/S10)
+### S9 + S10: Paradigm (S9, card) → stance + trigger (S10, chat) — one floor at a time
 - **Gate, all three parts:**
   1. **Paradigm.** The client states his own **operating rule**, "מחשבת המעשה": an automatic, taken-for-granted
      rule about how one must act ("עדיף לשתוק", "אם אני לא תוקף — לא רואים אותי", "חייבים להקשיח"). It is
@@ -372,12 +381,19 @@ budget is a fatigue signal (W3).
   - Trigger: `BKL p.18` "טריגר — מעין כפתור הפעלה... עצם הנגיעה בו מעוררת את העמדה".
   - Book example: `BOOK ~L2026` paradigm "שכדי להבטיח את הקיום שלי עלי לתקוף"; `BOOK ~L2219` stance found
     with tears: "זאת העמדה שלי".
-- **Coach after the card.**
+- **Floors one at a time (expert review, Oct 2026 — booklet order, bottom-up).** S9's card collects **only the
+  paradigm**; the stance is explored afterwards in chat (S10), patiently. Never present "הפרדיגמה והעמדה" (or
+  the rule and the belief) together or dump theory on the client (expert: "אסור לערבב מושגים או להטיח אותם
+  בלקוח... לקחת קומה אחת בלבד לחקירה בסבלנות").
+- **Coach after the paradigm card (S9).**
   - Decide pass or fail first.
-  - If it passes: reflect the heart of both in the client's key words (the paradigm verbatim, once) and ask
-    **one** trigger question.
-  - After the trigger answer: link the chain **once**, trigger → stance → paradigm → pattern, a few words per
-    link. End with a warm statement toward the balance card, with no question.
+  - If it passes: reflect the paradigm verbatim, once, and open the next floor with **one** open question about
+    its root (no terms, no theory).
+- **Coach in S10 (stance, chat).**
+  - Reflect the stance in the client's words; explore it with one patient question — **where it comes from**
+    ("מאיפה זה מגיע אצלך? מתי למדת שככה זה בעולם?").
+  - Then **one** trigger question. After the trigger answer: link the chain **once**, trigger → stance →
+    paradigm → pattern. End with a warm statement toward the balance card (of the **belief**), no question.
 - **Classic failure modes:**
   - (a) **Accepting a pattern description as a paradigm** ("כשמבקרים אותי אני מתגונן ומסביר"). This is the most
     common failure.
@@ -388,12 +404,14 @@ budget is a fatigue signal (W3).
   - (f) Reflecting the trigger separately and then the chain again (D6).
   - (g) Apologizing for, or skipping, the trigger answer because it sounds like a complaint.
   - (h) "or" menus ("זה יותר על שליטה או על ביטחון?").
+  - (i) **Mixing floors**: paradigm and stance presented/asked together, or the stance never explored (taken
+    straight from a card or skipped to the trigger).
 - **How to deepen on failure.** Say once, gently and confidently, which floor we are on, and ask one opening
   question. For a pattern-instead-of-paradigm: "זה מה שאתה *עושה* כשזה קורה — מה החוק הפנימי שאומר שככה נכון
   לפעול?". The booklet route also works: "הדפוס הזה — האם בחרת בו? מהו ה'ככה זה אצלי' שממנו הוא נשלף?" If the
   answer is still imprecise, accept the closest formulation that the client confirms as his own. Do not chase
   the perfect wording (`BOOK ~L1952`: "לא מחפשים את ה'הָה'").
-- **Budget:** 2 turns, 3 with one deepening.
+- **Budget:** S9 1-2 turns; S10 3-4 turns.
 
 ### S11: Gains and losses (רווח והפסד) **of the stance**
 - **Gate.** At least 2 gains and 2 losses **of holding the belief/stance**: what the belief gives him inside
@@ -486,19 +504,23 @@ budget is a fatigue signal (W3).
   - (e) a narrow vision (one scene / one behavior) accepted without the one widening question.
 - **Budget:** 2–3 turns.
 
-### S15: Commitment (מחויבות / בקשה לאימון)
-- **Gate.** A concrete step: a specific action plus when, and ideally where or with whom. "אנסה", "אשתדל", or no
-  time is not a commitment.
-- **Source.** `BKL p.37–38`: the request is formulated with "כדי שהתוצאה שאשיג תהיה [תוצאה מדידה]". `BKL p.39`:
-  "יש להקפיד על עצמאות וחוסר תלות של הלקוח במאמן". `SYN` appendix item 6: "פעולה + זמן + מקום, אחרת תובנות
-  מתנדפות". `COACH`: "'I'll try to be better' is not a commitment".
-- **Coach.** If the commitment is concrete: affirm it, then give **one** journey summary in the client's
-  specific content (event, then pattern, then "ככה זה אצלי", then old stance, then new choice, then vision,
-  then commitment). It closes the arc with no question. The summary should read as a short narrative of
-  meaning, not a 13-item arrow list; see Discrepancy X7. If the commitment is vague: ask once, "מה **בדיוק**
-  תעשה, ו**מתי**?".
-- **Failure modes:** (a) accepting "אנסה"; (b) the coach suggesting the step (HF-ADVICE/SPOON); (c) a generic
-  "מחויבות יפה!" with no closure; (d) asking questions after the closing summary; (e) more than 2 turns.
+### S15: בקשה לאימון (coaching request)
+- **Gate.** A coaching request in the booklet's structure (`BKL p.37–38`, "בקשה מורכבת"): a chosen floor
+  (pattern / paradigm / stance); "אני מבקש להתאמן על הקושי להתמודד עם [...], שכאשר מופיע [הישן] [...], אפעל
+  מתוך המקור שלי [...] ומתוך הטבע שלי [...], ומתוך [החדש] שבחרתי [...], כדי שהתוצאה שאשיג תהיה [תוצאה
+  מדידה]". The result must be **measurable**. A generic commitment ("לא לצעוק בריב הבא") is **not** a request.
+- **Source.** `BKL p.36`: the client learns to request coaching "ממקום נקי, בהיר ומחויב לעצמו ולרצונו",
+  responsible and committed to results; "לפעול בעצמך, אך לא לבד". Ethics code, "חרות": "המאמן ישמור על חרותו של
+  הלקוח... לא תתאפשר תלות ישירה או עקיפה של הלקוח במאמן". Expert review (Oct 2026): "להוביל את המתאמן לנסח את
+  הבקשה לאימון... במבנה המדויק... תוך הדגשת עצמאותו ושמירת החרות שלו ללא תלות במאמן".
+- **Coach.** If the result is measurable: reflect the request in a natural sentence (not the card pasted), hand
+  ownership back to the client (his request, his forces, he leads from here — no dependency on the coach), then
+  a short narrative of the journey (the pattern and belief in his words, and the new choice). No question. If the
+  result is vague: ask once, "איך תדע שהשגת את זה? מה תראה שקרה?".
+- **Failure modes:** (a) accepting a vague result or "אנסה"; (b) the coach formulating the request or the step
+  (HF-SPOON/ADVICE); (c) language that creates dependency on the coach ("נמשיך לעבוד על זה יחד", "אני כאן
+  ללוות אותך"); (d) a 13-item arrow recap or the raw card pasted; (e) questions after the closing; (f) more than 2
+  turns.
 - **Budget:** 1–2 turns.
 
 ---

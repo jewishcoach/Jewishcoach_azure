@@ -1,47 +1,28 @@
 import { useState } from 'react';
 import { CardShell } from '../shared/CardShell';
 import { SliderInput } from '../shared/SliderInput';
-import { TriStateButton } from '../shared/TriStateButton';
 
 interface GapCardProps {
-  onSubmit: (toolType: string, data: {
-    gap_name: string;
-    gap_score: number;
-    belief: 'yes' | 'no' | 'unsure';
-    opportunity: { has: boolean; what?: string };
-  }) => void;
+  // The card only names and measures the gap. The booklet's belief and opportunity questions (p.13) are
+  // asked by the coach in the chat, where he can deepen — a checkbox here skipped that exploration.
+  onSubmit: (toolType: string, data: { gap_name: string; gap_score: number }) => void;
   isSubmitting: boolean;
 }
 
 export function GapCard({ onSubmit, isSubmitting }: GapCardProps) {
   const [gapName, setGapName] = useState('');
   const [gapScore, setGapScore] = useState(5);
-  const [belief, setBelief] = useState<'yes' | 'no' | 'unsure' | null>(null);
-  const [opportunityAnswer, setOpportunityAnswer] = useState<'yes' | 'no' | 'unsure' | null>(null);
-  const [opportunityText, setOpportunityText] = useState('');
 
-  const canSubmit =
-    gapName.trim().length > 0 &&
-    belief !== null &&
-    opportunityAnswer !== null &&
-    (opportunityAnswer !== 'yes' || opportunityText.trim().length > 0);
+  const canSubmit = gapName.trim().length > 0;
 
   const handleSubmit = () => {
-    onSubmit('gap_card', {
-      gap_name: gapName.trim(),
-      gap_score: gapScore,
-      belief: belief!,
-      opportunity: {
-        has: opportunityAnswer === 'yes',
-        ...(opportunityAnswer === 'yes' && opportunityText.trim() ? { what: opportunityText.trim() } : {}),
-      },
-    });
+    onSubmit('gap_card', { gap_name: gapName.trim(), gap_score: gapScore });
   };
 
   return (
     <CardShell
       titleHe="הפער"
-      instructionHe="הפער בין מה שהיה לבין מה שהיית רוצה — נגדיר אותו, נמדוד אותו, ונבדוק מה הוא מזמן."
+      instructionHe="הפער בין מה שהיה לבין מה שהיית רוצה — נגדיר אותו ונמדוד אותו. אחר כך נתבונן בו יחד."
     >
       <div className="space-y-6">
         {/* 1. Gap name */}
@@ -71,54 +52,6 @@ export function GapCard({ onSubmit, isSubmitting }: GapCardProps) {
           label="מה עוצמת הפער?"
         />
 
-        {/* 3. Belief question */}
-        <div className="space-y-2">
-          <p
-            className="text-sm font-medium text-[#2d4658] text-right"
-            style={{ fontFamily: "'Heebo', sans-serif" }}
-          >
-            אני מאמין שאפשר לקחת את זה למקום אחר
-          </p>
-          <TriStateButton value={belief} onChange={setBelief} />
-        </div>
-
-        {/* 4. Opportunity question */}
-        <div className="space-y-2">
-          <p
-            className="text-sm font-medium text-[#2d4658] text-right"
-            style={{ fontFamily: "'Heebo', sans-serif" }}
-          >
-            יש כאן הזדמנות בשבילי?
-          </p>
-          <TriStateButton
-            value={opportunityAnswer}
-            onChange={setOpportunityAnswer}
-            labels={{ yes: 'כן', no: 'לא', unsure: 'לא בטוח' }}
-          />
-
-          {opportunityAnswer === 'yes' && (
-            <div className="pt-1">
-              <label
-                className="block text-sm font-medium text-[#2d4658] text-right mb-1"
-                style={{ fontFamily: "'Heebo', sans-serif" }}
-              >
-                מהי ההזדמנות?
-              </label>
-              <input
-                type="text"
-                value={opportunityText}
-                onChange={(e) => setOpportunityText(e.target.value)}
-                placeholder="תאר בקצרה..."
-                className="w-full h-[44px] px-3 rounded-xl border border-[#e0ddd8] text-sm text-[#2d4658] text-right
-                           placeholder:text-[rgba(45,70,88,0.35)]
-                           focus:outline-none focus:border-[#03ffe6] transition-colors
-                           animate-[fadeIn_0.2s_ease-out]"
-                style={{ fontFamily: "'Heebo', sans-serif" }}
-              />
-            </div>
-          )}
-        </div>
-
         {/* Submit */}
         <div className="flex justify-center pt-2">
           <button
@@ -130,7 +63,7 @@ export function GapCard({ onSubmit, isSubmitting }: GapCardProps) {
                        drop-shadow-[0px_4px_2px_rgba(0,0,0,0.08)]"
             style={{ fontFamily: "'Heebo', sans-serif" }}
           >
-            {isSubmitting ? '...' : 'המשך לדפוס'}
+            {isSubmitting ? '...' : 'המשך'}
           </button>
         </div>
       </div>

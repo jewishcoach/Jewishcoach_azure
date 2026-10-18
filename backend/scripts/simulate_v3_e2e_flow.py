@@ -95,12 +95,15 @@ CARD_SCHEMAS = {
     "action_field": '{"action_actual": str (what you physically did)}',
     "matzui_summary": '{"confirmed": true}',
     "comparison_card": '{"emotion_desired": str, "thought_desired": str, "action_desired": str}',
-    "gap_card": '{"gap_name": str (1-2 words), "gap_score": int 1-10, "belief": "yes"|"no"|"unsure", "opportunity": {"has": bool, "what": str}}',
-    "sentence_builder": '{"paradigm": "ככה זה אצלי — ...", "reality_belief": str (deep belief about world/self)}',
+    "gap_card": '{"gap_name": str (1-2 words), "gap_score": int 1-10}',
+    "sentence_builder": '{"paradigm": "ככה זה אצלי — ..."}',
     "balance_scale": '{"gains": [2-3 str], "losses": [2-3 str]}  (gains/losses of HOLDING THE BELIEF)',
     "trait_card_builder": '{"source_forces": [6 str values/light traits], "nature_forces": [6 str needs/defenses]}',
     "declaration_card": '{"renewal": "אני בוחר ש...", "next_action": str, "feels_right": true}',
-    "commitment_card": '{"commitment": str concrete, "when": str, "where_who": str}',
+    "commitment_card": ('{"floor": "pattern"|"paradigm"|"stance", "situation": str (the difficulty to train on), '
+                        '"old": str (the old pattern/paradigm/stance, from the data), "source": [1-2 items from data.forces_source], '
+                        '"nature": [1 item from data.forces_nature], "new": str (the new one you chose), '
+                        '"result": str (a MEASURABLE result: when/how many/what is seen)}'),
 }
 
 llm = get_azure_chat_llm_4o_mini()
@@ -146,6 +149,10 @@ async def fill_card(p, tool, history):
             continue
     if len(data) == 1 and isinstance(next(iter(data.values())), dict):
         data = next(iter(data.values()))  # LLM sometimes wraps the card in {"<tool_type>": {...}}
+    if set(data) == {tool["tool_type"]} and isinstance(data[tool["tool_type"]], str):
+        # single-field cards: the sim-user sometimes keys the value by the card name
+        first_field = re.search(r'"(\w+)"', schema)
+        data = {first_field.group(1) if first_field else "value": data[tool["tool_type"]]}
     if tool["tool_type"] == "gap_card":
         data["gap_score"] = int(data.get("gap_score", 7))
     return data
@@ -154,7 +161,7 @@ async def fill_card(p, tool, history):
 # Heuristic red flags
 REASK = {
     "emotion_selector": ["מה הרגשת", "מה עוד הרגשת", "הכי חזק"],
-    "gap_card": ["האם אתה מאמין", "האם את מאמינה", "יש כאן הזדמנות", "איך תקרא לפער", "מה הציון"],
+    "gap_card": ["איך תקרא לפער", "מה הציון"],  # belief/opportunity are now asked in chat on purpose
     "balance_scale": ["מה אתה מרוויח", "מה את מרוויחה", "מה אתה מפסיד", "מה את מפסידה"],
     "sentence_builder": ["ההבדל בין פרדיגמה לעמדה", "מה אתה יודע היום על השליטה", "מי או מה בסביבה"],
     "declaration_card": ["מהו ה'ככה זה אצלי' החדש", "פרדיגמה חדשה"],

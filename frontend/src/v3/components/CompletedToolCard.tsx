@@ -9,11 +9,11 @@ const TOOL_LABELS: Record<string, string> = {
   matzui_summary: 'סיכום המצוי',
   comparison_card: 'מצוי מול רצוי',
   gap_card: 'הפער',
-  sentence_builder: 'פרדיגמה ועמדה',
+  sentence_builder: 'פרדיגמה',
   balance_scale: 'רווח והפסד',
   trait_card_builder: 'כרטיס כוחות',
   declaration_card: 'הבחירה החדשה',
-  commitment_card: 'מחויבות',
+  commitment_card: 'בקשה לאימון',
 };
 
 const FIELD_LABELS: Record<string, string> = {
@@ -37,9 +37,17 @@ const FIELD_LABELS: Record<string, string> = {
   renewal: 'בחירה חדשה',
   commitment: 'מחויבות',
   vision: 'חזון',
+  floor: 'קומה',
+  situation: 'הקושי',
+  old: 'הישן',
+  new: 'החדש',
+  result: 'תוצאה מדידה',
 };
 
+const FLOOR_LABELS: Record<string, string> = { pattern: 'הדפוס', paradigm: 'הפרדיגמה', stance: 'העמדה' };
+
 function formatValue(value: unknown): string {
+  if (typeof value === 'string' && FLOOR_LABELS[value]) return FLOOR_LABELS[value];
   if (Array.isArray(value)) return value.join(', ');
   if (typeof value === 'object' && value !== null) {
     return Object.entries(value)

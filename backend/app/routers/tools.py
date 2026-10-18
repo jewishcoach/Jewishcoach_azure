@@ -38,6 +38,29 @@ def _is_gibberish(text: str) -> bool:
     return False
 
 
+_REQUEST_FLOOR_HE = {"pattern": ("הדפוס", "שהוא", "הישן", "החדש"), "paradigm": ("הפרדיגמה", "שהיא", "הישנה", "החדשה"),
+                     "stance": ("העמדה", "שהיא", "הישנה", "החדשה")}
+
+
+def compose_coaching_request(data: Dict[str, Any]) -> str:
+    """The booklet's complex coaching request (p.37-38), as one sentence in the client's words."""
+    name, that, old_adj, new_adj = _REQUEST_FLOOR_HE.get(data.get("floor"), _REQUEST_FLOOR_HE["pattern"])
+    source = ", ".join(s for s in (data.get("source") or []) if s)
+    nature = ", ".join(s for s in (data.get("nature") or []) if s)
+    noun = name[1:]  # "הדפוס" → "דפוס" for "מופיע הדפוס הישן שלי"
+    parts = [f"אני מבקש/ת להתאמן על הקושי להתמודד עם {(data.get('situation') or '').strip()}"]
+    if (data.get("old") or "").strip():
+        parts.append(f"שכאשר מופיע{'ה' if that == 'שהיא' else ''} ה{noun} {old_adj} שלי, {that} {data['old'].strip()}")
+    if source:
+        parts.append(f"אפעל מתוך המקור שלי, שהוא {source}")
+    if nature:
+        parts.append(f"ומתוך הטבע שלי, שהוא {nature}")
+    if (data.get("new") or "").strip():
+        parts.append(f"ומתוך ה{noun} {new_adj} שבחרתי, {that} {data['new'].strip()}")
+    parts.append(f"כדי שהתוצאה שאשיג תהיה {(data.get('result') or '').strip()}")
+    return ", ".join(p.rstrip(".,") for p in parts) + "."
+
+
 class ToolSubmitRequest(BaseModel):
     tool_type: str
     data: Dict[str, Any]
@@ -127,7 +150,7 @@ async def submit_tool_response(
                 "comparison_card": ["action_desired", "emotion_desired", "thought_desired"],
                 "sentence_builder": ["paradigm"],
                 "declaration_card": ["renewal"],
-                "commitment_card": ["commitment"],
+                "commitment_card": ["commitment", "result"],
             }
             fields_to_check = _text_fields_to_check.get(request.tool_type, [])
             for field in fields_to_check:
@@ -240,20 +263,25 @@ async def submit_tool_response(
                 renewal_parts = [request.data.get("renewal", "")]
                 if request.data.get("next_action"):
                     renewal_parts.append(f"מה אעשה אחרת: {request.data['next_action']}")
-                cd["renewal"] = " | ".join(p for p in renewal_parts if p)
+                cd["renewal"] = ". ".join(p.rstrip(".") for p in renewal_parts if p)
+                # Kept separately to prefill the coaching-request card (new stance / new pattern)
+                cd["renewal_belief"] = request.data.get("renewal", "")
+                cd["new_action"] = request.data.get("next_action", "")
                 v2_state["collected_data"] = cd
 
             elif request.tool_type == "commitment_card":
                 cd = dict(v2_state.get("collected_data") or {})
-                parts = []
-                if request.data.get("commitment"):
-                    parts.append(request.data["commitment"])
-                if request.data.get("when"):
-                    parts.append(f"מתי: {request.data['when']}")
-                if request.data.get("where_who"):
-                    parts.append(f"איפה/מול מי: {request.data['where_who']}")
-                # Sentences, not "a | b | c" — the coach was pasting the pipes and field labels into its closing
-                cd["commitment"] = ". ".join(p.rstrip(".") for p in parts) + "." if parts else ""
+                if request.data.get("floor"):  # בקשה לאימון (booklet p.37-38)
+                    cd["commitment"] = compose_coaching_request(request.data)
+                    cd["coaching_request"] = {k: request.data.get(k) for k in
+                                              ("floor", "situation", "old", "source", "nature", "new", "result")}
+                else:  # legacy commitment card (open sessions from before the redesign)
+                    parts = [request.data.get("commitment", "")]
+                    if request.data.get("when"):
+                        parts.append(f"מתי: {request.data['when']}")
+                    if request.data.get("where_who"):
+                        parts.append(f"איפה/מול מי: {request.data['where_who']}")
+                    cd["commitment"] = ". ".join(p.rstrip(".") for p in parts if p) + "."
                 v2_state["collected_data"] = cd
 
             if summary:
@@ -506,9 +534,9 @@ def _generate_tool_summary(tool_type: str, data: Dict[str, Any]) -> str:
         if belief:
             belief_he = {"yes": "כן", "no": "לא", "unsure": "לא בטוח"}.get(belief, belief)
             parts.append(f"אמונה בשינוי: {belief_he}")
-        if isinstance(opp, dict):
+        if isinstance(opp, dict) and opp:  # legacy cards only — the gap card no longer asks it
             parts.append(f"הזדמנות: {opp.get('what', 'כן')}" if opp.get("has") else "הזדמנות: לא מזהה כרגע")
-        elif opp:
+        elif opp and not isinstance(opp, dict):
             parts.append(f"הזדמנות: {opp}")
         return " | ".join(parts)
 
@@ -541,8 +569,11 @@ def _generate_tool_summary(tool_type: str, data: Dict[str, Any]) -> str:
         if action:
             parts.append(f"מה אעשה אחרת: {action}")
         if data.get("feels_right") is not None:
-            parts.append(f"מרגיש לי נכון ומשמח: {'כן' if data['feels_right'] else 'עדיין לא'}")
+            parts.append(f"מרגיש לי נכון: {'כן' if data['feels_right'] else 'עדיין לא'}")
         return ". ".join(parts) if parts else ""
+
+    elif tool_type == "commitment_card" and data.get("floor"):
+        return f"הבקשה שלי לאימון: {compose_coaching_request(data)}"
 
     elif tool_type == "commitment_card":
         commitment = data.get("commitment", "")

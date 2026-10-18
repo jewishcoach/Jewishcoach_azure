@@ -89,15 +89,14 @@ V3_TOOL_DEFS: Dict[str, Dict[str, Any]] = {
         "title_he": "החוק הפנימי שלי",
         "instruction_he": (
             "הדפוס הוא מה שאתה **עושה**. הפרדיגמה היא ה'חוק' שגורם לך להאמין שזו הדרך הנכונה. "
-            "השלם: 'ככה זה אצלי — כי...' (לא הפעולה, אלא הלוגיקה שמאחוריה). "
-            "ואז: מהי האמונה העמוקה על העולם או על עצמך שמפעילה את החוק?"
+            "השלם: 'ככה זה אצלי — כי...' (לא הפעולה, אלא הלוגיקה שמאחוריה)."
         ),
     },
     "balance_scale": {
         "type": "tool",
         "tool_type": "balance_scale",
         "title_he": "מאזן רווח והפסד",
-        "instruction_he": "מה אתה מרוויח מלהחזיק בדפוס הזה? ומה אתה מפסיד?",
+        "instruction_he": "מה אתה מרוויח מלהחזיק באמונה הזו? ומה אתה מפסיד?",
     },
     "trait_card_builder": {
         "type": "tool",
@@ -117,8 +116,8 @@ V3_TOOL_DEFS: Dict[str, Dict[str, Any]] = {
     "commitment_card": {
         "type": "tool",
         "tool_type": "commitment_card",
-        "title_he": "המחויבות שלי",
-        "instruction_he": "מה אתה מתחייב לעשות, מתי, ואיפה או מול מי?",
+        "title_he": "הבקשה שלי לאימון",
+        "instruction_he": "בקשה לאימון במבנה החוברת: על איזו קומה תתאמן, מתוך אילו כוחות שלך, ואיזו תוצאה מדידה תשיג.",
     },
 }
 
@@ -164,6 +163,20 @@ def _build_v3_tool_call(tool_key: str, state: Dict[str, Any]) -> Dict[str, Any]:
         base["data"] = {
             "old_pattern": cd.get("pattern", ""),
             "old_paradigm": cd.get("paradigm", ""),
+        }
+    elif tool_key == "commitment_card":
+        # בקשה לאימון (booklet p.37-38): prefill the client's own old/new floors and his כמ"ז
+        forces = cd.get("forces") or {}
+        stance = cd.get("stance") or {}
+        base["data"] = {
+            "forces_source": list(forces.get("source") or [])[:6] if isinstance(forces, dict) else [],
+            "forces_nature": list(forces.get("nature") or [])[:6] if isinstance(forces, dict) else [],
+            "old": {
+                "pattern": cd.get("pattern", ""),
+                "paradigm": cd.get("paradigm", ""),
+                "stance": stance.get("reality_belief", "") if isinstance(stance, dict) else "",
+            },
+            "new": {"stance": cd.get("renewal_belief", ""), "pattern": cd.get("new_action", "")},
         }
 
     return base

@@ -30,8 +30,8 @@ V3_STAGE_FILES: Dict[str, str] = {
     "S5": "v3/s5_action.md",
     "S6": "v3/s6_desired.md",
     "S7": "v3/s7_gap.md",
-    "S9": "v3/s9_paradigm_stance.md",   # merged S9+S10
-    "S10": "v3/s9_paradigm_stance.md",  # same file — V3 merges these stages
+    "S9": "v3/s9_paradigm_stance.md",   # paradigm (card)
+    "S10": "v3/s9_paradigm_stance.md",  # stance (chat) — membership only; content comes from the overlay
     "S11": "v3/s11_gains_losses.md",
     "S12": "v3/s12_forces.md",
     "S13": "v3/s13_choice.md",
@@ -92,7 +92,7 @@ STAGE_GATES_HE: Dict[str, str] = {
     "S7": "**Gate (S7→S8):** בדיוק 3 תורות: (1) שיקוף+אמונה, (2) קבל+הזדמנות, (3) סיכום+שאלת דפוס→S8. תשובה קצרה=מספיקה. אסור יותר מ-3 תורות. אסור 'איך מתבטא?'.",
     "S8": "**Gate (S8→S9):** המתאמן ניסח את הדפוס במילים שלו (הניסוח שלו הוא האישור) — או אישר ניסוח שחובר יחד.",
     "S9": "**Gate (S9→S10):** פרדיגמה מנוסחת — ה'ככה זה' של המתאמן: חוק פנימי / הדרך המובנת מאליה עבורו, במילים שלו (לא חייב לכלול את המילים 'ככה זה אצלי').",
-    "S10": "**Gate (S10→S11):** עמדה מנוסחת + טריגר + שאלות שליטה/סביבה.",
+    "S10": "**Gate (S10→S11):** עמדה במילים של המתאמן — שנחקרה בסבלנות (כולל מאיפה היא מגיעה) — ואחריה טריגר.",
     "S11": "**Gate (S11→S12):** 2+ רווחים + 2+ הפסדים של האמונה (לא של ההתנהגות) + הבנת המתח.",
     "S12": "**Gate (S12→S13):** חקר מקור (מאקרו) ואז טבע (מאקרו) — בלי עיגון לאירוע האימון; ב־`forces` **6+6** + **מובילה ראשונה** בכל רשימה; או **הסכמה מפורשת** לקיצור (ב־`reflection`). המערכת חוסמת מעבר בלי זה.",
     "S13": "**Gate (S13→S14):** `renewal` מלא (עמדה חדשה) + המתאמן תיאר לפחות פרדיגמה או דפוס חדשים. תמהיל כמ\"ז רצוי אך לא חוסם.",
@@ -110,7 +110,7 @@ STAGE_GATES_EN: Dict[str, str] = {
     "S7": "**Gate (S7→S8):** Exactly 3 turns: (1) reflect+belief, (2) accept+opportunity, (3) summary+pattern question→S8. Short answer=sufficient. Max 3 turns. Never ask 'how does it manifest?'.",
     "S8": "**Gate (S8→S9):** The client formulated the pattern in his own words (his wording is the confirmation) — or confirmed a jointly built wording.",
     "S9": "**Gate (S9→S10):** Paradigm formulated with 'that's how it is for me'.",
-    "S10": "**Gate (S10→S11):** Stance formulated + trigger + control/environment questions.",
+    "S10": "**Gate (S10→S11):** Stance in the client's words, explored patiently (incl. where it comes from), then the trigger.",
     "S11": "**Gate (S11→S12):** 2+ gains + 2+ losses of the belief (not behavior) + tension understood.",
     "S12": "**Gate (S12→S13):** Source (macro life), then nature (macro) — not anchored to the coaching-event story; in `forces` **6+6** + **first item** = leading trait each side; or **explicit** consent to a shorter card (in `reflection`). The API blocks the transition without this.",
     "S13": "**Gate (S13→S14):** `renewal` filled (new stance) + user described at least paradigm or pattern. KaMaZ mix encouraged but not blocking.",
@@ -162,8 +162,8 @@ _V2_CARD_OVERLAY_FILES: Dict[str, str] = {
     "S6": "s6_desired.md",
     "S7": "s7_gap.md",
     "S8": "s8_pattern.md",
-    "S9": "s9_paradigm_stance.md",
-    "S10": "s9_paradigm_stance.md",
+    "S9": "s9_paradigm.md",
+    "S10": "s10_stance.md",
     "S11": "s11_gains_losses.md",
     "S12": "s12_forces.md",
     "S13": "s13_choice.md",
@@ -178,7 +178,6 @@ _V3_TOOL_DATA_KEYS: Dict[str, str] = {
     "S6": "action_desired",
     "S7": "gap_name",
     "S9": "paradigm",
-    "S10": "paradigm",
     # Nested keys: stance/forces are initialized as non-empty dicts, so check the card's own field
     "S11": "stance.gains",
     "S12": "forces.source",
@@ -186,9 +185,14 @@ _V3_TOOL_DATA_KEYS: Dict[str, str] = {
     "S15": "commitment",
 }
 
-# V3 merges S9+S10 (design: docs/bsd-redesign/synthesis.md) — S10 must not load the V2
-# stance file, whose mandatory Pre-Check and 3 trigger questions the redesign removed.
-_V3_V2_STAGE_FILE_ALIAS: Dict[str, str] = {"S10": "S9"}
+# Floors one at a time (expert review vs. the booklet): S9 = paradigm (card), S10 = stance (chat).
+# S10 uses only its V3 overlay — the V2 stance file has a mandatory Pre-Check and control/environment
+# trigger questions the redesign removed.
+_V3_V2_STAGE_FILE_ALIAS: Dict[str, str] = {}
+# S13: the V2 choice file walks the full top-down rebuild + the mix exercise; with the overlay's one-turn
+# acknowledgment the model fell back to it and looped (30 turns). The mix exercise is deferred by the user.
+# S15: the V2 commitment file (asks "אני מתחייב…") conflicts with the booklet's coaching-request card
+_V3_OVERLAY_ONLY_STEPS = {"S10", "S13", "S15"}
 
 
 def _get_collected_value(cd: dict, data_key: str):
@@ -250,7 +254,8 @@ def assemble_system_prompt(current_step: str, language: str = "he", user_gender:
             overlay_dir = stages_dir / "v2_card_overlays"
             if overlay_file and (overlay_dir / overlay_file).exists():
                 overlay_content = _load_file(str(overlay_dir / overlay_file)).strip()
-                stage_content = f"{overlay_content}\n\n---\n\n{v2_content}"
+                stage_content = (overlay_content if current_step in _V3_OVERLAY_ONLY_STEPS
+                                 else f"{overlay_content}\n\n---\n\n{v2_content}")
             else:
                 stage_content = v2_content
         else:
@@ -279,7 +284,8 @@ def assemble_system_prompt(current_step: str, language: str = "he", user_gender:
                     overlay_dir = stages_dir / "v2_card_overlays"
                     if overlay_file and (overlay_dir / overlay_file).exists():
                         overlay_content = _load_file(str(overlay_dir / overlay_file)).strip()
-                        stage_content = f"{overlay_content}\n\n---\n\n{v2_content}"
+                        stage_content = (overlay_content if current_step in _V3_OVERLAY_ONLY_STEPS
+                                         else f"{overlay_content}\n\n---\n\n{v2_content}")
                     else:
                         stage_content = v2_content
             else:

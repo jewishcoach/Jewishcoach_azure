@@ -43,29 +43,56 @@ def test_s5_interpretive_action_gets_one_grounding_turn():
     assert _check_gate_met_v3(state) == "S6"
 
 
-def test_s9_card_alone_does_not_skip_validation_and_trigger():
+def _coach(text, step):
+    return {"sender": "coach", "content": text, "internal_state": {"current_step": step}}
+
+
+def test_s9_paradigm_card_alone_does_not_skip_validation():
     state = _v3_state("S9", paradigm="ככה זה אצלי — אם אדבר זה יחמיר")
-    state["collected_data"]["stance"]["reality_belief"] = "העולם מעניש חולשה"
-    assert _check_gate_met_v3(state) is None
+    state["messages"] = [_coach("אימות הפרדיגמה", "S9")]
+    assert _check_gate_met_v3(state) is None  # the coach validates; it moves to S10 itself
 
 
-def test_s9_exits_to_s11_once_trigger_answered():
+def test_s9_anti_loop_moves_to_stance_not_past_it():
+    state = _v3_state("S9", paradigm="ככה זה אצלי — אם אדבר זה יחמיר")
+    state["messages"] = [_coach("x", "S9"), _coach("y", "S9")]
+    assert _check_gate_met_v3(state) == "S10"  # one floor at a time — never straight to S11
+
+
+def test_s10_stance_then_trigger_taken_from_chat_replies():
     state = _v3_state("S10", paradigm="ככה זה אצלי — אם אדבר זה יחמיר")
-    state["collected_data"]["stance"]["reality_belief"] = "העולם מעניש חולשה"
-    state["collected_data"]["stance"]["activation_trigger"] = "כשמרימים עליי את הקול"
-    assert _check_gate_met_v3(state) == "S11"
-
-
-def test_s9_anti_loop_after_three_coach_turns():
-    state = _v3_state("S9", paradigm="ככה זה אצלי — אם אדבר זה יחמיר")
-    state["collected_data"]["stance"]["reality_belief"] = "העולם מעניש חולשה"
     state["messages"] = [
-        {"sender": "coach", "content": "x", "internal_state": {"current_step": "S9"}} for _ in range(3)
+        _coach("מאיזו תפיסה על החיים הוא נולד?", "S10"),
+        {"sender": "user", "content": "שהעולם מעניש את מי שמראה חולשה"},
+        _coach("מאיפה זה מגיע אצלך?", "S10"),
+    ]
+    assert _check_gate_met_v3(state) is None
+    assert state["collected_data"]["stance"]["reality_belief"] == "שהעולם מעניש את מי שמראה חולשה"
+    state["messages"] += [
+        {"sender": "user", "content": "מהבית, אבא שלי"},
+        _coach("מה 'כפתור ההפעלה' שמדליק את התפיסה הזו?", "S10"),
+        {"sender": "user", "content": "כשמרימים עליי את הקול"},
+        _coach("שרשרת אחת.", "S10"),
     ]
     assert _check_gate_met_v3(state) == "S11"
+    assert state["collected_data"]["stance"]["activation_trigger"] == "כשמרימים עליי את הקול"
 
 
-def test_s7_gap_card_advances_immediately():
+def test_s7_waits_for_the_booklet_questions_in_chat():
+    state = _v3_state("S7", gap_name="ביטול עצמי", gap_score="8")
+    state["_turn_from_card"] = True
+    state["messages"] = [_coach("ביטול עצמי — 8 מתוך 10. האם אתה מאמין שבפער הזה יש משהו טוב בשבילך?", "S7")]
+    assert _check_gate_met_v3(state) is None  # card turn: the question was just asked
+    state.pop("_turn_from_card")
+    state["messages"] += [{"sender": "user", "content": "כן, הוא מראה לי מה חשוב לי"},
+                          _coach("האם יש בפער הזדמנות בשבילך? אם כן — מהי?", "S7")]
+    assert _check_gate_met_v3(state) is None
+    state["messages"] += [{"sender": "user", "content": "להתחיל לדבר"}, _coach("שאלת הדפוס?", "S7")]
+    assert _check_gate_met_v3(state) == "S8"
+    assert set(state["collected_data"]["gap_booklet_moves"]) == {"belief", "opportunity"}
+
+
+def test_s7_gap_card_advances_once_both_questions_answered():
     state = _v3_state("S7", gap_name="ביטול עצמי", gap_score="8", gap_booklet_moves=["belief", "opportunity"])
     assert _check_gate_met_v3(state) == "S8"
 
@@ -74,11 +101,16 @@ def test_s7_gap_card_advances_immediately():
 # Prompt selection
 # ---------------------------------------------------------------------------
 
-def test_s10_does_not_load_v2_precheck():
+def test_s10_is_its_own_chat_stage_without_v2_precheck():
     cd = {"paradigm": "ככה זה אצלי — אם אדבר זה יחמיר"}
     prompt = assemble_system_prompt("S10", "he", ux_version=3, collected_data=cd)
-    assert "Pre-Check" in prompt  # only as the overlay's "no Pre-Check" rule
-    assert "שלב מקדים חובה" not in prompt
+    assert "S10 עמדה" in prompt
+    assert "שלב מקדים חובה" not in prompt  # the V2 stance file's mandatory Pre-Check is not loaded
+
+
+def test_s9_post_card_prompt_is_paradigm_only():
+    prompt = assemble_system_prompt("S9", "he", ux_version=3, collected_data={"paradigm": "x"})
+    assert "S9 פרדיגמה (קומה אחת)" in prompt
 
 
 def test_s11_pre_card_uses_pre_tool_not_post_card_overlay():
@@ -111,32 +143,13 @@ def test_s12_card_not_resent_after_submission():
     assert resolve_post_turn_tool_call("S12", state, ux_version=3) is None
 
 
-def _s9_with_card():
-    state = _v3_state("S9", paradigm="ככה זה אצלי — אם אדבר זה יחמיר")
-    state["collected_data"]["stance"]["reality_belief"] = "העולם מעניש חולשה"
-    return state
-
-
-def test_s9_trigger_taken_from_chat_reply_to_trigger_question():
-    state = _s9_with_card()
-    state["messages"] = [
-        {"sender": "coach", "content": "מה 'כפתור ההפעלה' שמדליק את האמונה הזו?", "internal_state": {"current_step": "S9"}},
-        {"sender": "user", "content": "כשמרימים עליי את הקול"},
-        {"sender": "coach", "content": "שיקוף וסיכום.", "internal_state": {"current_step": "S9"}},
-    ]
-    assert _check_gate_met_v3(state) == "S11"
-    assert state["collected_data"]["stance"]["activation_trigger"] == "כשמרימים עליי את הקול"
-
-
-def test_s9_card_submission_is_not_mistaken_for_trigger():
-    state = _s9_with_card()
+def test_s10_card_turn_reply_is_not_mistaken_for_stance():
+    state = _v3_state("S10", paradigm="ככה זה אצלי — אם אדבר זה יחמיר")
     state["_turn_from_card"] = True
-    state["messages"] = [
-        {"sender": "coach", "content": "עכשיו נגלה מה מדליק את הדפוס מבפנים?", "internal_state": {"current_step": "S9"}},
-        {"sender": "user", "content": "ככה זה אצלי — ... האמונה שמאחוריו: ..."},
-        {"sender": "coach", "content": "אימות + שאלת טריגר?", "internal_state": {"current_step": "S9"}},
-    ]
+    state["messages"] = [_coach("מאיזו תפיסה על החיים הוא נולד?", "S10"),
+                         {"sender": "user", "content": "[הגשת כלי]"}, _coach("...", "S10")]
     assert _check_gate_met_v3(state) is None
+    assert not state["collected_data"]["stance"].get("reality_belief")
 
 
 def test_closing_questions_stripped_before_card():
@@ -149,7 +162,7 @@ def test_closing_questions_stripped_before_card():
 
 def test_paradigm_without_rule_wording_gets_pattern_test_hint():
     from app.bsd_v2.single_agent_coach import _build_v3_paradigm_hint
-    state = _s9_with_card()
+    state = _v3_state("S9", paradigm="ככה זה אצלי — אם אדבר זה יחמיר")
     state["collected_data"]["paradigm"] = "ככה זה אצלי — כשמתקיפים אותי אני מתפוצץ ויוצא"
     assert "מבחן הדפוס" in _build_v3_paradigm_hint(state, "he")
     assert _build_v3_paradigm_hint(state, "he") == ""  # once only
@@ -157,7 +170,7 @@ def test_paradigm_without_rule_wording_gets_pattern_test_hint():
 
 def test_paradigm_with_rule_wording_passes():
     from app.bsd_v2.single_agent_coach import _build_v3_paradigm_hint
-    state = _s9_with_card()
+    state = _v3_state("S9", paradigm="ככה זה אצלי — אם אדבר זה יחמיר")
     state["collected_data"]["paradigm"] = "ככה זה אצלי — עדיף לשתוק כדי לא לעשות בלגן"
     assert _build_v3_paradigm_hint(state, "he") == ""
 
@@ -225,3 +238,42 @@ def test_fix_addressee_feminine_lets_only_for_women():
     assert _fix_addressee("בוא נסכם את התמונה", "male", "he") == "בוא נסכם את התמונה"
     assert _fix_addressee("בוא נסכם", None, "he") == "בוא נסכם"
     assert _fix_addressee("my wife", "female", "en") == "my wife"
+
+
+def test_coaching_request_composed_in_booklet_structure():
+    from app.routers.tools import compose_coaching_request
+    out = compose_coaching_request({"floor": "stance", "situation": "ביקורת מהבוס", "old": "העולם מעניש חולשה",
+                                    "source": ["אומץ"], "nature": ["פחד מדחייה"],
+                                    "new": "מותר לי להיות פגיע", "result": "אשתף את הבוס פעם אחת השבוע"})
+    assert out.startswith("אני מבקש/ת להתאמן על הקושי להתמודד עם ביקורת מהבוס")
+    assert "שכאשר מופיעה העמדה הישנה שלי, שהיא העולם מעניש חולשה" in out
+    assert "אפעל מתוך המקור שלי, שהוא אומץ" in out and "ומתוך הטבע שלי, שהוא פחד מדחייה" in out
+    assert "ומתוך העמדה החדשה שבחרתי, שהיא מותר לי להיות פגיע" in out
+    assert out.endswith("כדי שהתוצאה שאשיג תהיה אשתף את הבוס פעם אחת השבוע.")
+
+
+def test_request_card_prefills_old_and_new_floors_and_forces():
+    state = _v3_state("S14", pattern="שותק ונעלם", paradigm="ככה זה אצלי — עדיף לשתוק",
+                      renewal_belief="מותר לי לדבר", new_action="לומר משפט אחד אמיתי")
+    state["collected_data"]["stance"]["reality_belief"] = "העולם מעניש חולשה"
+    state["collected_data"]["forces"] = {"source": ["אומץ", "אמת"], "nature": ["פחד מדחייה"]}
+    state["current_step"] = "S15"
+    tool = resolve_post_turn_tool_call("S14", state, ux_version=3)
+    assert tool["tool_type"] == "commitment_card"
+    d = tool["data"]
+    assert d["old"] == {"pattern": "שותק ונעלם", "paradigm": "ככה זה אצלי — עדיף לשתוק", "stance": "העולם מעניש חולשה"}
+    assert d["new"]["stance"] == "מותר לי לדבר" and d["forces_source"] == ["אומץ", "אמת"]
+
+
+def test_s15_prompt_is_the_request_overlay_without_v2_commitment():
+    prompt = assemble_system_prompt("S15", "he", ux_version=3, collected_data={"commitment": "x"})
+    assert "S15 בקשה לאימון" in prompt and "חרות" in prompt
+    assert "אני מתחייב" not in prompt.split("S15 בקשה לאימון", 1)[1]
+
+
+def test_s13_closes_after_declaration_even_if_coach_keeps_asking():
+    state = _v3_state("S13", renewal="אני בוחרת לומר מה אני מרגישה")
+    state["messages"] = [_coach("הכרה + שאלה?", "S13")]
+    assert _check_gate_met_v3(state) is None  # one follow-up allowed (choice doesn't feel right yet)
+    state["messages"] += [{"sender": "user", "content": "x"}, _coach("עוד שאלה?", "S13")]
+    assert _check_gate_met_v3(state) == "S14"  # → stage_ready_to_complete at the macro boundary

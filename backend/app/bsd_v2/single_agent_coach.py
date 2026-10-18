@@ -248,7 +248,7 @@ def _reads_as_rule(body: str) -> bool:
 
 def _build_v3_paradigm_hint(state: Dict[str, Any], language: str) -> str:
     """S9 (once, before the trigger question): flag a 'ככה זה אצלי' that reads like the pattern."""
-    if state.get("current_step") not in ("S9", "S10") or state.get("_s9_paradigm_hint_given"):
+    if state.get("current_step") != "S9" or state.get("_s9_paradigm_hint_given"):
         return ""
     cd = state.get("collected_data") or {}
     paradigm = str(cd.get("paradigm") or "")
@@ -488,6 +488,27 @@ def _check_gate_met_v3(state: Dict[str, Any]) -> str | None:
         if last.get("sender") == "coach" and "?" not in (last.get("content") or ""):
             return "S3"
         return None
+    # S7: the gap card only names + scores the gap; the coach asks the booklet's belief and opportunity
+    # questions in chat (p.13). The LLM often forgets gap_booklet_moves — mark a question as answered when the
+    # previous coach turn asked it and the user replied. Exit once both were answered (or after 4 turns).
+    if step == "S7" and cd.get("gap_name"):
+        msgs = state.get("messages", [])
+        prev_coach = next((m for m in reversed(msgs[:-1]) if m.get("sender") == "coach"), None)
+        prev_text = (prev_coach or {}).get("content") or ""
+        moves = list(cd.get("gap_booklet_moves") or [])
+        if "?" in prev_text and not state.get("_turn_from_card"):
+            if "משהו טוב" in prev_text and "belief" not in moves:
+                moves.append("belief")
+            if "הזדמנות" in prev_text and "opportunity" not in moves:
+                moves.append("opportunity")
+        cd["gap_booklet_moves"] = moves
+        if "belief" in moves and "opportunity" in moves:
+            return "S8"
+        s7_turns = sum(
+            1 for m in msgs[-10:]
+            if m.get("sender") == "coach" and (m.get("internal_state") or {}).get("current_step") == "S7"
+        )
+        return "S8" if s7_turns >= 4 else None
     # S14 (chat): vision gets 2-3 turns at most, then the commitment card
     if step == "S14":
         s14_turns = sum(
@@ -495,33 +516,45 @@ def _check_gate_met_v3(state: Dict[str, Any]) -> str | None:
             if m.get("sender") == "coach" and (m.get("internal_state") or {}).get("current_step") == "S14"
         )
         return "S15" if s14_turns >= 3 else None
-    # S9+S10 are one step: sentence_builder fills paradigm + root belief, then the coach
-    # validates and asks one trigger question. Exit only once the trigger is answered.
-    if step in ("S9", "S10"):
-        stance = cd.get("stance") or {}
-        if not (cd.get("paradigm") and isinstance(stance, dict) and stance.get("reality_belief")):
-            return None
-        if not stance.get("activation_trigger"):
-            # The LLM often doesn't extract the trigger — if the previous coach turn asked the
-            # trigger question, the user's reply in this turn is the trigger.
-            msgs = state.get("messages", [])
-            prev_coach = next((m for m in reversed(msgs[:-1]) if m.get("sender") == "coach"), None)
-            last_user = next((m for m in reversed(msgs) if m.get("sender") == "user"), None)
-            prev_text = (prev_coach or {}).get("content") or ""
-            asked_trigger = "?" in prev_text and any(w in prev_text for w in ("כפתור", "טריגר", "מדליק"))
-            if asked_trigger and last_user and not state.get("_turn_from_card"):
-                stance["activation_trigger"] = (last_user.get("content") or "")[:300]
-                cd["stance"] = stance
-        if stance.get("activation_trigger"):
-            return "S11"
-        # Anti-loop: the trigger may not crystallize — don't hold the user past 3 coach turns
-        s9_turns = sum(
-            1 for m in state.get("messages", [])[-8:]
-            if m.get("sender") == "coach"
-            and (m.get("internal_state") or {}).get("current_step") in ("S9", "S10")
+    # Floors one at a time (expert review vs. the booklet): S9 = the paradigm card, validated by the coach;
+    # S10 = the stance in chat (explored, incl. where it comes from), then one trigger question.
+    msgs = state.get("messages", [])
+    prev_coach = next((m for m in reversed(msgs[:-1]) if m.get("sender") == "coach"), None)
+    last_user = next((m for m in reversed(msgs) if m.get("sender") == "user"), None)
+    prev_text = (prev_coach or {}).get("content") or ""
+    from_chat_reply = "?" in prev_text and last_user and not state.get("_turn_from_card")
+
+    def _turns_in(*steps: str) -> int:
+        return sum(
+            1 for m in msgs[-10:]
+            if m.get("sender") == "coach" and (m.get("internal_state") or {}).get("current_step") in steps
         )
-        # One extra turn when the coach had to deepen a pattern-like paradigm first
-        return "S11" if s9_turns >= (4 if state.get("_s9_paradigm_hint_given") else 3) else None
+
+    # S13: the declaration card + one acknowledgment close the choice floor (the overlay allows one follow-up
+    # question when the choice doesn't feel right yet). Anti-loop: the model kept asking for 30 turns.
+    if step == "S13" and cd.get("renewal"):
+        return "S14" if _turns_in("S13") >= 2 else None
+    if step == "S9":
+        if not cd.get("paradigm"):
+            return None
+        # The coach moves to S10 itself once the paradigm holds; anti-loop if it keeps deepening
+        return "S10" if _turns_in("S9") >= (3 if state.get("_s9_paradigm_hint_given") else 2) else None
+    if step == "S10":
+        stance = cd.get("stance") or {}
+        if not isinstance(stance, dict):
+            stance = {}
+        # The LLM often doesn't extract the stance/trigger — the user's reply to the question is the answer
+        asked_trigger = any(w in prev_text for w in ("כפתור", "טריגר", "מדליק"))
+        asked_stance = not asked_trigger and any(
+            w in prev_text for w in ("תפיסה", "על העולם", "על החיים", "נולד", "מאיפה", "למדת"))
+        if from_chat_reply and asked_stance and not stance.get("reality_belief"):
+            stance["reality_belief"] = (last_user.get("content") or "")[:300]
+        if from_chat_reply and asked_trigger and not stance.get("activation_trigger"):
+            stance["activation_trigger"] = (last_user.get("content") or "")[:300]
+        cd["stance"] = stance
+        if stance.get("reality_belief") and stance.get("activation_trigger"):
+            return "S11"
+        return "S11" if _turns_in("S10") >= 5 else None
     return _check_gate_met(step, cd)
 
 
@@ -2501,6 +2534,43 @@ def build_conversation_context(
             "the client did not type it. Do not reflect or mention it; open the new stage directly."
         )
 
+    # S7 (gap, chat after the card): the booklet's belief → opportunity questions, one per turn. The model asked
+    # "מה הטוב שאתה רואה בו?" even after a detailed answer — say what comes next.
+    if state.get("current_step") == "S7" and state.get("ux_version", 2) >= 3:
+        msgs7 = state.get("messages") or []
+        coach_s7 = [m.get("content") or "" for m in msgs7
+                    if m.get("sender") == "coach" and (m.get("internal_state") or {}).get("current_step") == "S7"]
+        asked_belief = any("משהו טוב" in c for c in coach_s7)
+        asked_good = any("מה הטוב" in c for c in coach_s7)
+        asked_opp = any("הזדמנות" in c and "?" in c for c in coach_s7)
+        last_answer = next((m.get("content") or "" for m in reversed(msgs7) if m.get("sender") == "user"), "")
+        nxt7 = None
+        if asked_belief and not asked_opp:
+            if len(last_answer.split()) <= 3 and not asked_good:
+                nxt7 = "הוא ענה בקצרה — שאל שאלת העמקה אחת: \"מה הטוב שאתה רואה בו?\""
+            else:
+                nxt7 = ("הוא כבר ענה על שאלת האמונה" + (" ופירט" if len(last_answer.split()) > 3 else "") +
+                        " — **אל תשאל 'מה הטוב'**. שקף בקצרה ושאל עכשיו את **שאלת ההזדמנות**: \"האם יש בפער הזדמנות בשבילך? אם כן — מהי?\"")
+        elif asked_opp:
+            nxt7 = "שאלת ההזדמנות נענתה — שקף אותה (אם ענה 'לא' — אל תגיב לשלילה), עדכן `current_step` ל-\"S8\" ושאל את שאלת הדפוס."
+        if nxt7:
+            context_parts.append("\n# שלב 7 — השאלה הבאה\n" + nxt7)
+
+    # S10 (stance, chat): the model loses track of which question it already asked (it asked "מאיפה" three times
+    # and never the trigger) — tell it, each turn, what was asked and what comes next.
+    if state.get("current_step") == "S10" and state.get("ux_version", 2) >= 3:
+        coach_s10 = [m.get("content") or "" for m in (state.get("messages") or [])
+                     if m.get("sender") == "coach" and (m.get("internal_state") or {}).get("current_step") == "S10"]
+        asked_origin = any(("מאיפה" in c or "למדת" in c) and "?" in c for c in coach_s10)
+        asked_trigger = any(w in c for c in coach_s10 for w in ("כפתור", "טריגר", "מדליק"))
+        if not asked_origin:
+            nxt = "שקף את התפיסה שתיאר (במילים שלו, בלי לקרוא לה 'העמדה שלך') ושאל את **שאלת המקור — פעם אחת**: \"מאיפה זה מגיע אצלך? מתי למדת שככה זה בעולם?\""
+        elif not asked_trigger:
+            nxt = "שאלת המקור **כבר נשאלה ונענתה** — אל תשאל שוב 'מאיפה'. שקף בקצרה את מה שסיפר, ושאל עכשיו את **שאלת הטריגר**: \"מה 'כפתור ההפעלה' — מה קורה במציאות שמדליק את התפיסה הזו ומכניס אותך לדפוס?\""
+        else:
+            nxt = "שאלת הטריגר נשאלה — התשובה האחרונה היא הטריגר. חבר **שרשרת אחת** (טריגר → אמונה → ככה זה אצלי → דפוס), הצהרה חמה למאזן של **האמונה**, בלי שאלה, ועדכן `current_step` ל-\"S11\"."
+        context_parts.append("\n# שלב 10 — השאלה הבאה\n" + nxt)
+
     # Right after the client answered a safety check-in that they're OK: one-turn note (not in the static
     # prompt — a permanent rule there shifted the coach's attention on every turn)
     from .safety_check import is_safety_message
@@ -3216,6 +3286,13 @@ async def handle_conversation(
             if old_step == "S5" and state.get("current_step") == "S6" and not state.get("_matzui_summary_sent"):
                 state["current_step"] = "S5"
                 internal_state["current_step"] = "S5"
+            # Floors one at a time: the LLM may jump S9→S11 or leave S10 before the stance was explored and the
+            # trigger asked — hold it; the V3 gate below decides (with its own anti-loop)
+            stance_now = (state.get("collected_data") or {}).get("stance") or {}
+            if (old_step in ("S9", "S10") and state.get("current_step") == "S11"
+                    and not (isinstance(stance_now, dict) and stance_now.get("activation_trigger"))):
+                state["current_step"] = "S10"
+                internal_state["current_step"] = state["current_step"]
             _apply_v3_stage_complete_guards(state, internal_state)
         stage_completing = internal_state.get("stage_ready_to_complete", False)
         cur_step = state.get("current_step", "S0")
