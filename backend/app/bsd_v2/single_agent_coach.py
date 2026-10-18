@@ -268,6 +268,41 @@ def _build_v3_paradigm_hint(state: Dict[str, Any], language: str) -> str:
             "**אל תשאל את שאלת הטריגר בתור הזה.**")
 
 
+# Spans the coach quotes on purpose in the client's own first-person words (S4 thought, S9 paradigm, S13 declaration)
+_QUOTED_SPAN = re.compile(r'"[^"\n]*"|„[^“”\n]*[“”]|“[^”\n]*”|(?:(?<=\s)|^)\'[^\'\n]{2,}?\'(?=[\s.,;:!?—–-]|$)')
+_HE = r"\u0590-\u05FF"
+# The client's first-person words pasted into the coach's own sentences ("כפי שהיית רוצה להיות עם בעלי")
+_FIRST_TO_SECOND = [
+    (re.compile(rf"(?<![{_HE}])בעלי(?![{_HE}])(?!\s+(?:ה|חיים))"), "בעלך"),
+    (re.compile(rf"(?<![{_HE}])אשתי(?![{_HE}])"), "אשתך"),
+    (re.compile(rf"(?<![{_HE}])אחותי(?![{_HE}])"), "אחותך"),
+    (re.compile(rf"(?<![{_HE}])חמותי(?![{_HE}])"), "חמותך"),
+    (re.compile(rf"(?<![{_HE}])((?:אמא|אבא|הבוס|המנהל|המנהלת|הבת|הבן|הילדים|הנכדים|ההורים|בן הזוג|בת הזוג|החבר|החברה|המשפחה)) שלי(?![{_HE}])"), r"\1 שלך"),
+]
+_MASC_TO_FEM = [
+    (re.compile(rf"(?<![{_HE}])בוא(?=\s+נ)"), "בואי"),  # "בוא נסכם" → "בואי נסכם" (templates are written for men)
+]
+
+
+def _fix_addressee(coach_message: str, user_gender: Optional[str], language: str) -> str:
+    """Deterministic net for two frequent slips on the prod model: first-person possessives copied from the
+    client into the coach's sentences, and masculine 'בוא נ…' to women. Quoted spans are left as written."""
+    if language != "he" or not coach_message:
+        return coach_message
+    rules = _FIRST_TO_SECOND + (_MASC_TO_FEM if user_gender == "female" else [])
+    out, pos = [], 0
+    for m in list(_QUOTED_SPAN.finditer(coach_message)) + [None]:
+        end = m.start() if m else len(coach_message)
+        seg = coach_message[pos:end]
+        for rx, repl in rules:
+            seg = rx.sub(repl, seg)
+        out.append(seg)
+        if m:
+            out.append(m.group(0))
+            pos = m.end()
+    return "".join(out)
+
+
 def _sanitize_coach_message(coach_message: str) -> str:
     """Remove model artifacts like role prefixes from user-facing message."""
     if not isinstance(coach_message, str):
@@ -2856,7 +2891,7 @@ async def _call_llm_and_parse(
     t4 = time.time()
     logger.info(f"[PERF] LLM call: {(t4-t3)*1000:.0f}ms")
 
-    coach_message = _sanitize_coach_message(coach_message)
+    coach_message = _fix_addressee(_sanitize_coach_message(coach_message), user_gender, language)
     return coach_message, suggestions, internal_state
 
 

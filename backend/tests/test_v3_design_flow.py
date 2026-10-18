@@ -208,3 +208,20 @@ def test_stage_intro_falls_back_on_timeout():
     with patch.object(gen, "get_azure_chat_llm_4o_mini", lambda: SlowLLM()), patch.object(gen, "STAGE_INTRO_TIMEOUT_SECONDS", 0.1):
         result = asyncio.run(gen.generate_stage_intro({"collected_data": {}}, "discovery", "he"))
     assert result.stage_id == "discovery" and result.questions
+
+
+def test_fix_addressee_converts_pasted_first_person_but_not_quotes():
+    from app.bsd_v2.single_agent_coach import _fix_addressee
+    msg = "כפי שהיית רוצה להיות עם בעלי בזמנים קשים, ומול אמא שלי. 'ככה זה אצלי — אם אדבר עם בעלי זה יחמיר'"
+    out = _fix_addressee(msg, "female", "he")
+    assert "להיות עם בעלך" in out and "מול אמא שלך" in out
+    assert "'ככה זה אצלי — אם אדבר עם בעלי זה יחמיר'" in out  # the quoted paradigm stays verbatim
+    assert _fix_addressee("בעלי חיים ובעלי הבית", "female", "he") == "בעלי חיים ובעלי הבית"
+
+
+def test_fix_addressee_feminine_lets_only_for_women():
+    from app.bsd_v2.single_agent_coach import _fix_addressee
+    assert _fix_addressee("בוא נסכם את התמונה", "female", "he") == "בואי נסכם את התמונה"
+    assert _fix_addressee("בוא נסכם את התמונה", "male", "he") == "בוא נסכם את התמונה"
+    assert _fix_addressee("בוא נסכם", None, "he") == "בוא נסכם"
+    assert _fix_addressee("my wife", "female", "en") == "my wife"

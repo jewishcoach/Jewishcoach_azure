@@ -27,7 +27,10 @@ def _build_azure_llm(*, deployment: str, temperature: float = 0.2) -> AzureChatO
     api_key = os.getenv("AZURE_OPENAI_API_KEY")
     endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
     api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-08-01-preview")
-    timeout_seconds = int(os.getenv("AZURE_OPENAI_TIMEOUT_SECONDS", "90"))
+    # Coach deployment (gpt-4.1-mini): ~4s typical, p95 ~7s. When Azure hangs, a long timeout means the user waits
+    # the whole timeout before the retry (seen Oct 16: ~98s with 90s). Own setting, independent of
+    # AZURE_OPENAI_TIMEOUT_SECONDS (prod sets that to 60 for the slower deployments); 40s keeps a 10x margin.
+    timeout_seconds = int(os.getenv("AZURE_OPENAI_COACH_TIMEOUT_SECONDS", "40"))
     max_retries = int(os.getenv("AZURE_OPENAI_MAX_RETRIES", "2"))
     max_tokens = int(os.getenv("AZURE_OPENAI_MAX_TOKENS", "1500"))
     if not api_key or not endpoint:
