@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import html
 import re
 from datetime import datetime
 
@@ -67,6 +68,11 @@ CATEGORY_LABELS = {
 }
 
 
+def _page_title(title: str) -> str:
+    """Short titles ("תודה") carry the school's name, so the result says whose article it is."""
+    return title if len(title) >= 30 else f"{title} | בית הספר לאימון יהודי BSD"
+
+
 @router.get("/blog", response_class=HTMLResponse)
 async def blog_index(request: Request, q: str = "", category: str = ""):
     posts = db.list_posts(status="published", language="he")
@@ -87,7 +93,7 @@ async def blog_index(request: Request, q: str = "", category: str = ""):
         "active_category": category,
         "search_query": q,
         "title": "בלוג · בית הספר לאימון יהודי BSD",
-        "description": "מאמרים, תובנות וכלים מעולם האימון היהודי בשיטת BSD",
+        "description": "מאמרים של בני גל ז״ל ושל בית הספר לאימון יהודי BSD: חזון, הקשבה, אמונה, ניהול זמן וכלים מעשיים לאימון אישי ולמאמנים.",
         "canonical_url": f"{BASE_URL}/api/blog",
         "og_image": None,
         "year": datetime.utcnow().year,
@@ -101,6 +107,11 @@ async def blog_post(request: Request, slug: str):
         return HTMLResponse("<h1>404 — הדף לא נמצא</h1>", status_code=404)
 
     content_html = _md_to_html(post.content)
+    # The page title is the only H1; images without alt text get the article title
+    content_html = re.sub(r"<(/?)h1\b", r"<\1h2", content_html)
+    alt = f'alt="{html.escape(post.title)}"'
+    content_html = content_html.replace('alt=""', alt)
+    content_html = re.sub(r"<img(?![^>]*\balt=)", f"<img {alt}", content_html)
     faq_items = _extract_faq(content_html)
     content_before_cta, content_after_cta = _split_for_cta(content_html)
     cover = post.cover_image if post.cover_image and "blog-cover" not in post.cover_image else f"{BASE_URL}/api/public/blog-cover/{slug}"
@@ -117,7 +128,7 @@ async def blog_post(request: Request, slug: str):
         "content_after_cta": content_after_cta,
         "faq_items": faq_items,
         "related_posts": related,
-        "title": post.meta_title or post.title,
+        "title": _page_title(post.meta_title or post.title),
         "description": post.meta_description or post.excerpt or post.content[:160],
         "canonical_url": f"{BASE_URL}/api/blog/{slug}",
         "base_url": BASE_URL,
