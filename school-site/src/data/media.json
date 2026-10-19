@@ -1,0 +1,128 @@
+{
+  "secrets": [
+    {
+      "youtubeId": "wQh3ellj_L4",
+      "title": "הסוד הראשון: לפני אימון כיוונון",
+      "summary": "לפני כל אימון בחיים, כדאי לעצור ולשאול: לאן אנחנו מתקדמים? לאן אנחנו רוצים להגיע?"
+    },
+    {
+      "youtubeId": "Y4GSUrAzVMM",
+      "title": "הסוד השני: הפסיכולוגיה היהודית מתקדמת מהשאר",
+      "summary": "מהם היתרונות של פסיכולוגיה המשולבת עם יראת שמיים? האם פסיכולוגיה לבד אינה מספיקה?"
+    },
+    {
+      "youtubeId": "qpkzd2zAhB0",
+      "title": "הסוד השלישי: האדם הוא עולם ומקדש",
+      "summary": "כשנוצר פער בין האדם לבין מי שהוא רוצה להיות, האם עליו לרוץ קדימה בחיפוש אחר פתרון, או להישאר במקום ולחפש בו את הפתרון?"
+    },
+    {
+      "youtubeId": "ZZ78i-l91mI",
+      "title": "הסוד הרביעי: אמונה ואמון",
+      "summary": "אימון ואמונה, שניהם תהליכים שמצריכים עבודה פנימית שלא יכולה להגיע מבחוץ."
+    },
+    {
+      "youtubeId": "7XyeXPt2yxE",
+      "title": "הסוד החמישי: אימון הוא שיבת האדם אל עצמיותו המקורית",
+      "summary": "על האדם להקשיב לצליל הבא מתוכו ולשים לב: האם הצליל מזייף, האם הוא יוצר את הצליל הנכון לו?"
+    },
+    {
+      "youtubeId": "IB2sQ_q0OE8",
+      "title": "הסוד השישי: לאדם כל התשובות",
+      "summary": "כל השאלות של האדם וכל התשובות שלו נמצאות בתוכו, ושם עליו לחפש אותן."
+    },
+    {
+      "youtubeId": "JnB0wzTcBqw",
+      "title": "הסוד השביעי: הקשבת ואהבת",
+      "summary": ""
+    },
+    {
+      "youtubeId": "IvLlG9uhr6c",
+      "title": "הסוד השמיני: קסם השאלה הנשאלת",
+      "summary": "הנקודה ממנה האדם נמנע היא השאלה. הוא מוכן לעשות הכל, רק לא לגעת בנקודה הרגישה והאמיתית לו ביותר."
+    },
+    {
+      "youtubeId": "cnIjiAFWwjg",
+      "title": "הסוד התשיעי: פער",
+      "summary": ""
+    },
+    {
+      "youtubeId": "vVOMK8CpZbw",
+      "title": "הסוד העשירי: כמ״ז",
+      "summary": "כדי שאדם יבחן את מעשיו, עליו לראות אם הם נעשים מהמקום הבהמי, האלוקי או השכלי."
+    },
+    {
+      "youtubeId": "lyluLocNLZs",
+      "title": "הסוד האחד עשר: בקשה לאימון לאור הכמ״ז",
+      "summary": "מהי הדרך המעשית של האדם להתגבר על הפער בין מקומו לבין היכן שהוא רוצה להיות?"
+    }
+  ],
+  "videos": [
+    {
+      "youtubeId": "w-Afm8qi-rU",
+      "title": "יסודות האימון היהודי",
+      "summary": "בני גל מציג את יסודות השיטה."
+    },
+    {
+      "youtubeId": "FAGqHC9AdlE",
+      "title": "הספר: סודות הקואצ'ינג היהודי",
+      "summary": "בני גל על הספר סודות הקואצ'ינג היהודי."
+    },
+    {
+      "youtubeId": "shLyOPSKmGU",
+      "title": "סדנה בשידור חי: להפוך את תש״פ לשנת המפנה בזוגיות ובחיים המקצועיים",
+      "summary": "הקלטת השידור החי עם בני גל."
+    }
+  ],
+  "audio": [
+    {
+      "title": "מפגש ראשון",
+      "summary": "מקצוע האימון. מה זה אימון. מהו אימון יהודי. חמשת יסודות האימון היהודי.",
+      "url": "https://bsdschoolmedia.blob.core.windows.net/audio/coaching-session-01.mp3"
+    },
+    {
+      "title": "מפגש שני",
+      "summary": "אימון אישי עם יהונתן. מה אתה רוצה? לעבוד עם יומן. פחד ממחויבות. החלטה.",
+      "url": "https://bsdschoolmedia.blob.core.windows.net/audio/coaching-session-02.mp3"
+    },
+    {
+      "title": "מפגש שלישי",
+      "summary": "ניהול יומן ככלי להגשמת יעדים. שלושת מסלולי האימון: הגשמה איזון ותהליך השיבה.",
+      "url": "https://bsdschoolmedia.blob.core.windows.net/audio/coaching-session-03.mp3"
+    },
+    {
+      "title": "מפגש רביעי",
+      "summary": "יהונתן בוחר בתהליך השיבה. האירוע עם נהג המשאית. זיהוי פערים. הפער כהזדמנות.",
+      "url": "https://bsdschoolmedia.blob.core.windows.net/audio/coaching-session-04.mp3"
+    },
+    {
+      "title": "מפגש חמישי",
+      "summary": "יהונתן מזהה דפוסים בחיי היום יום ואת הדפוס שמנהל אותו: אובדן שליטה.",
+      "url": "https://bsdschoolmedia.blob.core.windows.net/audio/coaching-session-05.mp3"
+    },
+    {
+      "title": "מפגש שישי",
+      "summary": "היומן כראי. פער בין מצוי לרצוי וההחלטה להשקיע יותר במשפחה ובילדים על מה לוותר ומה לעשות כדי להצליח בהגשמת הרצוי.",
+      "url": "https://bsdschoolmedia.blob.core.windows.net/audio/coaching-session-06.mp3"
+    },
+    {
+      "title": "מפגש שביעי",
+      "summary": "זיהוי פרכדיגמא - מחשבת המעשה. \"הטייס האוטומטי\". זיהוי עמדה - הפרשנות של החיים המולידה את הפרכדיגמא.",
+      "url": "https://bsdschoolmedia.blob.core.windows.net/audio/coaching-session-07.mp3"
+    },
+    {
+      "title": "מפגש שמיני",
+      "summary": "העמדה היא קומת השינוי. יהונתן מגלה את כוחות נפש, המקור והטבע הנדרשים לצורך עשיית שינוי בחייו. מעצב לו כמ\"ז: כרטיס מהות זיהוי אישי.",
+      "url": "https://bsdschoolmedia.blob.core.windows.net/audio/coaching-session-08.mp3"
+    },
+    {
+      "title": "מפגש תשיעי",
+      "summary": "יהונתן בוחר עמדה, פרכדיגמא ודפוס חדשים, איתם ינהל מעתה את חייו.",
+      "url": "https://bsdschoolmedia.blob.core.windows.net/audio/coaching-session-09.mp3"
+    },
+    {
+      "title": "מפגש עשירי",
+      "summary": "מפגש מסכם. שיחזור מהלך האימון. חזון כשיחה עם העתיד. יהונתן מגלה מה קיבל מהאימון.",
+      "url": "https://bsdschoolmedia.blob.core.windows.net/audio/coaching-session-10.mp3"
+    }
+  ]
+}

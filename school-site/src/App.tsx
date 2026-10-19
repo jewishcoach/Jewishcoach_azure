@@ -11,6 +11,8 @@ import { InsightsPage } from './pages/InsightsPage'
 import { ArticlePage } from './pages/ArticlePage'
 import { TryAiPage } from './pages/TryAiPage'
 import { TestimonialsPage } from './pages/TestimonialsPage'
+import { MediaPage } from './pages/MediaPage'
+import { NotFoundPage } from './pages/NotFoundPage'
 
 function BlogRedirect() {
   const { slug } = useParams()
@@ -36,6 +38,8 @@ export default function App() {
         <Route path="insights/:slug" element={<ArticlePage />} />
         <Route path="bsd-ai" element={<TryAiPage />} />
         <Route path="testimonials" element={<TestimonialsPage />} />
+        <Route path="media" element={<MediaPage />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Route>
       <Route path="blog/:slug" element={<BlogRedirect />} />
     </Routes>

@@ -54,6 +54,7 @@ export function ArticlePage() {
   if (!article) {
     return (
       <section className="px-4 py-20 text-center">
+        <meta name="robots" content="noindex" />
         <p className="text-navy/60 mb-4">המאמר לא נמצא.</p>
         <a href="/insights" className="text-teal font-medium">
           חזרה למאמרים
