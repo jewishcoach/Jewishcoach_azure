@@ -1,4 +1,5 @@
 # Publishes one SEO blog article per day when a keyword is scheduled.
+# Schedule off since 2026-10-19: Rankita now writes the blog (school-site-api /api/rankita).
 #
 # School-site-api server:
 #   BLOG_CRON_SECRET=<same random string as GitHub secret below>
@@ -11,8 +12,6 @@
 name: Blog daily publish (SEO)
 
 on:
-  schedule:
-    - cron: '0 6 * * *'   # 06:00 UTC = 09:00 Israel time
   workflow_dispatch:
 
 jobs:
