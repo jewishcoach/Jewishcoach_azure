@@ -2,12 +2,14 @@ import { Hero } from '../components/ui'
 import { ContactForm } from '../components/ContactForm'
 import { CONTACT_EMAIL, CONTACT_PHONE } from '../config'
 import { contactContent } from '../data/pdfContent'
+import { Seo } from '../components/Seo'
 
 export function ContactPage() {
   const c = contactContent
 
   return (
     <>
+      <Seo title="צור קשר | בית הספר לאימון יהודי BSD" description="שאלות על אימון אישי, הכשרת מאמנים או הספר? השאירו פרטים ונחזור אליכם." path="/contact" />
       <Hero title={c.title} subtitle={c.intro} />
 
       <section className="px-4 py-12">

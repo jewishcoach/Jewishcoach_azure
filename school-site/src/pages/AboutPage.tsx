@@ -1,9 +1,11 @@
 import { Hero, PrimaryButton, Section } from '../components/ui'
 import { LEGACY_URL } from '../config'
+import { Seo } from '../components/Seo'
 
 export function AboutPage() {
   return (
     <>
+      <Seo title="אודות בית הספר לאימון יהודי ומורשת בני גל ז״ל" description="ממשיכים את שיטת האימון היהודי (BSD) שהקים בני גל ז״ל: שפה, כלים ותהליכים." path="/about" />
       <Hero
         title="אודות בית הספר"
         subtitle="ממשיכים את שיטת האימון היהודי (BSD) — שפה, כלים ותהליכים — שהקים בני גל ז״ל."

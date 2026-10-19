@@ -1,5 +1,6 @@
 import { Hero, Section } from '../components/ui'
 import mediaData from '../data/media.json'
+import { Seo } from '../components/Seo'
 
 type Video = { youtubeId: string; title: string; summary: string }
 type Recording = { title: string; summary: string; url: string }
@@ -32,6 +33,7 @@ function VideoCard({ video }: { video: Video }) {
 export function MediaPage() {
   return (
     <>
+      <Seo title="וידאו והאזנה: בני גל ז״ל וסודות הקואצ'ינג היהודי" description="סדרת סודות הקואצ'ינג היהודי, הרצאות, ועשרה מפגשי אימון מוקלטים של בני גל ז״ל." path="/media" />
       <Hero
         title="וידאו והאזנה"
         subtitle="בני גל ז״ל מלמד את שיטת האימון היהודי: סדרת סודות הקואצ'ינג היהודי, הרצאות, ותהליך אימון מלא מוקלט."

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { APP_URL } from '../config'
+import { Seo } from '../components/Seo'
 
 const FAQ_ITEMS = [
   { q: 'האם זה מחליף אימון אישי?', a: 'התהליך מבוסס על אותה שיטה בדיוק, אך הוא מונגש דרך AI. הוא יכול לשמש כתהליך עצמאי או כהכנה לאימון אישי עם מאמן.' },
@@ -42,6 +43,7 @@ const TESTIMONIALS = [
 export function TryAiPage() {
   return (
     <>
+      <Seo title="אימון יהודי AI: אותה שיטה, בקצב שלך" description="מלווה דיגיטלי בשיטת האימון היהודי BSD: אותה שיטה, אותם העקרונות, בקצב שלך ובכל מקום." path="/bsd-ai" />
       {/* ── Hero — side-by-side: tree left, text right ── */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0">

@@ -1,11 +1,13 @@
 import { Hero, PrimaryButton, Section } from '../components/ui'
 import { bookContent } from '../data/pdfContent'
+import { Seo } from '../components/Seo'
 
 export function BookPage() {
   const c = bookContent
 
   return (
     <>
+      <Seo title="סודות הקואצ'ינג היהודי: הספר של בני גל ז״ל" description="הצצה אל תוך חדר האימון: הספר סודות הקואצ'ינג היהודי מאת בני גל ז״ל, שיטת BSD הלכה למעשה." path="/book" />
       <Hero title={c.heroTitle} body={c.heroBody}>
         <PrimaryButton href="https://bsdcoach.com/post/the-books">הספר / לקריאת פרק ראשון</PrimaryButton>
       </Hero>

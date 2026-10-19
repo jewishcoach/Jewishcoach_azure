@@ -1,12 +1,14 @@
 import { Hero, Section } from '../components/ui'
 import { ContactForm } from '../components/ContactForm'
 import { findCoachContent } from '../data/pdfContent'
+import { Seo } from '../components/Seo'
 
 export function FindCoachPage() {
   const c = findCoachContent
 
   return (
     <>
+      <Seo title="התאמת מאמן אישי מבוגרי BSD אימון יהודי" description="מחפשים לעבור אימון אישי? נתאים לכם מאמן מוסמך מבוגרי בית הספר לאימון יהודי BSD." path="/programs/find-coach" />
       <Hero title={c.heroTitle} body={c.heroBody} />
 
       <Section>

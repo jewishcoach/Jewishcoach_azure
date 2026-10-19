@@ -1,12 +1,14 @@
 import { Hero, PrimaryButton, Section } from '../components/ui'
 import { ContactForm } from '../components/ContactForm'
 import { personalTrackContent } from '../data/pdfContent'
+import { Seo } from '../components/Seo'
 
 export function PersonalTrackPage() {
   const c = personalTrackContent
 
   return (
     <>
+      <Seo title="אימון אישי בשיטת BSD | אימון יהודי" description="המעבר מבלבול לבהירות: תהליך אימון אישי בשיטת האימון היהודי BSD, לגלות את התשובות שכבר קיימות בתוכך." path="/programs/personal" />
       <Hero title={c.heroTitle} body={c.heroBody}>
         <PrimaryButton to="/programs/find-coach">שיחת הכרות קצרה</PrimaryButton>
       </Hero>

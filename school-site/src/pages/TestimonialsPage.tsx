@@ -2,6 +2,7 @@ import { Hero, Section } from '../components/ui'
 import testimonialsData from '../data/testimonials.json'
 import pressData from '../data/press.json'
 import type { PressData, Testimonial } from '../data/types'
+import { Seo } from '../components/Seo'
 
 const testimonials = testimonialsData as Testimonial[]
 const press = pressData as PressData
@@ -19,6 +20,7 @@ function testimonialLabel(item: Testimonial): string {
 export function TestimonialsPage() {
   return (
     <>
+      <Seo title="המלצות ועיתונות | BSD אימון יהודי" description="עדויות מקוראים, בוגרים וכלי תקשורת על שיטת האימון היהודי BSD ועל בית הספר." path="/testimonials" />
       <Hero
         title="המלצות ועיתונות"
         subtitle="עדויות מקוראים, בוגרים וכלי תקשורת על השיטה ועל בית הספר."

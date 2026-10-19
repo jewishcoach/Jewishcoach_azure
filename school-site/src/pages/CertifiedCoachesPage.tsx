@@ -1,12 +1,14 @@
 import { Hero, PrimaryButton, Section } from '../components/ui'
 import { ContactForm } from '../components/ContactForm'
 import { certifiedCoachesContent } from '../data/pdfContent'
+import { Seo } from '../components/Seo'
 
 export function CertifiedCoachesPage() {
   const c = certifiedCoachesContent
 
   return (
     <>
+      <Seo title="התמחות בשיטת BSD למאמנים מוסמכים" description="להוסיף את עומק חכמת הנפש היהודית לארגז הכלים המקצועי: מסלול ההשלמה בשיטת BSD למאמנים מוסמכים." path="/programs/certified-coaches" />
       <Hero title={c.heroTitle} body={c.heroBody}>
         <PrimaryButton to="/contact">תנאי קבלה וסילבוס</PrimaryButton>
       </Hero>

@@ -3,12 +3,14 @@ import { Hero, PrimaryButton, Section, ProgramCardGrid, QuoteBlock } from '../co
 import { ContactForm } from '../components/ContactForm'
 import { homeContent, programsFromPdf } from '../data/pdfContent'
 import { APP_URL } from '../config'
+import { Seo } from '../components/Seo'
 
 export function HomePage() {
   const c = homeContent
 
   return (
     <>
+      <Seo title="בית הספר לאימון יהודי BSD | הכשרת מאמנים ואימון אישי" description="בית הספר לאימון יהודי בשיטת BSD: הכשרת מאמנים, אימון אישי, ומורשת בני גל ז״ל." path="/" />
       {/* ── Hero ── */}
       <Hero title={c.heroTitle} subtitle={c.heroSubtitle} body={c.heroBody}>
         <PrimaryButton to="/programs/personal">המסלולים שלנו</PrimaryButton>
