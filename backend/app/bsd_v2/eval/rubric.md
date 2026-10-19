@@ -19,7 +19,7 @@ judge the coach, not something you score.
 ### 0.1 Inputs you receive
 A transcript with numbered turns. Each coach turn is tagged with `current_step` (S2..S15). Card submissions
 show up as user turns such as `[כרטיס רגשות: כעס, עלבון]` or summaries like "אישרתי את תמונת המצוי".
-- **Card stages:** S2 event, S3 emotions, S5 action, S6 desired, S7 gap, S9 paradigm+stance, S11 gains/losses,
+- **Card stages:** S2 event, S3 emotions, S5 action, S6 desired, S7 gap, S9 paradigm, S11 gains/losses,
   S12 forces, S13 choice, S15 commitment.
 - **Chat-only stages:** S4 thought, S8 pattern, S14 vision.
 - **Macro stages:** identification (S2–S8), discovery (S9–S11), כמ"ז/identity card (S12), choice (S13),
@@ -57,8 +57,11 @@ one in `issues`.
 ### D1. Method fidelity and floor discipline (נאמנות לשיטה, בידוד קומה)
 **Definition.** The turn serves the current stage's goal. It does not import later-stage concepts and keeps the
 floors distinct. The floors are: event/situation (סיטואציה, visible), pattern (דפוס, the visible repeated
-reaction), paradigm (פרכדיגמה, "מחשבת המעשה", hidden), and stance (עמדה, the perception of reality, hidden).
-Belief/worldview words ("אמונה", "תפיסת עולם") belong to the stance only.
+reaction), paradigm (פרכדיגמה, "מחשבת המעשה", hidden), and — under it — the stance floor, explored on **two
+levels** (method owner's ruling, Oct 2026, after the expert review): the **belief** (אמונה / תפיסת מציאות, what he
+holds true about the world, people or himself) and the **stance** (עמדה, the inner place he takes facing others,
+derived from the belief). Belief/worldview words ("אמונה", "תפיסת עולם") belong to the belief level; calling the
+belief "העמדה" or the stance "האמונה" blurs the levels.
 - **5:** The work fits the stage. Terminology is correct. A floor mix-up by the client is corrected gently and
   with confidence, in one sentence.
 - **3:** The work is on-stage, but the coach blurs terms (for example, calls the paradigm "המחשבה" or calls the
@@ -86,7 +89,7 @@ Three items are quoted **verbatim, in first person, inside quotes, once**: the i
   למתאמן בראש".
 
 ### D3. No spoon-feeding: the client discovers it himself (לא להאכיל בכפית)
-**Definition.** The client himself formulates the pattern (S8), the paradigm (S9), the stance and trigger (S9),
+**Definition.** The client himself formulates the pattern (S8), the paradigm (S9), the belief, stance and trigger (S10),
 the leading traits (S12), the new choice (S13), the vision (S14), and the commitment (S15). The coach does not
 offer ready-made formulations ("למשל משהו כמו 'אני מאמין ש...'"), menus of candidate answers, or summaries
 that define the item for him. When the client is stuck, the coach asks from a different angle and points to
@@ -358,18 +361,26 @@ budget is a fatigue signal (W3).
   - (f) a long recap of the whole identification floor (D6).
 - **Budget:** 2–4 turns.
 
-### S9 + S10: Paradigm (S9, card) → stance + trigger (S10, chat) — one floor at a time
-- **Gate, all three parts:**
+### S9 + S10: Paradigm (S9, card) → belief → stance → trigger (S10, chat) — one floor at a time
+- **Two levels under the paradigm (method owner's ruling, Oct 2026 — follows the expert's practice, not the
+  booklet's single "אני מאמין ש..." formula).** The coach first finds the **belief**, then asks where it comes
+  from, then asks for the **stance** — "where do you stand facing people" — as a separate level. Asking the stance
+  question after the belief was given is the **intended method, not a re-ask and not a floor mix**. Judge the
+  quality of each level and the clarity of the labels, not whether there are two.
+- **Gate, all four parts:**
   1. **Paradigm.** The client states his own **operating rule**, "מחשבת המעשה": an automatic, taken-for-granted
      rule about how one must act ("עדיף לשתוק", "אם אני לא תוקף — לא רואים אותי", "חייבים להקשיח"). It is
      **not** a description of what he does when something happens (that is the pattern) and **not** a general
      belief about reality (that is the stance). **The literal words "ככה זה אצלי" are NOT required** (method
      owner's ruling, Oct 2026): the essence is the client's own "ככה זה" — his self-evident inner rule. Pressing
      for the literal wording after a valid rule was given is a D10 flaw.
-  2. **Stance (עמדה).** A perception of reality about the world, people, or himself that makes the rule feel
-     true ("החיים הם מאבק של 'או אני או אתה'", "אנשים שופטים"), in the client's words. It is not a repeat of the
-     paradigm.
-  3. **Trigger.** What "presses the button" and lights the stance up. One question, and the client's own
+  2. **Belief (אמונה, `stance.reality_belief`).** A perception of reality about the world, people, or himself
+     that makes the rule feel true ("החיים הם מאבק של 'או אני או אתה'", "אם לא אהיה מושלמת — יפסיקו לאהוב
+     אותי"), in the client's words. It is not a repeat of the paradigm.
+  3. **Stance (עמדה, `stance.position`).** The inner place he takes facing others, derived from the belief
+     ("נבחנת תמידית שחייבת להוכיח", "מרצה ומצטמצמת", "תמיד בצד, קטן"). It is not a repeat of the belief or the
+     rule; feelings that describe the place ("מרגישה קטנה") are acceptable.
+  4. **Trigger.** What "presses the button" and lights the belief and the stance up. One question, and the client's own
      answer.
 - **Source.**
   - `BKL p.15`: "הלקוח יזהה וינסח את הפרכדיגמא"; `BKL p.17`: "הדפוס לא נותן לנו תשובה של 'ככה זה', רק
@@ -389,32 +400,40 @@ budget is a fatigue signal (W3).
   - Decide pass or fail first.
   - If it passes: reflect the paradigm verbatim, once, and open the next floor with **one** open question about
     its root (no terms, no theory).
-- **Coach in S10 (stance, chat).**
-  - Reflect the stance in the client's words; explore it with one patient question — **where it comes from**
-    ("מאיפה זה מגיע אצלך? מתי למדת שככה זה בעולם?").
-  - Then **one** trigger question. After the trigger answer: link the chain **once**, trigger → stance →
-    paradigm → pattern. End with a warm statement toward the balance card (of the **belief**), no question.
+- **Coach in S10 (belief → stance → trigger, chat).** One question per turn:
+  - Reflect the **belief** in the client's words and ask **where it comes from** ("מאיפה זה מגיע אצלך? מתי
+    למדת שככה זה בעולם?") — skip it if he already told.
+  - Reflect only the origin and ask for the **stance** ("איפה אתה עומד מול אנשים?"), without proposing one.
+    If the answer is empty or only repeats the belief/rule, one deepening question.
+  - Reflect only the stance ("העמדה שלך — ...") and ask **one** trigger question. After the trigger answer: link
+    the chain **once, briefly** (a few of his words per link), trigger → belief → stance → paradigm → pattern.
+    End with a warm statement toward the balance card (of the **stance**), no question.
 - **Classic failure modes:**
   - (a) **Accepting a pattern description as a paradigm** ("כשמבקרים אותי אני מתגונן ומסביר"). This is the most
     common failure.
-  - (b) Accepting the stance in the paradigm slot, or a repeat of the paradigm in the stance slot.
+  - (b) Accepting the belief in the paradigm slot, a repeat of the paradigm as the belief, or a repeat of the
+    belief/rule as the stance; or **mislabeling** — calling the belief "העמדה", the stance "האמונה", or the
+    paradigm "האמונה".
   - (c) The coach proposing the rule, belief, or trigger (HF-SPOON).
   - (d) Pre-check lectures or quizzes on the concepts.
   - (e) Multiple trigger sub-questions (control, environment).
   - (f) Reflecting the trigger separately and then the chain again (D6).
   - (g) Apologizing for, or skipping, the trigger answer because it sounds like a complaint.
   - (h) "or" menus ("זה יותר על שליטה או על ביטחון?").
-  - (i) **Mixing floors**: paradigm and stance presented/asked together, or the stance never explored (taken
-    straight from a card or skipped to the trigger).
+  - (i) **Mixing floors**: paradigm and belief/stance presented or asked together in one turn, or a level never
+    explored (taken straight from a card or skipped to the trigger). Asking belief, then stance, in separate
+    turns is the method, not a mix.
+  - (j) Re-reciting earlier levels in every turn (the belief repeated in the origin and stance turns), or a
+    chain that pastes each level's full sentence (D6).
 - **How to deepen on failure.** Say once, gently and confidently, which floor we are on, and ask one opening
   question. For a pattern-instead-of-paradigm: "זה מה שאתה *עושה* כשזה קורה — מה החוק הפנימי שאומר שככה נכון
   לפעול?". The booklet route also works: "הדפוס הזה — האם בחרת בו? מהו ה'ככה זה אצלי' שממנו הוא נשלף?" If the
   answer is still imprecise, accept the closest formulation that the client confirms as his own. Do not chase
   the perfect wording (`BOOK ~L1952`: "לא מחפשים את ה'הָה'").
-- **Budget:** S9 1-2 turns; S10 3-4 turns.
+- **Budget:** S9 1-2 turns; S10 4-5 turns.
 
 ### S11: Gains and losses (רווח והפסד) **of the stance**
-- **Gate.** At least 2 gains and 2 losses **of holding the belief/stance**: what the belief gives him inside
+- **Gate.** At least 2 gains and 2 losses **of holding the stance** (and the belief under it): what it gives him inside
   (control, safety, a sense of rightness) and what it costs him across life (loneliness, constant war, what his
   children learn). These are not the gains and losses of the behavior in the event.
 - **Source.** `BKL p.19`: "טבלת רווח והפסד... ביחס לעמדה המצויה"; deepening questions `BKL p.20`: "האם אתה

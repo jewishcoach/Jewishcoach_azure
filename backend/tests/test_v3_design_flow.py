@@ -55,7 +55,7 @@ def test_s9_paradigm_card_alone_does_not_skip_validation():
 
 def test_s9_anti_loop_moves_to_stance_not_past_it():
     state = _v3_state("S9", paradigm="ככה זה אצלי — אם אדבר זה יחמיר")
-    state["messages"] = [_coach("x", "S9"), _coach("y", "S9")]
+    state["messages"] = [_coach("x", "S9"), _coach("מאיזו תפיסה על החיים הוא נולד?", "S9")]
     assert _check_gate_met_v3(state) == "S10"  # one floor at a time — never straight to S11
 
 
@@ -338,3 +338,60 @@ def test_s15_result_depending_on_others_is_detected():
     assert _result_depends_on_others("שהבוס יעריך אותי")
     assert not _result_depends_on_others("בשבועיים הקרובים אסיים שני ויכוחים בלי לצעוק")
     assert not _result_depends_on_others("לומר את דעתי לפחות פעמיים בישיבה")
+
+
+def test_s9_does_not_leave_on_a_paradigm_deepening_question():
+    state = _v3_state("S9", paradigm="ככה זה אצלי — כעס זה לצעוק ולצאת")
+    state["messages"] = [
+        _coach("זה נשמע כמו מה שאתה עושה. איזה חוק פנימי מנחה אותך שם?", "S9"),
+        {"sender": "user", "content": "ככה גדלתי"},
+        _coach("כשאתה אומר 'ככה גדלתי' — איזה כלל פנימי אתה מרגיש שמנחה אותך?", "S9"),
+    ]
+    assert _check_gate_met_v3(state) is None
+    state["messages"][-1] = _coach("החוק הזה — מאיזו תפיסה על החיים, על אנשים או על עצמך הוא נולד?", "S9")
+    assert _check_gate_met_v3(state) == "S10"
+
+
+def test_s10_stance_deepening_answer_replaces_belief_repeat():
+    state = _v3_state("S10", paradigm="ככה זה אצלי — כעס צריך לפרוק")
+    state["collected_data"]["stance"].update(reality_belief="כעס צריך לפרוק מיד", position="אני צריך לפרוק")
+    state["messages"] = [
+        _coach("זה החוק עצמו. ואיפה הוא שם אותך מול אנשים — איך אתה רואה את עצמך מולם?", "S10"),
+        {"sender": "user", "content": "כמו מי שתמיד צריך להגן על עצמו"},
+        _coach("...", "S10"),
+    ]
+    _check_gate_met_v3(state)
+    assert state["collected_data"]["stance"]["position"] == "כמו מי שתמיד צריך להגן על עצמו"
+
+
+def test_s10_root_answer_restating_the_rule_is_not_the_belief():
+    from app.bsd_v2.single_agent_coach import _restates_rule
+    par = "ככה זה אצלי — עדיף לשתוק מאשר להתמודד עם עימות"
+    ans = "גדלתי בסביבה בלי מקום לרגשות, לכן למדתי שעדיף לשתוק כדי לשמור על השקט."
+    assert _restates_rule(ans, par)
+    assert not _restates_rule("שאנשים מענישים את מי שמראה חולשה", par)
+    state = _v3_state("S10", paradigm=par)
+    state["messages"] = [
+        _coach("מה אתה יודע על העולם שגורם לחוק הזה להרגיש נכון?", "S10"),
+        {"sender": "user", "content": ans},
+        _coach("...", "S10"),
+    ]
+    _check_gate_met_v3(state)
+    assert not state["collected_data"]["stance"].get("reality_belief")
+    state["messages"] += [
+        _coach("ומה אתה יודע על החיים או על אנשים שגורם לחוק הזה להיות נכון?", "S10"),
+        {"sender": "user", "content": "שמי שמתעמת — מאבד את האנשים שלו"},
+        _coach("...", "S10"),
+    ]
+    _check_gate_met_v3(state)
+    assert state["collected_data"]["stance"]["reality_belief"] == "שמי שמתעמת — מאבד את האנשים שלו"
+
+
+def test_s10_note_reads_the_reply_being_answered_now():
+    from app.bsd_v2.single_agent_coach import build_conversation_context
+    state = _v3_state("S10", paradigm="ככה זה אצלי — עדיף לשתוק מאשר להתמודד עם עימות")
+    state["messages"] = [_coach("מה אתה יודע על העולם שגורם לחוק הזה להרגיש נכון?", "S10")]
+    ctx = build_conversation_context(state, "כשהייתי ילד אבא שלי צעק, אז אנשים מענישים את מי שמדבר", "he")
+    assert "כבר סיפר מאיפה זה מגיע" in ctx
+    ctx = build_conversation_context(state, "גדלתי ככה, למדתי שעדיף לשתוק", "he")
+    assert "חוזר על **החוק**" in ctx

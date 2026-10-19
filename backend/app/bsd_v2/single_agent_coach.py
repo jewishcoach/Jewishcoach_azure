@@ -494,8 +494,40 @@ def _result_depends_on_others(result: str) -> bool:
     return bool(_RELATIONAL_OUTCOME.search(result)) and not _SELF_ACT.search(result)
 
 
+# S9→S10 only once the coach asked the root question (where the rule comes from). A paradigm-deepening question
+# ("איזה חוק פנימי…?") still belongs to S9 — leaving on it made S10 file the refined rule as the belief.
+_ROOT_QUESTION_MARKERS = ("תפיסה", "על העולם", "על החיים", "על אנשים", "נולד", "יודע על", "יודעת על")
+_S9_MAX_TURNS = 4
+
+
+def _asks_root_question(coach_text: str) -> bool:
+    return "?" in coach_text and any(w in coach_text for w in _ROOT_QUESTION_MARKERS)
+
+
+# S10: the answer to the root question often restates the rule ("למדתי שעדיף לשתוק") — that is not the belief —
+# and often already tells the origin ("גדלתי בבית ש…") — then "מאיפה זה מגיע?" is a re-ask.
+_ORIGIN_MARKERS = ("גדלתי", "בילדות", "כשהייתי", "ההורים", "אבא שלי", "אמא שלי", "בבית ", "מגיל", "בית הספר",
+                   "כילד", "כילדה", "במשפחה")
+_S10_BELIEF_FOLLOWUP = "לחוק הזה להיות נכון"
+_RULE_STOPWORDS = {"אני", "את", "לא", "זה", "של", "עם", "על", "כי", "אם", "מה", "הוא", "היא", "גם", "רק", "יותר",
+                   "עצמי", "אותי", "שלי", "לי", "ככה", "אצלי", "כל", "יש", "אין", "אז"}
+
+
+def _restates_rule(answer: str, paradigm: str) -> bool:
+    """True when the answer repeats a two-word phrase of the paradigm ("עדיף לשתוק")."""
+    rule = re.sub(r"^\s*ככה זה אצלי\s*[—–-]?\s*", "", paradigm or "")
+    words = re.findall(rf"[{_HE}]+", rule)
+    text = " ".join(re.findall(rf"[{_HE}]+", answer or ""))
+    for a, b in zip(words, words[1:]):
+        if {a, b} <= _RULE_STOPWORDS or max(len(a), len(b)) < 4:
+            continue
+        if f"{a} {b}" in text:
+            return True
+    return False
+
+
 _FILLER_WORDS = {"סתם", "רגיל", "רגילה", "לא", "משהו", "יודע", "יודעת", "זוכר", "זוכרת", "כלום", "ככה",
-                 "בסדר", "אין", "מושג", "נורמלי", "נורמלית", "כאילו", "אממ", "אולי", "שום", "דבר"}
+                 "בסדר", "אין", "מושג", "נורמלי", "נורמלית", "כאילו", "אממ", "אולי", "שום", "דבר", "מיוחד", "מיוחדת", "באמת", "יודע/ת"}
 _S10_POSITION_FOLLOWUP = "איך ראית את עצמך"
 
 
@@ -580,7 +612,14 @@ def _check_gate_met_v3(state: Dict[str, Any]) -> str | None:
     if step == "S9":
         if not cd.get("paradigm"):
             return None
-        # The coach moves to S10 itself once the paradigm holds; anti-loop if it keeps deepening
+        # The coach moves to S10 itself once the paradigm holds and it asked the root question; anti-loop if it
+        # keeps deepening
+        last_coach_text = next((m.get("content") or "" for m in reversed(state.get("messages") or [])
+                                if m.get("sender") == "coach"), "")
+        if _turns_in("S9") >= _S9_MAX_TURNS:
+            return "S10"
+        if not _asks_root_question(last_coach_text):
+            return None
         return "S10" if _turns_in("S9") >= (3 if state.get("_s9_paradigm_hint_given") else 2) else None
     if step == "S10":
         stance = cd.get("stance") or {}
@@ -588,15 +627,19 @@ def _check_gate_met_v3(state: Dict[str, Any]) -> str | None:
             stance = {}
         # The LLM often doesn't extract the stance/trigger — the user's reply to the question is the answer
         asked_trigger = any(w in prev_text for w in ("כפתור", "טריגר", "מדליק"))
-        asked_position = not asked_trigger and any(w in prev_text for w in ("עומד", "עומדת", "המקום ש", _S10_POSITION_FOLLOWUP))
+        position_followup = "את עצמך מול" in prev_text  # deepening after an empty / belief-repeating answer
+        asked_position = not asked_trigger and (position_followup or any(w in prev_text for w in ("עומד", "עומדת", "המקום ש")))
         asked_stance = not asked_trigger and not asked_position and any(
             w in prev_text for w in ("תפיסה", "על העולם", "על החיים", "נולד", "מאיפה", "למדת"))
-        if from_chat_reply and asked_stance and not stance.get("reality_belief"):
-            stance["reality_belief"] = (last_user.get("content") or "")[:300]
+        belief_followup = _S10_BELIEF_FOLLOWUP in prev_text
+        reply_text = last_user.get("content") or "" if last_user else ""
+        if (from_chat_reply and asked_stance and (belief_followup or not stance.get("reality_belief"))
+                and not (_restates_rule(reply_text, cd.get("paradigm") or "") and not belief_followup)):
+            stance["reality_belief"] = reply_text[:300]
         reply = last_user.get("content") or ""
         # an empty reply to the stance question gets one grounded follow-up (context note) — not saved as the stance
-        if (from_chat_reply and asked_position and not stance.get("position")
-                and not (_is_empty_answer(reply) and _S10_POSITION_FOLLOWUP not in prev_text)):
+        if (from_chat_reply and asked_position and (position_followup or not stance.get("position"))
+                and not (_is_empty_answer(reply) and not position_followup)):
             stance["position"] = reply[:300]
         if from_chat_reply and asked_trigger and not stance.get("activation_trigger"):
             stance["activation_trigger"] = (last_user.get("content") or "")[:300]
@@ -2613,19 +2656,40 @@ def build_conversation_context(
         asked_origin = any(("מאיפה" in c or "למדת" in c) and "?" in c for c in coach_s10)
         asked_position = any(("עומד" in c or "עומדת" in c or "המקום ש" in c) and "?" in c for c in coach_s10)
         asked_trigger = any(w in c for c in coach_s10 for w in ("כפתור", "טריגר", "מדליק"))
-        if not asked_origin:
+        msgs10 = state.get("messages") or []
+        first10 = next((i for i, m in enumerate(msgs10) if m.get("sender") == "coach"
+                        and (m.get("internal_state") or {}).get("current_step") == "S10"), None)
+        s10_user = [m.get("content") or "" for m in msgs10[first10 + 1:] if m.get("sender") == "user"] if first10 is not None else []
+        # the reply being answered now is not in the history yet
+        if user_message and first10 is not None and (not s10_user or s10_user[-1] != user_message):
+            s10_user.append(user_message)
+        told_origin = any(w in u for u in s10_user for w in _ORIGIN_MARKERS)
+        belief_followup_asked = any(_S10_BELIEF_FOLLOWUP in c for c in coach_s10)
+        rule_word = re.sub(r"^\s*ככה זה אצלי\s*[—–-]?\s*", "", (state.get("collected_data") or {}).get("paradigm") or "")[:60]
+        if (not asked_origin and not asked_position and s10_user and not belief_followup_asked
+                and _restates_rule(s10_user[0], (state.get("collected_data") or {}).get("paradigm") or "")):
+            nxt = (f"מה שענה חוזר על **החוק** ('{rule_word}') — זו עוד לא **האמונה**, ואל תקרא לזה 'אמונה'. "
+                   + ("שקף בקצרה רק את מה שסיפר על המקור (הוא כבר סיפר — **אל תשאל 'מאיפה'**), " if told_origin else "שקף בקצרה, ")
+                   + "ושאל **שאלה אחת** שמעמיקה מתחת לחוק, בלי להציע תשובה: "
+                   f"\"ומה אתה יודע על החיים או על אנשים שגורם {_S10_BELIEF_FOLLOWUP}?\"")
+        elif not asked_origin and told_origin and not asked_position:
+            nxt = ("הוא **כבר סיפר מאיפה זה מגיע** — **אל תשאל 'מאיפה'**. שקף בקצרה את **האמונה** (קרא לה 'האמונה') ואת המקור, "
+                   "ושאל עכשיו על **העמדה**, בלי להציע תשובה: \"כשאתה חי מתוך האמונה הזו — איפה אתה עומד מול אנשים? איך היית מתאר את המקום שאתה תופס מולם?\"")
+        elif not asked_origin and not told_origin:
             nxt = "שקף את **האמונה** שתיאר (במילים שלו; קרא לה 'האמונה', לא 'העמדה') ושאל את **שאלת המקור — פעם אחת**: \"מאיפה זה מגיע אצלך? מתי למדת שככה זה בעולם?\""
         elif not asked_position:
-            nxt = "שאלת המקור **כבר נשאלה ונענתה** — אל תשאל שוב 'מאיפה'. שקף בקצרה, ושאל עכשיו על **העמדה** — המקום שבו הוא עומד מול העולם מתוך האמונה הזו, בלי להציע תשובה: \"כשאתה חי מתוך האמונה הזו — איפה אתה עומד מול אנשים? איך היית מתאר את המקום שאתה תופס מולם?\""
+            nxt = "שאלת המקור **כבר נשאלה ונענתה** — אל תשאל שוב 'מאיפה'. שקף **רק את המקור** במשפט קצר (אל תחזור על האמונה), ושאל עכשיו על **העמדה** — המקום שבו הוא עומד מול העולם מתוך האמונה הזו, בלי להציע תשובה: \"כשאתה חי מתוך האמונה הזו — איפה אתה עומד מול אנשים? איך היית מתאר את המקום שאתה תופס מולם?\""
         elif (not asked_trigger and not any(_S10_POSITION_FOLLOWUP in c for c in coach_s10)
-              and _is_empty_answer(next((m.get("content") or "" for m in reversed(state.get("messages") or [])
-                                         if m.get("sender") == "user"), ""))):
+              and _is_empty_answer(s10_user[-1] if s10_user else user_message)):
             nxt = ("התשובה לשאלת העמדה לא אמרה עוד כלום — **זה בסדר**, אל תשקף אותה כעמדה. שאלה **אחת**, פשוטה, שמחזירה לאירוע שסיפר: "
                    f"\"תחזור רגע לאירוע שסיפרת עליו — כשהאמונה הזו נדלקה שם, {_S10_POSITION_FOLLOWUP} מול מי שהיה מולך?\"")
         elif not asked_trigger:
-            nxt = "שאלת העמדה **כבר נשאלה ונענתה** — שקף את **העמדה** במילים שלו (שמור ב-`stance.position`), ושאל עכשיו את **שאלת הטריגר**: \"מה 'כפתור ההפעלה' — מה קורה במציאות שמדליק את האמונה הזו ומכניס אותך לעמדה הזו?\""
+            deepened = any("את עצמך מול" in c for c in coach_s10)
+            nxt = ("שאלת העמדה **כבר נשאלה ונענתה** — שקף **רק את העמדה**, קצר: 'העמדה שלך — [המילים שלו]' (בלי 'מאמין'/'אמונה' ובלי לחזור על האמונה; שמור ב-`stance.position`). "
+                   + ("" if deepened else "אם העמדה שתיאר היא רק חזרה על האמונה או על החוק — שאלת העמקה אחת: 'ואיפה זה שם אותך מול אנשים — איך אתה רואה את עצמך מולם?' — אחרת ")
+                   + "שאל עכשיו את **שאלת הטריגר**: \"מה 'כפתור ההפעלה' — מה קורה במציאות שמדליק את האמונה הזו ומכניס אותך לעמדה הזו?\"")
         else:
-            nxt = "שאלת הטריגר נשאלה — התשובה האחרונה היא הטריגר. חבר **שרשרת אחת** (טריגר → אמונה → עמדה → ככה זה אצלי → דפוס), הצהרה חמה למאזן של **העמדה**, בלי שאלה, ועדכן `current_step` ל-\"S11\"."
+            nxt = "שאלת הטריגר נשאלה — התשובה האחרונה היא הטריגר. חבר **שרשרת אחת קצרה** (טריגר → אמונה → עמדה → החוק → דפוס; **כל חוליה 2-5 מילים שלו, לא המשפט המלא**, בגוף שני, עד 3 שורות), הצהרה חמה למאזן של **העמדה**, בלי שאלה, ועדכן `current_step` ל-\"S11\"."
         context_parts.append("\n# שלב 10 — השאלה הבאה\n" + nxt)
 
     # S15: right after the coaching-request card, a result that depends on others gets the booklet question
@@ -2638,6 +2702,18 @@ def build_conversation_context(
                 f"התוצאה שכתב (\"{result[:200]}\") תלויה גם בתגובה של אחרים. באימון התוצאה היא **מה שבידיו**. "
                 "אל תסכם ואל תסמן `stage_ready_to_complete` בתור הזה. שקף בקצרה את הבקשה, ושאל **שאלה אחת**: "
                 "\"מה מתוך זה תלוי בך — מה אתה תעשה, או איך תהיה, שאפשר יהיה לראות?\"")
+
+    # S15: the client answered "מה מתוך זה תלוי בך" — now the full closing turn (it closed with one sentence)
+    if state.get("current_step") == "S15" and state.get("ux_version", 2) >= 3:
+        prev_coach = next((m.get("content") or "" for m in reversed(state.get("messages") or [])
+                           if m.get("sender") == "coach"), "")
+        if "תלוי בך" in prev_coach and "?" in prev_coach:
+            context_parts.append(
+                "\n# שלב 15 — סגירה\n"
+                "הוא ענה מה תלוי בו — זו התוצאה המעודכנת (עדכן אותה בבקשה). עכשיו **התור המלא** מההוראות: "
+                "(1) שקף את הבקשה במשפט טבעי עם התוצאה החדשה; (2) משפט חירות ואחריות — הבקשה שלו, הכוחות כבר אצלו, "
+                "והוא מוביל מכאן; (3) סיפור מסע קצר, 3–5 משפטים חמים — מאיזה רגע יצאנו, מה גילה (הדפוס והאמונה, במילים שלו), "
+                "ומה בחר. סמן `stage_ready_to_complete: true`. בלי שאלה.")
 
     # Right after the client answered a safety check-in that they're OK: one-turn note (not in the static
     # prompt — a permanent rule there shifted the coach's attention on every turn)
@@ -3358,6 +3434,10 @@ async def handle_conversation(
                 internal_state["current_step"] = "S5"
             # Floors one at a time: the LLM may jump S9→S11 or leave S10 before the stance was explored and the
             # trigger asked — hold it; the V3 gate below decides (with its own anti-loop)
+            if (old_step == "S9" and state.get("current_step") == "S10" and not _asks_root_question(coach_message)
+                    and count_turns_in_step(state, "S9") < _S9_MAX_TURNS):
+                state["current_step"] = "S9"
+                internal_state["current_step"] = "S9"
             stance_now = (state.get("collected_data") or {}).get("stance") or {}
             if (old_step in ("S9", "S10") and state.get("current_step") == "S11"
                     and not (isinstance(stance_now, dict) and stance_now.get("activation_trigger"))):
