@@ -58,3 +58,4 @@ class BlogPostUpdate(BaseModel):
     language: str | None = None
     status: Literal["draft", "scheduled", "published"] | None = None
     scheduled_date: str | None = None
+    published_at: str | None = None  # backdate articles migrated from the old site
