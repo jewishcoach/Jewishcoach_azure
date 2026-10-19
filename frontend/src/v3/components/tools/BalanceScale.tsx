@@ -35,7 +35,7 @@ export function BalanceScale({ onSubmit, isSubmitting }: BalanceScaleProps) {
               tags={gains}
               onAdd={(tag) => setGains((prev) => [...prev, tag])}
               onRemove={(idx) => setGains((prev) => prev.filter((_, i) => i !== idx))}
-              placeholder="הוסף רווח..."
+              placeholder="בגוף ראשון — למשל: אני מרגיש מוגן..."
               minTags={2}
             />
             <p
@@ -60,7 +60,7 @@ export function BalanceScale({ onSubmit, isSubmitting }: BalanceScaleProps) {
               tags={losses}
               onAdd={(tag) => setLosses((prev) => [...prev, tag])}
               onRemove={(idx) => setLosses((prev) => prev.filter((_, i) => i !== idx))}
-              placeholder="הוסף הפסד..."
+              placeholder="בגוף ראשון — למשל: אני מפסיד קרבה..."
               minTags={2}
             />
             <p

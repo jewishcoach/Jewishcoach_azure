@@ -317,7 +317,7 @@ MACRO_STAGE_PROMPTS = {
         "en": "Next stage: Discovery — finding another way to see reality. Focus on paradigm ('that's how it is for me'), stance (reality perception), and triggers.",
     },
     "kamaz": {
-        "he": "השלב הבא: כמ\"ז — כוחות מקור (נפש אלוקית: אור, ערכים, שליחות) וכוחות טבע (נפש טבעית: צרכים, הגנות, דחפים). בונים כרטיס אישי של 6+6 כוחות.",
+        "he": "השלב הבא: כמ\"ז — כוחות מקור (נפש אלוקית: אור, ערכים, שליחות) וכוחות טבע (נפש טבעית: תכונות ונטיות טבעיות). בונים כרטיס אישי של 6+6 כוחות.",
         "en": "Next stage: Forces (KMZ) — Source forces (divine soul: light, values, mission) and Nature forces (natural soul: needs, defenses, impulses). Building a personal 6+6 card.",
     },
     "choice": {

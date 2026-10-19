@@ -48,7 +48,7 @@ def compose_coaching_request(data: Dict[str, Any]) -> str:
     source = ", ".join(s for s in (data.get("source") or []) if s)
     nature = ", ".join(s for s in (data.get("nature") or []) if s)
     noun = name[1:]  # "הדפוס" → "דפוס" for "מופיע הדפוס הישן שלי"
-    parts = [f"אני מבקש/ת להתאמן על הקושי להתמודד עם {(data.get('situation') or '').strip()}"]
+    parts = [f"אני מבקש/ת להתאמן על הקושי שלי: {(data.get('situation') or '').strip()}"]
     if (data.get("old") or "").strip():
         parts.append(f"שכאשר מופיע{'ה' if that == 'שהיא' else ''} ה{noun} {old_adj} שלי, {that} {data['old'].strip()}")
     if source:
@@ -57,7 +57,7 @@ def compose_coaching_request(data: Dict[str, Any]) -> str:
         parts.append(f"ומתוך הטבע שלי, שהוא {nature}")
     if (data.get("new") or "").strip():
         parts.append(f"ומתוך ה{noun} {new_adj} שבחרתי, {that} {data['new'].strip()}")
-    parts.append(f"כדי שהתוצאה שאשיג תהיה {(data.get('result') or '').strip()}")
+    parts.append(f"כדי שהתוצאה שאשיג תהיה: {(data.get('result') or '').strip()}")
     return ", ".join(p.rstrip(".,") for p in parts) + "."
 
 
@@ -483,7 +483,7 @@ def _generate_tool_summary(tool_type: str, data: Dict[str, Any]) -> str:
                 summary += f"- {trait}\n"
 
         if nature:
-            summary += "\n**כוחות טבע (צרכים, הגנות, דחפים):**\n"
+            summary += "\n**כוחות טבע (תכונות ונטיות טבעיות):**\n"
             for trait in nature:
                 summary += f"- {trait}\n"
 

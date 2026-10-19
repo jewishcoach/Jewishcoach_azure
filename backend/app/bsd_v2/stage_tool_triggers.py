@@ -31,7 +31,7 @@ STAGE_TOOL_TRIGGERS: Dict[str, Dict[str, Any]] = {
         "title_en": "Source & Nature Forces (KMZ)",
         "instruction_he": (
             "כרטיס הכמ״ז מחלק תכונות לשני צדדים לפי השיטה: "
-            "**מקור** — אור, ערכים ושליחות (נפש אלוקית); **טבע** — צרכים, הגנות ודחפים שמושכים למטה (ניהול בשכל, לא «אויב»). "
+            "**מקור** — אור, ערכים ושליחות (נפש אלוקית); **טבע** — תכונות ונטיות טבעיות, הכלים שאיתם אתה פועל (ניהול בשכל, לא «אויב»). "
             "הוסף עד 6 פריטים בכל צד; הראשון בכל עמודה הוא התכונה המובילה. שלח כשסיימת — המאמן ימשיך אחרי זה."
         ),
         "instruction_en": (
@@ -96,7 +96,7 @@ V3_TOOL_DEFS: Dict[str, Dict[str, Any]] = {
         "type": "tool",
         "tool_type": "balance_scale",
         "title_he": "מאזן רווח והפסד",
-        "instruction_he": "מה אתה מרוויח מלהחזיק באמונה הזו? ומה אתה מפסיד?",
+        "instruction_he": "מה אתה מרוויח מלהחזיק בעמדה הזו? ומה אתה מפסיד?",
     },
     "trait_card_builder": {
         "type": "tool",
@@ -174,7 +174,8 @@ def _build_v3_tool_call(tool_key: str, state: Dict[str, Any]) -> Dict[str, Any]:
             "old": {
                 "pattern": cd.get("pattern", ""),
                 "paradigm": cd.get("paradigm", ""),
-                "stance": stance.get("reality_belief", "") if isinstance(stance, dict) else "",
+                # the stance itself (the place he stands in); the belief only if no stance was formulated
+                "stance": (stance.get("position") or stance.get("reality_belief", "")) if isinstance(stance, dict) else "",
             },
             "new": {"stance": cd.get("renewal_belief", ""), "pattern": cd.get("new_action", "")},
         }
@@ -229,16 +230,18 @@ _SOURCE_TRAITS = [
     "נאמנות", "שמחה", "ענווה", "תמימות", "חכמה", "שליחות", "רגישות לאחרים", "התמדה",
 ]
 _NATURE_TRAITS = [
-    "צורך באישור ובמחמאות", "פחד מדחייה", "צורך בשליטה", "הימנעות מעימות", "צורך לרצות",
-    "להיות ראשון בכל", "הכבוד שלי = אני", "לקחת בכוח", "צורך להיות צודק", "פחד מכישלון",
-    "צורך בשקט ובנוחות", "לא משתייך",
+    # Natural qualities and tendencies in their healthy, constructive form — the tools a person acts with
+    # (BSD expert review, Oct 2026). Fears and avoidances ("פחד מדחייה", "הימנעות מעימות") are expressions of
+    # the old stance, NOT nature forces — a request "אפעל מתוך הטבע שלי, שהוא פחד מדחייה" is absurd.
+    "רגישות לאחרים", "זהירות", "יסודיות", "קליטת ניואנסים", "יכולת הכלה", "שאיפה להרמוניה",
+    "צורך בביטחון ויציבות", "צורך בשייכות", "התמדה", "אנרגיה ותנועה", "דייקנות", "ערנות לסביבה",
 ]
-# Pattern/belief words → the needs and values most likely in play, listed first
+# Pattern/belief words → the natural qualities and values most likely in play, listed first
 _NATURE_HINTS = [
-    (("שותק", "שתקתי", "נסגר", "בולע", "לא אומר", "לא אמרתי", "מחייך", "בלגן", "עניין"), ["הימנעות מעימות", "צורך לרצות"]),
-    (("צועק", "צעקתי", "מתפרץ", "כעס", "בכוח", "שולט"), ["צורך בשליטה", "לקחת בכוח"]),
-    (("לא רואים", "שקוף", "לא סופרים", "לא חשוב", "לא נספר"), ["צורך באישור ובמחמאות", "פחד מדחייה"]),
-    (("נכשל", "כישלון", "לא מספיק", "גרוע"), ["פחד מכישלון", "צורך להיות צודק"]),
+    (("שותק", "שתקתי", "נסגר", "בולע", "לא אומר", "לא אמרתי", "מחייך", "בלגן", "עניין"), ["שאיפה להרמוניה", "רגישות לאחרים"]),
+    (("צועק", "צעקתי", "מתפרץ", "כעס", "בכוח", "שולט"), ["אנרגיה ותנועה", "צורך בביטחון ויציבות"]),
+    (("לא רואים", "שקוף", "לא סופרים", "לא חשוב", "לא נספר"), ["ערנות לסביבה", "צורך בשייכות"]),
+    (("נכשל", "כישלון", "לא מספיק", "גרוע"), ["יסודיות", "דייקנות"]),
 ]
 _SOURCE_HINTS = [
     (("להגיד", "לומר", "קול", "לבטא", "ישיר"), ["אומץ", "אמת"]),

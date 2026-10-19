@@ -97,7 +97,7 @@ CARD_SCHEMAS = {
     "comparison_card": '{"emotion_desired": str, "thought_desired": str, "action_desired": str}',
     "gap_card": '{"gap_name": str (1-2 words), "gap_score": int 1-10}',
     "sentence_builder": '{"paradigm": "ככה זה אצלי — ..."}',
-    "balance_scale": '{"gains": [2-3 str], "losses": [2-3 str]}  (gains/losses of HOLDING THE BELIEF)',
+    "balance_scale": '{"gains": [2-3 str], "losses": [2-3 str]}  (gains/losses of HOLDING THE STANCE — write each item in FIRST PERSON, e.g. "אני מרגיש מוגן", "אני מפספס קרבה")',
     "trait_card_builder": '{"source_forces": [6 str values/light traits], "nature_forces": [6 str needs/defenses]}',
     "declaration_card": '{"renewal": "אני בוחר ש...", "next_action": str, "feels_right": true}',
     "commitment_card": ('{"floor": "pattern"|"paradigm"|"stance", "situation": str (the difficulty to train on), '

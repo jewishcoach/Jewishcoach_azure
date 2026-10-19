@@ -52,9 +52,9 @@ STAGE_COLLECTED_DATA_HE: Dict[str, str] = {
     "S5": "`collected_data`: מלא `action_actual` — מה עשה בפועל (מצוי).",
     "S6": "`collected_data`: מלא `action_desired`, `emotion_desired`, `thought_desired` — מה היה רוצה לעשות/להרגיש/לחשוב (רצוי).",
     "S7": "`collected_data`: מלא `gap_name` (שם הפער), `gap_score` (ציון 1-10), `gap_booklet_moves` (מערך: belief, opportunity, dwelling, authenticity — עדכן מצטבר).",
-    "S8": "`collected_data`: מלא `pattern` — הדפוס החוזר שזוהה.",
+    "S8": "`collected_data`: מלא `pattern` — התגובה האוטומטית החוזרת בלבד (בלי ה\"כי…\" / \"כדי ש…\" — אלה שייכים לפרדיגמה).",
     "S9": "`collected_data`: מלא `paradigm` — הפרדיגמה / מחשבת המעשה ('ככה זה אצלי').",
-    "S10": "`collected_data`: ב־`stance` מלא `reality_belief` (תפיסת מציאות) ו-`activation_trigger` (טריגר).",
+    "S10": "`collected_data`: ב־`stance` מלא `reality_belief` (האמונה), `position` (העמדה — המקום שבו הוא עומד מול העולם) ו-`activation_trigger` (טריגר).",
     "S11": "`collected_data`: ב־`stance` מלא `gains` ו-`losses` (טבלת רווח והפסד).",
     "S12": "`collected_data`: מלא `forces` — `source` (מקור) ו-`nature` (טבע); יעד 6+6, ראשון = מובילה. `offer_trait_picker`: true רק כשיש ריכוז ברור לשני הצדדים.",
     "S13": "`collected_data`: מלא `renewal` — בחירה/עמדה חדשה. תמהיל כמ\"ז באחוזים.",
@@ -192,7 +192,8 @@ _V3_V2_STAGE_FILE_ALIAS: Dict[str, str] = {}
 # S13: the V2 choice file walks the full top-down rebuild + the mix exercise; with the overlay's one-turn
 # acknowledgment the model fell back to it and looped (30 turns). The mix exercise is deferred by the user.
 # S15: the V2 commitment file (asks "אני מתחייב…") conflicts with the booklet's coaching-request card
-_V3_OVERLAY_ONLY_STEPS = {"S10", "S13", "S15"}
+# S12: the V2 forces file explores in chat and listed fears/avoidance as nature forces (expert: they are not).
+_V3_OVERLAY_ONLY_STEPS = {"S10", "S12", "S13", "S15"}
 
 
 def _get_collected_value(cd: dict, data_key: str):

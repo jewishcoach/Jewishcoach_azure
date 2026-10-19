@@ -14,14 +14,18 @@ from pydantic import BaseModel, Field
 class StanceSchema(BaseModel):
     reality_belief: Union[str, None] = Field(
         default=None,
-        description="תפיסת המציאות / העמדה בניסוח המתאמן (S10) — למשל 'אני מאמין ש…', 'המציאות היא…'",
+        description="האמונה / תפיסת המציאות בניסוח המתאמן (S10) — למשל 'אם לא אהיה מושלמת יפסיקו לאהוב אותי'",
+    )
+    position: Union[str, None] = Field(
+        default=None,
+        description="העמדה (S10) — המקום הנפשי שבו המתאמן עומד מול העולם, שנגזר מהאמונה, בניסוח שלו — למשל 'נבחנת תמידית שחייבת להוכיח', 'מרצה ומצטמצמת'",
     )
     activation_trigger: Union[str, None] = Field(
         default=None,
-        description="הטריגר / כפתור ההפעלה שמדליק את העמדה (S10)",
+        description="הטריגר / כפתור ההפעלה שמדליק את האמונה והעמדה (S10)",
     )
-    gains: List[str] = Field(default_factory=list, description="מה המתאמן מרוויח מהדפוס (S11)")
-    losses: List[str] = Field(default_factory=list, description="מה המתאמן מפסיד מהדפוס (S11)")
+    gains: List[str] = Field(default_factory=list, description="מה המתאמן מרוויח מהעמדה (S11) — לא מהדפוס")
+    losses: List[str] = Field(default_factory=list, description="מה המתאמן מפסיד מהעמדה (S11) — לא מהדפוס")
 
 
 class ForcesSchema(BaseModel):
@@ -31,7 +35,7 @@ class ForcesSchema(BaseModel):
     )
     nature: List[str] = Field(
         default_factory=list,
-        description="כוחות טבע (נפש טבעית/בהמית): צרכים, הגנות, כבדות, דחפים שמושכים למטה — כלי עבודה לניהול בשכל, לא 'אויב'. אחרי ריכוז — בדרך כלל 6 פריטים; הראשון = התכונה המובילה בצד הטבע",
+        description="כוחות טבע (נפש טבעית): תכונות ונטיות טבעיות במובנן הבריא (רגישות, זהירות, יסודיות...) — כלי עבודה לניהול בשכל, לא 'אויב'. פחדים והימנעויות אינם כוחות טבע. אחרי ריכוז — בדרך כלל 6 פריטים; הראשון = התכונה המובילה בצד הטבע",
     )
 
 

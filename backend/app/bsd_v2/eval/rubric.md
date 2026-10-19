@@ -440,8 +440,11 @@ budget is a fatigue signal (W3).
 - **Gate.** 6 source traits and 6 nature traits, with a leading trait first on each side. They are traits of
   **life in general**, not momentary emotions from the event.
   - **Source (מקור):** values and light, for example חסד, אמת, אומץ, אמון.
-  - **Nature (טבע):** needs, habits, ego and defenses, for example צורך בשליטה, פחד מדחייה, "להיות ראשון בכל".
-    Nature is a tool that can drive or block; it is never "the enemy".
+  - **Nature (טבע):** natural qualities and tendencies in their healthy, constructive form — the tools he acts
+    with: רגישות לאחרים, זהירות, יסודיות, קליטת ניואנסים, יכולת הכלה, שאיפה להרמוניה, צורך בביטחון. **Fears and
+    avoidances ("פחד מדחייה", "הימנעות מעימות") are NOT nature forces** (expert review, Oct 2026) — they express the
+    old stance; accepting them as forces is a failure (it produces "אפעל מתוך הטבע שלי, שהוא פחד מדחייה").
+    Nature is a tool; it is never "the enemy".
 - **Source.** `BKL p.24`: "המקור שלי: הופעת הנפש האלוקית... ערכים, תכונות והנהגות"; "הטבע שלי: צרכים והרגלים
   טבעיים, גופניים ויצריים... מניעים או מונעים עשייה". `BKL p.28`: "המתאמן בוחר... 6 תכונות מקור ו-6 תכונות
   טבע, ובראשן התכונה הראשית המובילה". `BOOK ~L2845`: "הם מניעים אותי קדימה, או, חוסמים אותי". `COACH` never
@@ -517,7 +520,8 @@ budget is a fatigue signal (W3).
   ownership back to the client (his request, his forces, he leads from here — no dependency on the coach), then
   a short narrative of the journey (the pattern and belief in his words, and the new choice). No question. If the
   result is vague: ask once, "איך תדע שהשגת את זה? מה תראה שקרה?".
-- **Failure modes:** (a) accepting a vague result or "אנסה"; (b) the coach formulating the request or the step
+- **Failure modes:** (a) accepting a vague result or "אנסה", or a result that depends on someone else's reaction
+  ("והוא יגיב בהקשבה") — the result must be in the client's own hands; (b) the coach formulating the request or the step
   (HF-SPOON/ADVICE); (c) language that creates dependency on the coach ("נמשיך לעבוד על זה יחד", "אני כאן
   ללוות אותך"); (d) a 13-item arrow recap or the raw card pasted; (e) questions after the closing; (f) more than 2
   turns.

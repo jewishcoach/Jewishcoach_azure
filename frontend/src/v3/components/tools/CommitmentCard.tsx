@@ -6,10 +6,11 @@ import { CardShell } from '../shared/CardShell';
 // ומתוך הטבע [...], ומתוך [החדש] [...], כדי שהתוצאה שאשיג תהיה [תוצאה מדידה]".
 type Floor = 'pattern' | 'paradigm' | 'stance';
 
+// Stance first and default: "היית בקומת העמדה, היא קומת השינוי" (booklet p.36)
 const FLOORS: { id: Floor; label: string; that: string; oldAdj: string; newAdj: string; feminine: boolean }[] = [
-  { id: 'pattern', label: 'הדפוס', that: 'שהוא', oldAdj: 'הישן', newAdj: 'החדש', feminine: false },
-  { id: 'paradigm', label: 'הפרדיגמה', that: 'שהיא', oldAdj: 'הישנה', newAdj: 'החדשה', feminine: true },
   { id: 'stance', label: 'העמדה', that: 'שהיא', oldAdj: 'הישנה', newAdj: 'החדשה', feminine: true },
+  { id: 'paradigm', label: 'הפרדיגמה', that: 'שהיא', oldAdj: 'הישנה', newAdj: 'החדשה', feminine: true },
+  { id: 'pattern', label: 'הדפוס', that: 'שהוא', oldAdj: 'הישן', newAdj: 'החדש', feminine: false },
 ];
 
 interface CommitmentCardData {
@@ -53,10 +54,10 @@ function Chips({ options, selected, onToggle }: { options: string[]; selected: s
 }
 
 export function CommitmentCard({ data, onSubmit, isSubmitting }: CommitmentCardProps) {
-  const [floor, setFloor] = useState<Floor>('pattern');
+  const [floor, setFloor] = useState<Floor>('stance');
   const [situation, setSituation] = useState('');
-  const [oldText, setOldText] = useState(data?.old?.pattern ?? '');
-  const [newText, setNewText] = useState(data?.new?.pattern ?? '');
+  const [oldText, setOldText] = useState(data?.old?.stance ?? '');
+  const [newText, setNewText] = useState(data?.new?.stance ?? '');
   const [source, setSource] = useState<string[]>([]);
   const [nature, setNature] = useState<string[]>([]);
   const [result, setResult] = useState('');
@@ -80,12 +81,12 @@ export function CommitmentCard({ data, onSubmit, isSubmitting }: CommitmentCardP
     && (natureOptions.length === 0 || nature.length > 0);
 
   const preview = useMemo(() => {
-    const parts = [`אני מבקש/ת להתאמן על הקושי להתמודד עם ${situation.trim() || '…'}`];
+    const parts = [`אני מבקש/ת להתאמן על הקושי שלי: ${situation.trim() || '…'}`];
     parts.push(`שכאשר מופיע${f.feminine ? 'ה' : ''} ה${noun} ${f.oldAdj} שלי, ${f.that} ${oldText.trim() || '…'}`);
     if (source.length) parts.push(`אפעל מתוך המקור שלי, שהוא ${source.join(', ')}`);
     if (nature.length) parts.push(`ומתוך הטבע שלי, שהוא ${nature.join(', ')}`);
     parts.push(`ומתוך ה${noun} ${f.newAdj} שבחרתי, ${f.that} ${newText.trim() || '…'}`);
-    parts.push(`כדי שהתוצאה שאשיג תהיה ${result.trim() || '…'}`);
+    parts.push(`כדי שהתוצאה שאשיג תהיה: ${result.trim() || '…'}`);
     return parts.join(', ') + '.';
   }, [situation, oldText, newText, source, nature, result, f, noun]);
 
@@ -97,7 +98,7 @@ export function CommitmentCard({ data, onSubmit, isSubmitting }: CommitmentCardP
       <div className="space-y-5">
         {/* Floor */}
         <div>
-          <p className={LABEL} style={HEEBO}>על איזו קומה תרצה להתאמן?</p>
+          <p className={LABEL} style={HEEBO}>על איזו קומה תרצה להתאמן? <span className="font-normal text-[rgba(45,70,88,0.6)]">(העמדה היא קומת השינוי)</span></p>
           <div className="flex gap-2 justify-start" dir="rtl">
             {FLOORS.map((x) => (
               <button
@@ -116,9 +117,9 @@ export function CommitmentCard({ data, onSubmit, isSubmitting }: CommitmentCardP
         </div>
 
         <div>
-          <label className={LABEL} style={HEEBO}>אני מבקש/ת להתאמן על הקושי להתמודד עם…</label>
+          <label className={LABEL} style={HEEBO}>אני מבקש/ת להתאמן על הקושי שלי…</label>
           <textarea value={situation} onChange={(e) => setSituation(e.target.value)} rows={2} className={FIELD} style={HEEBO}
-            placeholder="למשל: ויכוחים על כסף בבית" />
+            placeholder="איזו סיטואציה קשה לך — למשל: ויכוחים על כסף בבית" />
         </div>
 
         <div>
@@ -147,8 +148,9 @@ export function CommitmentCard({ data, onSubmit, isSubmitting }: CommitmentCardP
 
         <div>
           <label className={LABEL} style={HEEBO}>כדי שהתוצאה שאשיג תהיה…</label>
+          <p className="text-xs text-[rgba(45,70,88,0.55)] text-right mb-1" style={HEEBO}>תוצאה מדידה <strong>שתלויה בך</strong> — מה אתה תעשה או איך תהיה, לא איך אחרים יגיבו.</p>
           <textarea value={result} onChange={(e) => setResult(e.target.value)} rows={2} className={FIELD} style={HEEBO}
-            placeholder="תוצאה שאפשר למדוד — למשל: בשבועיים הקרובים אסיים שני ויכוחים בלי לצעוק" />
+            placeholder="למשל: בשבועיים הקרובים אסיים שני ויכוחים בלי לצעוק" />
         </div>
 
         {/* Live preview of the whole request */}

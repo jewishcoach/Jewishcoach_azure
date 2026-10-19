@@ -104,7 +104,7 @@ def test_s7_gap_card_advances_once_both_questions_answered():
 def test_s10_is_its_own_chat_stage_without_v2_precheck():
     cd = {"paradigm": "ככה זה אצלי — אם אדבר זה יחמיר"}
     prompt = assemble_system_prompt("S10", "he", ux_version=3, collected_data=cd)
-    assert "S10 עמדה" in prompt
+    assert "S10 אמונה → עמדה → טריגר" in prompt
     assert "שלב מקדים חובה" not in prompt  # the V2 stance file's mandatory Pre-Check is not loaded
 
 
@@ -245,11 +245,11 @@ def test_coaching_request_composed_in_booklet_structure():
     out = compose_coaching_request({"floor": "stance", "situation": "ביקורת מהבוס", "old": "העולם מעניש חולשה",
                                     "source": ["אומץ"], "nature": ["פחד מדחייה"],
                                     "new": "מותר לי להיות פגיע", "result": "אשתף את הבוס פעם אחת השבוע"})
-    assert out.startswith("אני מבקש/ת להתאמן על הקושי להתמודד עם ביקורת מהבוס")
+    assert out.startswith("אני מבקש/ת להתאמן על הקושי שלי: ביקורת מהבוס")
     assert "שכאשר מופיעה העמדה הישנה שלי, שהיא העולם מעניש חולשה" in out
     assert "אפעל מתוך המקור שלי, שהוא אומץ" in out and "ומתוך הטבע שלי, שהוא פחד מדחייה" in out
     assert "ומתוך העמדה החדשה שבחרתי, שהיא מותר לי להיות פגיע" in out
-    assert out.endswith("כדי שהתוצאה שאשיג תהיה אשתף את הבוס פעם אחת השבוע.")
+    assert out.endswith("כדי שהתוצאה שאשיג תהיה: אשתף את הבוס פעם אחת השבוע.")
 
 
 def test_request_card_prefills_old_and_new_floors_and_forces():
@@ -277,3 +277,64 @@ def test_s13_closes_after_declaration_even_if_coach_keeps_asking():
     assert _check_gate_met_v3(state) is None  # one follow-up allowed (choice doesn't feel right yet)
     state["messages"] += [{"sender": "user", "content": "x"}, _coach("עוד שאלה?", "S13")]
     assert _check_gate_met_v3(state) == "S14"  # → stage_ready_to_complete at the macro boundary
+
+
+def test_s10_belief_then_stance_position_from_chat_replies():
+    state = _v3_state("S10", paradigm="ככה זה אצלי — עדיף לשתוק")
+    state["collected_data"]["stance"]["reality_belief"] = "אם לא אהיה מושלמת יפסיקו לאהוב אותי"
+    state["messages"] = [
+        _coach("כשאת חיה מתוך האמונה הזו — איפה את עומדת מול אנשים?", "S10"),
+        {"sender": "user", "content": "מרצה ומצטמצמת"},
+        _coach("...", "S10"),
+    ]
+    assert _check_gate_met_v3(state) is None  # trigger not yet asked
+    assert state["collected_data"]["stance"]["position"] == "מרצה ומצטמצמת"
+
+
+def test_nature_suggestions_are_qualities_not_fears():
+    from app.bsd_v2.stage_tool_triggers import _NATURE_TRAITS
+    assert not any(w in t for t in _NATURE_TRAITS for w in ("פחד", "הימנעות"))
+
+
+def test_pattern_motive_is_trimmed_to_the_reaction():
+    from app.bsd_v2.single_agent_coach import _strip_pattern_motive
+    assert _strip_pattern_motive("הדפוס שלי הוא להשתתק ולהימנע מעימותים מתוך פחד שהמצב יחמיר, גם כשאני לחוץ") \
+        == "להשתתק ולהימנע מעימותים, גם כשאני לחוץ"
+    assert _strip_pattern_motive("שותקת ומסתירה את הצרכים") == "שותקת ומסתירה את הצרכים"
+    assert _strip_pattern_motive("מתפוצץ כי") == "מתפוצץ כי"  # too little left — keep as written
+
+
+def test_s10_empty_stance_answer_gets_one_followup_not_saved():
+    from app.bsd_v2.single_agent_coach import _is_empty_answer
+    assert _is_empty_answer("סתם, רגיל, לא משהו.") and not _is_empty_answer("מרצה ומצטמצמת")
+    state = _v3_state("S10", paradigm="ככה זה אצלי — עדיף לשתוק")
+    state["collected_data"]["stance"]["reality_belief"] = "אם אדבר יחמיר"
+    state["messages"] = [
+        _coach("כשאתה חי מתוך האמונה הזו — איפה אתה עומד מול אנשים?", "S10"),
+        {"sender": "user", "content": "סתם, רגיל, לא משהו"},
+        _coach("...", "S10"),
+    ]
+    _check_gate_met_v3(state)
+    assert not state["collected_data"]["stance"].get("position")
+    state["messages"] += [
+        _coach("תחזור רגע לאירוע — כשהאמונה הזו נדלקה שם, איך ראית את עצמך מול מי שהיה מולך?", "S10"),
+        {"sender": "user", "content": "סתם, קטן"},
+        _coach("...", "S10"),
+    ]
+    _check_gate_met_v3(state)
+    assert state["collected_data"]["stance"]["position"] == "סתם, קטן"
+
+
+def test_coach_pattern_reflection_drops_motive():
+    from app.bsd_v2.single_agent_coach import _strip_motive_in_pattern_reflection
+    assert _strip_motive_in_pattern_reflection(
+        "הדפוס שלך — שאתה שותק מתוך פחד להיראות חלש, במקום להביע את עצמך — עכשיו נגלה מה מפעיל את הדפוס מבפנים."
+    ) == "הדפוס שלך — שאתה שותק, במקום להביע את עצמך — עכשיו נגלה מה מפעיל את הדפוס מבפנים."
+
+
+def test_s15_result_depending_on_others_is_detected():
+    from app.bsd_v2.single_agent_coach import _result_depends_on_others
+    assert _result_depends_on_others("פחות ריבים, יותר שקט בבית")
+    assert _result_depends_on_others("שהבוס יעריך אותי")
+    assert not _result_depends_on_others("בשבועיים הקרובים אסיים שני ויכוחים בלי לצעוק")
+    assert not _result_depends_on_others("לומר את דעתי לפחות פעמיים בישיבה")

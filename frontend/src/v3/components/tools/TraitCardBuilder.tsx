@@ -101,7 +101,7 @@ export function TraitCardBuilder({ data, onSubmit, isSubmitting }: TraitCardBuil
           type="nature"
           icon="🌊"
           title="כוחות טבע"
-          subtitle="צרכים, הגנות, דחפים — כלי עבודה לניהול"
+          subtitle="תכונות ונטיות טבעיות — הכלים שאיתם אתה פועל"
           bgClass="bg-[rgba(45,70,88,0.04)]"
           headerBg="bg-[rgba(45,70,88,0.08)]"
           suggestions={natureSuggestions}

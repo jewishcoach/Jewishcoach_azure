@@ -281,7 +281,25 @@ _FIRST_TO_SECOND = [
 ]
 _MASC_TO_FEM = [
     (re.compile(rf"(?<![{_HE}])בוא(?=\s+נ)"), "בואי"),  # "בוא נסכם" → "בואי נסכם" (templates are written for men)
+    (re.compile(rf"(?<![{_HE}])(כש|ש)?את\s+חי(?![{_HE}])"), r"\1את חיה"),  # "כשאת חי מתוך האמונה" (S10 template)
 ]
+
+# S8: the pattern is the reaction only — a motive clause ("כדי להימנע…", "מתוך פחד ש…") belongs to the
+# paradigm (expert review). Trimmed from the stored pattern so the S9 card, the chain and the request don't carry it.
+_PATTERN_MOTIVE = re.compile(rf"\s*,?\s*(?<![{_HE}])(?:כדי|כי|מתוך פחד|מתוך חשש|מפחד|מחשש|בגלל)\s[^,.;—–]*")
+
+
+def _strip_pattern_motive(pattern: str) -> str:
+    trimmed = _PATTERN_MOTIVE.sub("", re.sub(r"^\s*הדפוס שלי (?:הוא|זה)\s+", "", pattern)).strip(" ,.;—–")
+    return trimmed if len(trimmed.split()) >= 2 else pattern
+
+
+_PATTERN_REFLECTION = re.compile(r"(הדפוס שלך\s*[—–-]\s*)(.+?)(?=\s[—–]\s|[.?!\n]|$)")
+
+
+def _strip_motive_in_pattern_reflection(coach_message: str) -> str:
+    """The coach's "הדפוס שלך — <pattern>" sentence (S8 close, S9 card intro) echoes the client's motive too."""
+    return _PATTERN_REFLECTION.sub(lambda m: m.group(1) + _strip_pattern_motive(m.group(2)), coach_message, count=1)
 
 
 def _fix_addressee(coach_message: str, user_gender: Optional[str], language: str) -> str:
@@ -462,6 +480,31 @@ def _apply_v3_stage_complete_guards(state: Dict[str, Any], internal_state: Dict[
                 internal_state["stage_ready_to_complete"] = True
 
 
+# S15: the result must be in the client's hands (booklet; expert review) — "פחות ריבים", "שהוא יקשיב" depend on others.
+_OTHERS_ACT = re.compile(rf"(?<![{_HE}])(?:ש?(?:הוא|היא|הם|הן|אשתי|בעלי|הבוס|הילדים|בן הזוג|בת הזוג|אחרים|אנשים))\s+(?:לא\s+)?[יתנ][{_HE}]{{2,}}")
+_RELATIONAL_OUTCOME = re.compile(r"(?:פחות|בלי|אין)\s+(?:ריבים|ויכוחים|מריבות|צעקות|מתחים)|שקט בבית|ש?יקשיב|ש?יעריכו?|ש?יבינו|ש?יכבדו|ש?יגיבו?|ש?יפסיקו?|ש?ישתנו?")
+_SELF_ACT = re.compile(rf"(?<![{_HE}])(?:אני|בעצמי|אסיים|אגיד|אדבר|אומר|אעצור|אשאל|אבקש|אבטא|אשתף|אקשיב|אצא|אחזור|אעשה|אנשום|אשמור|אבחר|אפעל|אציע|אכתוב|אתקשר|אפנה|אגיב)(?![{_HE}])")
+
+
+def _result_depends_on_others(result: str) -> bool:
+    if not result:
+        return False
+    if _OTHERS_ACT.search(result):
+        return True
+    return bool(_RELATIONAL_OUTCOME.search(result)) and not _SELF_ACT.search(result)
+
+
+_FILLER_WORDS = {"סתם", "רגיל", "רגילה", "לא", "משהו", "יודע", "יודעת", "זוכר", "זוכרת", "כלום", "ככה",
+                 "בסדר", "אין", "מושג", "נורמלי", "נורמלית", "כאילו", "אממ", "אולי", "שום", "דבר"}
+_S10_POSITION_FOLLOWUP = "איך ראית את עצמך"
+
+
+def _is_empty_answer(text: str) -> bool:
+    """'סתם, רגיל, לא משהו' — a reply that says nothing (terse clients); not a stance to build the chain on."""
+    words = re.findall(rf"[{_HE}a-zA-Z]+", text or "")
+    return len(words) <= 5 and all(w in _FILLER_WORDS for w in words)
+
+
 def _check_gate_met_v3(state: Dict[str, Any]) -> str | None:
     """V3 gate (design: docs/bsd-redesign/synthesis.md) — cards collect the data,
     so gates differ from V2 only where a card answers more than the V2 gate assumes."""
@@ -545,16 +588,22 @@ def _check_gate_met_v3(state: Dict[str, Any]) -> str | None:
             stance = {}
         # The LLM often doesn't extract the stance/trigger — the user's reply to the question is the answer
         asked_trigger = any(w in prev_text for w in ("כפתור", "טריגר", "מדליק"))
-        asked_stance = not asked_trigger and any(
+        asked_position = not asked_trigger and any(w in prev_text for w in ("עומד", "עומדת", "המקום ש", _S10_POSITION_FOLLOWUP))
+        asked_stance = not asked_trigger and not asked_position and any(
             w in prev_text for w in ("תפיסה", "על העולם", "על החיים", "נולד", "מאיפה", "למדת"))
         if from_chat_reply and asked_stance and not stance.get("reality_belief"):
             stance["reality_belief"] = (last_user.get("content") or "")[:300]
+        reply = last_user.get("content") or ""
+        # an empty reply to the stance question gets one grounded follow-up (context note) — not saved as the stance
+        if (from_chat_reply and asked_position and not stance.get("position")
+                and not (_is_empty_answer(reply) and _S10_POSITION_FOLLOWUP not in prev_text)):
+            stance["position"] = reply[:300]
         if from_chat_reply and asked_trigger and not stance.get("activation_trigger"):
             stance["activation_trigger"] = (last_user.get("content") or "")[:300]
         cd["stance"] = stance
         if stance.get("reality_belief") and stance.get("activation_trigger"):
             return "S11"
-        return "S11" if _turns_in("S10") >= 5 else None
+        return "S11" if _turns_in("S10") >= 6 else None
     return _check_gate_met(step, cd)
 
 
@@ -978,7 +1027,7 @@ def _s12_fallback_question(state: Optional[Dict[str, Any]], language: str) -> st
         return f"We have {len(nat)} nature traits so far. Beyond those, what else pulls you down?"
     if len(src) >= 3:
         if language == "he":
-            return "עכשיו לצד הטבע — איזה צרכים, הגנות או דחפים את מזהה אצלך בדרך כלל, שמושכים אותך למטה?"
+            return "עכשיו לצד הטבע — אילו תכונות ונטיות טבעיות שלך מוכרות לך, הכלים שאיתם אתה פועל בעולם?"
         return "Now for the nature side — what needs, defenses or urges do you recognize that pull you down?"
     if language == "he":
         return "איזה אור או ערכים את מזהה בעצמך כשאת במיטבך?"
@@ -2562,14 +2611,33 @@ def build_conversation_context(
         coach_s10 = [m.get("content") or "" for m in (state.get("messages") or [])
                      if m.get("sender") == "coach" and (m.get("internal_state") or {}).get("current_step") == "S10"]
         asked_origin = any(("מאיפה" in c or "למדת" in c) and "?" in c for c in coach_s10)
+        asked_position = any(("עומד" in c or "עומדת" in c or "המקום ש" in c) and "?" in c for c in coach_s10)
         asked_trigger = any(w in c for c in coach_s10 for w in ("כפתור", "טריגר", "מדליק"))
         if not asked_origin:
-            nxt = "שקף את התפיסה שתיאר (במילים שלו, בלי לקרוא לה 'העמדה שלך') ושאל את **שאלת המקור — פעם אחת**: \"מאיפה זה מגיע אצלך? מתי למדת שככה זה בעולם?\""
+            nxt = "שקף את **האמונה** שתיאר (במילים שלו; קרא לה 'האמונה', לא 'העמדה') ושאל את **שאלת המקור — פעם אחת**: \"מאיפה זה מגיע אצלך? מתי למדת שככה זה בעולם?\""
+        elif not asked_position:
+            nxt = "שאלת המקור **כבר נשאלה ונענתה** — אל תשאל שוב 'מאיפה'. שקף בקצרה, ושאל עכשיו על **העמדה** — המקום שבו הוא עומד מול העולם מתוך האמונה הזו, בלי להציע תשובה: \"כשאתה חי מתוך האמונה הזו — איפה אתה עומד מול אנשים? איך היית מתאר את המקום שאתה תופס מולם?\""
+        elif (not asked_trigger and not any(_S10_POSITION_FOLLOWUP in c for c in coach_s10)
+              and _is_empty_answer(next((m.get("content") or "" for m in reversed(state.get("messages") or [])
+                                         if m.get("sender") == "user"), ""))):
+            nxt = ("התשובה לשאלת העמדה לא אמרה עוד כלום — **זה בסדר**, אל תשקף אותה כעמדה. שאלה **אחת**, פשוטה, שמחזירה לאירוע שסיפר: "
+                   f"\"תחזור רגע לאירוע שסיפרת עליו — כשהאמונה הזו נדלקה שם, {_S10_POSITION_FOLLOWUP} מול מי שהיה מולך?\"")
         elif not asked_trigger:
-            nxt = "שאלת המקור **כבר נשאלה ונענתה** — אל תשאל שוב 'מאיפה'. שקף בקצרה את מה שסיפר, ושאל עכשיו את **שאלת הטריגר**: \"מה 'כפתור ההפעלה' — מה קורה במציאות שמדליק את התפיסה הזו ומכניס אותך לדפוס?\""
+            nxt = "שאלת העמדה **כבר נשאלה ונענתה** — שקף את **העמדה** במילים שלו (שמור ב-`stance.position`), ושאל עכשיו את **שאלת הטריגר**: \"מה 'כפתור ההפעלה' — מה קורה במציאות שמדליק את האמונה הזו ומכניס אותך לעמדה הזו?\""
         else:
-            nxt = "שאלת הטריגר נשאלה — התשובה האחרונה היא הטריגר. חבר **שרשרת אחת** (טריגר → אמונה → ככה זה אצלי → דפוס), הצהרה חמה למאזן של **האמונה**, בלי שאלה, ועדכן `current_step` ל-\"S11\"."
+            nxt = "שאלת הטריגר נשאלה — התשובה האחרונה היא הטריגר. חבר **שרשרת אחת** (טריגר → אמונה → עמדה → ככה זה אצלי → דפוס), הצהרה חמה למאזן של **העמדה**, בלי שאלה, ועדכן `current_step` ל-\"S11\"."
         context_parts.append("\n# שלב 10 — השאלה הבאה\n" + nxt)
+
+    # S15: right after the coaching-request card, a result that depends on others gets the booklet question
+    # (the overlay rule alone was ignored: "פחות ריבים, יותר שקט בבית" was accepted and the process closed)
+    if state.get("_tool_just_submitted") == "commitment_card":
+        result = ((state.get("collected_data") or {}).get("coaching_request") or {}).get("result") or ""
+        if _result_depends_on_others(result):
+            context_parts.append(
+                "\n# שלב 15 — התוצאה תלויה גם באחרים\n"
+                f"התוצאה שכתב (\"{result[:200]}\") תלויה גם בתגובה של אחרים. באימון התוצאה היא **מה שבידיו**. "
+                "אל תסכם ואל תסמן `stage_ready_to_complete` בתור הזה. שקף בקצרה את הבקשה, ושאל **שאלה אחת**: "
+                "\"מה מתוך זה תלוי בך — מה אתה תעשה, או איך תהיה, שאפשר יהיה לראות?\"")
 
     # Right after the client answered a safety check-in that they're OK: one-turn note (not in the static
     # prompt — a permanent rule there shifted the coach's attention on every turn)
@@ -3271,6 +3339,8 @@ async def handle_conversation(
             coach_message, internal_state, state, user_message, language, llm, old_step
         )
 
+        if state.get("ux_version", 2) >= 3 and (old_step in ("S8", "S9") or state.get("current_step") == "S9"):
+            coach_message = _strip_motive_in_pattern_reflection(coach_message)
         state = add_message(state, "user", user_message)
         state = add_message(state, "coach", coach_message, internal_state)
         consume_session_flow_flags(state)
@@ -3297,6 +3367,8 @@ async def handle_conversation(
         stage_completing = internal_state.get("stage_ready_to_complete", False)
         cur_step = state.get("current_step", "S0")
         cd = state.get("collected_data") or {}
+        if is_v3 and isinstance(cd.get("pattern"), str):
+            cd["pattern"] = _strip_pattern_motive(cd["pattern"])
         gate_next = _check_gate_met_v3(state) if is_v3 else _check_gate_met(cur_step, cd)
         if gate_next and cur_step != gate_next and not stage_completing:
             from .stage_intro_schema import step_to_macro_stage
