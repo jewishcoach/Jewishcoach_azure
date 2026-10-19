@@ -395,3 +395,63 @@ def test_s10_note_reads_the_reply_being_answered_now():
     assert "כבר סיפר מאיפה זה מגיע" in ctx
     ctx = build_conversation_context(state, "גדלתי ככה, למדתי שעדיף לשתוק", "he")
     assert "חוזר על **החוק**" in ctx
+
+
+def test_s8_client_formulation_is_the_pattern_and_closes():
+    from app.bsd_v2.single_agent_coach import build_conversation_context
+    state = _v3_state("S8")
+    state["messages"] = [
+        _coach("האם אתה מכיר את עצמך מגיב ככה גם במקומות אחרים בחיים?", "S8"),
+        {"sender": "user", "content": "כן, גם בעבודה"},
+        _coach("ומה קורה אצלך שם — מה אתה מרגיש, מה עובר לך בראש ומה אתה עושה?", "S8"),
+        {"sender": "user", "content": "מתעצבן ויוצא מהחדר"},
+        _coach("כשאתה מסתכל על שני המקומות — מה חוזר אצלך? איך היית מנסח את זה במשפט אחד?", "S8"),
+    ]
+    ctx = build_conversation_context(state, "כעס, רצון לברוח", "he")
+    assert "זה הדפוס" in ctx and "stage_ready_to_complete" in ctx
+    state["messages"] += [{"sender": "user", "content": "כעס, רצון לברוח"},
+                          _coach("הדפוס שלך — כעס ורצון לברוח. עכשיו נגלה מה מפעיל את הדפוס מבפנים.", "S8")]
+    assert _check_gate_met_v3(state) == "S9"
+    assert state["collected_data"]["pattern"] == "כעס, רצון לברוח"
+
+
+def test_s8_where_else_answer_gets_what_happens_there_not_an_assertion():
+    from app.bsd_v2.single_agent_coach import build_conversation_context
+    state = _v3_state("S8")
+    state["messages"] = [_coach("האם אתה מכיר את עצמך מגיב ככה גם במקומות אחרים בחיים?", "S8")]
+    ctx = build_conversation_context(state, "כן, גם בעבודה לפעמים", "he")
+    assert "מה קורה אצלך שם" in ctx and "אל תקבע בשבילו" in ctx
+    assert "איפה למשל" in build_conversation_context(state, "כן", "he")
+
+
+def test_s9_refined_rule_from_chat_replaces_the_card_paradigm():
+    state = _v3_state("S9", paradigm="ככה זה אצלי — כעס, בריחה, שקט")
+    state["messages"] = [
+        _coach("זה מה שקורה בשטח. איזה חוק פנימי שלך אומר שזו הדרך הנכונה להגיב שם?", "S9"),
+        {"sender": "user", "content": "צריך להתרחק, לא להיכנס לעימות"},
+        _coach("...", "S9"),
+    ]
+    _check_gate_met_v3(state)
+    assert state["collected_data"]["paradigm"] == "ככה זה אצלי — צריך להתרחק, לא להיכנס לעימות"
+
+
+def test_s8_there_question_counted_in_any_wording_and_bare_yes_asks_where():
+    from app.bsd_v2.single_agent_coach import build_conversation_context
+    state = _v3_state("S8")
+    state["messages"] = [_coach("האם אתה מכיר את עצמך מגיב ככה גם במקומות אחרים בחיים?", "S8")]
+    assert "איפה למשל" in build_conversation_context(state, "כן, רגיל.", "he")
+    state["messages"] += [{"sender": "user", "content": "גם בעבודה"},
+                          _coach("ומה קורה שם — מה אתה מרגיש ומה אתה עושה?", "S8")]
+    assert "שאלת הניסוח" in build_conversation_context(state, "כעס, צעקתי, יצאתי", "he")
+
+
+def test_s7_anti_loop_ignores_turns_before_the_gap_card():
+    state = _v3_state("S7")
+    state["messages"] = [_coach("כרטיס הפער", "S7"), {"sender": "user", "content": "asdf"},
+                         _coach("כרטיס הפער שוב", "S7"), {"sender": "user", "content": "qwer"},
+                         _coach("כרטיס הפער שוב", "S7")]
+    state["collected_data"].update(gap_name="כעס", gap_score=7)
+    state["_turn_from_card"] = True
+    state["messages"] += [{"sender": "user", "content": "[gap_card]"},
+                          _coach("'כעס' — בעוצמה של 7. האם אתה מאמין שבפער הזה יש משהו טוב בשבילך?", "S7")]
+    assert _check_gate_met_v3(state) is None

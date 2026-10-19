@@ -234,6 +234,11 @@ _PARADIGM_RULE_WORDS = ("חייב", "צריך", "עדיף", "אסור", "מות�
 def _reads_as_rule(body: str) -> bool:
     """Inner-rule wording. "אם X — אני מתפוצץ" (if X, I react) describes the pattern, not a rule;
     "אם אגיד — יחמיר" / "אם אני לא תוקף — לא רואים אותי" are rules."""
+    words_found = [w for w in _PARADIGM_RULE_WORDS if w in body]
+    if words_found == ["כדי"] and re.search(rf"(?<![{_HE}])אני\s+(?!חייב|צריך|מוכרח)[{_HE}]+[^,]*\sכדי", body):
+        return False  # "אני שותקת כדי לא ליצור קונפליקט" — the reaction plus its motive, not a rule (expert review)
+    if re.match(rf"\s*(?!אני\s)[{_HE}]+\s+(?:זה|זו|אומר|אומרת)\s+(?:לי\s+)?ל[{_HE}]+", body):
+        return True  # "כעס זה לצעוק ולצאת", "כעס אומר לי לברוח" — the client's own "ככה זה"
     if any(w in body for w in _PARADIGM_RULE_WORDS if w != "אם "):
         return True
     if "מי ש" in body:  # general-law form: "מי שלוחץ עליי חוטף"
@@ -526,8 +531,22 @@ def _restates_rule(answer: str, paradigm: str) -> bool:
     return False
 
 
+# S8 (chat): where else → what happens to you there → his one-sentence formulation → close. The model kept
+# asserting "אותה תגובה" for the client and re-asking "מה עוד נשאר דומה" after he had formulated (9 turns).
+_S8_THERE = "מה קורה אצלך שם"
+_S8_FORMULATE = ("במשפט אחד", "מה חוזר אצלך", "מה נשאר דומה", "איך היית מנסח", "איך היית מנסחת")
+_S8_RETRY = "במילה או שתיים"
+_S8_MAX_TURNS = 5
+# S9 deepening question (the paradigm read as the pattern) — the answer, when it reads as a rule, is the paradigm
+_S9_DEEPEN_MARKERS = ("חוק פנימי", "כלל פנימי", "איזה כלל", "איזה חוק")
+
+
+def _s8_asks_formulation(text: str) -> bool:
+    return "?" in text and (any(m in text for m in _S8_FORMULATE) or _S8_RETRY in text)
+
+
 _FILLER_WORDS = {"סתם", "רגיל", "רגילה", "לא", "משהו", "יודע", "יודעת", "זוכר", "זוכרת", "כלום", "ככה",
-                 "בסדר", "אין", "מושג", "נורמלי", "נורמלית", "כאילו", "אממ", "אולי", "שום", "דבר", "מיוחד", "מיוחדת", "באמת", "יודע/ת"}
+                 "בסדר", "אין", "מושג", "נורמלי", "נורמלית", "כאילו", "אממ", "אולי", "שום", "דבר", "מיוחד", "מיוחדת", "באמת", "יודע/ת", "לי", "כן", "פשוט", "יוצא"}
 _S10_POSITION_FOLLOWUP = "איך ראית את עצמך"
 
 
@@ -579,8 +598,11 @@ def _check_gate_met_v3(state: Dict[str, Any]) -> str | None:
         cd["gap_booklet_moves"] = moves
         if "belief" in moves and "opportunity" in moves:
             return "S8"
+        # anti-loop counts only the turns since the card was filled — turns before it (an unclear answer, the card
+        # shown again) ended S7 on the card turn itself and skipped the opportunity question
+        card_at = state.setdefault("_s7_card_at", max(len(msgs) - 1, 0))
         s7_turns = sum(
-            1 for m in msgs[-10:]
+            1 for m in msgs[card_at:]
             if m.get("sender") == "coach" and (m.get("internal_state") or {}).get("current_step") == "S7"
         )
         return "S8" if s7_turns >= 4 else None
@@ -609,7 +631,22 @@ def _check_gate_met_v3(state: Dict[str, Any]) -> str | None:
     # question when the choice doesn't feel right yet). Anti-loop: the model kept asking for 30 turns.
     if step == "S13" and cd.get("renewal"):
         return "S14" if _turns_in("S13") >= 2 else None
+    if step == "S8":
+        reply8 = (last_user.get("content") or "") if last_user else ""
+        # the client's answer to the formulation question is the pattern — his words, not the coach's
+        if from_chat_reply and _s8_asks_formulation(prev_text) and not _is_empty_answer(reply8):
+            cd["pattern"] = _strip_pattern_motive(reply8.strip())[:300]
+        if not cd.get("pattern"):
+            return None
+        last8 = next((m.get("content") or "" for m in reversed(msgs) if m.get("sender") == "coach"), "")
+        # close only on a closing statement — never show the stage-complete screen under an open question
+        return "S9" if "?" not in last8 else None
     if step == "S9":
+        reply9 = (last_user.get("content") or "") if last_user else ""
+        if (from_chat_reply and any(m in prev_text for m in _S9_DEEPEN_MARKERS)
+                and not _is_empty_answer(reply9) and _reads_as_rule(reply9)):
+            refined = reply9.strip()
+            cd["paradigm"] = refined if refined.startswith("ככה זה") else f"ככה זה אצלי — {refined}"
         if not cd.get("paradigm"):
             return None
         # The coach moves to S10 itself once the paradigm holds and it asked the root question; anti-loop if it
@@ -2647,6 +2684,61 @@ def build_conversation_context(
             nxt7 = "שאלת ההזדמנות נענתה — שקף אותה (אם ענה 'לא' — אל תגיב לשלילה), עדכן `current_step` ל-\"S8\" ושאל את שאלת הדפוס."
         if nxt7:
             context_parts.append("\n# שלב 7 — השאלה הבאה\n" + nxt7)
+
+    # S8 (pattern, chat): one move per turn, the client formulates, then close (the model asserted the reaction for
+    # him and kept asking "מה עוד נשאר דומה" after he had formulated)
+    if state.get("current_step") == "S8" and state.get("ux_version", 2) >= 3:
+        coach_s8 = [m.get("content") or "" for m in (state.get("messages") or [])
+                    if m.get("sender") == "coach" and (m.get("internal_state") or {}).get("current_step") == "S8"]
+        last8 = coach_s8[-1] if coach_s8 else ""
+        reply8 = (user_message or "").strip()
+        asked_there = any(m in c for c in coach_s8 for m in ("קורה אצלך שם", "מה קורה שם", "מה קורה לך שם"))
+        retried = any(_S8_RETRY in c for c in coach_s8)
+        close = ("**זה הדפוס.** שקף אותו **פעם אחת** במילים שלו (רק התגובה — בלי 'כדי' / 'מתוך פחד'), שמור ב-`pattern`, "
+                 "וסיים בהצהרה בלבד: \"עכשיו נגלה מה מפעיל את הדפוס מבפנים.\" **בלי שאלה**, וסמן `stage_ready_to_complete: true`.")
+        nxt8 = ""
+        if _s8_asks_formulation(last8):
+            if not _is_empty_answer(reply8):
+                nxt8 = f"הוא ניסח בעצמו: \"{reply8[:200]}\" — " + close
+            elif not retried:
+                nxt8 = (f"התשובה לא נתנה עוד ניסוח — זה בסדר. שאלה **אחת**, פשוטה: \"{_S8_RETRY} שלך — מה אתה עושה בדרך כלל "
+                        "כשזה קורה?\"")
+            else:
+                nxt8 = "גם עכשיו אין ניסוח — אל תלחץ. קח את **המילים שהוא עצמו אמר** בשיחה על התגובה שלו (לא מילים שלך). " + close
+        elif len(coach_s8) >= _S8_MAX_TURNS:
+            nxt8 = "השלב ארוך מדי — אל תשאל עוד 'מה עוד'. קח את **המילים שהוא עצמו אמר** על התגובה שלו. " + close
+        elif asked_there or len(reply8.split()) > 8:
+            nxt8 = ("יש כבר מקום נוסף ותיאור של מה שקורה לו שם. שקף בקצרה במילים שלו, ושאל את **שאלת הניסוח** — "
+                    "**אל תנסח בשבילו** ואל תכריז 'הדפוס שלך —': \"כשאתה מסתכל על שני המקומות — מה חוזר אצלך? "
+                    "איך היית מנסח את זה במשפט אחד?\"")
+        elif coach_s8:
+            if _is_empty_answer(reply8) or reply8.rstrip(".! ") in ("כן", "נכון", "כן כן"):
+                nxt8 = "הוא אישר בלי לומר איפה. שאלה אחת: \"איפה למשל?\""
+            else:
+                nxt8 = (f"הוא ציין מקום נוסף (\"{reply8[:120]}\"). **אל תקבע בשבילו שזו 'אותה תגובה'** ואל תמנה רגש / מחשבה / "
+                        f"פעולה במקומו. שקף בקצרה את המקום, ושאל: \"ו{_S8_THERE} — מה אתה מרגיש, מה עובר לך בראש ומה אתה עושה?\"")
+        if nxt8:
+            context_parts.append("\n# שלב 8 — השאלה הבאה\n" + nxt8)
+
+    # S9 (paradigm): accept a valid rule (no fishing for a "deeper" one or for the literal 'ככה זה אצלי'); after one
+    # deepening answer, accept and ask the root question
+    if state.get("current_step") == "S9" and state.get("ux_version", 2) >= 3:
+        par = str((state.get("collected_data") or {}).get("paradigm") or "")
+        body9 = par.split("—", 1)[-1] if "—" in par else par.replace("ככה זה אצלי", "")
+        coach_s9 = [m.get("content") or "" for m in (state.get("messages") or [])
+                    if m.get("sender") == "coach" and (m.get("internal_state") or {}).get("current_step") == "S9"]
+        deepened = any("?" in c and any(mk in c for mk in _S9_DEEPEN_MARKERS) for c in coach_s9)
+        root = ("\"החוק הזה — מאיזו תפיסה על החיים, על אנשים או על עצמך הוא נולד? מה אתה יודע על העולם שגורם לו "
+                "להרגיש נכון?\" ועדכן `current_step` ל-\"S10\".")
+        nxt9 = ""
+        if state.get("_tool_just_submitted") == "sentence_builder" and par and _reads_as_rule(body9):
+            nxt9 = ("הפרדיגמה שכתב **מנסחת חוק — היא תקינה.** אל תחפש ניסוח 'עמוק יותר', אל תבקש את המילים 'ככה זה אצלי' "
+                    "ואל תסביר תיאוריה. שקף אותה פעם אחת, מילה במילה, ושאל **שאלה אחת** — את שאלת השורש: " + root)
+        elif deepened and not state.get("_tool_just_submitted"):
+            nxt9 = ("שאלת ההעמקה על החוק **כבר נשאלה ונענתה** — אל תשאל אותה שוב. קבל את הניסוח הכי קרוב שלו (גם אם לא מושלם), "
+                    "שקף אותו פעם אחת, ושאל את שאלת השורש: " + root)
+        if nxt9:
+            context_parts.append("\n# שלב 9 — השאלה הבאה\n" + nxt9)
 
     # S10 (stance, chat): the model loses track of which question it already asked (it asked "מאיפה" three times
     # and never the trigger) — tell it, each turn, what was asked and what comes next.
