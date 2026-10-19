@@ -37,7 +37,8 @@ Sitemap: {BASE_URL}/sitemap.xml
 @router.get("/sitemap.xml")
 async def sitemap_xml():
     posts = db.list_posts(status="published")
-    now = datetime.utcnow().strftime("%Y-%m-%d")
+    # Google ignores lastmod unless it tracks real changes: only the blog index gets one (its newest post)
+    newest = max(((p.updated_at or p.published_at or p.created_at)[:10] for p in posts), default=None)
 
     static_pages = [
         {"loc": "", "priority": "1.0", "changefreq": "weekly"},
@@ -50,13 +51,14 @@ async def sitemap_xml():
         {"loc": "/programs/certified-coaches", "priority": "0.7", "changefreq": "monthly"},
         {"loc": "/book", "priority": "0.6", "changefreq": "monthly"},
         {"loc": "/testimonials", "priority": "0.6", "changefreq": "monthly"},
+        {"loc": "/media", "priority": "0.6", "changefreq": "monthly"},
     ]
 
     urls = []
     for page in static_pages:
+        lastmod = f"\n    <lastmod>{newest}</lastmod>" if page["loc"] == "/api/blog" and newest else ""
         urls.append(f"""  <url>
-    <loc>{BASE_URL}{page['loc']}</loc>
-    <lastmod>{now}</lastmod>
+    <loc>{BASE_URL}{page['loc']}</loc>{lastmod}
     <changefreq>{page['changefreq']}</changefreq>
     <priority>{page['priority']}</priority>
   </url>""")

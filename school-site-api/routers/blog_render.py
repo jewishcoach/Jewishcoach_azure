@@ -104,6 +104,8 @@ async def blog_post(request: Request, slug: str):
     faq_items = _extract_faq(content_html)
     content_before_cta, content_after_cta = _split_for_cta(content_html)
     cover = post.cover_image if post.cover_image and "blog-cover" not in post.cover_image else f"{BASE_URL}/api/public/blog-cover/{slug}"
+    if cover.startswith("/"):  # og:image and schema.org need absolute URLs
+        cover = f"{BASE_URL}{cover}"
 
     all_posts = db.list_posts(status="published", language="he")
     related = [p for p in all_posts if p.category == post.category and p.slug != slug][:3]

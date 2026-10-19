@@ -7,11 +7,11 @@
   "@type": "Article",
   "headline": {{ post.title | tojson }},
   "description": {{ (post.meta_description or post.excerpt) | tojson }},
-  {% if post.cover_image %}"image": {{ post.cover_image | tojson }},{% endif %}
+  "image": {{ og_image | tojson }},
   "datePublished": {{ (post.published_at or post.created_at) | tojson }},
   "dateModified": {{ post.updated_at | tojson }},
   "author": {
-    "@type": "Person",
+    "@type": {{ ("Organization" if post.author_name == "בית הספר לאימון יהודי BSD" else "Person") | tojson }},
     "name": {{ post.author_name | tojson }}
   },
   "publisher": {
@@ -32,7 +32,7 @@
   "@type": "BreadcrumbList",
   "itemListElement": [
     {"@type": "ListItem", "position": 1, "name": "בית", "item": {{ base_url | tojson }}},
-    {"@type": "ListItem", "position": 2, "name": "בלוג", "item": {{ (base_url + "/blog") | tojson }}},
+    {"@type": "ListItem", "position": 2, "name": "בלוג", "item": {{ (base_url + "/api/blog") | tojson }}},
     {"@type": "ListItem", "position": 3, "name": {{ post.title | tojson }}, "item": {{ canonical_url | tojson }}}
   ]
 }
