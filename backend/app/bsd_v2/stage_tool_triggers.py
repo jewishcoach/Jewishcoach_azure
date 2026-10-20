@@ -111,7 +111,7 @@ V3_TOOL_DEFS: Dict[str, Dict[str, Any]] = {
         "type": "tool",
         "tool_type": "declaration_card",
         "title_he": "ההכרזה החדשה",
-        "instruction_he": "מה האמונה החדשה שמחליפה את הישנה? ומה תעשה אחרת?",
+        "instruction_he": "מה העמדה החדשה שאתה בוחר — איך תעמוד מול אנשים מעכשיו? ומה תעשה אחרת?",
     },
     "commitment_card": {
         "type": "tool",
@@ -160,9 +160,15 @@ def _build_v3_tool_call(tool_key: str, state: Dict[str, Any]) -> Dict[str, Any]:
             "suggestions": _generate_trait_suggestions(cd),
         }
     elif tool_key == "declaration_card":
+        stance = cd.get("stance") or {}
+        stance = stance if isinstance(stance, dict) else {}
+        # The choice faces the old stance (booklet p.29-30: "בחירת עמדה חדשה") — the card showed only the pattern
+        # and the paradigm (labeled "האמונה הישנה"), so clients answered with a behavior
         base["data"] = {
             "old_pattern": cd.get("pattern", ""),
             "old_paradigm": cd.get("paradigm", ""),
+            "old_belief": stance.get("reality_belief", ""),
+            "old_stance": stance.get("position", ""),
         }
     elif tool_key == "commitment_card":
         # בקשה לאימון (booklet p.37-38): prefill the client's own old/new floors and his כמ"ז

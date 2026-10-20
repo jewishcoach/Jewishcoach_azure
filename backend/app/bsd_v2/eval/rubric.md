@@ -487,9 +487,10 @@ budget is a fatigue signal (W3).
 - **Budget:** 1 turn, 2 with an exception.
 
 ### S13: Choice / declaration (בחירה, התחדשות)
-- **Gate.** A new stance or choice in the client's **own words** ("אני בוחר ש...") that is **qualitatively
-  different** from the old stance, plus a concrete different action for next time, plus a joy check that passes
-  ("זה משמח אותך? זה מרגיש שלך?").
+- **Gate.** A **new stance** in the client's **own words** — how he will stand facing people from now on
+  (`BKL p.29-30` "בחירת עמדה חדשה") — **qualitatively different** from the old stance shown on the card, plus a
+  concrete different action for next time (the new pattern), plus a joy check that passes ("זה מרגיש כמו
+  אתה?").
 - **Source.**
   - `BKL p.29`: "הלקוח בוחר את השינוי הרצוי לו"; choice questions: "מה אתה בוחר מתוך הרווח? על מה אתה מוכן
     לוותר כדי להרוויח?... אז מה בחרת?"
@@ -497,18 +498,22 @@ budget is a fatigue signal (W3).
   - Book example of a true reframe: old stance "החיים הם מאבק של 'או אני או אתה'" → new stance "החיים הם ריקוד
     שלי עם כולם" (`BOOK ~L3566`).
   - `SYN` appendix item 5: "ההכרזה החדשה חייבת להיות במילים שלו".
-- **Coach after the card.** If the choice is genuinely new and feels right, give a **specific** celebration:
-  quote the declaration verbatim once, name the new action, and connect in one sentence to a leading force.
-  No question.
+- **Coach after the card.** If the choice is genuinely new and feels right, give a **specific** acknowledgment:
+  quote the new stance verbatim once, set it against the old stance in the client's words, and connect in one
+  sentence to a leading source force — adding no content of the coach's own. No question.
 - **Classic failure modes:**
   - (a) **A softened version of the old stance accepted as new.** Examples: "אנשים שופטים, אבל אני אנסה פחות
     להתייחס", "עדיף לשתוק, רק לפעמים לדבר". The same belief turned down in volume, or a "should" sentence the
     client does not feel.
-  - (b) The coach supplying the new belief (HF-SPOON).
+  - (b) The coach supplying the new stance (HF-SPOON), including in the stage opening ("זו שתאפשר לך להרגיש
+    קרוב יותר").
   - (c) A generic celebration ("וואו, מדהים!").
   - (d) Re-asking each floor (stance, then paradigm, then pattern) after the card already collected them.
   - (e) Asking for כמ"ז percentages.
-  - (f) Ignoring a "עדיין לא" joy check.
+  - (f) Ignoring a "עדיין לא" joy check;
+  - (g) an **action only** ("לשמור על שקט", "לנשום עמוק") accepted as the new stance — it is the new pattern;
+    the coach asks once "ומאיזה מקום חדש תעשה את זה — איך תעמוד מול אנשים מעכשיו?";
+  - (h) the coach adding content to the choice ("אחרי שנים של שתיקה", "קרבה") the client did not say.
 - **How to deepen.** For a softened choice: set the old and the new side by side in the client's words and ask
   once: "מה **באמת** היית רוצה לבחור במקום זה?". For "עדיין לא": "מה צריך להשתנות בניסוח כדי שזה ירגיש
   **שלך**?". After that, accept the client's choice.

@@ -34,7 +34,7 @@ const FIELD_LABELS: Record<string, string> = {
   losses: 'הפסדים',
   source: 'מקור',
   nature: 'טבע',
-  renewal: 'בחירה חדשה',
+  renewal: 'העמדה החדשה',
   commitment: 'מחויבות',
   vision: 'חזון',
   floor: 'קומה',

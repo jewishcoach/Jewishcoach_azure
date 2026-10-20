@@ -260,7 +260,7 @@ async def submit_tool_response(
 
             elif request.tool_type == "declaration_card":
                 cd = dict(v2_state.get("collected_data") or {})
-                renewal_parts = [request.data.get("renewal", "")]
+                renewal_parts = [f"העמדה החדשה שבחרתי: {request.data['renewal']}" if request.data.get("renewal") else ""]
                 if request.data.get("next_action"):
                     renewal_parts.append(f"מה אעשה אחרת: {request.data['next_action']}")
                 cd["renewal"] = ". ".join(p.rstrip(".") for p in renewal_parts if p)
@@ -565,7 +565,7 @@ def _generate_tool_summary(tool_type: str, data: Dict[str, Any]) -> str:
         action = data.get("next_action", "")
         parts = []
         if renewal:
-            parts.append(f"אני בוחר: {renewal}")
+            parts.append(f"העמדה החדשה שאני בוחר: {renewal}")
         if action:
             parts.append(f"מה אעשה אחרת: {action}")
         if data.get("feels_right") is not None:

@@ -476,6 +476,15 @@ def _apply_v3_stage_complete_guards(state: Dict[str, Any], internal_state: Dict[
             logger.info(f"[BSD V3] Blocked stage_ready_to_complete at {step} — card data {'.'.join(required)} missing")
             internal_state["stage_ready_to_complete"] = False
             return
+    # S13: an action-only choice gets the stance question first; never complete under an open question
+    if step == "S13" and internal_state.get("stage_ready_to_complete"):
+        last = next((m.get("content") or "" for m in reversed(state.get("messages") or []) if m.get("sender") == "coach"), "")
+        s13_turns = sum(1 for m in (state.get("messages") or [])[-10:] if m.get("sender") == "coach"
+                        and (m.get("internal_state") or {}).get("current_step") == "S13")
+        if s13_turns < _S13_MAX_TURNS and ("?" in last or _s13_stance_question_pending(state)):
+            logger.info("[BSD V3] S13: holding stage completion — stance question pending or open")
+            internal_state["stage_ready_to_complete"] = False
+            return
     # S12 anti-loop: card is full and the coach already reflected it — close the stage
     if step == "S12" and not internal_state.get("stage_ready_to_complete"):
         forces = cd.get("forces") or {}
@@ -573,6 +582,34 @@ def _s10_control_answered(msgs: list) -> bool:
     """The coach turn before the latest one asked the control question (and the client answered it)."""
     coach = [m.get("content") or "" for m in msgs if m.get("sender") == "coach"]
     return len(coach) >= 2 and _S10_CONTROL in coach[-2]
+
+
+# S13: the card asks for a new stance (booklet p.29-30); clients often write only an action — the new pattern
+_S13_FROM_WHERE = "מאיזה מקום חדש"
+_S13_MAX_TURNS = 4
+_STANCE_VERBS = ("להיות", "לעמוד", "להרגיש", "לראות", "להאמין", "לבחור", "להתייחס")
+_STANCE_MARKERS = ("להיות", "לעמוד", "מקום", "שווה", "ראוי", "בגובה", "נוכח", "חלק מ", "מול ", "עם עצמי")
+
+
+_STANCE_FUTURE = ("אהיה", "אעמוד", "ארגיש", "אראה", "אאמין", "אתייחס")
+
+
+def _choice_is_only_action(renewal: str) -> bool:
+    """"לשמור על שקט" / "אשאר רגוע" / "לא אצעק" — an action (the new pattern), not a stance."""
+    body = re.sub(r"^\s*(?:אני\s+)?(?:בוחר|בוחרת)?\s*(?:ש)?", "", (renewal or "").strip())
+    words = [w for w in re.findall(rf"[{_HE}]+", body) if w not in ("אני", "לא")]
+    first = words[0] if words else ""
+    infinitive = first.startswith("ל") and first not in _STANCE_VERBS and len(first) > 2
+    future = first.startswith("א") and first not in _STANCE_FUTURE and len(first) > 2
+    return (infinitive or future) and not any(m in body for m in _STANCE_MARKERS)
+
+
+def _s13_stance_question_pending(state: Dict[str, Any]) -> bool:
+    """The choice is only an action and the coach has not asked the stance question yet."""
+    cd = state.get("collected_data") or {}
+    asked = any(_S13_FROM_WHERE in (m.get("content") or "") for m in state.get("messages") or []
+                if m.get("sender") == "coach" and (m.get("internal_state") or {}).get("current_step") == "S13")
+    return _choice_is_only_action(str(cd.get("renewal_belief") or "")) and not asked
 
 
 _THIN_STAGES = ("S4", "S7", "S10", "S14")
@@ -706,6 +743,18 @@ def _check_gate_met_v3(state: Dict[str, Any]) -> str | None:
     # S13: the declaration card + one acknowledgment close the choice floor (the overlay allows one follow-up
     # question when the choice doesn't feel right yet). Anti-loop: the model kept asking for 30 turns.
     if step == "S13" and cd.get("renewal"):
+        reply13 = (last_user.get("content") or "").strip() if last_user else ""
+        if from_chat_reply and _S13_FROM_WHERE in prev_text and not _is_empty_answer(reply13):
+            cd["renewal_belief"] = reply13[:300]  # the new stance, in his words (prefills the coaching request)
+            cd["renewal"] = ". ".join(p for p in (f"העמדה החדשה שבחרתי: {reply13.rstrip('.')}",
+                                                  f"מה אעשה אחרת: {cd['new_action']}" if cd.get("new_action") else "") if p)
+        last13 = next((m.get("content") or "" for m in reversed(msgs) if m.get("sender") == "coach"), "")
+        # never leave under an open question, or before the stance question for an action-only choice —
+        # but cap it: the model once kept asking here for 30 turns
+        if _turns_in("S13") >= _S13_MAX_TURNS:
+            return "S14"
+        if "?" in last13 or _s13_stance_question_pending(state):
+            return None
         return "S14" if _turns_in("S13") >= 2 else None
     # S4: two thin answers in a row → the coach accepted warmly and closed (note) — move on without a sentence
     if step == "S4" and not cd.get("thought") and _thin_streak(msgs, "S4") >= 2:
@@ -2810,6 +2859,15 @@ def build_conversation_context(
                 "החזון שתיאר נוגע בתחום אחד או שניים. **לפני המעבר לבקשה** — שקף בקצרה במילים שלו, ושאל **שאלת הרחבה אחת** "
                 f"(בלי להציע תוכן): \"זו תמונה חשובה. {_S14_WIDEN} — לבית, לקשרים, לעבודה ולמי שאתה — איך נראים החיים שאתה רוצה?\" "
                 "**אל תעדכן `current_step` ל-S15 בתור הזה.**")
+
+    # S13: a choice that is only an action gets the "from which new place" question (the model celebrated it)
+    if state.get("current_step") == "S13" and state.get("ux_version", 2) >= 3 and _s13_stance_question_pending(state):
+        renewal = str((state.get("collected_data") or {}).get("renewal_belief") or "")
+        context_parts.append(
+            "\n# שלב 13 — הבחירה היא פעולה — שאל את שאלת העמדה\n"
+            f"**התור הזה חייב להסתיים בשאלה הזו:** \"{_S13_FROM_WHERE} תעשה את זה — איך תעמוד מול אנשים מעכשיו?\" "
+            f"מה שכתב ('{renewal[:120]}') הוא **פעולה** — הדפוס החדש, עוד לא העמדה החדשה. לפני השאלה — משפט אחד שמשקף "
+            "את הפעולה במילים שלו. **אל תחגוג, אל תוסיף תוכן**, ואל תסמן `stage_ready_to_complete`.")
 
     # S8 (pattern, chat): one move per turn, the client formulates, then close (the model asserted the reaction for
     # him and kept asking "מה עוד נשאר דומה" after he had formulated)

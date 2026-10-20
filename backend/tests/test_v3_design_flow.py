@@ -281,7 +281,10 @@ def test_s13_closes_after_declaration_even_if_coach_keeps_asking():
     state["messages"] = [_coach("הכרה + שאלה?", "S13")]
     assert _check_gate_met_v3(state) is None  # one follow-up allowed (choice doesn't feel right yet)
     state["messages"] += [{"sender": "user", "content": "x"}, _coach("עוד שאלה?", "S13")]
-    assert _check_gate_met_v3(state) == "S14"  # → stage_ready_to_complete at the macro boundary
+    assert _check_gate_met_v3(state) is None  # still a question open
+    state["messages"] += [{"sender": "user", "content": "y"}, _coach("שאלה?", "S13"),
+                          {"sender": "user", "content": "z"}, _coach("ועוד?", "S13")]
+    assert _check_gate_met_v3(state) == "S14"  # cap: 4 turns → stage_ready_to_complete at the macro boundary
 
 
 def test_s10_belief_then_stance_position_from_chat_replies():
@@ -547,3 +550,33 @@ def test_s8_detection_edge_cases():
                          {"sender": "user", "content": "עם אשתי בעיקר"},
                          _coach("ספר לי על פעם אחת כזו — מה קרה, ומה עשית?", "S8")]
     assert "האירוע שכבר סיפר" in build_conversation_context(state, "ריב על כסף, צעקתי ויצאתי", "he")
+
+
+def test_s13_action_only_choice_gets_one_stance_question_and_answer_is_saved():
+    from app.bsd_v2.single_agent_coach import build_conversation_context
+    from app.bsd_v2.stage_tool_triggers import _build_v3_tool_call
+    state = _v3_state("S13", pattern="שותק", paradigm="ככה זה אצלי — עדיף לשתוק",
+                      renewal_belief="אני בוחר לשמור על שקט", new_action="לנשום עמוק",
+                      renewal="העמדה החדשה שבחרתי: אני בוחר לשמור על שקט. מה אעשה אחרת: לנשום עמוק")
+    state["collected_data"]["stance"].update(reality_belief="אנשים שופטים", position="מרוחק, לא פתוח")
+    card = _build_v3_tool_call("declaration_card", state)
+    assert card["data"]["old_stance"] == "מרוחק, לא פתוח" and card["data"]["old_belief"] == "אנשים שופטים"
+    state["_tool_just_submitted"] = "declaration_card"
+    assert "הבחירה היא פעולה" in build_conversation_context(state, "העמדה החדשה שאני בוחר: אני בוחר לשמור על שקט", "he")
+    state.pop("_tool_just_submitted")
+    state["messages"] = [_coach("זה מה שתעשה. ומאיזה מקום חדש תעשה את זה — איך תעמוד מול אנשים מעכשיו?", "S13"),
+                         {"sender": "user", "content": "לעמוד מולם פתוח, בגובה העיניים"},
+                         _coach("'לעמוד מולם פתוח, בגובה העיניים' — במקום מרוחק.", "S13")]
+    assert _check_gate_met_v3(state) == "S14"
+    assert state["collected_data"]["renewal_belief"] == "לעמוד מולם פתוח, בגובה העיניים"
+
+
+
+def test_s13_holds_completion_until_stance_question_for_action_choice():
+    from app.bsd_v2.single_agent_coach import _apply_v3_stage_complete_guards
+    state = _v3_state("S13", renewal_belief="אשאר רגוע יותר", renewal="העמדה החדשה שבחרתי: אשאר רגוע יותר")
+    state["messages"] = [_coach("'אשאר רגוע יותר' — זה מה שתעשה.", "S13")]
+    internal = {"stage_ready_to_complete": True}
+    _apply_v3_stage_complete_guards(state, internal)
+    assert internal["stage_ready_to_complete"] is False  # the stance question was never asked
+    assert _check_gate_met_v3(state) is None
