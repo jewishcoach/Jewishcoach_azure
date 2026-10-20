@@ -523,3 +523,14 @@ def test_pruned_messages_keep_their_step_tag():
     state = {"messages": [_coach(f"m{i}", "S10") for i in range(10)]}
     _prune_state_messages(state)
     assert all((m.get("internal_state") or {}).get("current_step") == "S10" for m in state["messages"])
+
+
+def test_s2_after_card_is_overlay_only_and_v3_has_no_intake_anchor():
+    from app.bsd_v2.prompts.prompt_manager import assemble_system_prompt
+    from app.bsd_v2.single_agent_coach import build_conversation_context
+    p = assemble_system_prompt("S2", "he", "male", ux_version=3, collected_data={"event_description": "הבוס צעק"})
+    assert "V3 — S2 אירוע (אחרי כרטיס האירוע)" in p and "ההודעה הראשונה ב-S2 — חובה מוחלטת" not in p
+    assert "רגע ברור בזמן" not in p  # the forbidden example the model kept copying
+    state = _v3_state("S3", event_description="הבוס צעק")
+    state["s2_anchor"] = ["אני מרגיש: חולשה. בתחום: זוגיות"]
+    assert "חולשה" not in build_conversation_context(state, "x", "he")

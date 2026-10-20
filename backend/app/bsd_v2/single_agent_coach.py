@@ -2687,8 +2687,10 @@ def build_conversation_context(
             for ex in entities["key_examples"]:
                 context_parts.append(f"  • {ex}")
 
-    # S2 anchor — raw event messages preserved as long-term memory
-    s2_anchor = state.get("s2_anchor") or []
+    # S2 anchor — raw event messages preserved as long-term memory. Not in V3: the event card keeps the event in
+    # collected_data, and the anchor's "last 3 user messages" included the intake line ("אני מרגיש: חולשה…") under
+    # "תיאור האירוע המקורי — השתמש בפרטים אלה" — the intake feeling then showed up as the event's emotion
+    s2_anchor = (state.get("s2_anchor") or []) if state.get("ux_version", 2) < 3 else []
     if s2_anchor:
         # Only inject if the anchor is not already fully covered by the recent history window
         recent_contents = {m.get("content", "") for m in get_conversation_history(state, last_n=history_last_n)}
