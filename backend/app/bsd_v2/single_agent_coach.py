@@ -493,7 +493,7 @@ _RELATIONAL_OUTCOME = re.compile(r"(?:פחות|בלי|אין)\s+(?:ריבים|ו
 _SELF_ACT = re.compile(rf"(?<![{_HE}])(?:אני|בעצמי|אסיים|אגיד|אדבר|אומר|אעצור|אשאל|אבקש|אבטא|אשתף|אקשיב|אצא|אחזור|אעשה|אנשום|אשמור|אבחר|אפעל|אציע|אכתוב|אתקשר|אפנה|אגיב)(?![{_HE}])")
 
 
-_RECEIVE_FROM_OTHERS = re.compile(rf"(?<![{_HE}])(?:אקבל|מקבל|מקבלת|לקבל|שאקבל|ויקשיבו|יקשיבו|שיקשיבו)(?![{_HE}])|הקשבה מ|משוב|הערכה מ")
+_RECEIVE_FROM_OTHERS = re.compile(rf"(?<![{_HE}])[וש]?(?:אקבל|מקבל|מקבלת|לקבל|יקשיבו)(?![{_HE}])|הקשבה מ|משוב|הערכה מ")
 
 
 def _result_depends_on_others(result: str) -> bool:
@@ -538,10 +538,28 @@ def _restates_rule(answer: str, paradigm: str) -> bool:
 
 # S8 (chat): where else → what happens to you there → his one-sentence formulation → close. The model kept
 # asserting "אותה תגובה" for the client and re-asking "מה עוד נשאר דומה" after he had formulated (9 turns).
-_S8_THERE = "מה קורה אצלך שם"
-_S8_FORMULATE = ("במשפט אחד", "מה חוזר אצלך", "מה נשאר דומה", "איך היית מנסח", "איך היית מנסחת")
+_S8_DESCRIBE = "פעם אחת כזו"  # booklet p.14: describe one other time ("לתאר"), not just name a field
+_S8_FORMULATE = ("במשפט אחד", "מה חוזר אצלך", "מה נשאר דומה", "איך היית מנסח", "איך היית מנסחת", "חוזר על עצמו")
 _S8_RETRY = "במילה או שתיים"
-_S8_MAX_TURNS = 5
+_S8_MAX_TURNS = 6
+_S8_PLACES = ("עבודה", "בעבודה", "בית", "בבית", "חברים", "חברות", "ילדים", "הילדים", "הורים", "ההורים", "משפחה",
+              "במשפחה", "אשתי", "בעלי", "הבוס", "זוג", "אחים", "אחי", "אחותי", "לימודים", "צבא", "שכנים", "בכביש", "מול")
+_OCCASION = re.compile(rf"(?<![{_HE}])(?:פעם|אתמול|שלשום|השבוע|בשבוע|לפני|בחודש|בערב|בבוקר|בצהריים|בפגישה|בישיבה|"
+                       rf"בארוחה|בחתונה|בטיול|ביום)(?![{_HE}])")
+_FIRST_PERSON_PAST = re.compile(rf"(?<![{_HE}])(?!(?:אשתי|אחותי|בתי|ביתי|דודתי|סבתי|אותי|איתי|לאשתי|מאשתי)(?![{_HE}]))[{_HE}]{{2,}}תי(?![{_HE}])")
+_S8_OTHER_TIME = "פעם במקום אחר"
+
+
+def _same_as_event(text: str, event: str) -> bool:
+    """The "other time" is the original event again ("ריב על כסף, צעקתי ויצאתי" for a money fight)."""
+    words = lambda t: {w for w in re.findall(rf"[{_HE}]{{3,}}", t or "") if w not in _FILLER_WORDS}
+    return len(words(text) & words(event)) >= 2
+
+
+def _describes_occurrence(text: str) -> bool:
+    """One concrete time ("בשבוע שעבר… אמרתי 'בסדר' ושתקתי"), not a general claim ("באופן כללי, גם בעבודה")."""
+    t = text or ""
+    return bool(_OCCASION.search(t) or len(_FIRST_PERSON_PAST.findall(t)) >= 1 and len(t.split()) >= 4)
 # S9 deepening question (the paradigm read as the pattern) — the answer, when it reads as a rule, is the paradigm
 _S9_DEEPEN_MARKERS = ("חוק פנימי", "כלל פנימי", "איזה כלל", "איזה חוק")
 
@@ -2800,10 +2818,13 @@ def build_conversation_context(
                     if m.get("sender") == "coach" and (m.get("internal_state") or {}).get("current_step") == "S8"]
         last8 = coach_s8[-1] if coach_s8 else ""
         reply8 = (user_message or "").strip()
-        asked_there = any(m in c for c in coach_s8 for m in ("קורה אצלך שם", "מה קורה שם", "מה קורה לך שם"))
+        asked_describe = any(_S8_DESCRIBE in c for c in coach_s8)
         retried = any(_S8_RETRY in c for c in coach_s8)
         close = ("**זה הדפוס.** שקף אותו **פעם אחת** במילים שלו (רק התגובה — בלי 'כדי' / 'מתוך פחד'), שמור ב-`pattern`, "
                  "וסיים בהצהרה בלבד: \"עכשיו נגלה מה מפעיל את הדפוס מבפנים.\" **בלי שאלה**, וסמן `stage_ready_to_complete: true`.")
+        formulate = ("שקף בקצרה במילים שלו את מה שתיאר, ושאל את **שאלת הזיהוי והניסוח** (חוברת) — **אל תנסח בשבילו** ואל תכריז "
+                     "'הדפוס שלך —': \"כשאתה מסתכל על שני הרגעים — האם אתה מזהה כאן משהו שחוזר על עצמו? אם כן — איך היית "
+                     "מנסח אותו במשפט אחד?\"")
         nxt8 = ""
         if _s8_asks_formulation(last8):
             if not _is_empty_answer(reply8):
@@ -2814,17 +2835,19 @@ def build_conversation_context(
             else:
                 nxt8 = "גם עכשיו אין ניסוח — אל תלחץ. קח את **המילים שהוא עצמו אמר** בשיחה על התגובה שלו (לא מילים שלך). " + close
         elif len(coach_s8) >= _S8_MAX_TURNS:
-            nxt8 = "השלב ארוך מדי — אל תשאל עוד 'מה עוד'. קח את **המילים שהוא עצמו אמר** על התגובה שלו. " + close
-        elif asked_there or len(reply8.split()) > 8:
-            nxt8 = ("יש כבר מקום נוסף ותיאור של מה שקורה לו שם. שקף בקצרה במילים שלו, ושאל את **שאלת הניסוח** — "
-                    "**אל תנסח בשבילו** ואל תכריז 'הדפוס שלך —': \"כשאתה מסתכל על שני המקומות — מה חוזר אצלך? "
-                    "איך היית מנסח את זה במשפט אחד?\"")
+            nxt8 = "השלב ארוך מדי — אל תשאל עוד. קח את **המילים שהוא עצמו אמר** על התגובה שלו. " + close
+        elif (asked_describe and not any(_S8_OTHER_TIME in c for c in coach_s8)
+              and _same_as_event(reply8, (state.get("collected_data") or {}).get("event_description") or "")):
+            nxt8 = ("מה שתיאר נשמע כמו **האירוע שכבר סיפר** — לא פעם נוספת. שאלה אחת, בלי לבקר: "
+                    f"\"זה הרגע שסיפרת עליו. ספר לי על {_S8_OTHER_TIME} — מול מישהו אחר או במצב אחר — מה קרה שם, ומה עשית?\"")
+        elif asked_describe or _describes_occurrence(reply8):
+            nxt8 = ("יש פעם נוספת שתוארה" + (" (גם אם בקצרה — אל תבקש שוב)" if asked_describe else "") + ". " + formulate)
         elif coach_s8:
-            if _is_empty_answer(reply8) or reply8.rstrip(".! ") in ("כן", "נכון", "כן כן"):
-                nxt8 = "הוא אישר בלי לומר איפה. שאלה אחת: \"איפה למשל?\""
+            if not any(w in reply8 for w in _S8_PLACES):
+                nxt8 = "הוא לא אמר איפה. שאלה אחת: \"איפה למשל? מול מי?\""
             else:
-                nxt8 = (f"הוא ציין מקום נוסף (\"{reply8[:120]}\"). **אל תקבע בשבילו שזו 'אותה תגובה'** ואל תמנה רגש / מחשבה / "
-                        f"פעולה במקומו. שקף בקצרה את המקום, ושאל: \"ו{_S8_THERE} — מה אתה מרגיש, מה עובר לך בראש ומה אתה עושה?\"")
+                nxt8 = (f"הוא ציין מקום (\"{reply8[:120]}\") — עוד לא **פעם אחת שתוארה**. **אל תקבע בשבילו שזו 'אותה תגובה'** "
+                        f"ואל תמנה רגש / מחשבה / פעולה במקומו. שאל (חוברת: 'לתאר'): \"ספר לי על {_S8_DESCRIBE} — מה קרה, ומה עשית?\"")
         if nxt8:
             context_parts.append("\n# שלב 8 — השאלה הבאה\n" + nxt8)
 

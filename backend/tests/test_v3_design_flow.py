@@ -420,13 +420,15 @@ def test_s8_client_formulation_is_the_pattern_and_closes():
     assert state["collected_data"]["pattern"] == "כעס, רצון לברוח"
 
 
-def test_s8_where_else_answer_gets_what_happens_there_not_an_assertion():
+def test_s8_named_field_gets_describe_one_time_not_an_assertion():
     from app.bsd_v2.single_agent_coach import build_conversation_context
     state = _v3_state("S8")
     state["messages"] = [_coach("האם אתה מכיר את עצמך מגיב ככה גם במקומות אחרים בחיים?", "S8")]
-    ctx = build_conversation_context(state, "כן, גם בעבודה לפעמים", "he")
-    assert "מה קורה אצלך שם" in ctx and "אל תקבע בשבילו" in ctx
-    assert "איפה למשל" in build_conversation_context(state, "כן", "he")
+    ctx = build_conversation_context(state, "באופן כללי, גם בעבודה ועם חברים אני מוותר", "he")
+    assert "פעם אחת כזו" in ctx and "אל תקבע בשבילו" in ctx
+    assert "איפה למשל" in build_conversation_context(state, "כן, זה קורה גם במצבים אחרים.", "he")
+    ctx = build_conversation_context(state, "בשבוע שעבר הבוס צעק עליי ושתקתי", "he")
+    assert "שאלת הזיהוי והניסוח" in ctx
 
 
 def test_s9_refined_rule_from_chat_replaces_the_card_paradigm():
@@ -440,14 +442,13 @@ def test_s9_refined_rule_from_chat_replaces_the_card_paradigm():
     assert state["collected_data"]["paradigm"] == "ככה זה אצלי — צריך להתרחק, לא להיכנס לעימות"
 
 
-def test_s8_there_question_counted_in_any_wording_and_bare_yes_asks_where():
+def test_s8_after_one_describe_ask_goes_to_recognition_even_if_vague():
     from app.bsd_v2.single_agent_coach import build_conversation_context
     state = _v3_state("S8")
-    state["messages"] = [_coach("האם אתה מכיר את עצמך מגיב ככה גם במקומות אחרים בחיים?", "S8")]
-    assert "איפה למשל" in build_conversation_context(state, "כן, רגיל.", "he")
-    state["messages"] += [{"sender": "user", "content": "גם בעבודה"},
-                          _coach("ומה קורה שם — מה אתה מרגיש ומה אתה עושה?", "S8")]
-    assert "שאלת הניסוח" in build_conversation_context(state, "כעס, צעקתי, יצאתי", "he")
+    state["messages"] = [_coach("האם אתה מכיר את עצמך מגיב ככה גם במקומות אחרים בחיים?", "S8"),
+                         {"sender": "user", "content": "גם בעבודה"},
+                         _coach("ספר לי על פעם אחת כזו — מה קרה, ומה עשית?", "S8")]
+    assert "שאלת הזיהוי והניסוח" in build_conversation_context(state, "סתם, כמו תמיד", "he")
 
 
 def test_s7_anti_loop_ignores_turns_before_the_gap_card():
@@ -534,3 +535,15 @@ def test_s2_after_card_is_overlay_only_and_v3_has_no_intake_anchor():
     state = _v3_state("S3", event_description="הבוס צעק")
     state["s2_anchor"] = ["אני מרגיש: חולשה. בתחום: זוגיות"]
     assert "חולשה" not in build_conversation_context(state, "x", "he")
+
+
+def test_s8_detection_edge_cases():
+    from app.bsd_v2.single_agent_coach import (_describes_occurrence, _result_depends_on_others,
+                                               build_conversation_context)
+    assert not _describes_occurrence("גם בבית, כשאני לא מדבר על מה שמטריד אותי עם אשתי")  # "אותי" is no verb
+    assert _result_depends_on_others("אבטא את הצרכים שלי פעמיים, ואקבל תגובה כנה")
+    state = _v3_state("S8", event_description="ריב עם אשתי על כסף, צעקתי ויצאתי מהחדר")
+    state["messages"] = [_coach("האם אתה מכיר את עצמך מגיב ככה גם במקומות אחרים בחיים?", "S8"),
+                         {"sender": "user", "content": "עם אשתי בעיקר"},
+                         _coach("ספר לי על פעם אחת כזו — מה קרה, ומה עשית?", "S8")]
+    assert "האירוע שכבר סיפר" in build_conversation_context(state, "ריב על כסף, צעקתי ויצאתי", "he")

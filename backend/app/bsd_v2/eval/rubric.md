@@ -346,9 +346,12 @@ budget is a fatigue signal (W3).
   חוזר, ככה זה קורה, אני באמת מגיב כך שוב ושוב". `BOOK ~L1310`: "הנסיבות הן רק ניצוץ ההדלקה". `COACH`: "the
   methodology's crown jewel".
 - **Coach.** Use open widening questions from the booklet: "איפה עוד זה קורה?", "האם זה קורה רק עם...?", "האם
-  זה תלוי בנסיבות?", "מניין עוד אתה מכיר תגובה זו שלך?". After 1–2 further examples, **stop collecting** and
-  ask the client to put into one sentence what recurs. Confirm it. End with a warm statement toward the
-  paradigm card, with no question.
+  זה תלוי בנסיבות?", "מניין עוד אתה מכיר תגובה זו שלך?". When the client names another field or person ("גם
+  בעבודה"), ask him to **describe one such time** (`BKL p.14` exercise: "לתאר") — "ספר לי על פעם אחת כזו — מה
+  קרה, ומה עשית?". After one described example, **stop collecting** and ask the booklet's recognition question:
+  "האם אתה מזהה כאן משהו שחוזר על עצמו? אם כן — איך היית מנסח אותו במשפט אחד?". His sentence is the pattern
+  (that is his confirmation). End with a warm statement toward the paradigm card, with no question. If the
+  description stays general after one ask, do not press — move to the recognition question.
 - **Deepen if:**
   - the client's examples share circumstances but not the reaction: ask what in *his* reaction stays the same;
   - the client asks "מה הדפוס שלי?": do not summarize it for him; point him to his own examples.
@@ -358,8 +361,10 @@ budget is a fatigue signal (W3).
   - (c) "איך זה מתבטא?";
   - (d) more than 2 rounds of "איפה עוד?";
   - (e) accepting a recurrence of *circumstances* ("תמיד הבוס שלי צועק") as a pattern of the client's reaction;
-  - (f) a long recap of the whole identification floor (D6).
-- **Budget:** 2–4 turns.
+  - (f) a long recap of the whole identification floor (D6);
+  - (g) accepting a named field or a general claim ("באופן כללי, גם בעבודה") as the second example without
+    asking for one described time.
+- **Budget:** 3–5 turns.
 
 ### S9 + S10: Paradigm (S9, card) → belief → stance → trigger (S10, chat) — one floor at a time
 - **Two levels under the paradigm (method owner's ruling, Oct 2026 — follows the expert's practice, not the
