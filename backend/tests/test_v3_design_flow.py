@@ -455,3 +455,45 @@ def test_s7_anti_loop_ignores_turns_before_the_gap_card():
     state["messages"] += [{"sender": "user", "content": "[gap_card]"},
                           _coach("'כעס' — בעוצמה של 7. האם אתה מאמין שבפער הזה יש משהו טוב בשבילך?", "S7")]
     assert _check_gate_met_v3(state) is None
+
+
+def test_thin_answers_get_one_different_question_then_s4_moves_on():
+    from app.bsd_v2.single_agent_coach import build_conversation_context, _S4_NO_THOUGHT
+    state = _v3_state("S4")
+    state["messages"] = [_coach("מה האמירה הפנימית שאמרת לעצמך באותו רגע?", "S4")]
+    assert "בדרך אחרת" in build_conversation_context(state, "לא משהו, סתם כעס", "he")
+    state["messages"] += [{"sender": "user", "content": "לא משהו, סתם כעס"},
+                          _coach("כשהיא אמרה את זה — מה עבר לך בראש? מילה או שתיים.", "S4")]
+    assert "אל תשאל שוב" in build_conversation_context(state, "לא יודע, פשוט כעסתי", "he")
+    state["messages"] += [{"sender": "user", "content": "לא יודע, פשוט כעסתי"},
+                          _coach("זה בסדר — לא עלה משפט ברור. עכשיו נראה מה עשית בפועל באותו רגע.", "S4")]
+    assert _check_gate_met_v3(state) == "S5"
+    assert state["collected_data"]["thought"] == _S4_NO_THOUGHT
+
+
+def test_s10_hedged_non_answer_is_not_the_belief():
+    state = _v3_state("S10", paradigm="ככה זה אצלי — כעס זה לצעוק")
+    state["messages"] = [_coach("מה אתה יודע על העולם שגורם לחוק הזה להרגיש נכון?", "S10"),
+                         {"sender": "user", "content": "סתם, לא יודע"}, _coach("...", "S10")]
+    _check_gate_met_v3(state)
+    assert not state["collected_data"]["stance"].get("reality_belief")
+
+
+def test_s14_one_domain_vision_gets_one_widening_question():
+    from app.bsd_v2.single_agent_coach import build_conversation_context
+    state = _v3_state("S14")
+    state["messages"] = [_coach("איך ייראו החיים שלך כשאתה חי מתוך הבחירה הזו?", "S14")]
+    assert "הרחבת החזון" in build_conversation_context(state, "פחות ריבים בבית ויותר קרבה עם אשתי", "he")
+    assert "החזון עוד לא נוצר" in build_conversation_context(state, "לא משהו מיוחד", "he")
+    wide = "בבית יותר קרבה, בעבודה אני מדבר בביטחון, ועם החברים אני פתוח"
+    assert "הרחבת החזון" not in build_conversation_context(state, wide, "he")
+    state["messages"] += [{"sender": "user", "content": "פחות ריבים בבית"},
+                          _coach("זו תמונה חשובה. ואם תרים את המבט — לבית, לקשרים, לעבודה — איך נראים החיים?", "S14")]
+    assert "הרחבת החזון" not in build_conversation_context(state, "עדיין בעיקר הבית", "he")
+
+
+def test_s14_widening_waits_for_the_vision_question():
+    from app.bsd_v2.single_agent_coach import build_conversation_context
+    state = _v3_state("S14")
+    state["messages"] = [_coach("הכרזת שאתה בוחר לדבר. זה מרגש.", "S13")]
+    assert "הרחבת החזון" not in build_conversation_context(state, "כן, מרגיש נכון", "he")

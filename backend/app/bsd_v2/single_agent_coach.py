@@ -491,10 +491,13 @@ _RELATIONAL_OUTCOME = re.compile(r"(?:פחות|בלי|אין)\s+(?:ריבים|ו
 _SELF_ACT = re.compile(rf"(?<![{_HE}])(?:אני|בעצמי|אסיים|אגיד|אדבר|אומר|אעצור|אשאל|אבקש|אבטא|אשתף|אקשיב|אצא|אחזור|אעשה|אנשום|אשמור|אבחר|אפעל|אציע|אכתוב|אתקשר|אפנה|אגיב)(?![{_HE}])")
 
 
+_RECEIVE_FROM_OTHERS = re.compile(rf"(?<![{_HE}])(?:אקבל|מקבל|מקבלת|לקבל|שאקבל|ויקשיבו|יקשיבו|שיקשיבו)(?![{_HE}])|הקשבה מ|משוב|הערכה מ")
+
+
 def _result_depends_on_others(result: str) -> bool:
     if not result:
         return False
-    if _OTHERS_ACT.search(result):
+    if _OTHERS_ACT.search(result) or _RECEIVE_FROM_OTHERS.search(result):
         return True
     return bool(_RELATIONAL_OUTCOME.search(result)) and not _SELF_ACT.search(result)
 
@@ -541,12 +544,57 @@ _S8_MAX_TURNS = 5
 _S9_DEEPEN_MARKERS = ("חוק פנימי", "כלל פנימי", "איזה כלל", "איזה חוק")
 
 
+_THIN_STAGES = ("S4", "S7", "S10", "S14")
+_S4_NO_THOUGHT = "לא עלה משפט פנימי ברור"
+
+
+def _thin_answer(text: str) -> bool:
+    """A terse non-answer ("לא יודע, פשוט כעסתי", "סתם כעס"): short, with at most one content word."""
+    words = re.findall(rf"[{_HE}a-zA-Z]+", text or "")
+    content = sum(w not in _FILLER_WORDS for w in words)
+    # hedged ("סתם", "פשוט", "לא יודע") — a bare one-word answer ("קטן") is an answer
+    return 0 < len(words) <= 6 and content <= 1 and content < len(words)
+
+
+def _thin_streak(msgs: list, step: str, current_reply: str | None = None) -> int:
+    """Consecutive thin replies at the end of the step (chat replies to the coach's questions in that step)."""
+    replies, after_step_coach = [], False
+    for m in msgs:
+        if m.get("sender") == "coach":
+            after_step_coach = (m.get("internal_state") or {}).get("current_step") == step and "?" in (m.get("content") or "")
+        elif m.get("sender") == "user" and after_step_coach:
+            replies.append(m.get("content") or "")
+            after_step_coach = False
+    if current_reply is not None and after_step_coach:
+        replies.append(current_reply)
+    n = 0
+    for r in reversed(replies):
+        if not _thin_answer(r):
+            break
+        n += 1
+    return n
+
+
+# S14: the vision is a wide picture of life (booklet) — the coach accepted one-domain visions every time
+_VISION_DOMAINS = {
+    "home": ("בית", "בבית", "זוג", "אשתי", "בעלי", "הילדים", "ילדים", "משפחה", "במשפחה", "נישואין"),
+    "work": ("עבודה", "בעבודה", "קריירה", "מקצוע", "פרנסה", "עסק", "לימודים"),
+    "self": ("עם עצמי", "בעצמי", "שלמה", "שלם", "בריאות", "שקט פנימי", "ביטחון", "עצמי"),
+    "people": ("חברים", "חברות", "אנשים", "קהילה", "סביבה"),
+}
+_S14_WIDEN = "ואם תרים את המבט"
+
+
+def _vision_domains(text: str) -> int:
+    return sum(any(w in (text or "") for w in ws) for ws in _VISION_DOMAINS.values())
+
+
 def _s8_asks_formulation(text: str) -> bool:
     return "?" in text and (any(m in text for m in _S8_FORMULATE) or _S8_RETRY in text)
 
 
 _FILLER_WORDS = {"סתם", "רגיל", "רגילה", "לא", "משהו", "יודע", "יודעת", "זוכר", "זוכרת", "כלום", "ככה",
-                 "בסדר", "אין", "מושג", "נורמלי", "נורמלית", "כאילו", "אממ", "אולי", "שום", "דבר", "מיוחד", "מיוחדת", "באמת", "יודע/ת", "לי", "כן", "פשוט", "יוצא"}
+                 "בסדר", "אין", "מושג", "נורמלי", "נורמלית", "כאילו", "אממ", "אולי", "שום", "דבר", "מיוחד", "מיוחדת", "באמת", "יודע/ת", "לי", "כן", "פשוט", "יוצא", "ברור", "בטוח", "רוצה", "יכול"}
 _S10_POSITION_FOLLOWUP = "איך ראית את עצמך"
 
 
@@ -631,6 +679,12 @@ def _check_gate_met_v3(state: Dict[str, Any]) -> str | None:
     # question when the choice doesn't feel right yet). Anti-loop: the model kept asking for 30 turns.
     if step == "S13" and cd.get("renewal"):
         return "S14" if _turns_in("S13") >= 2 else None
+    # S4: two thin answers in a row → the coach accepted warmly and closed (note) — move on without a sentence
+    if step == "S4" and not cd.get("thought") and _thin_streak(msgs, "S4") >= 2:
+        last4 = next((m.get("content") or "" for m in reversed(msgs) if m.get("sender") == "coach"), "")
+        if "?" not in last4:
+            cd["thought"] = _S4_NO_THOUGHT
+            return "S5"
     if step == "S8":
         reply8 = (last_user.get("content") or "") if last_user else ""
         # the client's answer to the formulation question is the pattern — his words, not the coach's
@@ -671,17 +725,18 @@ def _check_gate_met_v3(state: Dict[str, Any]) -> str | None:
         belief_followup = _S10_BELIEF_FOLLOWUP in prev_text
         reply_text = last_user.get("content") or "" if last_user else ""
         if (from_chat_reply and asked_stance and (belief_followup or not stance.get("reality_belief"))
+                and not _thin_answer(reply_text)
                 and not (_restates_rule(reply_text, cd.get("paradigm") or "") and not belief_followup)):
             stance["reality_belief"] = reply_text[:300]
         reply = last_user.get("content") or ""
         # an empty reply to the stance question gets one grounded follow-up (context note) — not saved as the stance
         if (from_chat_reply and asked_position and (position_followup or not stance.get("position"))
-                and not (_is_empty_answer(reply) and not position_followup)):
+                and not (_thin_answer(reply) and not position_followup) and not _is_empty_answer(reply)):
             stance["position"] = reply[:300]
         if from_chat_reply and asked_trigger and not stance.get("activation_trigger"):
             stance["activation_trigger"] = (last_user.get("content") or "")[:300]
         cd["stance"] = stance
-        if stance.get("reality_belief") and stance.get("activation_trigger"):
+        if stance.get("activation_trigger") and (stance.get("reality_belief") or _turns_in("S10") >= 3):
             return "S11"
         return "S11" if _turns_in("S10") >= 6 else None
     return _check_gate_met(step, cd)
@@ -2685,6 +2740,46 @@ def build_conversation_context(
         if nxt7:
             context_parts.append("\n# שלב 7 — השאלה הבאה\n" + nxt7)
 
+    # Terse clients ("לא יודע, פשוט כעסתי"): the coach asked the same question 7 times (S4) or reflected the
+    # non-answer as content ("העמדה שלך היא סתם", S10). One different, concrete question; then accept and move on.
+    step_now = state.get("current_step")
+    if step_now in _THIN_STAGES and state.get("ux_version", 2) >= 3 and not state.get("_tool_just_submitted"):
+        streak = _thin_streak(state.get("messages") or [], step_now, user_message or "")
+        if streak == 1:
+            context_parts.append(
+                "\n# תשובה קצרה מאוד\n"
+                "התשובה האחרונה כמעט ריקה. **אל תחזור על אותה שאלה במילים אחרות.** שאל **פעם אחת, בדרך אחרת** — קונקרטית, "
+                "מעוגנת ברגע מהאירוע שסיפר, קצרה, ואפשר להזמין מילה אחת או שתיים. **אל תשקף את התשובה הריקה כאילו היא תוכן.**")
+        elif streak >= 2:
+            move_on = {
+                "S4": ("ושקף בחום שלא עלה משפט ברור — וזה בסדר. סיים בהצהרה בלבד: \"עכשיו נראה מה עשית בפועל באותו רגע.\" "
+                       f"**בלי שאלה.** שמור `thought`: \"{_S4_NO_THOUGHT}\"."),
+                "S10": ("ועבור לשאלה הבאה בשלב (מקור → עמדה → טריגר). **אל תשמור את התשובה הריקה כאמונה או כעמדה** "
+                        "ואל תשקף אותה כאילו היא תוכן ('העמדה שלך היא סתם' — אסור). בשרשרת — דלג על חוליה שחסרה, אל תמציא אותה."),
+            }.get(step_now, "ועבור לשאלה הבאה בשלב (או למעבר הרגיל לשלב הבא), עם מה שיש.")
+            context_parts.append(
+                "\n# שתי תשובות ריקות ברצף\n"
+                "**אל תשאל שוב.** קבל בחום (\"זה בסדר — לא תמיד יש לזה מילים\"), בלי ללחוץ ובלי לנתח, " + move_on)
+
+    # S14 (vision): one widening question for a one-domain or empty vision, then close to the request card
+    if state.get("current_step") == "S14" and state.get("ux_version", 2) >= 3 and user_message:
+        coach_s14 = [m.get("content") or "" for m in (state.get("messages") or [])
+                     if m.get("sender") == "coach" and (m.get("internal_state") or {}).get("current_step") == "S14"]
+        widened = any(_S14_WIDEN in c or "תמונה" in c and "?" in c and "לבית" in c for c in coach_s14)
+        # only once the vision question itself was asked and answered — not on the stage-opening turn
+        asked_vision = bool(coach_s14) and "?" in coach_s14[-1]
+        if asked_vision and not widened and (_thin_answer(user_message) or _is_empty_answer(user_message)):
+            context_parts.append(
+                "\n# שלב 14 — החזון עוד לא נוצר\n"
+                "התשובה כמעט ריקה — זה בסדר. שאלה **אחת**, עם רשות לחלום: \"כאן מותר לחלום. תדמיין שנה מהיום, כשאתה חי מתוך "
+                "הבחירה הזו — מה רואים בחיים שלך?\" **אל תציע תוכן.**")
+        elif asked_vision and not widened and _vision_domains(user_message) < 3:
+            context_parts.append(
+                "\n# שלב 14 — הרחבת החזון\n"
+                "החזון שתיאר נוגע בתחום אחד או שניים. **לפני המעבר לבקשה** — שקף בקצרה במילים שלו, ושאל **שאלת הרחבה אחת** "
+                f"(בלי להציע תוכן): \"זו תמונה חשובה. {_S14_WIDEN} — לבית, לקשרים, לעבודה ולמי שאתה — איך נראים החיים שאתה רוצה?\" "
+                "**אל תעדכן `current_step` ל-S15 בתור הזה.**")
+
     # S8 (pattern, chat): one move per turn, the client formulates, then close (the model asserted the reaction for
     # him and kept asking "מה עוד נשאר דומה" after he had formulated)
     if state.get("current_step") == "S8" and state.get("ux_version", 2) >= 3:
@@ -3526,6 +3621,10 @@ async def handle_conversation(
                 internal_state["current_step"] = "S5"
             # Floors one at a time: the LLM may jump S9→S11 or leave S10 before the stance was explored and the
             # trigger asked — hold it; the V3 gate below decides (with its own anti-loop)
+            # S14: the coach asked the widening question but also moved to S15 — the card would cover the question
+            if old_step == "S14" and state.get("current_step") == "S15" and "?" in coach_message:
+                state["current_step"] = "S14"
+                internal_state["current_step"] = "S14"
             if (old_step == "S9" and state.get("current_step") == "S10" and not _asks_root_question(coach_message)
                     and count_turns_in_step(state, "S9") < _S9_MAX_TURNS):
                 state["current_step"] = "S9"
