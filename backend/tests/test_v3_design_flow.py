@@ -616,3 +616,8 @@ def test_arabic_lookalikes_and_feminine_note_phrases_are_fixed():
     out = _fix_addressee("ואם תרים את המבט — ואיך תעמוד מול אנשים?", "female", "he")
     assert "תרימי" in out and "תעמדי" in out
     assert _fix_addressee("ואם תרים את המבט", "male", "he") == "ואם תרים את המבט"
+
+
+def test_confirmation_only_reply_is_not_a_stance():
+    from app.bsd_v2.single_agent_coach import _thin_answer, _is_empty_answer
+    assert _is_empty_answer("כן, זה מדויק. בוא נמשיך.") and _thin_answer("כן, זה מדויק. בוא נמשיך.")
