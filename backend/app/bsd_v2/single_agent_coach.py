@@ -285,9 +285,31 @@ _FIRST_TO_SECOND = [
     (re.compile(rf"(?<![{_HE}])חמותי(?![{_HE}])"), "חמותך"),
     (re.compile(rf"(?<![{_HE}])((?:אמא|אבא|הבוס|המנהל|המנהלת|הבת|הבן|הילדים|הנכדים|ההורים|בן הזוג|בת הזוג|החבר|החברה|המשפחה)) שלי(?![{_HE}])"), r"\1 שלך"),
 ]
+# gpt-4.1-mini sometimes emits Arabic look-alike letters inside Hebrew words ("אצلك" for "אצלך") — never valid here
+_ARABIC_LOOKALIKE = {"ل": "ל", "ك": "ך", "ن": "נ", "م": "מ", "ه": "ה", "و": "ו", "ي": "י", "ا": "א", "ر": "ר", "ت": "ת"}
+_ARABIC_IN_HEBREW = re.compile(rf"[{_HE}][\u0600-\u06FF]+|[\u0600-\u06FF]+[{_HE}]")
+
+
+def _fix_arabic_lookalikes(text: str) -> str:
+    def repl(m: re.Match) -> str:
+        out = "".join(_ARABIC_LOOKALIKE.get(ch, ch) for ch in m.group(0))
+        return out[:-1] + {"כ": "ך", "מ": "ם", "נ": "ן", "פ": "ף", "צ": "ץ"}.get(out[-1], out[-1]) if out else out
+    return _ARABIC_IN_HEBREW.sub(repl, text or "")
+
+
 _MASC_TO_FEM = [
     (re.compile(rf"(?<![{_HE}])בוא(?=\s+נ)"), "בואי"),  # "בוא נסכם" → "בואי נסכם" (templates are written for men)
     (re.compile(rf"(?<![{_HE}])(כש|ש)?את\s+חי(?![{_HE}])"), r"\1את חיה"),  # "כשאת חי מתוך האמונה" (S10 template)
+    # fixed phrases of the per-turn notes, written in the masculine and copied as is
+    (re.compile(rf"(?<![{_HE}])תרים את המבט"), "תרימי את המבט"),
+    (re.compile(rf"(?<![{_HE}])(ו?)ספר לי על"), r"\1ספרי לי על"),
+    (re.compile(rf"(?<![{_HE}])תחזור רגע"), "תחזרי רגע"),
+    (re.compile(rf"(?<![{_HE}])תדמיין"), "תדמייני"),
+    (re.compile(rf"(?<![{_HE}])(ו?)איך תעמוד מול"), r"\1איך תעמדי מול"),
+    (re.compile(rf"(?<![{_HE}])שאתה תופס מולם"), "שאת תופסת מולם"),
+    (re.compile(rf"(?<![{_HE}])(ו?)איך היית מנסח(?![{_HE}])"), r"\1איך היית מנסחת"),
+    (re.compile(rf"(?<![{_HE}])מה אתה עושה בדרך כלל"), "מה את עושה בדרך כלל"),
+    (re.compile(rf"(?<![{_HE}])ואתה מוביל מכאן"), "ואת מובילה מכאן"),
 ]
 
 # S8: the pattern is the reaction only — a motive clause ("כדי להימנע…", "מתוך פחד ש…") belongs to the
@@ -314,6 +336,7 @@ def _fix_addressee(coach_message: str, user_gender: Optional[str], language: str
     client into the coach's sentences, and masculine 'בוא נ…' to women. Quoted spans are left as written."""
     if language != "he" or not coach_message:
         return coach_message
+    coach_message = _fix_arabic_lookalikes(coach_message)
     rules = _FIRST_TO_SECOND + (_MASC_TO_FEM if user_gender == "female" else [])
     out, pos = [], 0
     for m in list(_QUOTED_SPAN.finditer(coach_message)) + [None]:
@@ -3029,8 +3052,8 @@ def build_conversation_context(
             context_parts.append(
                 "\n# שלב 15 — סגירה\n"
                 "הוא ענה מה תלוי בו — זו התוצאה המעודכנת (עדכן אותה בבקשה). עכשיו **התור המלא** מההוראות: "
-                "(1) שקף את הבקשה במשפט טבעי עם התוצאה החדשה; (2) משפט חירות ואחריות — הבקשה שלו, הכוחות כבר אצלו, "
-                "והוא מוביל מכאן; (3) סיפור מסע קצר, 3–5 משפטים חמים — מאיזה רגע יצאנו, מה גילה (הדפוס והאמונה, במילים שלו), "
+                "(1) שקף את הבקשה במשפט טבעי עם התוצאה החדשה; (2) משפט חירות ואחריות בגוף שני — ברוח \"הבקשה שלך, הכוחות כבר "
+                "אצלך, ואתה מוביל מכאן\"; (3) סיפור מסע קצר, 3–5 משפטים חמים — מאיזה רגע יצאנו, מה גילה (הדפוס והאמונה, במילים שלו), "
                 "ומה בחר. סמן `stage_ready_to_complete: true`. בלי שאלה.")
 
     # Right after the client answered a safety check-in that they're OK: one-turn note (not in the static

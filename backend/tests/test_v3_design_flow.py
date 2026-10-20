@@ -608,3 +608,11 @@ def test_s14_is_overlay_only():
     from app.bsd_v2.prompts.prompt_manager import assemble_system_prompt
     p = assemble_system_prompt("S14", "he", "male", ux_version=3, collected_data={"renewal": "x"})
     assert "תמהיל כמ״ז" not in p and "חזון" in p
+
+
+def test_arabic_lookalikes_and_feminine_note_phrases_are_fixed():
+    from app.bsd_v2.single_agent_coach import _fix_addressee
+    assert _fix_addressee("הכוחות לממש אותה כבר אצلك.", "female", "he") == "הכוחות לממש אותה כבר אצלך."
+    out = _fix_addressee("ואם תרים את המבט — ואיך תעמוד מול אנשים?", "female", "he")
+    assert "תרימי" in out and "תעמדי" in out
+    assert _fix_addressee("ואם תרים את המבט", "male", "he") == "ואם תרים את המבט"
