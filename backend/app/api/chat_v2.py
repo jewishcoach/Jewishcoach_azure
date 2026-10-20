@@ -250,7 +250,12 @@ def _prune_state_messages(state: Dict[str, Any]) -> None:
         if msgs[i].get("sender") == "coach" or msgs[i].get("role") == "assistant":
             coach_count_from_end += 1
             if coach_count_from_end > 6 and "internal_state" in msgs[i]:
-                del msgs[i]["internal_state"]
+                # keep the step tag: the V3 gates/notes count which questions were asked in the current step
+                step = (msgs[i]["internal_state"] or {}).get("current_step")
+                if step:
+                    msgs[i]["internal_state"] = {"current_step": step}
+                else:
+                    del msgs[i]["internal_state"]
 
     # Hard cap on total messages
     if len(msgs) > MAX_STATE_MESSAGES:

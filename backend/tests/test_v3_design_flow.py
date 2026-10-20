@@ -72,10 +72,15 @@ def test_s10_stance_then_trigger_taken_from_chat_replies():
         {"sender": "user", "content": "מהבית, אבא שלי"},
         _coach("מה 'כפתור ההפעלה' שמדליק את התפיסה הזו?", "S10"),
         {"sender": "user", "content": "כשמרימים עליי את הקול"},
-        _coach("שרשרת אחת.", "S10"),
+        _coach("כשמרימים עליך את הקול. האם יש בכוחך להפעיל את הכפתור הזה, או להימנע ממנו?", "S10"),
+    ]
+    assert _check_gate_met_v3(state) is None  # the booklet's control question comes first (no chain)
+    assert state["collected_data"]["stance"]["activation_trigger"] == "כשמרימים עליי את הקול"
+    state["messages"] += [
+        {"sender": "user", "content": "לא ממש, זה קורה לי"},
+        _coach("זה קורה לך כמעט מעצמו. עכשיו נבדוק מה העמדה הזו נותנת לך, ומה היא לוקחת ממך.", "S10"),
     ]
     assert _check_gate_met_v3(state) == "S11"
-    assert state["collected_data"]["stance"]["activation_trigger"] == "כשמרימים עליי את הקול"
 
 
 def test_s7_waits_for_the_booklet_questions_in_chat():
@@ -497,3 +502,24 @@ def test_s14_widening_waits_for_the_vision_question():
     state = _v3_state("S14")
     state["messages"] = [_coach("הכרזת שאתה בוחר לדבר. זה מרגש.", "S13")]
     assert "הרחבת החזון" not in build_conversation_context(state, "כן, מרגיש נכון", "he")
+
+
+
+def test_s10_note_after_trigger_asks_control_not_chain():
+    from app.bsd_v2.single_agent_coach import build_conversation_context
+    state = _v3_state("S10", paradigm="ככה זה אצלי — עדיף לשתוק")
+    state["collected_data"]["stance"].update(reality_belief="אנשים שופטים", position="קטן ושקט")
+    state["messages"] = [
+        _coach("מאיפה זה מגיע אצלך?", "S10"), {"sender": "user", "content": "מהבית"},
+        _coach("כשאתה חי מתוך האמונה הזו — איפה אתה עומד מול אנשים?", "S10"), {"sender": "user", "content": "קטן ושקט"},
+        _coach("העמדה שלך — קטן ושקט. מה 'כפתור ההפעלה' — מה מדליק את האמונה הזו?", "S10"),
+    ]
+    ctx = build_conversation_context(state, "כשהבוס מרים את הקול", "he")
+    assert "בכוחך להפעיל" in ctx and "בלי שרשרת" in ctx
+
+
+def test_pruned_messages_keep_their_step_tag():
+    from app.api.chat_v2 import _prune_state_messages
+    state = {"messages": [_coach(f"m{i}", "S10") for i in range(10)]}
+    _prune_state_messages(state)
+    assert all((m.get("internal_state") or {}).get("current_step") == "S10" for m in state["messages"])

@@ -24,7 +24,6 @@ from .prompts.prompt_manager import assemble_system_prompt
 from .response_schema import CoachResponseSchema
 from .station_checkpoint import (
     build_session_flow_prompt_addon,
-    build_station_wrap_instruction,
     consume_session_flow_flags,
     maybe_commit_station_checkpoint,
 )
@@ -216,13 +215,15 @@ def _get_system_prompt(
             else:
                 prompt += f"\n\n**Gender:** Coachee is {user_gender}."
         prompt += build_session_flow_prompt_addon(state, language)
-        prompt += build_station_wrap_instruction(state, language)
         logger.info("[PROMPT] Using compact mode")
         return prompt
 
     logger.info("[PROMPT] Using markdown stage mode (ux_v%s)", ux_version)
     assembled = assemble_system_prompt(current_step=current_step, language=language, user_gender=user_gender, ux_version=ux_version, collected_data=state.get("collected_data"))
-    return assembled + build_session_flow_prompt_addon(state, language) + build_station_wrap_instruction(state, language)
+    # The station-checkpoint instruction (build_station_wrap_instruction) is no longer added: its commit step
+    # (maybe_commit_station_checkpoint) is never called, so after 10 minutes every turn told the model to "summarize the
+    # floor" and point to a mission card that no UI shows — it drove long recaps at stage transitions
+    return assembled + build_session_flow_prompt_addon(state, language)
 
 
 # A paradigm is an inner rule ("עדיף לשתוק", "אני חייב...", "אם אדבר זה יחמיר"); a sentence
@@ -291,7 +292,8 @@ _MASC_TO_FEM = [
 
 # S8: the pattern is the reaction only — a motive clause ("כדי להימנע…", "מתוך פחד ש…") belongs to the
 # paradigm (expert review). Trimmed from the stored pattern so the S9 card, the chain and the request don't carry it.
-_PATTERN_MOTIVE = re.compile(rf"\s*,?\s*(?<![{_HE}])(?:כדי|כי|מתוך פחד|מתוך חשש|מפחד|מחשש|בגלל)\s[^,.;—–]*")
+# "מפחד"/"מחשש" alone is often the feeling inside the reaction ("אני מפחד להיפגע… ולכן שותק") — a motive only as "מפחד ש…"
+_PATTERN_MOTIVE = re.compile(rf"\s*,?\s*(?<![{_HE}])(?:כדי|כי|מתוך פחד|מתוך חשש|מפחד ש|מחשש ש|בגלל)\s?[^,.;—–]*")
 
 
 def _strip_pattern_motive(pattern: str) -> str:
@@ -544,6 +546,17 @@ _S8_MAX_TURNS = 5
 _S9_DEEPEN_MARKERS = ("חוק פנימי", "כלל פנימי", "איזה כלל", "איזה חוק")
 
 
+# S10 after the trigger: the booklet's sub-question on control over the trigger (p.18) replaces the 5-link chain the
+# app had invented (it recited every level again, right after each was reflected in its own turn)
+_S10_CONTROL = "בכוחך להפעיל"
+
+
+def _s10_control_answered(msgs: list) -> bool:
+    """The coach turn before the latest one asked the control question (and the client answered it)."""
+    coach = [m.get("content") or "" for m in msgs if m.get("sender") == "coach"]
+    return len(coach) >= 2 and _S10_CONTROL in coach[-2]
+
+
 _THIN_STAGES = ("S4", "S7", "S10", "S14")
 _S4_NO_THOUGHT = "לא עלה משפט פנימי ברור"
 
@@ -648,11 +661,8 @@ def _check_gate_met_v3(state: Dict[str, Any]) -> str | None:
             return "S8"
         # anti-loop counts only the turns since the card was filled — turns before it (an unclear answer, the card
         # shown again) ended S7 on the card turn itself and skipped the opportunity question
-        card_at = state.setdefault("_s7_card_at", max(len(msgs) - 1, 0))
-        s7_turns = sum(
-            1 for m in msgs[card_at:]
-            if m.get("sender") == "coach" and (m.get("internal_state") or {}).get("current_step") == "S7"
-        )
+        # (a counter, not a message index — old messages are trimmed from the state)
+        state["_s7_turns_since_card"] = s7_turns = state.get("_s7_turns_since_card", 0) + 1
         return "S8" if s7_turns >= 4 else None
     # S14 (chat): vision gets 2-3 turns at most, then the commitment card
     if step == "S14":
@@ -736,9 +746,10 @@ def _check_gate_met_v3(state: Dict[str, Any]) -> str | None:
         if from_chat_reply and asked_trigger and not stance.get("activation_trigger"):
             stance["activation_trigger"] = (last_user.get("content") or "")[:300]
         cd["stance"] = stance
-        if stance.get("activation_trigger") and (stance.get("reality_belief") or _turns_in("S10") >= 3):
+        if (stance.get("activation_trigger") and _s10_control_answered(msgs)
+                and (stance.get("reality_belief") or _turns_in("S10") >= 3)):
             return "S11"
-        return "S11" if _turns_in("S10") >= 6 else None
+        return "S11" if _turns_in("S10") >= 7 else None
     return _check_gate_met(step, cd)
 
 
@@ -2755,7 +2766,7 @@ def build_conversation_context(
                 "S4": ("ושקף בחום שלא עלה משפט ברור — וזה בסדר. סיים בהצהרה בלבד: \"עכשיו נראה מה עשית בפועל באותו רגע.\" "
                        f"**בלי שאלה.** שמור `thought`: \"{_S4_NO_THOUGHT}\"."),
                 "S10": ("ועבור לשאלה הבאה בשלב (מקור → עמדה → טריגר). **אל תשמור את התשובה הריקה כאמונה או כעמדה** "
-                        "ואל תשקף אותה כאילו היא תוכן ('העמדה שלך היא סתם' — אסור). בשרשרת — דלג על חוליה שחסרה, אל תמציא אותה."),
+                        "ואל תשקף אותה כאילו היא תוכן ('העמדה שלך היא סתם' — אסור). אם חסרה רמה — אל תמציא אותה."),
             }.get(step_now, "ועבור לשאלה הבאה בשלב (או למעבר הרגיל לשלב הבא), עם מה שיש.")
             context_parts.append(
                 "\n# שתי תשובות ריקות ברצף\n"
@@ -2875,8 +2886,14 @@ def build_conversation_context(
             nxt = ("שאלת העמדה **כבר נשאלה ונענתה** — שקף **רק את העמדה**, קצר: 'העמדה שלך — [המילים שלו]' (בלי 'מאמין'/'אמונה' ובלי לחזור על האמונה; שמור ב-`stance.position`). "
                    + ("" if deepened else "אם העמדה שתיאר היא רק חזרה על האמונה או על החוק — שאלת העמקה אחת: 'ואיפה זה שם אותך מול אנשים — איך אתה רואה את עצמך מולם?' — אחרת ")
                    + "שאל עכשיו את **שאלת הטריגר**: \"מה 'כפתור ההפעלה' — מה קורה במציאות שמדליק את האמונה הזו ומכניס אותך לעמדה הזו?\"")
+        elif not any(_S10_CONTROL in c for c in coach_s10):
+            nxt = ("שאלת הטריגר נשאלה — התשובה האחרונה היא **הטריגר** (שמור ב-`stance.activation_trigger`). שקף אותו **במשפט קצר אחד** "
+                   "במילים שלו, ושאל **שאלה אחת**: \"האם יש בכוחך להפעיל את הכפתור הזה, או להימנע ממנו?\" "
+                   "**בלי שרשרת** ובלי לחזור על האמונה, העמדה, החוק או הדפוס.")
         else:
-            nxt = "שאלת הטריגר נשאלה — התשובה האחרונה היא הטריגר. חבר **שרשרת אחת קצרה** (טריגר → אמונה → עמדה → החוק → דפוס; **כל חוליה 2-5 מילים שלו, לא המשפט המלא**, בגוף שני, עד 3 שורות), הצהרה חמה למאזן של **העמדה**, בלי שאלה, ועדכן `current_step` ל-\"S11\"."
+            nxt = ("שאלת השליטה נענתה. שקף **במשפט קצר אחד** את מה שענה (גם 'לא' או 'לא יודע' הם תשובה — בלי לשכנע), "
+                   "ואז הצהרה חמה למאזן: \"עכשיו נבדוק מה העמדה הזו נותנת לך, ומה היא לוקחת ממך.\" **בלי שאלה**, "
+                   "ועדכן `current_step` ל-\"S11\".")
         context_parts.append("\n# שלב 10 — השאלה הבאה\n" + nxt)
 
     # S15: right after the coaching-request card, a result that depends on others gets the booklet question
@@ -3631,7 +3648,9 @@ async def handle_conversation(
                 internal_state["current_step"] = "S9"
             stance_now = (state.get("collected_data") or {}).get("stance") or {}
             if (old_step in ("S9", "S10") and state.get("current_step") == "S11"
-                    and not (isinstance(stance_now, dict) and stance_now.get("activation_trigger"))):
+                    and (not (isinstance(stance_now, dict) and stance_now.get("activation_trigger"))
+                         or (old_step == "S10" and not _s10_control_answered(state.get("messages") or [])
+                             and count_turns_in_step(state, "S10") < 7))):
                 state["current_step"] = "S10"
                 internal_state["current_step"] = state["current_step"]
             _apply_v3_stage_complete_guards(state, internal_state)

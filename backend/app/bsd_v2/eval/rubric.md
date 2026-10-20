@@ -405,9 +405,13 @@ budget is a fatigue signal (W3).
     למדת שככה זה בעולם?") — skip it if he already told.
   - Reflect only the origin and ask for the **stance** ("איפה אתה עומד מול אנשים?"), without proposing one.
     If the answer is empty or only repeats the belief/rule, one deepening question.
-  - Reflect only the stance ("העמדה שלך — ...") and ask **one** trigger question. After the trigger answer: link
-    the chain **once, briefly** (a few of his words per link), trigger → belief → stance → paradigm → pattern.
-    End with a warm statement toward the balance card (of the **stance**), no question.
+  - Reflect only the stance ("העמדה שלך — ...") and ask **one** trigger question.
+  - After the trigger answer: reflect the trigger in one short sentence and ask the booklet's sub-question on
+    control (`BKL p.18` "אבחנת משנה: האם הלקוח יכול לפתח שליטה על הטריגר? האם יש בכוחו להפעיל או להימנע?"):
+    "האם יש בכוחך להפעיל את הכפתור הזה, או להימנע ממנו?". **No chain recap of all the levels** (method owner's
+    ruling, Oct 2026 — the booklet has none; each level was already reflected in its own turn).
+  - After that answer: one short reflection (no persuading) and a warm statement toward the balance card (of the
+    **stance**), no question.
 - **Classic failure modes:**
   - (a) **Accepting a pattern description as a paradigm** ("כשמבקרים אותי אני מתגונן ומסביר"). This is the most
     common failure.
@@ -417,20 +421,19 @@ budget is a fatigue signal (W3).
   - (c) The coach proposing the rule, belief, or trigger (HF-SPOON).
   - (d) Pre-check lectures or quizzes on the concepts.
   - (e) Multiple trigger sub-questions (control, environment).
-  - (f) Reflecting the trigger separately and then the chain again (D6).
+  - (f) Reciting a chain of all the levels after the trigger (D6) — not part of the method here.
   - (g) Apologizing for, or skipping, the trigger answer because it sounds like a complaint.
   - (h) "or" menus ("זה יותר על שליטה או על ביטחון?").
   - (i) **Mixing floors**: paradigm and belief/stance presented or asked together in one turn, or a level never
     explored (taken straight from a card or skipped to the trigger). Asking belief, then stance, in separate
     turns is the method, not a mix.
-  - (j) Re-reciting earlier levels in every turn (the belief repeated in the origin and stance turns), or a
-    chain that pastes each level's full sentence (D6).
+  - (j) Re-reciting earlier levels in every turn (the belief repeated in the origin and stance turns) (D6).
 - **How to deepen on failure.** Say once, gently and confidently, which floor we are on, and ask one opening
   question. For a pattern-instead-of-paradigm: "זה מה שאתה *עושה* כשזה קורה — מה החוק הפנימי שאומר שככה נכון
   לפעול?". The booklet route also works: "הדפוס הזה — האם בחרת בו? מהו ה'ככה זה אצלי' שממנו הוא נשלף?" If the
   answer is still imprecise, accept the closest formulation that the client confirms as his own. Do not chase
   the perfect wording (`BOOK ~L1952`: "לא מחפשים את ה'הָה'").
-- **Budget:** S9 1-2 turns; S10 4-5 turns.
+- **Budget:** S9 1-2 turns; S10 5 turns.
 
 ### S11: Gains and losses (רווח והפסד) **of the stance**
 - **Gate.** At least 2 gains and 2 losses **of holding the stance** (and the belief under it): what it gives him inside

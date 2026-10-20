@@ -145,13 +145,12 @@ class InternalStateSchema(BaseModel):
     shehiya_mission_title: Optional[str] = Field(
         default=None,
         description=(
-            "כותרת קצרה למשימת השהיה — **רק** כשבתור זה סוגרים קומה ומקדמים שלב (נקודת תחנה) לפי הוראות המערכת; "
-            "אחרת null."
+            "לא בשימוש — השאר null."
         ),
     )
     shehiya_mission_body: Optional[str] = Field(
         default=None,
-        description="גוף משימת ההשהיה (2–4 משפטים); null אם אין תחנה בתור זה.",
+        description="לא בשימוש — השאר null.",
     )
     stage_ready_to_complete: bool = Field(
         default=False,
@@ -173,9 +172,7 @@ class CoachResponseSchema(BaseModel):
 
     coach_message: str = Field(
         description=(
-            "התגובה האמפתית למשתמש (Clean Language). ללא מונחים טכניים. "
-            "**נקודת תחנה:** אם ממלאים shehiya_mission_title/body — אין לסיים בשאלת חקירה לצ'אט; "
-            "רק סיכום קומה + הפניה רכה לכרטיס המשימה בממשק."
+            "התגובה האמפתית למשתמש (Clean Language). ללא מונחים טכניים."
         )
     )
     suggestions: List[str] = Field(
