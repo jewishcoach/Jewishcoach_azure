@@ -193,7 +193,7 @@ _V3_V2_STAGE_FILE_ALIAS: Dict[str, str] = {}
 # acknowledgment the model fell back to it and looped (30 turns). The mix exercise is deferred by the user.
 # S15: the V2 commitment file (asks "אני מתחייב…") conflicts with the booklet's coaching-request card
 # S12: the V2 forces file explores in chat and listed fears/avoidance as nature forces (expert: they are not).
-_V3_OVERLAY_ONLY_STEPS = {"S2", "S10", "S12", "S13", "S15"}
+_V3_OVERLAY_ONLY_STEPS = {"S2", "S10", "S12", "S13", "S14", "S15"}
 
 
 def _get_collected_value(cd: dict, data_key: str):

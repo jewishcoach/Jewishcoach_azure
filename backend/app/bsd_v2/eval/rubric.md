@@ -498,9 +498,11 @@ budget is a fatigue signal (W3).
   - Book example of a true reframe: old stance "החיים הם מאבק של 'או אני או אתה'" → new stance "החיים הם ריקוד
     שלי עם כולם" (`BOOK ~L3566`).
   - `SYN` appendix item 5: "ההכרזה החדשה חייבת להיות במילים שלו".
-- **Coach after the card.** If the choice is genuinely new and feels right, give a **specific** acknowledgment:
-  quote the new stance verbatim once, set it against the old stance in the client's words, and connect in one
-  sentence to a leading source force — adding no content of the coach's own. No question.
+- **Coach after the card (method owner's ruling, Oct 2026): always one deepening question first.** Quote the
+  choice once and ask "ואיך תעמוד מול אנשים מתוך הבחירה הזו — מה משתנה במקום שאתה תופס מולם?" (after a
+  "עדיין לא" joy check: the joy question instead). After the answer: a **specific** acknowledgment — quote the
+  new stance once, set it against the old stance in the client's words, connect in one sentence to a leading
+  source force — adding no content of the coach's own. No question. Closing right after the card is a failure.
 - **Classic failure modes:**
   - (a) **A softened version of the old stance accepted as new.** Examples: "אנשים שופטים, אבל אני אנסה פחות
     להתייחס", "עדיף לשתוק, רק לפעמים לדבר". The same belief turned down in volume, or a "should" sentence the
@@ -520,7 +522,7 @@ budget is a fatigue signal (W3).
   - Note: per `BOOK ~L1166` ("אם כן, תמשיך... מכאן ולהבא הם יהיו שלך מבחירה"), consciously choosing to keep a
     stance is legitimate in BSD. A choice that is deliberate, owned, and joyful should not be failed only
     because it resembles the old one. Fail it only when it is unconscious, unowned, or watered down.
-- **Budget:** 1 turn, 2 with an exception.
+- **Budget:** 2 turns, 3 with an exception.
 
 ### S14: Vision (חזון / חפץ הלב), chat stage
 - **Gate.** A **wide** picture of the life he chooses (method owner's ruling, Oct 2026, per the booklet's חזון —

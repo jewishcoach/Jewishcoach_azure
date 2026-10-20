@@ -585,7 +585,7 @@ def _s10_control_answered(msgs: list) -> bool:
 
 
 # S13: the card asks for a new stance (booklet p.29-30); clients often write only an action — the new pattern
-_S13_FROM_WHERE = "מאיזה מקום חדש"
+_S13_FROM_WHERE = "איך תעמוד מול אנשים"  # the one deepening question after every choice card (method owner, Oct 2026)
 _S13_MAX_TURNS = 4
 _STANCE_VERBS = ("להיות", "לעמוד", "להרגיש", "לראות", "להאמין", "לבחור", "להתייחס")
 _STANCE_MARKERS = ("להיות", "לעמוד", "מקום", "שווה", "ראוי", "בגובה", "נוכח", "חלק מ", "מול ", "עם עצמי")
@@ -604,12 +604,20 @@ def _choice_is_only_action(renewal: str) -> bool:
     return (infinitive or future) and not any(m in body for m in _STANCE_MARKERS)
 
 
+def _s13_asked_deepening(text: str) -> bool:
+    """The stance question (either gender: "איך תעמוד/תעמדי מול") or the joy question was asked."""
+    return "?" in text and any(m in text for m in ("איך תעמוד מול", "איך תעמדי מול", "ירגיש שלך", "ירגיש **שלך**"))
+
+
 def _s13_stance_question_pending(state: Dict[str, Any]) -> bool:
-    """The choice is only an action and the coach has not asked the stance question yet."""
+    """After the choice card the coach always asks one deepening question (the stance one, or the joy one after
+    "עדיין לא") before acknowledging and closing."""
     cd = state.get("collected_data") or {}
-    asked = any(_S13_FROM_WHERE in (m.get("content") or "") for m in state.get("messages") or []
+    if not cd.get("renewal"):
+        return False
+    asked = any(_s13_asked_deepening(m.get("content") or "") for m in state.get("messages") or []
                 if m.get("sender") == "coach" and (m.get("internal_state") or {}).get("current_step") == "S13")
-    return _choice_is_only_action(str(cd.get("renewal_belief") or "")) and not asked
+    return not asked
 
 
 _THIN_STAGES = ("S4", "S7", "S10", "S14")
@@ -744,8 +752,12 @@ def _check_gate_met_v3(state: Dict[str, Any]) -> str | None:
     # question when the choice doesn't feel right yet). Anti-loop: the model kept asking for 30 turns.
     if step == "S13" and cd.get("renewal"):
         reply13 = (last_user.get("content") or "").strip() if last_user else ""
-        if from_chat_reply and _S13_FROM_WHERE in prev_text and not _is_empty_answer(reply13):
-            cd["renewal_belief"] = reply13[:300]  # the new stance, in his words (prefills the coaching request)
+        if from_chat_reply and _s13_asked_deepening(prev_text) and "ירגיש" not in prev_text and not _is_empty_answer(reply13):
+            # the new stance, in his words (prefills the coaching request); an action-only card choice is replaced
+            card_choice = str(cd.get("renewal_belief") or "")
+            cd["renewal_belief"] = (reply13 if _choice_is_only_action(card_choice) or not card_choice
+                                    else f"{card_choice.rstrip('.')}. {reply13}")[:300]
+            reply13 = cd["renewal_belief"]
             cd["renewal"] = ". ".join(p for p in (f"העמדה החדשה שבחרתי: {reply13.rstrip('.')}",
                                                   f"מה אעשה אחרת: {cd['new_action']}" if cd.get("new_action") else "") if p)
         last13 = next((m.get("content") or "" for m in reversed(msgs) if m.get("sender") == "coach"), "")
@@ -2861,13 +2873,32 @@ def build_conversation_context(
                 "**אל תעדכן `current_step` ל-S15 בתור הזה.**")
 
     # S13: a choice that is only an action gets the "from which new place" question (the model celebrated it)
-    if state.get("current_step") == "S13" and state.get("ux_version", 2) >= 3 and _s13_stance_question_pending(state):
-        renewal = str((state.get("collected_data") or {}).get("renewal_belief") or "")
+    last_coach13 = next((m.get("content") or "" for m in reversed(state.get("messages") or [])
+                         if m.get("sender") == "coach"), "")
+    if (state.get("current_step") == "S13" and state.get("ux_version", 2) >= 3
+            and not _s13_stance_question_pending(state) and _s13_asked_deepening(last_coach13)):
+        old13 = ((state.get("collected_data") or {}).get("stance") or {})
+        old_pos = old13.get("position") if isinstance(old13, dict) else ""
         context_parts.append(
-            "\n# שלב 13 — הבחירה היא פעולה — שאל את שאלת העמדה\n"
-            f"**התור הזה חייב להסתיים בשאלה הזו:** \"{_S13_FROM_WHERE} תעשה את זה — איך תעמוד מול אנשים מעכשיו?\" "
-            f"מה שכתב ('{renewal[:120]}') הוא **פעולה** — הדפוס החדש, עוד לא העמדה החדשה. לפני השאלה — משפט אחד שמשקף "
-            "את הפעולה במילים שלו. **אל תחגוג, אל תוסיף תוכן**, ואל תסמן `stage_ready_to_complete`.")
+            "\n# שלב 13 — סיום הבחירה\n"
+            "הוא ענה על שאלת ההעמקה — **זו העמדה החדשה שלו** (עדכן `renewal` למילים שלו). **אל תשאל עוד שאלה.** "
+            "תור אחד: צטט את העמדה החדשה שלו **פעם אחת**"
+            + (f", העמד אותה במשפט אחד מול העמדה הישנה ('{str(old_pos)[:100]}')" if old_pos else "")
+            + ", וחבר במשפט אחד לכוח מקור מוביל שלו מכרטיס הכוחות — **בלי להוסיף תוכן משלך**. "
+            "סמן `stage_ready_to_complete: true`.")
+    if state.get("current_step") == "S13" and state.get("ux_version", 2) >= 3 and _s13_stance_question_pending(state):
+        cd13 = state.get("collected_data") or {}
+        renewal = str(cd13.get("renewal_belief") or "")
+        feels_no = "מרגיש לי נכון: עדיין לא" in (user_message or "")
+        if feels_no:
+            q = "\"מה צריך להשתנות בניסוח כדי שזה ירגיש שלך?\""
+        else:
+            q = f"\"ו{_S13_FROM_WHERE} מתוך הבחירה הזו — מה משתנה במקום שאתה תופס מולם?\""
+        context_parts.append(
+            "\n# שלב 13 — שאלת העמקה אחת לפני הסיום\n"
+            f"**התור הזה חייב להסתיים בשאלה הזו:** {q} לפניה — משפט אחד שמצטט את מה שבחר ('{renewal[:120]}')"
+            + (" — וזו פעולה, כלומר מה שיעשה; עוד לא העמדה" if _choice_is_only_action(renewal) else "")
+            + ". **אל תחגוג, אל תוסיף תוכן**, ואל תסמן `stage_ready_to_complete`.")
 
     # S8 (pattern, chat): one move per turn, the client formulates, then close (the model asserted the reaction for
     # him and kept asking "מה עוד נשאר דומה" after he had formulated)

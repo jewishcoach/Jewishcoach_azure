@@ -562,9 +562,10 @@ def test_s13_action_only_choice_gets_one_stance_question_and_answer_is_saved():
     card = _build_v3_tool_call("declaration_card", state)
     assert card["data"]["old_stance"] == "מרוחק, לא פתוח" and card["data"]["old_belief"] == "אנשים שופטים"
     state["_tool_just_submitted"] = "declaration_card"
-    assert "הבחירה היא פעולה" in build_conversation_context(state, "העמדה החדשה שאני בוחר: אני בוחר לשמור על שקט", "he")
+    ctx = build_conversation_context(state, "העמדה החדשה שאני בוחר: אני בוחר לשמור על שקט", "he")
+    assert "שאלת העמקה אחת לפני הסיום" in ctx and "עוד לא העמדה" in ctx
     state.pop("_tool_just_submitted")
-    state["messages"] = [_coach("זה מה שתעשה. ומאיזה מקום חדש תעשה את זה — איך תעמוד מול אנשים מעכשיו?", "S13"),
+    state["messages"] = [_coach("זה מה שתעשה. ואיך תעמוד מול אנשים מתוך הבחירה הזו — מה משתנה?", "S13"),
                          {"sender": "user", "content": "לעמוד מולם פתוח, בגובה העיניים"},
                          _coach("'לעמוד מולם פתוח, בגובה העיניים' — במקום מרוחק.", "S13")]
     assert _check_gate_met_v3(state) == "S14"
@@ -580,3 +581,30 @@ def test_s13_holds_completion_until_stance_question_for_action_choice():
     _apply_v3_stage_complete_guards(state, internal)
     assert internal["stage_ready_to_complete"] is False  # the stance question was never asked
     assert _check_gate_met_v3(state) is None
+
+
+
+def test_s13_stance_choice_also_gets_one_question_then_closes():
+    state = _v3_state("S13", renewal_belief="אני בוחרת להיות פתוחה עם בן הזוג", renewal="העמדה החדשה שבחרתי: להיות פתוחה")
+    state["messages"] = [_coach("'אני בוחרת להיות פתוחה עם בן הזוג' — בלי שאלה, סיום.", "S13")]
+    assert _check_gate_met_v3(state) is None  # the deepening question was not asked yet
+    state["messages"] = [_coach("ואיך תעמוד מול אנשים מתוך הבחירה הזו — מה משתנה במקום שאת תופסת מולם?", "S13"),
+                         {"sender": "user", "content": "בגובה העיניים, לא קטנה"},
+                         _coach("'בגובה העיניים, לא קטנה' — במקום להתכווץ.", "S13")]
+    assert _check_gate_met_v3(state) == "S14"
+    assert state["collected_data"]["renewal_belief"] == "אני בוחרת להיות פתוחה עם בן הזוג. בגובה העיניים, לא קטנה"
+
+
+def test_s13_feminine_question_counts_and_answer_gets_closing_note():
+    from app.bsd_v2.single_agent_coach import build_conversation_context
+    state = _v3_state("S13", renewal_belief="אני בוחרת להיות אמיצה", renewal="העמדה החדשה שבחרתי: להיות אמיצה")
+    state["collected_data"]["stance"].update(position="מתכווצת וקטנה")
+    state["messages"] = [_coach("ואיך תעמדי מול אנשים מתוך הבחירה הזו — מה משתנה במקום שאת תופסת מולם?", "S13")]
+    ctx = build_conversation_context(state, "כשותפה, לא קטנה", "he")
+    assert "סיום הבחירה" in ctx and "שאלת העמקה אחת לפני הסיום" not in ctx and "מתכווצת וקטנה" in ctx
+
+
+def test_s14_is_overlay_only():
+    from app.bsd_v2.prompts.prompt_manager import assemble_system_prompt
+    p = assemble_system_prompt("S14", "he", "male", ux_version=3, collected_data={"renewal": "x"})
+    assert "תמהיל כמ״ז" not in p and "חזון" in p
