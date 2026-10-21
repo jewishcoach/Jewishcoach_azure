@@ -621,3 +621,14 @@ def test_arabic_lookalikes_and_feminine_note_phrases_are_fixed():
 def test_confirmation_only_reply_is_not_a_stance():
     from app.bsd_v2.single_agent_coach import _thin_answer, _is_empty_answer
     assert _is_empty_answer("כן, זה מדויק. בוא נמשיך.") and _thin_answer("כן, זה מדויק. בוא נמשיך.")
+
+
+def test_v3_step_never_moves_back():
+    from app.bsd_v2.single_agent_coach import _block_v3_backward_step
+    state = _v3_state("S11")
+    internal = {"current_step": "S11"}
+    _block_v3_backward_step(state, internal, old_step="S12")
+    assert state["current_step"] == "S12" and internal["current_step"] == "S12"
+    state = _v3_state("S13"); internal = {"current_step": "S13"}
+    _block_v3_backward_step(state, internal, old_step="S12")
+    assert state["current_step"] == "S13"  # forward is untouched

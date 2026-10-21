@@ -482,6 +482,22 @@ _V3_STAGE_COMPLETE_REQUIRES = {
 }
 
 
+def _block_v3_backward_step(state: Dict[str, Any], internal_state: Dict[str, Any], old_step: str) -> None:
+    """V3: the step never moves back. The backward block lives in the Safety Net, which can be disabled
+    (BSD_V2_SAFETY_NET_DISABLED); at a stage opening the model once returned S11 from S12 and the balance card
+    looped 8 times."""
+    def num(step: str) -> int:
+        try:
+            return int(str(step).replace("S", ""))
+        except ValueError:
+            return -1
+    new_step = state.get("current_step", old_step)
+    if num(old_step) >= 2 and 0 <= num(new_step) < num(old_step):
+        logger.warning(f"[BSD V3] Blocked backward step {old_step}→{new_step}")
+        state["current_step"] = old_step
+        internal_state["current_step"] = old_step
+
+
 def _apply_v3_stage_complete_guards(state: Dict[str, Any], internal_state: Dict[str, Any]) -> None:
     from .stage_intro_schema import MACRO_STAGE_END_STEPS
     step = state.get("current_step", "")
@@ -3770,6 +3786,7 @@ async def handle_conversation(
         # stage-complete screen must show before crossing macro boundaries.
         is_v3 = state.get("ux_version", 2) >= 3
         if is_v3:
+            _block_v3_backward_step(state, internal_state, old_step)
             # The LLM may leave S5 on its own (V2 S5 gate) — hold until the matzui summary
             # card ("האם דייקתי?") was shown; the V3 gate below decides when to move on
             if old_step == "S5" and state.get("current_step") == "S6" and not state.get("_matzui_summary_sent"):

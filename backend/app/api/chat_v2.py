@@ -1013,7 +1013,8 @@ async def submit_stage_intro_answers(
     return {
         "ok": True,
         "stage": body.macro_stage,
-        "current_step": first_step,
+        # the step after the opening turn (not just the stage's first step) — the client must see a jump
+        "current_step": (updated_state.get("current_step") if opening_message is not None else None) or first_step,
         "opening_message": opening_message,
         "tool_call": opening_tool_call if ux_version >= 3 else None,
     }
