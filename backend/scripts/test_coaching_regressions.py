@@ -295,7 +295,7 @@ async def test_s11_behavior_gains():
 
     issues = []
     # Coach should notice gains are about the BEHAVIOR (שתיקה) not the BELIEF
-    if "השתיקה נותנת" in coach and not _contains_any(coach, ["אמונה", "תפיסה", "האמונה"]):
+    if "השתיקה נותנת" in coach and not _contains_any(coach, ["אמונה", "תפיסה", "האמונה", "העמדה"]):
         issues.append("BEHAVIOR_LEVEL: Reflected behavior-level gains without redirecting to belief level")
     return coach, issues
 

@@ -14,15 +14,19 @@ from pydantic import BaseModel, Field
 class StanceSchema(BaseModel):
     reality_belief: Union[str, None] = Field(
         default=None,
-        description="האמונה / תפיסת המציאות בניסוח המתאמן (S10) — למשל 'אם לא אהיה מושלמת יפסיקו לאהוב אותי'",
+        description="העמדה = תפיסת המציאות (S10, חוברת עמ' 19) — בניסוח המתאמן, 'אני מאמין ש...'",
+    )
+    short: Union[str, None] = Field(
+        default=None,
+        description="העמדה מזוקקת למשפט אחד: עד 12 מילים, גוף ראשון הווה, מתוך המילים שלו ('אני מאמין ש...') — נכנסת לבקשה לאימון",
     )
     position: Union[str, None] = Field(
         default=None,
-        description="העמדה (S10) — המקום הנפשי שבו המתאמן עומד מול העולם, שנגזר מהאמונה, בניסוח שלו — למשל 'נבחנת תמידית שחייבת להוכיח', 'מרצה ומצטמצמת'",
+        description="לא בשימוש — השאר null (העמדה היא רמה אחת: reality_belief)",
     )
     activation_trigger: Union[str, None] = Field(
         default=None,
-        description="הטריגר / כפתור ההפעלה שמדליק את האמונה והעמדה (S10)",
+        description="הטריגר / כפתור ההפעלה שמדליק את העמדה (S10)",
     )
     gains: List[str] = Field(default_factory=list, description="מה המתאמן מרוויח מהעמדה (S11) — לא מהדפוס")
     losses: List[str] = Field(default_factory=list, description="מה המתאמן מפסיד מהעמדה (S11) — לא מהדפוס")

@@ -33,6 +33,20 @@ const FIELD = `w-full px-3 py-2.5 rounded-xl border border-[#e0ddd8] text-sm tex
 const LABEL = 'block text-sm font-medium text-[#2d4658] text-right mb-1';
 const HEEBO = { fontFamily: "'Heebo', sans-serif" };
 
+// Same rules as the backend composer (bsd_v2/coaching_request.py): a first-person sentence ("אני מאמין ש…") reads
+// inside the template only as a quote; a "כש…" situation becomes "הרגעים ש…"
+function situationPhrase(text: string): string {
+  const t = text.trim().replace(/\.+$/, '');
+  if (!t) return '…';
+  return t.startsWith('כש') ? `הרגעים ש${t.slice(2)}` : t;
+}
+
+function clause(text: string): string {
+  const t = text.trim().replace(/^(כן|נכון|אכן)[,.]?\s+/, '').replace(/\.+$/, '');
+  if (!t) return '…';
+  return t.startsWith('העמדה שלי') || t.split(/\s+/).slice(0, 4).includes('אני') ? `"${t}"` : t;
+}
+
 function Chips({ options, selected, onToggle }: { options: string[]; selected: string[]; onToggle: (s: string) => void }) {
   return (
     <div className="flex flex-wrap gap-2 justify-start" dir="rtl">
@@ -81,11 +95,11 @@ export function CommitmentCard({ data, onSubmit, isSubmitting }: CommitmentCardP
     && (natureOptions.length === 0 || nature.length > 0);
 
   const preview = useMemo(() => {
-    const parts = [`אני מבקש/ת להתאמן על הקושי להתמודד עם ${situation.trim() || '…'}`];
-    parts.push(`שכאשר מופיע${f.feminine ? 'ה' : ''} ה${noun} ${f.oldAdj} שלי, ${f.that} ${oldText.trim() || '…'}`);
+    const parts = [`אני מבקש/ת להתאמן על הקושי להתמודד עם ${situationPhrase(situation)}`];
+    parts.push(`שכאשר מופיע${f.feminine ? 'ה' : ''} ה${noun} ${f.oldAdj} שלי, ${f.that} ${clause(oldText)}`);
     if (source.length) parts.push(`אפעל מתוך המקור שלי, שהוא ${source.join(', ')}`);
     if (nature.length) parts.push(`ומתוך הטבע שלי, שהוא ${nature.join(', ')}`);
-    parts.push(`ומתוך ה${noun} ${f.newAdj} שבחרתי, ${f.that} ${newText.trim() || '…'}`);
+    parts.push(`ומתוך ה${noun} ${f.newAdj} שבחרתי, ${f.that} ${clause(newText)}`);
     parts.push(`כדי שהתוצאה שאשיג תהיה: ${result.trim() || '…'}`);
     return parts.join(', ') + '.';
   }, [situation, oldText, newText, source, nature, result, f, noun]);
@@ -119,7 +133,7 @@ export function CommitmentCard({ data, onSubmit, isSubmitting }: CommitmentCardP
         <div>
           <label className={LABEL} style={HEEBO}>אני מבקש/ת להתאמן על הקושי להתמודד עם…</label>
           <textarea value={situation} onChange={(e) => setSituation(e.target.value)} rows={2} className={FIELD} style={HEEBO}
-            placeholder="איזו סיטואציה קשה לך — למשל: ויכוחים על כסף בבית" />
+            placeholder="איזו סיטואציה — למשל: ויכוחים על כסף בבית, ישיבות צוות מול הבוס" />
         </div>
 
         <div>

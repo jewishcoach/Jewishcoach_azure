@@ -54,7 +54,7 @@ STAGE_COLLECTED_DATA_HE: Dict[str, str] = {
     "S7": "`collected_data`: מלא `gap_name` (שם הפער), `gap_score` (ציון 1-10), `gap_booklet_moves` (מערך: belief, opportunity, dwelling, authenticity — עדכן מצטבר).",
     "S8": "`collected_data`: מלא `pattern` — התגובה האוטומטית החוזרת בלבד (בלי ה\"כי…\" / \"כדי ש…\" — אלה שייכים לפרדיגמה).",
     "S9": "`collected_data`: מלא `paradigm` — הפרדיגמה / מחשבת המעשה ('ככה זה אצלי').",
-    "S10": "`collected_data`: ב־`stance` מלא `reality_belief` (האמונה), `position` (העמדה — המקום שבו הוא עומד מול העולם) ו-`activation_trigger` (טריגר).",
+    "S10": "`collected_data`: ב־`stance` מלא `reality_belief` (העמדה = תפיסת המציאות, במילים שלו: 'אני מאמין ש...'), `short` (אותה עמדה מזוקקת, עד 12 מילים) ו-`activation_trigger` (טריגר).",
     "S11": "`collected_data`: ב־`stance` מלא `gains` ו-`losses` (טבלת רווח והפסד).",
     "S12": "`collected_data`: מלא `forces` — `source` (מקור) ו-`nature` (טבע); יעד 6+6, ראשון = מובילה. `offer_trait_picker`: true רק כשיש ריכוז ברור לשני הצדדים.",
     "S13": "`collected_data`: מלא `renewal` — בחירה/עמדה חדשה. תמהיל כמ\"ז באחוזים.",

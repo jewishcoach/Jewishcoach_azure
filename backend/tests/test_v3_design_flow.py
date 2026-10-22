@@ -109,7 +109,7 @@ def test_s7_gap_card_advances_once_both_questions_answered():
 def test_s10_is_its_own_chat_stage_without_v2_precheck():
     cd = {"paradigm": "ככה זה אצלי — אם אדבר זה יחמיר"}
     prompt = assemble_system_prompt("S10", "he", ux_version=3, collected_data=cd)
-    assert "S10 אמונה → עמדה → טריגר" in prompt
+    assert "S10 עמדה [תפיסת המציאות]" in prompt and "איפה אתה עומד מול אנשים?" not in prompt
     assert "שלב מקדים חובה" not in prompt  # the V2 stance file's mandatory Pre-Check is not loaded
 
 
@@ -287,18 +287,6 @@ def test_s13_closes_after_declaration_even_if_coach_keeps_asking():
     assert _check_gate_met_v3(state) == "S14"  # cap: 4 turns → stage_ready_to_complete at the macro boundary
 
 
-def test_s10_belief_then_stance_position_from_chat_replies():
-    state = _v3_state("S10", paradigm="ככה זה אצלי — עדיף לשתוק")
-    state["collected_data"]["stance"]["reality_belief"] = "אם לא אהיה מושלמת יפסיקו לאהוב אותי"
-    state["messages"] = [
-        _coach("כשאת חיה מתוך האמונה הזו — איפה את עומדת מול אנשים?", "S10"),
-        {"sender": "user", "content": "מרצה ומצטמצמת"},
-        _coach("...", "S10"),
-    ]
-    assert _check_gate_met_v3(state) is None  # trigger not yet asked
-    assert state["collected_data"]["stance"]["position"] == "מרצה ומצטמצמת"
-
-
 def test_nature_suggestions_are_qualities_not_fears():
     from app.bsd_v2.stage_tool_triggers import _NATURE_TRAITS
     assert not any(w in t for t in _NATURE_TRAITS for w in ("פחד", "הימנעות"))
@@ -310,27 +298,6 @@ def test_pattern_motive_is_trimmed_to_the_reaction():
         == "להשתתק ולהימנע מעימותים, גם כשאני לחוץ"
     assert _strip_pattern_motive("שותקת ומסתירה את הצרכים") == "שותקת ומסתירה את הצרכים"
     assert _strip_pattern_motive("מתפוצץ כי") == "מתפוצץ כי"  # too little left — keep as written
-
-
-def test_s10_empty_stance_answer_gets_one_followup_not_saved():
-    from app.bsd_v2.single_agent_coach import _is_empty_answer
-    assert _is_empty_answer("סתם, רגיל, לא משהו.") and not _is_empty_answer("מרצה ומצטמצמת")
-    state = _v3_state("S10", paradigm="ככה זה אצלי — עדיף לשתוק")
-    state["collected_data"]["stance"]["reality_belief"] = "אם אדבר יחמיר"
-    state["messages"] = [
-        _coach("כשאתה חי מתוך האמונה הזו — איפה אתה עומד מול אנשים?", "S10"),
-        {"sender": "user", "content": "סתם, רגיל, לא משהו"},
-        _coach("...", "S10"),
-    ]
-    _check_gate_met_v3(state)
-    assert not state["collected_data"]["stance"].get("position")
-    state["messages"] += [
-        _coach("תחזור רגע לאירוע — כשהאמונה הזו נדלקה שם, איך ראית את עצמך מול מי שהיה מולך?", "S10"),
-        {"sender": "user", "content": "סתם, קטן"},
-        _coach("...", "S10"),
-    ]
-    _check_gate_met_v3(state)
-    assert state["collected_data"]["stance"]["position"] == "סתם, קטן"
 
 
 def test_coach_pattern_reflection_drops_motive():
@@ -358,18 +325,6 @@ def test_s9_does_not_leave_on_a_paradigm_deepening_question():
     assert _check_gate_met_v3(state) is None
     state["messages"][-1] = _coach("החוק הזה — מאיזו תפיסה על החיים, על אנשים או על עצמך הוא נולד?", "S9")
     assert _check_gate_met_v3(state) == "S10"
-
-
-def test_s10_stance_deepening_answer_replaces_belief_repeat():
-    state = _v3_state("S10", paradigm="ככה זה אצלי — כעס צריך לפרוק")
-    state["collected_data"]["stance"].update(reality_belief="כעס צריך לפרוק מיד", position="אני צריך לפרוק")
-    state["messages"] = [
-        _coach("זה החוק עצמו. ואיפה הוא שם אותך מול אנשים — איך אתה רואה את עצמך מולם?", "S10"),
-        {"sender": "user", "content": "כמו מי שתמיד צריך להגן על עצמו"},
-        _coach("...", "S10"),
-    ]
-    _check_gate_met_v3(state)
-    assert state["collected_data"]["stance"]["position"] == "כמו מי שתמיד צריך להגן על עצמו"
 
 
 def test_s10_root_answer_restating_the_rule_is_not_the_belief():
@@ -508,20 +463,6 @@ def test_s14_widening_waits_for_the_vision_question():
     assert "הרחבת החזון" not in build_conversation_context(state, "כן, מרגיש נכון", "he")
 
 
-
-def test_s10_note_after_trigger_asks_control_not_chain():
-    from app.bsd_v2.single_agent_coach import build_conversation_context
-    state = _v3_state("S10", paradigm="ככה זה אצלי — עדיף לשתוק")
-    state["collected_data"]["stance"].update(reality_belief="אנשים שופטים", position="קטן ושקט")
-    state["messages"] = [
-        _coach("מאיפה זה מגיע אצלך?", "S10"), {"sender": "user", "content": "מהבית"},
-        _coach("כשאתה חי מתוך האמונה הזו — איפה אתה עומד מול אנשים?", "S10"), {"sender": "user", "content": "קטן ושקט"},
-        _coach("העמדה שלך — קטן ושקט. מה 'כפתור ההפעלה' — מה מדליק את האמונה הזו?", "S10"),
-    ]
-    ctx = build_conversation_context(state, "כשהבוס מרים את הקול", "he")
-    assert "בכוחך להפעיל" in ctx and "בלי שרשרת" in ctx
-
-
 def test_pruned_messages_keep_their_step_tag():
     from app.api.chat_v2 import _prune_state_messages
     state = {"messages": [_coach(f"m{i}", "S10") for i in range(10)]}
@@ -552,27 +493,6 @@ def test_s8_detection_edge_cases():
     assert "האירוע שכבר סיפר" in build_conversation_context(state, "ריב על כסף, צעקתי ויצאתי", "he")
 
 
-def test_s13_action_only_choice_gets_one_stance_question_and_answer_is_saved():
-    from app.bsd_v2.single_agent_coach import build_conversation_context
-    from app.bsd_v2.stage_tool_triggers import _build_v3_tool_call
-    state = _v3_state("S13", pattern="שותק", paradigm="ככה זה אצלי — עדיף לשתוק",
-                      renewal_belief="אני בוחר לשמור על שקט", new_action="לנשום עמוק",
-                      renewal="העמדה החדשה שבחרתי: אני בוחר לשמור על שקט. מה אעשה אחרת: לנשום עמוק")
-    state["collected_data"]["stance"].update(reality_belief="אנשים שופטים", position="מרוחק, לא פתוח")
-    card = _build_v3_tool_call("declaration_card", state)
-    assert card["data"]["old_stance"] == "מרוחק, לא פתוח" and card["data"]["old_belief"] == "אנשים שופטים"
-    state["_tool_just_submitted"] = "declaration_card"
-    ctx = build_conversation_context(state, "העמדה החדשה שאני בוחר: אני בוחר לשמור על שקט", "he")
-    assert "שאלת העמקה אחת לפני הסיום" in ctx and "עוד לא העמדה" in ctx
-    state.pop("_tool_just_submitted")
-    state["messages"] = [_coach("זה מה שתעשה. ואיך תעמוד מול אנשים מתוך הבחירה הזו — מה משתנה?", "S13"),
-                         {"sender": "user", "content": "לעמוד מולם פתוח, בגובה העיניים"},
-                         _coach("'לעמוד מולם פתוח, בגובה העיניים' — במקום מרוחק.", "S13")]
-    assert _check_gate_met_v3(state) == "S14"
-    assert state["collected_data"]["renewal_belief"] == "לעמוד מולם פתוח, בגובה העיניים"
-
-
-
 def test_s13_holds_completion_until_stance_question_for_action_choice():
     from app.bsd_v2.single_agent_coach import _apply_v3_stage_complete_guards
     state = _v3_state("S13", renewal_belief="אשאר רגוע יותר", renewal="העמדה החדשה שבחרתי: אשאר רגוע יותר")
@@ -581,28 +501,6 @@ def test_s13_holds_completion_until_stance_question_for_action_choice():
     _apply_v3_stage_complete_guards(state, internal)
     assert internal["stage_ready_to_complete"] is False  # the stance question was never asked
     assert _check_gate_met_v3(state) is None
-
-
-
-def test_s13_stance_choice_also_gets_one_question_then_closes():
-    state = _v3_state("S13", renewal_belief="אני בוחרת להיות פתוחה עם בן הזוג", renewal="העמדה החדשה שבחרתי: להיות פתוחה")
-    state["messages"] = [_coach("'אני בוחרת להיות פתוחה עם בן הזוג' — בלי שאלה, סיום.", "S13")]
-    assert _check_gate_met_v3(state) is None  # the deepening question was not asked yet
-    state["messages"] = [_coach("ואיך תעמוד מול אנשים מתוך הבחירה הזו — מה משתנה במקום שאת תופסת מולם?", "S13"),
-                         {"sender": "user", "content": "בגובה העיניים, לא קטנה"},
-                         _coach("'בגובה העיניים, לא קטנה' — במקום להתכווץ.", "S13")]
-    assert _check_gate_met_v3(state) == "S14"
-    assert state["collected_data"]["renewal_belief"] == "אני בוחרת להיות פתוחה עם בן הזוג"  # no gluing
-    assert state["collected_data"]["renewal_detail"] == "בגובה העיניים, לא קטנה"
-
-
-def test_s13_feminine_question_counts_and_answer_gets_closing_note():
-    from app.bsd_v2.single_agent_coach import build_conversation_context
-    state = _v3_state("S13", renewal_belief="אני בוחרת להיות אמיצה", renewal="העמדה החדשה שבחרתי: להיות אמיצה")
-    state["collected_data"]["stance"].update(position="מתכווצת וקטנה")
-    state["messages"] = [_coach("ואיך תעמדי מול אנשים מתוך הבחירה הזו — מה משתנה במקום שאת תופסת מולם?", "S13")]
-    ctx = build_conversation_context(state, "כשותפה, לא קטנה", "he")
-    assert "סיום הבחירה" in ctx and "שאלת העמקה אחת לפני הסיום" not in ctx and "מתכווצת וקטנה" in ctx
 
 
 def test_s14_is_overlay_only():
@@ -635,19 +533,41 @@ def test_v3_step_never_moves_back():
     assert state["current_step"] == "S13"  # forward is untouched
 
 
+# --- one-level stance (expert ruling Oct 22 2026; booklet p.18-19, p.29-30) ---
+
+def test_s10_one_level_flow_origin_then_formulation_then_trigger():
+    from app.bsd_v2.single_agent_coach import build_conversation_context
+    state = _v3_state("S10", paradigm="ככה זה אצלי — עדיף לשתוק",
+                      event_description="בישיבת צוות הבוס נתן קידום לקולגה ואני שתקתי וחייכתי")
+    state["messages"] = [_coach("מה אתה יודע על העולם שגורם לחוק הזה להרגיש נכון?", "S10")]
+    ctx = build_conversation_context(state, "שוויכוחים מרחיקים אנשים", "he")
+    assert "שאלת המקור" in ctx and "איפה אתה עומד" not in ctx
+    state["messages"] += [{"sender": "user", "content": "שוויכוחים מרחיקים אנשים"},
+                          _coach("מאיפה זה מגיע אצלך? יש מקום, תקופה או אדם שממנו למדת שככה זה?", "S10")]
+    ctx = build_conversation_context(state, "בילדות, כשהוריי רבו", "he")
+    assert "לנסח את העמדה בעצמו" in ctx
+    state["messages"] += [{"sender": "user", "content": "בילדות, כשהוריי רבו"},
+                          _coach("ואם תנסח את העמדה שלך במשפט אחד — 'אני מאמין ש…' — מה המשפט?", "S10"),
+                          {"sender": "user", "content": "אני מאמין שוויכוחים גורמים לכאב ולמרחק"},
+                          _coach("...", "S10")]
+    _check_gate_met_v3(state)
+    assert state["collected_data"]["stance"]["reality_belief"] == "אני מאמין שוויכוחים גורמים לכאב ולמרחק"
+    state["messages"].pop()
+    ctx = build_conversation_context(state, "אני מאמין שוויכוחים גורמים לכאב ולמרחק", "he")
+    assert "שאלת טריגר אחת" in ctx and "stance.short" in ctx
+
 
 def test_s10_event_retold_is_not_the_stance_and_control_answer_is_not_the_trigger():
     state = _v3_state("S10", paradigm="ככה זה אצלי — עדיף לשתוק",
                       event_description="בישיבת צוות הבוס נתן קידום לקולגה ואני שתקתי וחייכתי")
     state["collected_data"]["stance"]["reality_belief"] = "ויכוחים גורמים לכאב"
     state["messages"] = [
-        _coach("במילה או שתיים — כשהאמונה הזו פועלת אצלך, איך אתה רואה את עצמך מול אנשים?", "S10"),
+        _coach("ואם תנסח את העמדה שלך במשפט אחד — 'אני מאמין ש…' — מה המשפט?", "S10"),
         {"sender": "user", "content": "באותו רגע בישיבת הצוות שתקתי וחייכתי מול הבוס והקולגה"},
         _coach("...", "S10"),
     ]
     _check_gate_met_v3(state)
-    assert not state["collected_data"]["stance"].get("position")
-    state["collected_data"]["stance"]["activation_trigger"] = None
+    assert state["collected_data"]["stance"]["reality_belief"] == "ויכוחים גורמים לכאב"
     state["messages"] = [
         _coach("האם יש בכוחך להפעיל את הכפתור הזה, או להימנע ממנו?", "S10"),
         {"sender": "user", "content": "אין לי שליטה, זה אוטומטי"},
@@ -655,3 +575,81 @@ def test_s10_event_retold_is_not_the_stance_and_control_answer_is_not_the_trigge
     ]
     _check_gate_met_v3(state)
     assert not state["collected_data"]["stance"].get("activation_trigger")
+
+
+def test_s13_action_only_choice_gets_one_perception_question_and_answer_replaces_it():
+    from app.bsd_v2.single_agent_coach import build_conversation_context
+    from app.bsd_v2.stage_tool_triggers import _build_v3_tool_call
+    state = _v3_state("S13", pattern="שותק", paradigm="ככה זה אצלי — עדיף לשתוק",
+                      renewal_belief="אני בוחר לשמור על שקט", new_action="לנשום עמוק",
+                      renewal="העמדה החדשה שבחרתי: אני בוחר לשמור על שקט. מה אעשה אחרת: לנשום עמוק")
+    state["collected_data"]["stance"].update(reality_belief="אני מאמין שוויכוחים מרחיקים",
+                                             short="אני מאמין שוויכוחים מרחיקים")
+    card = _build_v3_tool_call("declaration_card", state)
+    assert card["data"]["old_stance"] == "אני מאמין שוויכוחים מרחיקים"
+    state["_tool_just_submitted"] = "declaration_card"
+    ctx = build_conversation_context(state, "העמדה החדשה שאני בוחר: אני בוחר לשמור על שקט", "he")
+    assert "ומה אתה מאמין מעכשיו" in ctx and "איך תעמוד מול אנשים" not in ctx
+    state.pop("_tool_just_submitted")
+    state["messages"] = [_coach("זה מה שתעשה. ומה אתה מאמין מעכשיו — איך היית מנסח את העמדה החדשה: 'אני מאמין ש…'?", "S13"),
+                         {"sender": "user", "content": "אני מאמין שלקול שלי יש ערך"},
+                         _coach("'אני מאמין שלקול שלי יש ערך' — במקום שוויכוחים מרחיקים.", "S13")]
+    assert _check_gate_met_v3(state) == "S14"
+    assert state["collected_data"]["renewal_belief"] == "אני מאמין שלקול שלי יש ערך"  # replaced, not glued
+
+
+def test_s13_perception_choice_closes_without_a_question():
+    from app.bsd_v2.single_agent_coach import build_conversation_context, _s13_stance_question_pending
+    state = _v3_state("S13", renewal_belief="אני מאמין שלקול שלי יש ערך", renewal="העמדה החדשה שבחרתי: אני מאמין שלקול שלי יש ערך")
+    assert not _s13_stance_question_pending(state)
+    state["_tool_just_submitted"] = "declaration_card"
+    assert "שאלת העמקה אחת לפני הסיום" not in build_conversation_context(state, "x", "he")
+
+
+def test_coaching_request_quotes_first_person_stances():
+    from app.routers.tools import compose_coaching_request
+    out = compose_coaching_request({"floor": "stance", "situation": "ישיבות צוות", "old": "אני מאמין שוויכוחים מרחיקים.",
+                                    "new": "אני מאמין שלקול שלי יש ערך", "result": "אביע דעה פעם אחת"})
+    assert 'שהיא "אני מאמין שוויכוחים מרחיקים"' in out and 'שהיא "אני מאמין שלקול שלי יש ערך"' in out
+
+
+def test_s15_result_answer_updates_only_the_result_and_request_is_recomposed():
+    req = {"floor": "stance", "situation": "כעס מול הבן", "old": "אני מאמין שבלי סמכות המשפחה תתפרק",
+           "source": ["אהבה"], "nature": ["זהירות"], "new": "אני מאמין שקרבה מחזקת", "result": "פחות צעקות"}
+    state = _v3_state("S15", coaching_request=dict(req), commitment="טקסט שהמודל כתב במקום הבקשה")
+    state["messages"] = [_coach("מה מתוך זה תלוי בך — מה אתה תעשה, או איך תהיה, שאפשר יהיה לראות?", "S15"),
+                         {"sender": "user", "content": "אעצור לפני שאני צועק ואקשיב"},
+                         _coach("...", "S15")]
+    _check_gate_met_v3(state)
+    commitment = state["collected_data"]["commitment"]
+    assert commitment.startswith("אני מבקש/ת להתאמן על הקושי להתמודד עם כעס מול הבן")
+    assert commitment.endswith("כדי שהתוצאה שאשיג תהיה: אעצור לפני שאני צועק ואקשיב.")
+
+
+def test_coaching_request_situation_and_leading_yes():
+    from app.bsd_v2.coaching_request import compose_coaching_request
+    out = compose_coaching_request({"floor": "pattern", "situation": "כשאני במפגש צוות", "old": "כן, אני שותק",
+                                    "new": "אדבר", "result": "x"})
+    assert "להתמודד עם הרגעים שאני במפגש צוות" in out and 'שהוא "אני שותק"' in out
+
+
+def test_control_character_artifacts_are_removed():
+    from app.bsd_v2.single_agent_coach import _sanitize_coach_message
+    assert _sanitize_coach_message("מה ה\x173אמירה הפנימית\x187 שאמרת") == "מה האמירה הפנימית שאמרת"
+    assert _sanitize_coach_message("פער של 7 מתוך 10") == "פער של 7 מתוך 10"
+
+
+def test_s10_cap_counts_the_whole_step_and_deepening_is_asked_once():
+    from app.bsd_v2.single_agent_coach import build_conversation_context
+    state = _v3_state("S10", paradigm="ככה זה אצלי — אני מעדיף לשמור על השקט")
+    state["messages"] = []
+    for i in range(7):
+        state["messages"] += [_coach(f"שאלה {i}?", "S10"), {"sender": "user", "content": f"תשובה {i}"}]
+    state["messages"].append(_coach("...", "S10"))
+    assert _check_gate_met_v3(state) == "S11"  # 8 S10 turns — the cap now fires
+    state = _v3_state("S10", paradigm="ככה זה אצלי — אני מעדיף לשמור על השקט")
+    state["messages"] = [_coach("מה אתה יודע על החיים שגורם לחוק הזה להרגיש נכון?", "S10"),
+                         {"sender": "user", "content": "למדתי שעדיף לשמור על השקט"},
+                         _coach("ומה אתה יודע על אנשים שגורם לתגובה הזו להרגיש נכונה?", "S10")]
+    ctx = build_conversation_context(state, "שאנשים לא באמת מקשיבים", "he")
+    assert "שמעמיקה מתחת לחוק" not in ctx  # the deepening (in other words) was already asked

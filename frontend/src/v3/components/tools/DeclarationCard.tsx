@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { CardShell } from '../shared/CardShell';
 
 interface DeclarationCardProps {
-  data?: { old_pattern?: string; old_paradigm?: string; old_belief?: string; old_stance?: string };
+  data?: { old_pattern?: string; old_paradigm?: string; old_stance?: string };
   onSubmit: (toolType: string, data: {
     renewal: string;
     next_action: string;
@@ -29,11 +29,11 @@ export function DeclarationCard({ data, onSubmit, isSubmitting }: DeclarationCar
   return (
     <CardShell
       titleHe="הבחירה החדשה שלך"
-      instructionHe="הגיע הזמן לבחור מה מחליף את הישן: מאיזה מקום חדש תעמוד מול אנשים, ואיך תפעל אחרת."
+      instructionHe="הגיע הזמן לבחור מה מחליף את הישן: מה אתה מאמין מעכשיו, ואיך תפעל אחרת."
     >
       <div className="space-y-5">
         {/* Old vs new context — the choice faces the old stance (booklet: בחירת עמדה חדשה) */}
-        {data && (data.old_stance || data.old_belief || data.old_pattern) && (
+        {data && (data.old_stance || data.old_pattern) && (
           <div className="bg-[#f6f4f0] rounded-lg p-3 space-y-1 border border-[#e0ddd8]">
             <p
               className="text-[10px] font-bold uppercase tracking-wider text-[rgba(45,70,88,0.5)]"
@@ -44,11 +44,6 @@ export function DeclarationCard({ data, onSubmit, isSubmitting }: DeclarationCar
             {data.old_stance && (
               <p className="text-xs text-[rgba(45,70,88,0.7)]" style={{ fontFamily: "'Heebo', sans-serif" }}>
                 <span className="font-semibold">העמדה הישנה:</span> {data.old_stance}
-              </p>
-            )}
-            {data.old_belief && (
-              <p className="text-xs text-[rgba(45,70,88,0.7)]" style={{ fontFamily: "'Heebo', sans-serif" }}>
-                <span className="font-semibold">האמונה שמאחוריה:</span> {data.old_belief}
               </p>
             )}
             {data.old_pattern && (
@@ -72,12 +67,12 @@ export function DeclarationCard({ data, onSubmit, isSubmitting }: DeclarationCar
             className="block text-sm font-medium text-[#2d4658] text-right mb-1"
             style={{ fontFamily: "'Heebo', sans-serif" }}
           >
-            העמדה החדשה שאני בוחר…
+            העמדה החדשה שאני בוחר — אני מאמין ש…
           </label>
           <textarea
             value={renewal}
             onChange={(e) => setRenewal(e.target.value)}
-            placeholder="איך תרצה לעמוד מול אנשים מעכשיו — במילים שלך"
+            placeholder="תפיסה חדשה, במשפט קצר ובמילים שלך"
             rows={2}
             className="w-full px-3 py-2.5 rounded-xl border border-[#e0ddd8] text-sm text-[#2d4658] text-right
                        placeholder:text-[rgba(45,70,88,0.35)] resize-none

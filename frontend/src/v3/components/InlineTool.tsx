@@ -102,7 +102,7 @@ export function InlineTool({ tool, onSubmit, isSubmitting }: InlineToolProps) {
     case 'declaration_card':
       return (
         <DeclarationCard
-          data={tool.data as { old_pattern?: string; old_paradigm?: string; old_belief?: string; old_stance?: string } | undefined}
+          data={tool.data as { old_pattern?: string; old_paradigm?: string; old_stance?: string } | undefined}
           onSubmit={onSubmit}
           isSubmitting={isSubmitting}
         />

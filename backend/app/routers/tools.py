@@ -38,28 +38,8 @@ def _is_gibberish(text: str) -> bool:
     return False
 
 
-_REQUEST_FLOOR_HE = {"pattern": ("הדפוס", "שהוא", "הישן", "החדש"), "paradigm": ("הפרדיגמה", "שהיא", "הישנה", "החדשה"),
-                     "stance": ("העמדה", "שהיא", "הישנה", "החדשה")}
-
-
-def compose_coaching_request(data: Dict[str, Any]) -> str:
-    """The booklet's complex coaching request (p.37-38), as one sentence in the client's words."""
-    name, that, old_adj, new_adj = _REQUEST_FLOOR_HE.get(data.get("floor"), _REQUEST_FLOOR_HE["pattern"])
-    source = ", ".join(s for s in (data.get("source") or []) if s)
-    nature = ", ".join(s for s in (data.get("nature") or []) if s)
-    noun = name[1:]  # "הדפוס" → "דפוס" for "מופיע הדפוס הישן שלי"
-    # booklet wording (p.37-38): "אני מבקש להתאמן על הקושי להתמודד עם [תיאור הסיטואציה]"
-    parts = [f"אני מבקש/ת להתאמן על הקושי להתמודד עם {(data.get('situation') or '').strip()}"]
-    if (data.get("old") or "").strip():
-        parts.append(f"שכאשר מופיע{'ה' if that == 'שהיא' else ''} ה{noun} {old_adj} שלי, {that} {data['old'].strip()}")
-    if source:
-        parts.append(f"אפעל מתוך המקור שלי, שהוא {source}")
-    if nature:
-        parts.append(f"ומתוך הטבע שלי, שהוא {nature}")
-    if (data.get("new") or "").strip():
-        parts.append(f"ומתוך ה{noun} {new_adj} שבחרתי, {that} {data['new'].strip()}")
-    parts.append(f"כדי שהתוצאה שאשיג תהיה: {(data.get('result') or '').strip()}")
-    return ", ".join(p.rstrip(".,") for p in parts) + "."
+# The composer lives in bsd_v2 (the coach recomposes the request in S15); re-exported for existing imports
+from ..bsd_v2.coaching_request import compose_coaching_request  # noqa: E402,F401
 
 
 class ToolSubmitRequest(BaseModel):

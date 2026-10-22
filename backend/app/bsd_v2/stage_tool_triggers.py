@@ -111,7 +111,7 @@ V3_TOOL_DEFS: Dict[str, Dict[str, Any]] = {
         "type": "tool",
         "tool_type": "declaration_card",
         "title_he": "ההכרזה החדשה",
-        "instruction_he": "מה העמדה החדשה שאתה בוחר — איך תעמוד מול אנשים מעכשיו? ומה תעשה אחרת?",
+        "instruction_he": "מהי העמדה החדשה שאתה בוחר — 'אני מאמין ש…'? ומה תעשה אחרת?",
     },
     "commitment_card": {
         "type": "tool",
@@ -162,13 +162,12 @@ def _build_v3_tool_call(tool_key: str, state: Dict[str, Any]) -> Dict[str, Any]:
     elif tool_key == "declaration_card":
         stance = cd.get("stance") or {}
         stance = stance if isinstance(stance, dict) else {}
-        # The choice faces the old stance (booklet p.29-30: "בחירת עמדה חדשה") — the card showed only the pattern
-        # and the paradigm (labeled "האמונה הישנה"), so clients answered with a behavior
+        # The new stance faces the old one, at the same floor (booklet p.29-30; expert: the stance IS the belief —
+        # one level, "אני מאמין ש...")
         base["data"] = {
             "old_pattern": cd.get("pattern", ""),
             "old_paradigm": cd.get("paradigm", ""),
-            "old_belief": stance.get("reality_belief", ""),
-            "old_stance": stance.get("position", ""),
+            "old_stance": stance.get("short") or stance.get("reality_belief", ""),
         }
     elif tool_key == "commitment_card":
         # בקשה לאימון (booklet p.37-38): prefill the client's own old/new floors and his כמ"ז
@@ -180,8 +179,8 @@ def _build_v3_tool_call(tool_key: str, state: Dict[str, Any]) -> Dict[str, Any]:
             "old": {
                 "pattern": cd.get("pattern", ""),
                 "paradigm": cd.get("paradigm", ""),
-                # the stance itself (the place he stands in); the belief only if no stance was formulated
-                "stance": (stance.get("position") or stance.get("reality_belief", "")) if isinstance(stance, dict) else "",
+                # the stance = his perception sentence, distilled (≤12 words) so it reads inside the booklet template
+                "stance": (stance.get("short") or stance.get("reality_belief", "")) if isinstance(stance, dict) else "",
             },
             "new": {"stance": cd.get("renewal_belief", ""), "pattern": cd.get("new_action", "")},
         }
