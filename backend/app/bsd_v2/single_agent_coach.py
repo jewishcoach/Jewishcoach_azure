@@ -310,6 +310,7 @@ _MASC_TO_FEM = [
     (re.compile(rf"(?<![{_HE}])(ו?)איך היית מנסח(?![{_HE}])"), r"\1איך היית מנסחת"),
     (re.compile(rf"(?<![{_HE}])מה אתה עושה בדרך כלל"), "מה את עושה בדרך כלל"),
     (re.compile(rf"(?<![{_HE}])ואתה מוביל מכאן"), "ואת מובילה מכאן"),
+    (re.compile(rf"(?<![{_HE}])איך אתה רואה את עצמך"), "איך את רואה את עצמך"),
 ]
 
 # S8: the pattern is the reaction only — a motive clause ("כדי להימנע…", "מתוך פחד ש…") belongs to the
@@ -712,7 +713,7 @@ _FILLER_WORDS = {"סתם", "רגיל", "רגילה", "לא", "משהו", "יוד
                  "בסדר", "אין", "מושג", "נורמלי", "נורמלית", "כאילו", "אממ", "אולי", "שום", "דבר", "מיוחד", "מיוחדת", "באמת", "יודע/ת", "לי", "כן", "פשוט", "יוצא", "ברור", "בטוח", "רוצה", "יכול",
                  # confirmation-only replies ("כן, זה מדויק. בוא נמשיך") — no content to reflect as a stance
                  "מדויק", "מדויקת", "נכון", "נמשיך", "בוא", "בואי", "תמשיך", "אוקיי", "אוקי", "בסדר", "זה"}
-_S10_POSITION_FOLLOWUP = "איך ראית את עצמך"
+_S10_POSITION_FOLLOWUP = "איך אתה רואה את עצמך"  # contains "את עצמך מול" via the template below
 
 
 def _is_empty_answer(text: str) -> bool:
@@ -794,10 +795,13 @@ def _check_gate_met_v3(state: Dict[str, Any]) -> str | None:
     if step == "S13" and cd.get("renewal"):
         reply13 = (last_user.get("content") or "").strip() if last_user else ""
         if from_chat_reply and _s13_asked_deepening(prev_text) and "ירגיש" not in prev_text and not _is_empty_answer(reply13):
-            # the new stance, in his words (prefills the coaching request); an action-only card choice is replaced
+            # the new stance, in his words (prefills the coaching request). An action-only card choice is replaced by
+            # the answer; otherwise the card's sentence stays the stance — gluing both made a 4-sentence "stance" (expert
+            # review of Yossi's conversation); the answer is kept separately
             card_choice = str(cd.get("renewal_belief") or "")
-            cd["renewal_belief"] = (reply13 if _choice_is_only_action(card_choice) or not card_choice
-                                    else f"{card_choice.rstrip('.')}. {reply13}")[:300]
+            cd["renewal_detail"] = reply13[:300]
+            if _choice_is_only_action(card_choice) or not card_choice:
+                cd["renewal_belief"] = reply13[:300]
             reply13 = cd["renewal_belief"]
             cd["renewal"] = ". ".join(p for p in (f"העמדה החדשה שבחרתי: {reply13.rstrip('.')}",
                                                   f"מה אעשה אחרת: {cd['new_action']}" if cd.get("new_action") else "") if p)
@@ -847,7 +851,8 @@ def _check_gate_met_v3(state: Dict[str, Any]) -> str | None:
         if not isinstance(stance, dict):
             stance = {}
         # The LLM often doesn't extract the stance/trigger — the user's reply to the question is the answer
-        asked_trigger = any(w in prev_text for w in ("כפתור", "טריגר", "מדליק"))
+        # the control question ("האם יש בכוחך להפעיל את הכפתור…") is not the trigger question
+        asked_trigger = _S10_CONTROL not in prev_text and any(w in prev_text for w in ("כפתור", "טריגר", "מדליק"))
         position_followup = "את עצמך מול" in prev_text  # deepening after an empty / belief-repeating answer
         asked_position = not asked_trigger and (position_followup or any(w in prev_text for w in ("עומד", "עומדת", "המקום ש")))
         asked_stance = not asked_trigger and not asked_position and any(
@@ -861,7 +866,8 @@ def _check_gate_met_v3(state: Dict[str, Any]) -> str | None:
         reply = last_user.get("content") or ""
         # an empty reply to the stance question gets one grounded follow-up (context note) — not saved as the stance
         if (from_chat_reply and asked_position and (position_followup or not stance.get("position"))
-                and not (_thin_answer(reply) and not position_followup) and not _is_empty_answer(reply)):
+                and not (_thin_answer(reply) and not position_followup) and not _is_empty_answer(reply)
+                and not _same_as_event(reply, cd.get("event_description") or "")):  # a retold event is no stance
             stance["position"] = reply[:300]
         if from_chat_reply and asked_trigger and not stance.get("activation_trigger"):
             stance["activation_trigger"] = (last_user.get("content") or "")[:300]
@@ -3032,10 +3038,11 @@ def build_conversation_context(
             nxt = "שקף את **האמונה** שתיאר (במילים שלו; קרא לה 'האמונה', לא 'העמדה') ושאל את **שאלת המקור — פעם אחת**: \"מאיפה זה מגיע אצלך? מתי למדת שככה זה בעולם?\""
         elif not asked_position:
             nxt = "שאלת המקור **כבר נשאלה ונענתה** — אל תשאל שוב 'מאיפה'. שקף **רק את לב המקור** במשפט קצר, בכמה מהמילים שלו (בלי פתיח קבוע כמו 'המקור שלך —'; אל תחזור על האמונה), ושאל עכשיו על **העמדה** — המקום שבו הוא עומד מול העולם מתוך האמונה הזו, בלי להציע תשובה: \"כשאתה חי מתוך האמונה הזו — איפה אתה עומד מול אנשים? איך היית מתאר את המקום שאתה תופס מולם?\""
-        elif (not asked_trigger and not any(_S10_POSITION_FOLLOWUP in c for c in coach_s10)
+        elif (not asked_trigger and not any("את עצמך מול" in c for c in coach_s10)
               and _is_empty_answer(s10_user[-1] if s10_user else user_message)):
-            nxt = ("התשובה לשאלת העמדה לא אמרה עוד כלום — **זה בסדר**, אל תשקף אותה כעמדה. שאלה **אחת**, פשוטה, שמחזירה לאירוע שסיפר: "
-                   f"\"תחזור רגע לאירוע שסיפרת עליו — כשהאמונה הזו נדלקה שם, {_S10_POSITION_FOLLOWUP} מול מי שהיה מולך?\"")
+            # not anchored in the event: "תחזור רגע לאירוע…" drew an event story that was then filed as the stance
+            nxt = ("התשובה לשאלת העמדה לא אמרה עוד כלום — **זה בסדר**, אל תשקף אותה כעמדה ואל תנסח אותה בשבילו. שאלה **אחת**, "
+                   f"פשוטה, על החיים שלו בכלל (לא על האירוע): \"במילה או שתיים — כשהאמונה הזו פועלת אצלך, {_S10_POSITION_FOLLOWUP} מול אנשים?\"")
         elif not asked_trigger:
             deepened = any("את עצמך מול" in c for c in coach_s10)
             nxt = ("שאלת העמדה **כבר נשאלה ונענתה** — שקף **רק את לב העמדה**, במשפט קצר בכמה מהמילים שלו — בלי פתיח קבוע, בלי 'מאמין'/'אמונה' ובלי לחזור על האמונה (שמור ב-`stance.position`). "

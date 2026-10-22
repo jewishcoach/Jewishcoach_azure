@@ -81,7 +81,7 @@ export function CommitmentCard({ data, onSubmit, isSubmitting }: CommitmentCardP
     && (natureOptions.length === 0 || nature.length > 0);
 
   const preview = useMemo(() => {
-    const parts = [`אני מבקש/ת להתאמן על הקושי שלי: ${situation.trim() || '…'}`];
+    const parts = [`אני מבקש/ת להתאמן על הקושי להתמודד עם ${situation.trim() || '…'}`];
     parts.push(`שכאשר מופיע${f.feminine ? 'ה' : ''} ה${noun} ${f.oldAdj} שלי, ${f.that} ${oldText.trim() || '…'}`);
     if (source.length) parts.push(`אפעל מתוך המקור שלי, שהוא ${source.join(', ')}`);
     if (nature.length) parts.push(`ומתוך הטבע שלי, שהוא ${nature.join(', ')}`);
@@ -117,7 +117,7 @@ export function CommitmentCard({ data, onSubmit, isSubmitting }: CommitmentCardP
         </div>
 
         <div>
-          <label className={LABEL} style={HEEBO}>אני מבקש/ת להתאמן על הקושי שלי…</label>
+          <label className={LABEL} style={HEEBO}>אני מבקש/ת להתאמן על הקושי להתמודד עם…</label>
           <textarea value={situation} onChange={(e) => setSituation(e.target.value)} rows={2} className={FIELD} style={HEEBO}
             placeholder="איזו סיטואציה קשה לך — למשל: ויכוחים על כסף בבית" />
         </div>

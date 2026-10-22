@@ -250,7 +250,7 @@ def test_coaching_request_composed_in_booklet_structure():
     out = compose_coaching_request({"floor": "stance", "situation": "ביקורת מהבוס", "old": "העולם מעניש חולשה",
                                     "source": ["אומץ"], "nature": ["פחד מדחייה"],
                                     "new": "מותר לי להיות פגיע", "result": "אשתף את הבוס פעם אחת השבוע"})
-    assert out.startswith("אני מבקש/ת להתאמן על הקושי שלי: ביקורת מהבוס")
+    assert out.startswith("אני מבקש/ת להתאמן על הקושי להתמודד עם ביקורת מהבוס")
     assert "שכאשר מופיעה העמדה הישנה שלי, שהיא העולם מעניש חולשה" in out
     assert "אפעל מתוך המקור שלי, שהוא אומץ" in out and "ומתוך הטבע שלי, שהוא פחד מדחייה" in out
     assert "ומתוך העמדה החדשה שבחרתי, שהיא מותר לי להיות פגיע" in out
@@ -592,7 +592,8 @@ def test_s13_stance_choice_also_gets_one_question_then_closes():
                          {"sender": "user", "content": "בגובה העיניים, לא קטנה"},
                          _coach("'בגובה העיניים, לא קטנה' — במקום להתכווץ.", "S13")]
     assert _check_gate_met_v3(state) == "S14"
-    assert state["collected_data"]["renewal_belief"] == "אני בוחרת להיות פתוחה עם בן הזוג. בגובה העיניים, לא קטנה"
+    assert state["collected_data"]["renewal_belief"] == "אני בוחרת להיות פתוחה עם בן הזוג"  # no gluing
+    assert state["collected_data"]["renewal_detail"] == "בגובה העיניים, לא קטנה"
 
 
 def test_s13_feminine_question_counts_and_answer_gets_closing_note():
@@ -632,3 +633,25 @@ def test_v3_step_never_moves_back():
     state = _v3_state("S13"); internal = {"current_step": "S13"}
     _block_v3_backward_step(state, internal, old_step="S12")
     assert state["current_step"] == "S13"  # forward is untouched
+
+
+
+def test_s10_event_retold_is_not_the_stance_and_control_answer_is_not_the_trigger():
+    state = _v3_state("S10", paradigm="ככה זה אצלי — עדיף לשתוק",
+                      event_description="בישיבת צוות הבוס נתן קידום לקולגה ואני שתקתי וחייכתי")
+    state["collected_data"]["stance"]["reality_belief"] = "ויכוחים גורמים לכאב"
+    state["messages"] = [
+        _coach("במילה או שתיים — כשהאמונה הזו פועלת אצלך, איך אתה רואה את עצמך מול אנשים?", "S10"),
+        {"sender": "user", "content": "באותו רגע בישיבת הצוות שתקתי וחייכתי מול הבוס והקולגה"},
+        _coach("...", "S10"),
+    ]
+    _check_gate_met_v3(state)
+    assert not state["collected_data"]["stance"].get("position")
+    state["collected_data"]["stance"]["activation_trigger"] = None
+    state["messages"] = [
+        _coach("האם יש בכוחך להפעיל את הכפתור הזה, או להימנע ממנו?", "S10"),
+        {"sender": "user", "content": "אין לי שליטה, זה אוטומטי"},
+        _coach("...", "S10"),
+    ]
+    _check_gate_met_v3(state)
+    assert not state["collected_data"]["stance"].get("activation_trigger")
