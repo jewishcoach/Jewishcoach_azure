@@ -84,6 +84,12 @@ async def submit_tool_response(
     if not conversation:
         raise HTTPException(status_code=403, detail="Conversation not found or unauthorized")
 
+    # בקשה לאימון: always the stance floor — "קומת העמדה היא קומת השינוי" (booklet p.36); the stance work is what
+    # the process built. The card no longer offers pattern/paradigm (a client picked "pattern", and his old and new
+    # stance never reached the request).
+    if request.tool_type == "commitment_card" and (request.data.get("floor") or request.data.get("situation")):
+        request.data["floor"] = "stance"
+
     # Save tool response
     tool_response = ToolResponse(
         conversation_id=conversation_id,

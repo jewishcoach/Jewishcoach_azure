@@ -18,20 +18,31 @@ def _request_clause(text: str) -> str:
     return f'"{t}"' if t.startswith("העמדה שלי") or "אני" in first_words else t
 
 
-def _situation(text: str) -> str:
-    """The template expects a noun phrase ("להתמודד עם ישיבות צוות"); "כשאני במפגש צוות…" → "הרגעים שאני במפגש…"."""
+_NOT_INFINITIVE = ("לחץ", "לחצים", "לילה", "לילות", "לימודים", "לב")
+
+
+def _difficulty(text: str) -> str:
+    """The booklet's opening (p.37): "הקושי להתמודד עם [סיטואציה]" for a noun phrase; a verb phrase reads as "הקושי
+    שלי לדבר על…" ("להתמודד עם לדבר" was ungrammatical); "כשאני…" → "הקושי להתמודד עם הרגעים שאני…"."""
     t = (text or "").strip().rstrip(".")
-    return f"הרגעים ש{t[2:]}" if t.startswith("כש") else t
+    first = t.split()[0] if t.split() else ""
+    if t.startswith("כש"):
+        return f"הקושי להתמודד עם הרגעים ש{t[2:]}"
+    if first.startswith("ל") and len(first) >= 4 and first not in _NOT_INFINITIVE:
+        return f"הקושי שלי {t}"
+    if first == "לא":
+        return f"הקושי שלי ש{t}"
+    return f"הקושי להתמודד עם {t}"
 
 
 def compose_coaching_request(data: Dict[str, Any]) -> str:
     """The booklet's complex coaching request (p.37-38), as one sentence in the client's words."""
-    name, that, old_adj, new_adj = _REQUEST_FLOOR_HE.get(data.get("floor"), _REQUEST_FLOOR_HE["pattern"])
+    name, that, old_adj, new_adj = _REQUEST_FLOOR_HE.get(data.get("floor"), _REQUEST_FLOOR_HE["stance"])
     source = ", ".join(s for s in (data.get("source") or []) if s)
     nature = ", ".join(s for s in (data.get("nature") or []) if s)
     noun = name[1:]  # "הדפוס" → "דפוס" for "מופיע הדפוס הישן שלי"
     # booklet wording (p.37-38): "אני מבקש להתאמן על הקושי להתמודד עם [תיאור הסיטואציה]"
-    parts = [f"אני מבקש/ת להתאמן על הקושי להתמודד עם {_situation(data.get('situation') or '')}"]
+    parts = [f"אני מבקש/ת להתאמן על {_difficulty(data.get('situation') or '')}"]
     if (data.get("old") or "").strip():
         parts.append(f"שכאשר מופיע{'ה' if that == 'שהיא' else ''} ה{noun} {old_adj} שלי, {that} {_request_clause(data['old'])}")
     if source:

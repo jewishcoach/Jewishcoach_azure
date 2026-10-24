@@ -375,7 +375,7 @@ def test_s8_client_formulation_is_the_pattern_and_closes():
     state["messages"] += [{"sender": "user", "content": "כעס, רצון לברוח"},
                           _coach("הדפוס שלך — כעס ורצון לברוח. עכשיו נגלה מה מפעיל את הדפוס מבפנים.", "S8")]
     assert _check_gate_met_v3(state) == "S9"
-    assert state["collected_data"]["pattern"] == "כעס, רצון לברוח"
+    assert state["collected_data"]["pattern"] == "כעס ורצון לברוח"  # the coach's clean closing reflection
 
 
 def test_s8_named_field_gets_describe_one_time_not_an_assertion():
@@ -653,3 +653,26 @@ def test_s10_cap_counts_the_whole_step_and_deepening_is_asked_once():
                          _coach("ומה אתה יודע על אנשים שגורם לתגובה הזו להרגיש נכונה?", "S10")]
     ctx = build_conversation_context(state, "שאנשים לא באמת מקשיבים", "he")
     assert "שמעמיקה מתחת לחוק" not in ctx  # the deepening (in other words) was already asked
+
+
+def test_s8_asks_for_another_arena_and_stores_the_clean_pattern():
+    from app.bsd_v2.single_agent_coach import build_conversation_context
+    state = _v3_state("S8", event_description="בישיבת צוות הבוס קידם קולגה צעיר ואני שתקתי")
+    state["messages"] = [_coach("האם אתה מכיר את עצמך מגיב ככה גם במקומות אחרים בחיים?", "S8")]
+    ctx = build_conversation_context(state, "כן, גם בבית מול אשתי וגם בעבודה בישיבות", "he")
+    assert "מזירה אחרת" in ctx and "פעם אחת כזו בבית" in ctx
+    state["messages"] += [{"sender": "user", "content": "אני נמנע מלהביע כי אני מפחד, ולכן שותק גם בעבודה וגם בבית"},
+                          _coach("הדפוס שלך — להימנע מלהביע את מה שאתה מרגיש ולשמור על שתיקה גם בעבודה וגם בבית. "
+                                 "עכשיו נגלה מה מפעיל את הדפוס מבפנים.", "S8")]
+    state["messages"].insert(1, {"sender": "user", "content": "x"})
+    state["messages"].insert(2, _coach("כשאתה מסתכל על שני הרגעים — האם אתה מזהה כאן משהו שחוזר על עצמו? איך היית מנסח אותו במשפט אחד?", "S8"))
+    assert _check_gate_met_v3(state) == "S9"
+    assert state["collected_data"]["pattern"] == "להימנע מלהביע את מה שאתה מרגיש ולשמור על שתיקה"
+
+
+def test_coaching_request_is_always_on_the_stance_floor_and_reads_with_a_verb_situation():
+    from app.bsd_v2.coaching_request import compose_coaching_request
+    out = compose_coaching_request({"situation": "לדבר על מה שמפריע לי בעבודה", "old": "אני מאמין שלהראות רגשות זה סיכון",
+                                    "new": "אני מאמין שפתיחות מקרבת", "result": "אדבר פעם בשבוע"})
+    assert out.startswith("אני מבקש/ת להתאמן על הקושי שלי לדבר על מה שמפריע לי בעבודה")
+    assert "שכאשר מופיעה העמדה הישנה שלי" in out and "ומתוך העמדה החדשה שבחרתי" in out

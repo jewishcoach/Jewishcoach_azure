@@ -608,6 +608,27 @@ _FIRST_PERSON_PAST = re.compile(rf"(?<![{_HE}])(?!(?:אשתי|אחותי|בתי|
 _S8_OTHER_TIME = "פעם במקום אחר"
 
 
+_ARENA = r"(?:בעבודה|בבית|בזוגיות|במשפחה|בישיבות|בישיבת צוות|עם החברים|עם חברים|מול הבוס|מול אשתי|מול בעלי|מול הילדים|עם הילדים|עם אשתי|עם בעלי)"
+_ARENA_CLAUSE = re.compile(rf",?\s*(?:גם\s+)?{_ARENA}(?:\s+(?:וגם|ו)\s*{_ARENA})?")
+# the arenas the client named, by the words that identify them in the event (to suggest a different one)
+_ARENA_WORDS = {"בבית": ("בית", "אשתי", "בעלי", "הילדים", "ילדים", "זוג"), "בעבודה": ("עבודה", "בוס", "ישיבת", "צוות", "קולגה"),
+                "עם החברים": ("חברים", "חבר", "חברה"), "במשפחה": ("משפחה", "הורים", "אחים", "אמא", "אבא")}
+
+
+def _strip_pattern_arenas(pattern: str) -> str:
+    """A pattern is the reaction itself (booklet p.14) — not where it happens ("…גם בעבודה וגם בבית")."""
+    trimmed = _ARENA_CLAUSE.sub("", pattern or "").strip(" ,.;—–")
+    return trimmed if len(trimmed.split()) >= 2 else pattern
+
+
+def _other_arena(reply: str, event: str) -> str:
+    """An arena the client named that is not the opening event's ("בבית מול אשתך" when the event was at work)."""
+    for arena, words in _ARENA_WORDS.items():
+        if any(w in (reply or "") for w in words) and not any(w in (event or "") for w in words):
+            return arena
+    return ""
+
+
 def _same_as_event(text: str, event: str) -> bool:
     """The "other time" is the original event again ("ריב על כסף, צעקתי ויצאתי" for a money fight)."""
     words = lambda t: {w for w in re.findall(rf"[{_HE}]{{3,}}", t or "") if w not in _FILLER_WORDS}
@@ -836,10 +857,16 @@ def _check_gate_met_v3(state: Dict[str, Any]) -> str | None:
         reply8 = (last_user.get("content") or "") if last_user else ""
         # the client's answer to the formulation question is the pattern — his words, not the coach's
         if from_chat_reply and _s8_asks_formulation(prev_text) and not _is_empty_answer(reply8):
-            cd["pattern"] = _strip_pattern_motive(re.sub(r"^\s*(?:כן|נכון|אכן)[,.]?\s+", "", reply8.strip()))[:300]
+            cd["pattern"] = _strip_pattern_arenas(_strip_pattern_motive(
+                re.sub(r"^\s*(?:כן|נכון|אכן)[,.]?\s+", "", reply8.strip())))[:300]
+        last8 = next((m.get("content") or "" for m in reversed(msgs) if m.get("sender") == "coach"), "")
+        # the coach's closing reflection is his formulation cleaned to the reaction ("הדפוס שלך — להימנע מלהביע…") —
+        # store that, not his raw sentence with the motive and the arenas (expert review of Yossi's conversation)
+        closing = re.search(r"הדפוס שלך\s*(?:הוא\s*)?[—–-]\s*(.+?)(?:\s[—–]\s|[.!?\n]|$)", last8)
+        if closing and "?" not in last8 and len(closing.group(1).split()) >= 2:
+            cd["pattern"] = _strip_pattern_arenas(_strip_pattern_motive(closing.group(1).strip()))[:300]
         if not cd.get("pattern"):
             return None
-        last8 = next((m.get("content") or "" for m in reversed(msgs) if m.get("sender") == "coach"), "")
         # close only on a closing statement — never show the stage-complete screen under an open question
         return "S9" if "?" not in last8 else None
     if step == "S9":
@@ -2999,16 +3026,22 @@ def build_conversation_context(
             nxt8 = "השלב ארוך מדי — אל תשאל עוד. קח את **המילים שהוא עצמו אמר** על התגובה שלו. " + close
         elif (asked_describe and not any(_S8_OTHER_TIME in c for c in coach_s8)
               and _same_as_event(reply8, (state.get("collected_data") or {}).get("event_description") or "")):
-            nxt8 = ("מה שתיאר נשמע כמו **האירוע שכבר סיפר** — לא פעם נוספת. שאלה אחת, בלי לבקר: "
-                    f"\"זה הרגע שסיפרת עליו. ספר לי על {_S8_OTHER_TIME} — מול מישהו אחר או במצב אחר — מה קרה שם, ומה עשית?\"")
+            arena8 = _other_arena(" ".join(m.get("content") or "" for m in (state.get("messages") or [])[-6:]
+                                           if m.get("sender") == "user"), (state.get("collected_data") or {}).get("event_description") or "")
+            nxt8 = ("מה שתיאר הוא **האירוע שכבר סיפר** — לא פעם נוספת (חוברת עמ' 14: לצאת מהסיטואציה המסוימת). שאלה אחת, "
+                    "בעדינות: \"את הרגע הזה כבר הכרנו לעומק. ספר לי על רגע ספציפי בזירה אחרת"
+                    + (f" — למשל {arena8}" if arena8 else "") + " — מה קרה שם, ומה עשית?\"")
         elif asked_describe or _describes_occurrence(reply8):
             nxt8 = ("יש פעם נוספת שתוארה" + (" (גם אם בקצרה — אל תבקש שוב)" if asked_describe else "") + ". " + formulate)
         elif coach_s8:
             if not any(w in reply8 for w in _S8_PLACES):
                 nxt8 = "הוא לא אמר איפה. שאלה אחת: \"איפה למשל? מול מי?\""
             else:
+                arena8 = _other_arena(reply8, (state.get("collected_data") or {}).get("event_description") or "")
                 nxt8 = (f"הוא ציין מקום (\"{reply8[:120]}\") — עוד לא **פעם אחת שתוארה**. **אל תקבע בשבילו שזו 'אותה תגובה'** "
-                        f"ואל תמנה רגש / מחשבה / פעולה במקומו. שאל (חוברת: 'לתאר'): \"ספר לי על {_S8_DESCRIBE} — מה קרה, ומה עשית?\"")
+                        "ואל תמנה רגש / מחשבה / פעולה במקומו. הדוגמה צריכה להיות **מזירה אחרת מהאירוע שכבר סיפר** "
+                        f"(חוברת עמ' 14). שאל (חוברת: 'לתאר'): \"ספר לי על {_S8_DESCRIBE}"
+                        + (f" {arena8}" if arena8 else " — במקום אחר מהרגע שכבר סיפרת") + " — מה קרה, ומה עשית?\"")
         if nxt8:
             context_parts.append("\n# שלב 8 — השאלה הבאה\n" + nxt8)
 

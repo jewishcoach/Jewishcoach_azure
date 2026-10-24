@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { CardShell } from '../shared/CardShell';
 
 // בקשה לאימון — the booklet's complex coaching request (p.37-38): choose a floor, then
@@ -35,10 +35,15 @@ const HEEBO = { fontFamily: "'Heebo', sans-serif" };
 
 // Same rules as the backend composer (bsd_v2/coaching_request.py): a first-person sentence ("אני מאמין ש…") reads
 // inside the template only as a quote; a "כש…" situation becomes "הרגעים ש…"
-function situationPhrase(text: string): string {
+function difficultyPhrase(text: string): string {
   const t = text.trim().replace(/\.+$/, '');
-  if (!t) return '…';
-  return t.startsWith('כש') ? `הרגעים ש${t.slice(2)}` : t;
+  if (!t) return 'הקושי להתמודד עם …';
+  const first = t.split(/\s+/)[0];
+  if (t.startsWith('כש')) return `הקושי להתמודד עם הרגעים ש${t.slice(2)}`;
+  if (first.startsWith('ל') && first.length >= 4 && !['לחץ', 'לחצים', 'לילה', 'לילות', 'לימודים'].includes(first)) return `הקושי שלי ${t}`;
+  if (first === 'לא') return `הקושי שלי ש${t}`;
+  return `הקושי להתמודד עם ${t}`;
+}` : t;
 }
 
 function clause(text: string): string {
@@ -68,19 +73,14 @@ function Chips({ options, selected, onToggle }: { options: string[]; selected: s
 }
 
 export function CommitmentCard({ data, onSubmit, isSubmitting }: CommitmentCardProps) {
-  const [floor, setFloor] = useState<Floor>('stance');
+  // Always the stance floor — "קומת העמדה היא קומת השינוי" (booklet p.36); the backend enforces it too
+  const floor: Floor = 'stance';
   const [situation, setSituation] = useState('');
   const [oldText, setOldText] = useState(data?.old?.stance ?? '');
   const [newText, setNewText] = useState(data?.new?.stance ?? '');
   const [source, setSource] = useState<string[]>([]);
   const [nature, setNature] = useState<string[]>([]);
   const [result, setResult] = useState('');
-
-  // Switching the floor refills old/new with the client's own words for that floor (still editable)
-  useEffect(() => {
-    setOldText(data?.old?.[floor] ?? '');
-    setNewText(data?.new?.[floor] ?? '');
-  }, [floor, data]);
 
   const f = FLOORS.find((x) => x.id === floor)!;
   const noun = f.label.slice(1);  // "הדפוס" → "דפוס"
@@ -95,7 +95,7 @@ export function CommitmentCard({ data, onSubmit, isSubmitting }: CommitmentCardP
     && (natureOptions.length === 0 || nature.length > 0);
 
   const preview = useMemo(() => {
-    const parts = [`אני מבקש/ת להתאמן על הקושי להתמודד עם ${situationPhrase(situation)}`];
+    const parts = [`אני מבקש/ת להתאמן על ${difficultyPhrase(situation)}`];
     parts.push(`שכאשר מופיע${f.feminine ? 'ה' : ''} ה${noun} ${f.oldAdj} שלי, ${f.that} ${clause(oldText)}`);
     if (source.length) parts.push(`אפעל מתוך המקור שלי, שהוא ${source.join(', ')}`);
     if (nature.length) parts.push(`ומתוך הטבע שלי, שהוא ${nature.join(', ')}`);
@@ -110,26 +110,6 @@ export function CommitmentCard({ data, onSubmit, isSubmitting }: CommitmentCardP
       instructionHe="בקשה לאימון היא הדרך שלך לקחת אחריות על השינוי — לבקש אותו מעצמך, מתוך הכוחות שלך. היא שלך, ואתה זה שמממש אותה."
     >
       <div className="space-y-5">
-        {/* Floor */}
-        <div>
-          <p className={LABEL} style={HEEBO}>על איזו קומה תרצה להתאמן? <span className="font-normal text-[rgba(45,70,88,0.6)]">(העמדה היא קומת השינוי)</span></p>
-          <div className="flex gap-2 justify-start" dir="rtl">
-            {FLOORS.map((x) => (
-              <button
-                key={x.id}
-                type="button"
-                onClick={() => setFloor(x.id)}
-                className={`flex-1 h-[40px] rounded-xl border text-sm transition-colors ${floor === x.id
-                  ? 'bg-[#2d4658] border-[#2d4658] text-white'
-                  : 'bg-white border-[#e0ddd8] text-[#2d4658] hover:border-[#2d4658]'}`}
-                style={HEEBO}
-              >
-                {x.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
         <div>
           <label className={LABEL} style={HEEBO}>אני מבקש/ת להתאמן על הקושי להתמודד עם…</label>
           <textarea value={situation} onChange={(e) => setSituation(e.target.value)} rows={2} className={FIELD} style={HEEBO}

@@ -100,9 +100,9 @@ CARD_SCHEMAS = {
     "balance_scale": '{"gains": [2-3 str], "losses": [2-3 str]}  (gains/losses of HOLDING THE STANCE — write each item in FIRST PERSON, e.g. "אני מרגיש מוגן", "אני מפספס קרבה")',
     "trait_card_builder": '{"source_forces": [6 str values/light traits], "nature_forces": [6 str needs/defenses]}',
     "declaration_card": '{"renewal": str, "next_action": str, "feels_right": true}  (card labels: renewal = "העמדה החדשה שאני בוחר — אני מאמין ש…" (placeholder: "תפיסה חדשה, במשפט קצר ובמילים שלך"); next_action = "מה תעשה אחרת בפעם הבאה?". Answer in your persona voice — like a real client, you may misread the field)',
-    "commitment_card": ('{"floor": "pattern"|"paradigm"|"stance", "situation": str (the difficulty to train on), '
-                        '"old": str (the old pattern/paradigm/stance, from the data), "source": [1-2 items from data.forces_source], '
-                        '"nature": [1 item from data.forces_nature], "new": str (the new one you chose), '
+    "commitment_card": ('{"floor": "stance", "situation": str (the difficulty to train on), '
+                        '"old": str (the old stance, from data.old.stance), "source": [1-2 items from data.forces_source], '
+                        '"nature": [1 item from data.forces_nature], "new": str (the new stance, from data.new.stance), '
                         '"result": str (a MEASURABLE result: when/how many/what is seen)}'),
 }
 
