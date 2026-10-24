@@ -43,7 +43,6 @@ function difficultyPhrase(text: string): string {
   if (first.startsWith('ל') && first.length >= 4 && !['לחץ', 'לחצים', 'לילה', 'לילות', 'לימודים'].includes(first)) return `הקושי שלי ${t}`;
   if (first === 'לא') return `הקושי שלי ש${t}`;
   return `הקושי להתמודד עם ${t}`;
-}` : t;
 }
 
 function clause(text: string): string {
