@@ -25,7 +25,11 @@ def _difficulty(text: str) -> str:
     """The booklet's opening (p.37): "הקושי להתמודד עם [סיטואציה]" for a noun phrase; a verb phrase reads as "הקושי
     שלי לדבר על…" ("להתמודד עם לדבר" was ungrammatical); "כשאני…" → "הקושי להתמודד עם הרגעים שאני…"."""
     t = (text or "").strip().rstrip(".")
+    # "קושי לבטא…" after "הקושי להתמודד עם" doubled the word ("…להתמודד עם קושי לבטא") — "הקושי שלי לבטא…"
+    t = re.sub(r"^(?:ה?קושי(?:\s+שלי)?)\s+", "", t)
     first = t.split()[0] if t.split() else ""
+    if re.match(r"^(?:ה?קושי)", (text or "").strip()) and first.startswith("ל"):
+        return f"הקושי שלי {t}"
     if t.startswith("כש"):
         return f"הקושי להתמודד עם הרגעים ש{t[2:]}"
     if first.startswith("ל") and len(first) >= 4 and first not in _NOT_INFINITIVE:

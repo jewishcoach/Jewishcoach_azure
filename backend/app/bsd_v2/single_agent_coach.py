@@ -324,12 +324,18 @@ def _strip_pattern_motive(pattern: str) -> str:
     return trimmed if len(trimmed.split()) >= 2 else pattern
 
 
-_PATTERN_REFLECTION = re.compile(r"(הדפוס שלך\s*[—–-]\s*)(.+?)(?=\s[—–]\s|[.?!\n]|$)")
+_PATTERN_REFLECTION = re.compile(r"(הדפוס שלך\s*(?:הוא\s+)?[—–-]?\s*)(.+?)(?=\s[—–]\s|[.?!\n]|$)")
+_PATTERN_SENTENCE = re.compile(r"[^.?!\n]*הדפוס שלך[^.?!\n]*[.!]\s*")
 
 
-def _strip_motive_in_pattern_reflection(coach_message: str) -> str:
-    """The coach's "הדפוס שלך — <pattern>" sentence (S8 close, S9 card intro) echoes the client's motive too."""
-    return _PATTERN_REFLECTION.sub(lambda m: m.group(1) + _strip_pattern_motive(m.group(2)), coach_message, count=1)
+def _strip_motive_in_pattern_reflection(coach_message: str, formulated: bool = True) -> str:
+    """The coach's "הדפוס שלך — <pattern>" sentence (S8 close, S9 card intro) echoed the client's motive and the arenas
+    ("…מתוך חשש…, גם בעבודה וגם בבית"), also as "הדפוס שלך הוא …". Before the client formulated the pattern himself
+    the sentence is dropped: the coach declared it for him and then asked (booklet p.14 — the client formulates)."""
+    if not formulated and "?" in coach_message:
+        coach_message = _PATTERN_SENTENCE.sub("", coach_message).strip() or coach_message
+    return _PATTERN_REFLECTION.sub(lambda m: m.group(1) + _strip_pattern_arenas(_strip_pattern_motive(m.group(2))),
+                                   coach_message, count=1)
 
 
 def _fix_addressee(coach_message: str, user_gender: Optional[str], language: str) -> str:
@@ -557,6 +563,21 @@ _SELF_ACT = re.compile(rf"(?<![{_HE}])(?:אני|בעצמי|אסיים|אגיד|�
 _RECEIVE_FROM_OTHERS = re.compile(rf"(?<![{_HE}])[וש]?(?:אקבל|מקבל|מקבלת|לקבל|יקשיבו)(?![{_HE}])|הקשבה מ|משוב|הערכה מ")
 
 
+_HEDGE = re.compile(rf"(?<![{_HE}])[וש]?(?:אנסה|אשתדל|ננסה|נשתדל|אולי|מנסה|לנסות|אשאף)(?![{_HE}])")
+# questions after the request card; their answer updates only the result (marker phrases)
+_S15_RESULT_QUESTIONS = ("תלוי בך", "מה אתה מתחייב", "מה את מתחייבת", "באיזו זירה")
+
+
+def _result_issue(result: str) -> str:
+    """One booklet requirement the result misses (p.9, 37): in his hands, a committed step, one real arena."""
+    if _result_depends_on_others(result):
+        return "others"
+    if _HEDGE.search(result or ""):
+        return "hedge"
+    arenas = [a for a, words in _ARENA_WORDS.items() if any(w in (result or "") for w in words)]
+    return "two_arenas" if len(arenas) >= 2 else ""
+
+
 def _result_depends_on_others(result: str) -> bool:
     if not result:
         return False
@@ -618,7 +639,7 @@ _S8_OTHER_TIME = "פעם במקום אחר"
 _ARENA = r"(?:בעבודה|בבית|בזוגיות|במשפחה|בישיבות|בישיבת צוות|עם החברים|עם חברים|מול הבוס|מול אשתי|מול בעלי|מול הילדים|עם הילדים|עם אשתי|עם בעלי)"
 _ARENA_CLAUSE = re.compile(rf",?\s*(?:גם\s+)?{_ARENA}(?:\s+(?:וגם|ו)\s*{_ARENA})?")
 # the arenas the client named, by the words that identify them in the event (to suggest a different one)
-_ARENA_WORDS = {"בבית": ("בית", "אשתי", "בעלי", "הילדים", "ילדים", "זוג"), "בעבודה": ("עבודה", "בוס", "ישיבת", "צוות", "קולגה"),
+_ARENA_WORDS = {"בבית": ("בית", "אשתי", "אישה", "בעלי", "הילדים", "ילדים", "זוג"), "בעבודה": ("עבודה", "בוס", "ישיבת", "צוות", "קולגה"),
                 "עם החברים": ("חברים", "חבר", "חברה"), "במשפחה": ("משפחה", "הורים", "אחים", "אמא", "אבא")}
 
 
@@ -911,7 +932,7 @@ def _check_gate_met_v3(state: Dict[str, Any]) -> str | None:
         from .coaching_request import compose_coaching_request
         req = cd["coaching_request"]
         reply15 = ((last_user.get("content") or "").strip() if last_user else "")
-        if from_chat_reply and "תלוי בך" in prev_text and not _is_empty_answer(reply15):
+        if from_chat_reply and any(m in prev_text for m in _S15_RESULT_QUESTIONS) and not _is_empty_answer(reply15):
             req["result"] = reply15[:300]
         cd["commitment"] = compose_coaching_request(req)
     if step == "S10":
@@ -2990,6 +3011,17 @@ def build_conversation_context(
                 f"(בלי להציע תוכן): \"זו תמונה חשובה. {_S14_WIDEN} — לבית, לקשרים, לעבודה ולמי שאתה — איך נראים החיים שאתה רוצה?\" "
                 "**אל תעדכן `current_step` ל-S15 בתור הזה.**")
 
+    # S12/S13: the leading traits are the first of each כמ"ז list (booklet p.28) — the coach once named another one
+    # ("זהירות" for "רגישות לאחרים"), and the request card must carry the same ones
+    forces12 = (state.get("collected_data") or {}).get("forces") or {}
+    lead_src = (forces12.get("source") or [None])[0] if isinstance(forces12, dict) else None
+    lead_nat = (forces12.get("nature") or [None])[0] if isinstance(forces12, dict) else None
+    if state.get("current_step") in ("S12", "S13") and state.get("ux_version", 2) >= 3 and (lead_src or lead_nat):
+        context_parts.append(
+            "\n# התכונות המובילות (הראשונות שבחר בכל צד)\n"
+            + (f"מקור: '{lead_src}'. " if lead_src else "") + (f"טבע: '{lead_nat}'. " if lead_nat else "")
+            + "כשאתה מזכיר כוח מוביל — **רק את אלה, בשמם**; אל תחליף בתכונה אחרת מהרשימה.")
+
     # S13: a choice that is only an action gets the "from which new place" question (the model celebrated it)
     last_coach13 = next((m.get("content") or "" for m in reversed(state.get("messages") or [])
                          if m.get("sender") == "coach"), "")
@@ -3144,21 +3176,29 @@ def build_conversation_context(
     # (the overlay rule alone was ignored: "פחות ריבים, יותר שקט בבית" was accepted and the process closed)
     if state.get("_tool_just_submitted") == "commitment_card":
         result = ((state.get("collected_data") or {}).get("coaching_request") or {}).get("result") or ""
-        if _result_depends_on_others(result):
+        issue = _result_issue(result)
+        ask = {
+            "others": ("התוצאה תלויה גם בתגובה של אחרים. באימון התוצאה היא **מה שבידיו**",
+                       "מה מתוך זה תלוי בך — מה אתה תעשה, או איך תהיה, שאפשר יהיה לראות?"),
+            "hedge": ("התוצאה כתובה בלשון היסוס ('אנסה' / 'אשתדל'). בקשה לאימון היא **בחירה ומחויבות** (חוברת עמ' 36)",
+                      "במקום 'אנסה' — מה אתה מתחייב לעשות, שאפשר יהיה לראות?"),
+            "two_arenas": ("התוצאה מחברת שתי זירות שונות למדד אחד, וזה לא מציאותי. התוצאה צריכה להיות ממוקדת בזירה אחת",
+                           "באיזו זירה הכי חשוב לך להתחיל — ומה תעשה שם, שאפשר יהיה לראות?"),
+        }.get(issue)
+        if ask:
             context_parts.append(
-                "\n# שלב 15 — התוצאה תלויה גם באחרים\n"
-                f"התוצאה שכתב (\"{result[:200]}\") תלויה גם בתגובה של אחרים. באימון התוצאה היא **מה שבידיו**. "
-                "אל תסכם ואל תסמן `stage_ready_to_complete` בתור הזה. שקף בקצרה את הבקשה, ושאל **שאלה אחת**: "
-                "\"מה מתוך זה תלוי בך — מה אתה תעשה, או איך תהיה, שאפשר יהיה לראות?\"")
+                "\n# שלב 15 — התוצאה\n"
+                f"התוצאה שכתב (\"{result[:200]}\"): {ask[0]}. אל תסכם ואל תסמן `stage_ready_to_complete` בתור הזה. "
+                f"שקף בקצרה את הבקשה, ושאל **שאלה אחת**: \"{ask[1]}\"")
 
     # S15: the client answered "מה מתוך זה תלוי בך" — now the full closing turn (it closed with one sentence)
     if state.get("current_step") == "S15" and state.get("ux_version", 2) >= 3:
         prev_coach = next((m.get("content") or "" for m in reversed(state.get("messages") or [])
                            if m.get("sender") == "coach"), "")
-        if "תלוי בך" in prev_coach and "?" in prev_coach:
+        if any(m in prev_coach for m in _S15_RESULT_QUESTIONS) and "?" in prev_coach:
             context_parts.append(
                 "\n# שלב 15 — סגירה\n"
-                "הוא ענה מה תלוי בו — זו התוצאה המעודכנת (עדכן אותה בבקשה). עכשיו **התור המלא** מההוראות: "
+                "הוא ענה על שאלת התוצאה — זו התוצאה המעודכנת (עדכן אותה בבקשה). עכשיו **התור המלא** מההוראות: "
                 "(1) שקף את הבקשה במשפט טבעי עם התוצאה החדשה; (2) משפט חירות ואחריות בגוף שני — ברוח \"הבקשה שלך, הכוחות כבר "
                 "אצלך, ואתה מוביל מכאן\"; (3) סיפור מסע קצר, 3–5 משפטים חמים — מאיזה רגע יצאנו, מה גילה (הדפוס והאמונה, במילים שלו), "
                 "ומה בחר. סמן `stage_ready_to_complete: true`. בלי שאלה.")
@@ -3864,7 +3904,10 @@ async def handle_conversation(
         )
 
         if state.get("ux_version", 2) >= 3 and (old_step in ("S8", "S9") or state.get("current_step") == "S9"):
-            coach_message = _strip_motive_in_pattern_reflection(coach_message)
+            # in S8 the client formulated once the coach asked the formulation question and he answered it
+            prev8 = next((m.get("content") or "" for m in reversed(state.get("messages") or []) if m.get("sender") == "coach"), "")
+            formulated8 = old_step != "S8" or _s8_asks_formulation(prev8)
+            coach_message = _strip_motive_in_pattern_reflection(coach_message, formulated=formulated8)
         state = add_message(state, "user", user_message)
         state = add_message(state, "coach", coach_message, internal_state)
         consume_session_flow_flags(state)

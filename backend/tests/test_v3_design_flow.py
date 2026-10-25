@@ -708,3 +708,25 @@ def test_coaching_request_accepts_a_string_force():
     from app.bsd_v2.coaching_request import compose_coaching_request
     out = compose_coaching_request({"situation": "x", "old": "y", "source": "אומץ", "nature": "צורך בביטחון", "new": "z", "result": "w"})
     assert "שהוא אומץ" in out and "שהוא צורך בביטחון" in out and "צ, ו" not in out
+
+
+def test_s8_reflection_net_drops_motive_arenas_and_premature_pattern():
+    from app.bsd_v2.single_agent_coach import _strip_motive_in_pattern_reflection as f
+    assert f("הדפוס שלך הוא לבחור לשתוק מתוך חשש מהקונפליקט, גם כשזה כואב. עכשיו נגלה.") == \
+        "הדפוס שלך הוא לבחור לשתוק, גם כשזה כואב. עכשיו נגלה."
+    assert "גם בעבודה" not in f("הדפוס שלך — לשתוק ולהתמודד לבד, גם בעבודה וגם בזוגיות. עכשיו נגלה.")
+    assert "הדפוס שלך" not in f("הדפוס שלך — לשתוק. כשאתה מסתכל על שני הרגעים, מה חוזר?", formulated=False)
+
+
+def test_s15_result_issues():
+    from app.bsd_v2.single_agent_coach import _result_issue
+    assert _result_issue("אדבר פעם בשבוע עם האישה והבוס") == "two_arenas"
+    assert _result_issue("בשבת הבאה אנסה לדבר בשקט") == "hedge"
+    assert _result_issue("שהבוס יעריך אותי") == "others"
+    assert _result_issue("אדבר בישיבת הצוות הבאה פעם אחת") == ""
+
+
+def test_coaching_request_no_doubled_difficulty():
+    from app.bsd_v2.coaching_request import compose_coaching_request
+    out = compose_coaching_request({"situation": "קושי לבטא את הצרכים מול בן הזוג", "old": "x", "new": "y", "result": "z"})
+    assert out.startswith("אני מבקש/ת להתאמן על הקושי שלי לבטא את הצרכים מול בן הזוג")

@@ -77,8 +77,10 @@ export function CommitmentCard({ data, onSubmit, isSubmitting }: CommitmentCardP
   const [situation, setSituation] = useState('');
   const [oldText, setOldText] = useState(data?.old?.stance ?? '');
   const [newText, setNewText] = useState(data?.new?.stance ?? '');
-  const [source, setSource] = useState<string[]>([]);
-  const [nature, setNature] = useState<string[]>([]);
+  // The leading traits (first in each כמ"ז list, booklet p.28) are the ones the coach reflected in S12 — preselected so
+  // the request carries the same forces (still editable)
+  const [source, setSource] = useState<string[]>(data?.forces_source?.length ? [data.forces_source[0]] : []);
+  const [nature, setNature] = useState<string[]>(data?.forces_nature?.length ? [data.forces_nature[0]] : []);
   const [result, setResult] = useState('');
 
   const f = FLOORS.find((x) => x.id === floor)!;
@@ -112,7 +114,7 @@ export function CommitmentCard({ data, onSubmit, isSubmitting }: CommitmentCardP
         <div>
           <label className={LABEL} style={HEEBO}>אני מבקש/ת להתאמן על הקושי להתמודד עם…</label>
           <textarea value={situation} onChange={(e) => setSituation(e.target.value)} rows={2} className={FIELD} style={HEEBO}
-            placeholder="איזו סיטואציה — למשל: ויכוחים על כסף בבית, ישיבות צוות מול הבוס" />
+            placeholder="הסיטואציה עצמה — למשל: ויכוחים על כסף בבית, שיחות כנות מול הבוס" />
         </div>
 
         <div>
