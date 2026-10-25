@@ -488,6 +488,13 @@ _V3_STAGE_COMPLETE_REQUIRES = {
 }
 
 
+def _drop_premature_vision(state: Dict[str, Any], old_step: str) -> None:
+    """The vision comes from the client's answer in S14. The model filled `vision` already in S13 (it copied the new
+    stance), and at the S14 opening the coach saw a vision, summarized it and skipped the stage (4/5 on a real turn)."""
+    if old_step in ("S12", "S13") or (old_step == "S14" and state.get("_stage_opening")):
+        (state.get("collected_data") or {}).pop("vision", None)
+
+
 def _block_v3_backward_step(state: Dict[str, Any], internal_state: Dict[str, Any], old_step: str) -> None:
     """V3: the step never moves back. The backward block lives in the Safety Net, which can be disabled
     (BSD_V2_SAFETY_NET_DISABLED); at a stage opening the model once returned S11 from S12 and the balance card
@@ -646,6 +653,17 @@ _S9_DEEPEN_MARKERS = ("חוק פנימי", "כלל פנימי", "איזה כלל
 # S10 after the trigger: the booklet's sub-question on control over the trigger (p.18) replaces the 5-link chain the
 # app had invented (it recited every level again, right after each was reflected in its own turn)
 _S10_CONTROL = "בכוחך להפעיל"
+
+
+# The stance is a perception of reality (booklet p.18-19), not the rule again: "אני מאמין שעדיף לשתוק" restates the
+# paradigm with "אני מאמין" in front (judge: all three conversations). Normative words mark a rule; a cause-effect
+# perception ("אם אביע את מה שאני מרגישה, זה יוביל לוויכוח") is a stance.
+_NORMATIVE = re.compile(rf"(?<![{_HE}])ש?(?:עדיף|צריך|צריכה|חייב|חייבת|אסור|מוכרח|מוכרחה|כדאי)(?![{_HE}])|הדרך הנכונה")
+
+
+def _stance_is_a_rule(sentence: str) -> bool:
+    body = re.sub(r"^.*?(?:אני מאמינה?|העמדה שלי היא)\s+", "", sentence or "", count=1)
+    return bool(_NORMATIVE.search(body))
 
 
 def _asks_stance_formulation(text: str) -> bool:
@@ -919,7 +937,8 @@ def _check_gate_met_v3(state: Dict[str, Any]) -> str | None:
                 and not (_restates_rule(reply_text, cd.get("paradigm") or "") and not belief_followup)):
             stance["reality_belief"] = reply_text[:300]
         if (from_chat_reply and asked_formulation and not _thin_answer(reply_text) and not _is_empty_answer(reply_text)
-                and not _same_as_event(reply_text, cd.get("event_description") or "")):  # a retold event is no stance
+                and not _same_as_event(reply_text, cd.get("event_description") or "")  # a retold event is no stance
+                and not _stance_is_a_rule(reply_text)):  # "אני מאמין שעדיף…" is the rule again
             stance["reality_belief"] = reply_text[:300]
         if from_chat_reply and asked_trigger and not stance.get("activation_trigger"):
             stance["activation_trigger"] = (last_user.get("content") or "")[:300]
@@ -3100,6 +3119,11 @@ def build_conversation_context(
             nxt = (("הוא **כבר סיפר מאיפה זה מגיע** — **אל תשאל 'מאיפה'**. " if told_origin and not asked_origin else
                     "שאלת המקור **כבר נשאלה ונענתה** — אל תשאל שוב. ")
                    + "שקף את לב המקור במשפט קצר, ובקש ממנו **לנסח את העמדה בעצמו** (חוברת עמ' 19), בלי להציע משפט: " + formulate_q)
+        elif (not asked_trigger and not belief_followup_asked and s10_user
+              and any(m in s10_user[-1] for m in ("אני מאמין", "העמדה שלי")) and _stance_is_a_rule(s10_user[-1])):
+            nxt = (f"המשפט שניסח ('{s10_user[-1][:120]}') הוא עדיין **חוק** — מה עדיף / צריך לעשות — ולא **תפיסה של "
+                   "המציאות** שממנה החוק נולד. אל תקבל אותו כעמדה ואל תסביר תיאוריה. שאלה **אחת**, בלי להציע תשובה: "
+                   f"\"ומה אתה יודע על החיים או על אנשים שגורם {_S10_BELIEF_FOLLOWUP}?\"")
         elif not asked_trigger:
             nxt = ("העמדה **כבר נוסחה** ('אני מאמין ש…') — **אל תבקש לנסח אותה שוב.** "
                    + ("שקף בקצרה את המקור שסיפר, ואז " if told_origin and not asked_formulation else "")
@@ -3852,6 +3876,7 @@ async def handle_conversation(
         is_v3 = state.get("ux_version", 2) >= 3
         if is_v3:
             _block_v3_backward_step(state, internal_state, old_step)
+            _drop_premature_vision(state, old_step)
             # The LLM may leave S5 on its own (V2 S5 gate) — hold until the matzui summary
             # card ("האם דייקתי?") was shown; the V3 gate below decides when to move on
             if old_step == "S5" and state.get("current_step") == "S6" and not state.get("_matzui_summary_sent"):

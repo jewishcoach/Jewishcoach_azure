@@ -38,8 +38,10 @@ def _difficulty(text: str) -> str:
 def compose_coaching_request(data: Dict[str, Any]) -> str:
     """The booklet's complex coaching request (p.37-38), as one sentence in the client's words."""
     name, that, old_adj, new_adj = _REQUEST_FLOOR_HE.get(data.get("floor"), _REQUEST_FLOOR_HE["stance"])
-    source = ", ".join(s for s in (data.get("source") or []) if s)
-    nature = ", ".join(s for s in (data.get("nature") or []) if s)
+    def as_list(v: Any) -> list:  # the API accepts a string too — joining a str listed it letter by letter
+        return [v] if isinstance(v, str) else list(v or [])
+    source = ", ".join(x.strip() for x in as_list(data.get("source")) if x and x.strip())
+    nature = ", ".join(x.strip() for x in as_list(data.get("nature")) if x and x.strip())
     noun = name[1:]  # "הדפוס" → "דפוס" for "מופיע הדפוס הישן שלי"
     # booklet wording (p.37-38): "אני מבקש להתאמן על הקושי להתמודד עם [תיאור הסיטואציה]"
     parts = [f"אני מבקש/ת להתאמן על {_difficulty(data.get('situation') or '')}"]

@@ -676,3 +676,35 @@ def test_coaching_request_is_always_on_the_stance_floor_and_reads_with_a_verb_si
                                     "new": "אני מאמין שפתיחות מקרבת", "result": "אדבר פעם בשבוע"})
     assert out.startswith("אני מבקש/ת להתאמן על הקושי שלי לדבר על מה שמפריע לי בעבודה")
     assert "שכאשר מופיעה העמדה הישנה שלי" in out and "ומתוך העמדה החדשה שבחרתי" in out
+
+
+def test_s10_rule_like_formulation_gets_one_deepening_and_is_not_the_stance():
+    from app.bsd_v2.single_agent_coach import build_conversation_context
+    state = _v3_state("S10", paradigm="ככה זה אצלי — עדיף לשתוק")
+    state["collected_data"]["stance"]["reality_belief"] = "ויכוחים מרחיקים"
+    state["messages"] = [
+        _coach("מה אתה יודע על העולם שגורם לחוק הזה להרגיש נכון?", "S10"), {"sender": "user", "content": "ויכוחים מרחיקים"},
+        _coach("מאיפה זה מגיע אצלך?", "S10"), {"sender": "user", "content": "בילדות, כשהוריי רבו"},
+        _coach("ואם תנסח את העמדה שלך במשפט אחד — 'אני מאמין ש…' — מה המשפט?", "S10"),
+    ]
+    ctx = build_conversation_context(state, "אני מאמין שעדיף לשתוק ולשמור על השקט", "he")
+    assert "עדיין **חוק**" in ctx
+    state["messages"] += [{"sender": "user", "content": "אני מאמין שעדיף לשתוק ולשמור על השקט"}, _coach("...", "S10")]
+    _check_gate_met_v3(state)
+    assert state["collected_data"]["stance"]["reality_belief"] == "ויכוחים מרחיקים"  # the rule was not saved
+
+
+def test_vision_is_never_kept_before_s14_asked_for_it():
+    from app.bsd_v2.single_agent_coach import _drop_premature_vision
+    state = _v3_state("S14", vision="אני מאמין שקרבה מחזקת")  # the model copied the new stance at S13
+    _drop_premature_vision(state, old_step="S13")
+    assert "vision" not in state["collected_data"]
+    state["collected_data"]["vision"] = "בית שקט, עבודה שאני משפיע בה"
+    _drop_premature_vision(state, old_step="S14")  # a real S14 answer stays
+    assert state["collected_data"]["vision"] == "בית שקט, עבודה שאני משפיע בה"
+
+
+def test_coaching_request_accepts_a_string_force():
+    from app.bsd_v2.coaching_request import compose_coaching_request
+    out = compose_coaching_request({"situation": "x", "old": "y", "source": "אומץ", "nature": "צורך בביטחון", "new": "z", "result": "w"})
+    assert "שהוא אומץ" in out and "שהוא צורך בביטחון" in out and "צ, ו" not in out

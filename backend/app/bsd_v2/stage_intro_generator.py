@@ -325,7 +325,10 @@ MACRO_STAGE_PROMPTS = {
         "en": "Next stage: Choice — redesigning the desired. New stance, new paradigm, new pattern. The KMZ helps us choose from a place of awareness.",
     },
     "vision": {
-        "he": "השלב הבא: חזון — לבחור את החיים שאני באמת רוצה לחיות. תמונת עתיד ומחויבות לצעד ראשון קונקרטי.",
+        # the vision itself ("כאן מותר לחלום…") is S14's open question and the step is the request card — intro questions
+        # that asked them made the coach treat a picked option as the vision and skip S14
+        "he": ("השלב הבא: חזון — 'הרשות לחלום'. שאלות פתיחה קלות שמכינות לחלום: מה חשוב לו, מה מרגש אותו, מה נותן לו כוח. "
+               "**אל תשאל** איך ייראו החיים או העתיד, ואל תשאל על צעד, התחייבות או תוצאה — את אלה שואלים אחר כך בשיחה ובכרטיס."),
         "en": "Next stage: Vision — choosing the life I truly want to live. Future picture and commitment to a concrete first step.",
     },
 }
