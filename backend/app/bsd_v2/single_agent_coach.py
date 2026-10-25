@@ -317,14 +317,30 @@ _MASC_TO_FEM = [
 # paradigm (expert review). Trimmed from the stored pattern so the S9 card, the chain and the request don't carry it.
 # "מפחד"/"מחשש" alone is often the feeling inside the reaction ("אני מפחד להיפגע… ולכן שותק") — a motive only as "מפחד ש…"
 _PATTERN_MOTIVE = re.compile(rf"\s*,?\s*(?<![{_HE}])(?:כדי|כי|מתוך פחד|מתוך חשש|מפחד ש|מחשש ש|בגלל)\s?[^,.;—–]*")
+# …and neither is its emotional result ("…, וזה גורם לך להרגיש קטנה ומתוסכלת") — the pattern is the action alone (p.14)
+_PATTERN_RESULT = re.compile(rf"\s*,?\s*(?<![{_HE}])(?:(?:אבל|ובסוף|בסוף|ואז)\s+)*ו?(?:זה|מה ש)\s+(?:גורם\s+ל(?:י|ך|ו|ה)\b|פוגע|מוביל|משאיר)[^.;—–]*")
+
+
+_PATTERN_LEADING_CAUSE = re.compile(r"^.*?,?\s*(?<![\u0590-\u05FF])(?:ולכן|לכן|אז)\s+")
+_PATTERN_FEELING = re.compile(rf"\s*,?\s*(?<![{_HE}])ו(?:מרגיש|מרגישה|נשאר מרגיש|נשארת מרגישה)\s+[^,.;—–]*")
 
 
 def _strip_pattern_motive(pattern: str) -> str:
-    trimmed = _PATTERN_MOTIVE.sub("", re.sub(r"^\s*הדפוס שלי (?:הוא|זה)\s+", "", pattern)).strip(" ,.;—–")
+    body = re.sub(r"^\s*הדפוס שלי (?:הוא|זה)\s+", "", pattern)
+    # "אני מפחדת להביע את עצמי, ולכן אני שותקת" → "אני שותקת" — only when the opening part is the fear/worry (the cause);
+    # "אני נמנע מלהביע…, ולכן נשאר שקט" is reaction on both sides and stays
+    m = _PATTERN_LEADING_CAUSE.match(body)
+    if m and re.search(r"(?:מפחד|מפחדת|חושש|חוששת|דואג|דואגת|פוחד|פוחדת)", m.group(0)):
+        after_cause = body[m.end():]
+        if len(after_cause.split()) >= 2:
+            body = after_cause
+    trimmed = _PATTERN_FEELING.sub("", _PATTERN_RESULT.sub("", _PATTERN_MOTIVE.sub("", body))).strip(" ,.;—–")
+    # a connector left hanging by the cut ("…שלי, אבל בסוף")
+    trimmed = re.sub(rf"[\s,]*(?<![{_HE}])(?:אבל|ובסוף|בסוף|ואז|אז)$", "", trimmed).strip(" ,.;—–")
     return trimmed if len(trimmed.split()) >= 2 else pattern
 
 
-_PATTERN_REFLECTION = re.compile(r"(הדפוס שלך\s*(?:הוא\s+)?[—–-]?\s*)(.+?)(?=\s[—–]\s|[.?!\n]|$)")
+_PATTERN_REFLECTION = re.compile(r"((?:הדפוס|התגובה) שלך\s*(?:הוא\s+|היא\s+)?[—–-]?\s*)(.+?)(?=\s[—–]\s|[.?!\n]|$)")
 _PATTERN_SENTENCE = re.compile(r"[^.?!\n]*הדפוס שלך[^.?!\n]*[.!]\s*")
 
 
@@ -338,12 +354,29 @@ def _strip_motive_in_pattern_reflection(coach_message: str, formulated: bool = T
                                    coach_message, count=1)
 
 
+_FEM_BELIEVE = re.compile(rf"(?<![{_HE}])אני מאמין ש")
+
+
+def _feminize_stances(cd: Dict[str, Any]) -> None:
+    """Stored stance sentences for a woman read "אני מאמינה ש…" (they are quoted back and enter the request)."""
+    stance = cd.get("stance")
+    if isinstance(stance, dict):
+        for k in ("reality_belief", "short"):
+            if isinstance(stance.get(k), str):
+                stance[k] = _FEM_BELIEVE.sub("אני מאמינה ש", stance[k])
+    if isinstance(cd.get("renewal_belief"), str):
+        cd["renewal_belief"] = _FEM_BELIEVE.sub("אני מאמינה ש", cd["renewal_belief"])
+
+
 def _fix_addressee(coach_message: str, user_gender: Optional[str], language: str) -> str:
     """Deterministic net for two frequent slips on the prod model: first-person possessives copied from the
     client into the coach's sentences, and masculine 'בוא נ…' to women. Quoted spans are left as written."""
     if language != "he" or not coach_message:
         return coach_message
     coach_message = _fix_arabic_lookalikes(coach_message)
+    if user_gender == "female":
+        # her stance sentence, quoted or not — the templates say "אני מאמין ש…" and the model kept the masculine
+        coach_message = _FEM_BELIEVE.sub("אני מאמינה ש", coach_message)
     rules = _FIRST_TO_SECOND + (_MASC_TO_FEM if user_gender == "female" else [])
     out, pos = [], 0
     for m in list(_QUOTED_SPAN.finditer(coach_message)) + [None]:
@@ -657,9 +690,14 @@ def _other_arena(reply: str, event: str) -> str:
     return ""
 
 
+# words any two events share ("אמרתי", "שלי") — a work meeting matched a dinner at home on them
+_EVENT_COMMON = {"אמרתי", "הרגשתי", "עשיתי", "הייתי", "היה", "היתה", "שלי", "שלו", "שלה", "אותי", "איתי", "אמר", "אמרה",
+                 "פעם", "אחת", "כמה", "כלום", "במקום", "אחרי", "לפני", "שזה", "וזה", "רק", "עוד", "ולא"}
+
+
 def _same_as_event(text: str, event: str) -> bool:
     """The "other time" is the original event again ("ריב על כסף, צעקתי ויצאתי" for a money fight)."""
-    words = lambda t: {w for w in re.findall(rf"[{_HE}]{{3,}}", t or "") if w not in _FILLER_WORDS}
+    words = lambda t: {w for w in re.findall(rf"[{_HE}]{{3,}}", t or "") if w not in _FILLER_WORDS | _EVENT_COMMON}
     return len(words(text) & words(event)) >= 2
 
 
@@ -675,6 +713,15 @@ _S9_DEEPEN_MARKERS = ("חוק פנימי", "כלל פנימי", "איזה כלל
 # app had invented (it recited every level again, right after each was reflected in its own turn)
 _S10_CONTROL = "בכוחך להפעיל"
 
+# S10: a formulation that sounds like the desired belief ("אני מאמינה שאפשר לשמור על הקשר גם כשאני מבטאת…") is not the
+# old stance that makes the rule true — it was accepted, and the gains of silence were credited to it in S11
+_DESIRED_STANCE = re.compile(r"(?<!אי )(?<![א-ת])(?:ש|ו|וש)?אפשר|מותר לי|מגיע לי|אני ראוי|אני יכול(?:ה)? ל|זה בסדר ל")
+_S10_DESIRED_ASKED = "רוצה להאמין"
+
+
+def _sounds_desired(text: str) -> bool:
+    return bool(_DESIRED_STANCE.search(text or ""))
+
 
 # The stance is a perception of reality (booklet p.18-19), not the rule again: "אני מאמין שעדיף לשתוק" restates the
 # paradigm with "אני מאמין" in front (judge: all three conversations). Normative words mark a rule; a cause-effect
@@ -682,9 +729,37 @@ _S10_CONTROL = "בכוחך להפעיל"
 _NORMATIVE = re.compile(rf"(?<![{_HE}])ש?(?:עדיף|צריך|צריכה|חייב|חייבת|אסור|מוכרח|מוכרחה|כדאי)(?![{_HE}])|הדרך הנכונה")
 
 
+_RULE_TAIL = re.compile(rf"[\s,]+(?<![{_HE}])(?:ולכן|לכן)\s+(?=[^.;]*?(?:{_NORMATIVE.pattern}))")
+
+
+def _trim_rule_tail(sentence: str) -> str:
+    """"אני מאמינה שכשאני מבקשת, אנשים מתרחקים, ולכן עדיף לי לשתוק" → the perception before the rule: the tail is the
+    paradigm (S9) again, and the stance is one level (expert ruling)."""
+    m = _RULE_TAIL.search(sentence or "")
+    head = sentence[:m.start()] if m else ""
+    if m and len(re.sub(r"^\s*(?:אני מאמינה?|העמדה שלי היא)\s+", "", head).split()) >= 4:
+        return head.rstrip(" ,;—–")
+    return sentence
+
+
 def _stance_is_a_rule(sentence: str) -> bool:
-    body = re.sub(r"^.*?(?:אני מאמינה?|העמדה שלי היא)\s+", "", sentence or "", count=1)
+    body = re.sub(r"^.*?(?:אני מאמינה?|העמדה שלי היא)\s+", "", _trim_rule_tail(sentence or ""), count=1)
     return bool(_NORMATIVE.search(body))
+
+
+def _clean_stances(cd: Dict[str, Any]) -> None:
+    """Stored stance without the rule's tail; the short form keeps the client's "אני מאמין ש…" when the model dropped it
+    ("כשאני מבקשת…, ולכן עדיף לי לשתוק" was quoted in S11 and entered the request)."""
+    stance = cd.get("stance")
+    if not isinstance(stance, dict):
+        return
+    for k in ("reality_belief", "short"):
+        if isinstance(stance.get(k), str):
+            stance[k] = _trim_rule_tail(stance[k])
+    belief, short = stance.get("reality_belief") or "", stance.get("short") or ""
+    if (isinstance(short, str) and re.match(r"\s*(?:אני מאמינה? ש|העמדה שלי)", belief if isinstance(belief, str) else "")
+            and re.match(r"\s*(?:כש|אם |ש)", short)):
+        stance["short"] = ("אני מאמין" if short.lstrip().startswith("ש") else "אני מאמין ש") + short.lstrip()
 
 
 def _asks_stance_formulation(text: str) -> bool:
@@ -960,9 +1035,11 @@ def _check_gate_met_v3(state: Dict[str, Any]) -> str | None:
         if (from_chat_reply and asked_formulation and not _thin_answer(reply_text) and not _is_empty_answer(reply_text)
                 and not _same_as_event(reply_text, cd.get("event_description") or "")  # a retold event is no stance
                 and not _stance_is_a_rule(reply_text)):  # "אני מאמין שעדיף…" is the rule again
-            stance["reality_belief"] = reply_text[:300]
-        if from_chat_reply and asked_trigger and not stance.get("activation_trigger"):
-            stance["activation_trigger"] = (last_user.get("content") or "")[:300]
+            stance["reality_belief"] = _trim_rule_tail(reply_text)[:300]
+        # a non-answer ("כן, זה מדויק. בוא נמשיך") is no trigger — it was saved, and S10 went on to the control question
+        if (from_chat_reply and asked_trigger and not stance.get("activation_trigger")
+                and not _is_empty_answer(reply_text)):
+            stance["activation_trigger"] = reply_text[:300]
         cd["stance"] = stance
         if (stance.get("activation_trigger") and _s10_control_answered(msgs)
                 and (stance.get("reality_belief") or _turns_in("S10") >= 3)):
@@ -2965,7 +3042,8 @@ def build_conversation_context(
                 nxt7 = "הוא ענה בקצרה — שאל שאלת העמקה אחת: \"מה הטוב שאתה רואה בו?\""
             else:
                 nxt7 = ("הוא כבר ענה על שאלת האמונה" + (" ופירט" if len(last_answer.split()) > 3 else "") +
-                        " — **אל תשאל 'מה הטוב'**. שקף בקצרה ושאל עכשיו את **שאלת ההזדמנות**: \"האם יש בפער הזדמנות בשבילך? אם כן — מהי?\"")
+                        " — **אל תשאל 'מה הטוב'**. שקף בקצרה את הטוב שתיאר, במילים שלו — **בלי המילה 'הזדמנות'** (היא שמורה "
+                        "לשאלה) — ושאל עכשיו את **שאלת ההזדמנות**: \"האם יש בפער הזדמנות בשבילך? אם כן — מהי?\"")
         elif asked_opp:
             nxt7 = "שאלת ההזדמנות נענתה — שקף אותה (אם ענה 'לא' — אל תגיב לשלילה), עדכן `current_step` ל-\"S8\" ושאל את שאלת הדפוס."
         if nxt7:
@@ -3123,7 +3201,14 @@ def build_conversation_context(
                      if m.get("sender") == "coach" and (m.get("internal_state") or {}).get("current_step") == "S10"]
         asked_origin = any(("מאיפה" in c or "למדת" in c) and "?" in c for c in coach_s10)
         asked_formulation = any(_asks_stance_formulation(c) and "?" in c for c in coach_s10)
-        asked_trigger = any(w in c for c in coach_s10 for w in ("כפתור", "טריגר", "מדליק") if _S10_CONTROL not in c)
+        def _asks_trigger(c: str) -> bool:
+            return _S10_CONTROL not in c and any(w in c for w in ("כפתור", "טריגר", "מדליק"))
+        # answered, not asked: the trigger asked out of order and met with "בוא נמשיך" sent the model on to the
+        # control question with "the last answer is the trigger" after the client had just formulated the stance
+        trigger_q_last = bool(coach_s10) and _asks_trigger(coach_s10[-1])
+        stored_trigger = (((state.get("collected_data") or {}).get("stance") or {}).get("activation_trigger") or "")
+        trigger_answered = bool(stored_trigger) or (trigger_q_last and bool(user_message)
+                                                    and not _is_empty_answer(user_message))
         msgs10 = state.get("messages") or []
         first10 = next((i for i, m in enumerate(msgs10) if m.get("sender") == "coach"
                         and (m.get("internal_state") or {}).get("current_step") == "S10"), None)
@@ -3151,25 +3236,39 @@ def build_conversation_context(
             nxt = (("הוא **כבר סיפר מאיפה זה מגיע** — **אל תשאל 'מאיפה'**. " if told_origin and not asked_origin else
                     "שאלת המקור **כבר נשאלה ונענתה** — אל תשאל שוב. ")
                    + "שקף את לב המקור במשפט קצר, ובקש ממנו **לנסח את העמדה בעצמו** (חוברת עמ' 19), בלי להציע משפט: " + formulate_q)
-        elif (not asked_trigger and not belief_followup_asked and s10_user
+        elif (not trigger_answered and not belief_followup_asked and s10_user
               and any(m in s10_user[-1] for m in ("אני מאמין", "העמדה שלי")) and _stance_is_a_rule(s10_user[-1])):
             nxt = (f"המשפט שניסח ('{s10_user[-1][:120]}') הוא עדיין **חוק** — מה עדיף / צריך לעשות — ולא **תפיסה של "
                    "המציאות** שממנה החוק נולד. אל תקבל אותו כעמדה ואל תסביר תיאוריה. שאלה **אחת**, בלי להציע תשובה: "
                    f"\"ומה אתה יודע על החיים או על אנשים שגורם {_S10_BELIEF_FOLLOWUP}?\"")
-        elif not asked_trigger:
+        elif (not trigger_answered and s10_user and formulated and _sounds_desired(s10_user[-1])
+              and not any(_S10_DESIRED_ASKED in c for c in coach_s10)):
+            nxt = (f"המשפט שניסח ('{s10_user[-1][:120]}') נשמע כמו מה שהוא **רוצה** להאמין — העמדה החדשה — ולא מה שהוא מאמין "
+                   f"**היום**, שבגללו החוק ('{rule_word}') מרגיש נכון. אל תקבל אותו כעמדה. שקף אותו בעדינות כרצון, ושאל **שאלה אחת**, "
+                   "בלי להציע תשובה: \"זה נשמע כמו מה שהיית רוצה להאמין. ומה אתה מאמין **היום** — מה שבגללו [החוק, במילים "
+                   "שלו] — מה המשפט?\"")
+        elif not trigger_answered:
             nxt = ("העמדה **כבר נוסחה** ('אני מאמין ש…') — **אל תבקש לנסח אותה שוב.** "
                    + ("שקף בקצרה את המקור שסיפר, ואז " if told_origin and not asked_formulation else "")
-                   + "צטט את **המשפט שלו** פעם אחת (שמור ב-`stance.reality_belief`, וב-`stance.short` את אותו משפט "
-                   "מזוקק: עד 12 מילים, גוף ראשון הווה, מתוך המילים שלו), ושאל **שאלת טריגר אחת**: "
+                   + "שמור ב-`stance.reality_belief` את המשפט שלו, וב-`stance.short` אותו משפט **מקוצר בהשמטה בלבד** — עד 12 "
+                   "מילים, אותן מילים שלו באותו סדר; **אל תהפוך שלילה לחיוב** ואל תחליף מילים (מותר רק לתקן שגיאת הקלדה בולטת). "
+                   "צטט פעם אחת את הניסוח המקוצר — ומכאן והלאה, כשאתה מזכיר את העמדה, רק אותו. שאל **שאלת טריגר אחת**: "
                    "\"מה 'כפתור ההפעלה' — מה קורה במציאות שמדליק את העמדה הזו?\" **אל תחזיר אותו לאירוע.**")
         elif not any(_S10_CONTROL in c for c in coach_s10):
-            nxt = ("שאלת הטריגר נשאלה — התשובה האחרונה היא **הטריגר** (שמור ב-`stance.activation_trigger`). שקף אותו **במשפט קצר אחד** "
-                   "במילים שלו, ושאל **שאלה אחת**: \"האם יש בכוחך להפעיל את הכפתור הזה, או להימנע ממנו?\" "
+            nxt = (("שאלת הטריגר נשאלה — התשובה האחרונה היא **הטריגר** (שמור ב-`stance.activation_trigger`). שקף אותו **במשפט קצר אחד** "
+                    "במילים שלו, ושאל **שאלה אחת**: " if trigger_q_last else
+                    f"הטריגר **כבר נענה** ('{stored_trigger[:100]}') — אל תשאל עליו שוב. שקף **במשפט קצר אחד** את מה שענה עכשיו, "
+                    "ושאל **שאלה אחת** על הטריגר הזה: ")
+                   + "\"האם יש בכוחך להפעיל את הכפתור הזה, או להימנע ממנו?\" "
                    "**בלי שרשרת** ובלי לחזור על העמדה, החוק או הדפוס.")
         else:
             nxt = ("שאלת השליטה נענתה. שקף **במשפט קצר אחד** את מה שענה (גם 'לא' או 'לא יודע' הם תשובה — בלי לשכנע), "
                    "ואז הצהרה חמה למאזן: \"עכשיו נבדוק מה העמדה הזו נותנת לך, ומה היא לוקחת ממך.\" **בלי שאלה**, "
                    "ועדכן `current_step` ל-\"S11\".")
+        if len(coach_s10) >= 6 and "S11" not in nxt:
+            # this turn is the 7th — the gate's anti-loop moves to the balance card; a question here is never answered
+            nxt = ("זה התור האחרון בעמדה. שקף **במשפט קצר אחד** את מה שענה עכשיו, ואז הצהרה חמה למאזן: "
+                   "\"עכשיו נבדוק מה העמדה הזו נותנת לך, ומה היא לוקחת ממך.\" **בלי שאלה**, ועדכן `current_step` ל-\"S11\".")
         context_parts.append("\n# שלב 10 — השאלה הבאה\n" + nxt)
 
     # S15: right after the coaching-request card, a result that depends on others gets the booklet question
@@ -3919,6 +4018,8 @@ async def handle_conversation(
         is_v3 = state.get("ux_version", 2) >= 3
         if is_v3:
             _block_v3_backward_step(state, internal_state, old_step)
+            if user_gender == "female":
+                _feminize_stances(state.get("collected_data") or {})
             _drop_premature_vision(state, old_step)
             # The LLM may leave S5 on its own (V2 S5 gate) — hold until the matzui summary
             # card ("האם דייקתי?") was shown; the V3 gate below decides when to move on
@@ -3949,6 +4050,10 @@ async def handle_conversation(
         if is_v3 and isinstance(cd.get("pattern"), str):
             cd["pattern"] = _strip_pattern_motive(cd["pattern"])
         gate_next = _check_gate_met_v3(state) if is_v3 else _check_gate_met(cur_step, cd)
+        if is_v3:
+            _clean_stances(cd)
+            if user_gender == "female":
+                _feminize_stances(cd)
         if gate_next and cur_step != gate_next and not stage_completing:
             from .stage_intro_schema import step_to_macro_stage
             if step_to_macro_stage(gate_next) != step_to_macro_stage(cur_step):

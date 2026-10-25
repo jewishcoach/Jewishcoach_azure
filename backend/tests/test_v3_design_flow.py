@@ -730,3 +730,96 @@ def test_coaching_request_no_doubled_difficulty():
     from app.bsd_v2.coaching_request import compose_coaching_request
     out = compose_coaching_request({"situation": "קושי לבטא את הצרכים מול בן הזוג", "old": "x", "new": "y", "result": "z"})
     assert out.startswith("אני מבקש/ת להתאמן על הקושי שלי לבטא את הצרכים מול בן הזוג")
+
+
+def test_pattern_drops_its_emotional_result():
+    from app.bsd_v2.single_agent_coach import _strip_pattern_motive
+    assert _strip_pattern_motive("להשתיק את עצמך ולוותר על הצרכים שלך, וזה גורם לך להרגיש קטנה ומתוסכלת") == \
+        "להשתיק את עצמך ולוותר על הצרכים שלך"
+
+
+def test_stage_complete_field_does_not_suggest_floor_closing_wording():
+    from app.bsd_v2.response_schema import InternalStateSchema
+    desc = InternalStateSchema.model_fields["stage_ready_to_complete"].description
+    assert "לסגור" not in desc and "לסכם" not in desc
+
+
+def test_feminine_stance_sentences():
+    from app.bsd_v2.single_agent_coach import _feminize_stances, _fix_addressee
+    cd = {"stance": {"reality_belief": "אני מאמין שצריך להראות חוזק", "short": "אני מאמין שצריך חוזק"},
+          "renewal_belief": "אני מאמין שפתיחות מחזקת"}
+    _feminize_stances(cd)
+    assert cd["stance"]["short"] == "אני מאמינה שצריך חוזק" and cd["renewal_belief"].startswith("אני מאמינה ש")
+    assert "'אני מאמינה ש" in _fix_addressee("העמדה שלך — 'אני מאמין שצריך חוזק'.", "female", "he")
+
+
+def test_pattern_drops_leading_fear_cause_and_feeling():
+    from app.bsd_v2.single_agent_coach import _strip_pattern_motive
+    assert _strip_pattern_motive("אני מפחדת להביע את עצמי, ולכן אני שותקת ומרגישה קטנה ומתוסכלת") == "אני שותקת"
+    assert _strip_pattern_motive("אני נמנע מלהביע את האמת שלי, ולכן נשאר שקט") == "אני נמנע מלהביע את האמת שלי, ולכן נשאר שקט"
+
+
+def test_s10_non_answer_to_an_early_trigger_is_not_the_trigger_and_it_is_asked_again():
+    # Michal's run: the trigger asked before the origin, met with "בוא נמשיך"; after the formulation the note said
+    # "the last answer is the trigger" and the cap closed S10 on an unanswered trigger question
+    from app.bsd_v2.single_agent_coach import build_conversation_context
+    state = _v3_state("S10", paradigm="ככה זה אצלי — אני חוששת שאם אבקש יחשבו שאני מעמיסה")
+    state["messages"] = [_coach("מה 'כפתור ההפעלה' — מה קורה במציאות שמדליק את העמדה הזו?", "S10"),
+                         {"sender": "user", "content": "כן, זה מדויק. בוא נמשיך."},
+                         _coach("מאיפה זה מגיע אצלך?", "S10")]
+    _check_gate_met_v3(state)
+    assert not state["collected_data"]["stance"].get("activation_trigger")
+    state["messages"] += [{"sender": "user", "content": "מהילדות, כשההורים כעסו כשביקשתי"},
+                          _coach("ואם תנסחי את העמדה שלך במשפט אחד — 'אני מאמינה ש…' — מה המשפט?", "S10")]
+    ctx = build_conversation_context(state, "אני מאמינה שאם אבקש יותר מדי, אנשים יתרחקו ממני", "he")
+    assert "שאלת טריגר אחת" in ctx and "בכוחך להפעיל" not in ctx
+
+
+def test_s10_last_turn_before_the_cap_closes_without_a_question():
+    from app.bsd_v2.single_agent_coach import build_conversation_context
+    state = _v3_state("S10", paradigm="ככה זה אצלי — אני מעדיף לשמור על השקט")
+    state["messages"] = []
+    for i in range(6):
+        state["messages"] += [_coach(f"שאלה {i}?", "S10"), {"sender": "user", "content": f"תשובה {i}"}]
+    state["messages"].pop()
+    ctx = build_conversation_context(state, "תשובה 5", "he")
+    assert "התור האחרון בעמדה" in ctx and "**בלי שאלה**" in ctx
+
+
+def test_s10_desired_belief_as_formulation_gets_one_question_about_today():
+    from app.bsd_v2.single_agent_coach import build_conversation_context
+    state = _v3_state("S10", paradigm="ככה זה אצלי — אני חוששת שאם אגיד מה אני מרגישה תהיה מריבה, אז עדיף לשתוק")
+    state["messages"] = [_coach("מה את יודעת על החיים שגורם לחוק הזה להרגיש נכון?", "S10"),
+                         {"sender": "user", "content": "גדלתי בבית שבו כשדיברתי זה רק יצר בעיות"},
+                         _coach("ואם תנסחי את העמדה שלך במשפט אחד — 'אני מאמינה ש…' — מה המשפט?", "S10")]
+    desired = "אני מאמינה שאפשר לשמור על הקשר גם כשאני מבטאת את הצרכים שלי"
+    ctx = build_conversation_context(state, desired, "he")
+    assert "רוצה** להאמין" in ctx and "שאלת טריגר אחת" not in ctx
+    state["messages"] += [{"sender": "user", "content": desired},
+                          _coach("זה נשמע כמו מה שהיית רוצה להאמין. ומה את מאמינה היום — מה המשפט?", "S10")]
+    ctx = build_conversation_context(state, "אני מאמינה שאם אדבר, יכעסו עליי ויעזבו", "he")
+    assert "שאלת טריגר אחת" in ctx  # asked once; the answer to it is the stance
+
+
+def test_pattern_cut_leaves_no_dangling_connector():
+    from app.bsd_v2.single_agent_coach import _strip_pattern_motive as f
+    assert f("אני שקטה, לא מבטאת את הצרכים שלי כדי לא ליצור קונפליקט, אבל בסוף זה גורם לי להרגיש מותשת") == \
+        "אני שקטה, לא מבטאת את הצרכים שלי"
+    assert f("אני שותק כדי לא לריב, ואז מתפוצץ") == "אני שותק, ואז מתפוצץ"
+
+
+def test_stance_keeps_the_perception_and_drops_the_rule_tail():
+    from app.bsd_v2.single_agent_coach import _clean_stances, _stance_is_a_rule
+    said = "אני מאמינה שכשאני מבקשת משהו, אנשים מתרחקים ממני, ולכן עדיף לי לשתוק כדי לשמור על הקשר"
+    assert not _stance_is_a_rule(said) and _stance_is_a_rule("אני מאמין שעדיף לשתוק ולשמור על השקט")
+    cd = {"stance": {"reality_belief": said, "short": "כשאני מבקשת משהו, אנשים מתרחקים ממני ולכן עדיף לי לשתוק"}}
+    _clean_stances(cd)
+    assert cd["stance"]["reality_belief"] == "אני מאמינה שכשאני מבקשת משהו, אנשים מתרחקים ממני"
+    assert cd["stance"]["short"] == "אני מאמין שכשאני מבקשת משהו, אנשים מתרחקים ממני"  # feminized after, per gender
+
+
+def test_other_arena_time_is_not_the_event_on_common_words():
+    from app.bsd_v2.single_agent_coach import _same_as_event
+    event = "הזמנתי ארוחת ערב רומנטית והוא ביטל כי חבר הזמין אותו לכדורגל. אמרתי 'בסדר' וסידרתי לבד את השולחן."
+    assert not _same_as_event("בפגישה בעבודה מישהו קטע אותי. לא אמרתי כלום, פשוט התכווצתי במקום להסביר למה הרעיון שלי חשוב", event)
+    assert _same_as_event("כשהוא ביטל את ארוחת הערב בשביל הכדורגל", event)

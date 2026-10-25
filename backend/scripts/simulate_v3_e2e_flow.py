@@ -97,7 +97,7 @@ CARD_SCHEMAS = {
     "comparison_card": '{"emotion_desired": str, "thought_desired": str, "action_desired": str}',
     "gap_card": '{"gap_name": str (1-2 words), "gap_score": int 1-10}',
     "sentence_builder": '{"paradigm": "ככה זה אצלי — ..."}',
-    "balance_scale": '{"gains": [2-3 str], "losses": [2-3 str]}  (gains/losses of HOLDING THE STANCE — write each item in FIRST PERSON, e.g. "אני מרגיש מוגן", "אני מפספס קרבה")',
+    "balance_scale": '{"gains": [2-3 str], "losses": [2-3 str]}  (gains/losses of HOLDING THE OLD STANCE — write each item in FIRST PERSON, e.g. "אני מרגיש מוגן", "אני מפספס קרבה"; gains are what the old stance protects him from or keeps — safety, avoiding conflict or rejection, control, quiet — never things the stance takes away, like boundaries or voicing needs)',
     "trait_card_builder": '{"source_forces": [6 str values/light traits], "nature_forces": [6 str needs/defenses]}',
     "declaration_card": '{"renewal": str, "next_action": str, "feels_right": true}  (card labels: renewal = "העמדה החדשה שאני בוחר — אני מאמין ש…" (placeholder: "תפיסה חדשה, במשפט קצר ובמילים שלך"); next_action = "מה תעשה אחרת בפעם הבאה?". Answer in your persona voice — like a real client, you may misread the field)',
     "commitment_card": ('{"floor": "stance", "situation": str (the difficulty to train on), '
