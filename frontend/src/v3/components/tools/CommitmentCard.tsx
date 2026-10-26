@@ -39,7 +39,7 @@ function difficultyPhrase(text: string): string {
   const t = text.trim().replace(/\.+$/, '');
   if (!t) return 'הקושי להתמודד עם …';
   const first = t.split(/\s+/)[0];
-  if (t.startsWith('כש')) return `הקושי להתמודד עם הרגעים ש${t.slice(2)}`;
+  if (t.startsWith('כש')) return `הקושי להתמודד עם הרגעים ש${t.replace(/,\s*(?:אז\s+|ואז\s+)?(?:אני|אז)\s.*$/, '').slice(2)}`;
   if (first.startsWith('ל') && first.length >= 4 && !['לחץ', 'לחצים', 'לילה', 'לילות', 'לימודים'].includes(first)) return `הקושי שלי ${t}`;
   if (first === 'לא') return `הקושי שלי ש${t}`;
   return `הקושי להתמודד עם ${t}`;

@@ -252,6 +252,39 @@ def _reads_as_rule(body: str) -> bool:
     return not re.search(r"אם (?!אני)\S+[^—–]*?\sאני\s+\S+", body)
 
 
+# The paradigm is the thought of the act — a rule for how to respond ("עדיף לשתוק", "אני חייב להקשיח"). A fear of the
+# outcome alone ("אם אבקש עזרה, ידחו אותי") is not yet the rule (expert): the coach asks for the action rule, once.
+_ACTION_RULE_WORDS = ("חייב", "צריך", "עדיף", "אסור", "מותר", "כדאי", "אין טעם", "שווה", "רק כך", "נכון ל", "מוכרח",
+                      "הדרך", "אין ברירה")
+_S9_ACTION_Q = "חוק הפעולה"
+_FEAR_WORDS = re.compile(r"(?:חושש|חוששת|מפחד|מפחדת|פוחד|פוחדת|דואג|דואגת|פחד|חשש)|(?<![\u0590-\u05FF])(?:ו|ש|וש)?אם ")
+
+
+def _has_action_rule(body: str) -> bool:
+    if any(w in body for w in _ACTION_RULE_WORDS):
+        return True
+    if re.search(r"(?<![\u0590-\u05FF])(?:ולכן|לכן|ואז|אז)\s+\S", body):  # "…ידחו אותי, אז אני שותקת"
+        return True
+    return bool(re.match(rf"\s*(?!אני\s)[{_HE}]+\s+(?:זה|זו|אומר|אומרת)\s+(?:לי\s+)?ל[{_HE}]+", body) or "מי ש" in body)
+
+
+def _paradigm_body(paradigm: str) -> str:
+    return paradigm.split("—", 1)[-1].strip() if "—" in paradigm else paradigm.replace("ככה זה אצלי", "").strip(" :")
+
+
+def _s9_fear_paradigm(state: Dict[str, Any]) -> bool:
+    body = _paradigm_body(str((state.get("collected_data") or {}).get("paradigm") or ""))
+    return bool(body) and not _has_action_rule(body) and bool(_FEAR_WORDS.search(body))
+
+
+def _s9_fear_only(state: Dict[str, Any]) -> bool:
+    """The paradigm states only the feared outcome, and the action-rule question was not asked yet."""
+    if not _s9_fear_paradigm(state):
+        return False
+    return not any(_S9_ACTION_Q in (m.get("content") or "") for m in (state.get("messages") or [])
+                   if m.get("sender") == "coach" and (m.get("internal_state") or {}).get("current_step") == "S9")
+
+
 def _build_v3_paradigm_hint(state: Dict[str, Any], language: str) -> str:
     """S9 (once, before the trigger question): flag a 'ככה זה אצלי' that reads like the pattern."""
     if state.get("current_step") != "S9" or state.get("_s9_paradigm_hint_given"):
@@ -261,7 +294,7 @@ def _build_v3_paradigm_hint(state: Dict[str, Any], language: str) -> str:
     if not paradigm or (cd.get("stance") or {}).get("activation_trigger"):
         return ""
     body = paradigm.split("—", 1)[-1] if "—" in paradigm else paradigm.replace("ככה זה אצלי", "")
-    if _reads_as_rule(body):
+    if _reads_as_rule(body) or _s9_fear_paradigm(state):
         return ""
     state["_s9_paradigm_hint_given"] = True
     if language != "he":
@@ -344,14 +377,38 @@ _PATTERN_REFLECTION = re.compile(r"((?:הדפוס|התגובה) שלך\s*(?:הו
 _PATTERN_SENTENCE = re.compile(r"[^.?!\n]*הדפוס שלך[^.?!\n]*[.!]\s*")
 
 
+# The infinitive built from the client's present form — "נמנעת" → "לנמנע", "מתכווצת" → "למתכווץ" (seen: "הדפוס שלך הוא
+# לנמנע…"). Only the head word of the pattern, which is always the verb.
+_NIFAL_EXCEPTIONS = {"לנדנד", "לנפנף", "לנקנק", "לנצנץ"}
+
+
+def _fix_infinitive(word: str) -> str:
+    m = re.fullmatch(r"(ו?)לנ([^\Wויה\d_]{3})([,.]?)", word)
+    if m and f"לנ{m.group(2)}" not in _NIFAL_EXCEPTIONS:
+        return f"{m.group(1)}להי{m.group(2)}{m.group(3)}"
+    m = re.fullmatch(r"(ו?)למת([^\W\d_]{3,})([,.]?)", word)
+    if m:
+        return f"{m.group(1)}להת{m.group(2)}{m.group(3)}"
+    return word
+
+
+def _fix_pattern_infinitive(pattern: str) -> str:
+    head, _, rest = (pattern or "").strip().partition(" ")
+    return (_fix_infinitive(head) + (" " + rest if rest else "")) if head else pattern
+
+
 def _strip_motive_in_pattern_reflection(coach_message: str, formulated: bool = True) -> str:
     """The coach's "הדפוס שלך — <pattern>" sentence (S8 close, S9 card intro) echoed the client's motive and the arenas
     ("…מתוך חשש…, גם בעבודה וגם בבית"), also as "הדפוס שלך הוא …". Before the client formulated the pattern himself
     the sentence is dropped: the coach declared it for him and then asked (booklet p.14 — the client formulates)."""
     if not formulated and "?" in coach_message:
         coach_message = _PATTERN_SENTENCE.sub("", coach_message).strip() or coach_message
-    return _PATTERN_REFLECTION.sub(lambda m: m.group(1) + _strip_pattern_arenas(_strip_pattern_motive(m.group(2))),
-                                   coach_message, count=1)
+    coach_message = _PATTERN_REFLECTION.sub(
+        lambda m: m.group(1) + _strip_pattern_arenas(_strip_pattern_motive(m.group(2))), coach_message, count=1)
+    # the fixed confirmation (expert): "הדפוס שלך הוא ל…" — not "הדפוס שלך — ל…" / "הדפוס שלך: ל…"; never inside a
+    # sentence ("זיהינו את הדפוס שלך — …" became "זיהינו את הדפוס שלך הוא …")
+    coach_message = re.sub(r"(?<!את )הדפוס שלך\s*[—–:-]\s*(?=ל)", "הדפוס שלך הוא ", coach_message, count=1)
+    return re.sub(r"(הדפוס שלך(?: הוא)?\s*[—–:-]?\s*)(\S+)", lambda m: m.group(1) + _fix_infinitive(m.group(2)), coach_message, count=1)
 
 
 _FEM_BELIEVE = re.compile(rf"(?<![{_HE}])אני מאמין ש")
@@ -588,7 +645,7 @@ def _apply_v3_stage_complete_guards(state: Dict[str, Any], internal_state: Dict[
 
 
 # S15: the result must be in the client's hands (booklet; expert review) — "פחות ריבים", "שהוא יקשיב" depend on others.
-_OTHERS_ACT = re.compile(rf"(?<![{_HE}])(?:ש?(?:הוא|היא|הם|הן|אשתי|בעלי|הבוס|הילדים|בן הזוג|בת הזוג|אחרים|אנשים))\s+(?:לא\s+)?[יתנ][{_HE}]{{2,}}")
+_OTHERS_ACT = re.compile(rf"(?<![{_HE}])(?:ש?(?:הוא|היא|הם|הן|אשתי|בעלי|הבוס|הילדים|בן הזוג|בת הזוג|אחרים|אנשים))\s+(?:לא\s+)?(?:[יתנ][{_HE}]{{2,}}|מ[{_HE}]{{3,}})")
 _RELATIONAL_OUTCOME = re.compile(r"(?:פחות|בלי|אין)\s+(?:ריבים|ויכוחים|מריבות|צעקות|מתחים)|שקט בבית|ש?יקשיב|ש?יעריכו?|ש?יבינו|ש?יכבדו|ש?יגיבו?|ש?יפסיקו?|ש?ישתנו?")
 _SELF_ACT = re.compile(rf"(?<![{_HE}])(?:אני|בעצמי|אסיים|אגיד|אדבר|אומר|אעצור|אשאל|אבקש|אבטא|אשתף|אקשיב|אצא|אחזור|אעשה|אנשום|אשמור|אבחר|אפעל|אציע|אכתוב|אתקשר|אפנה|אגיב)(?![{_HE}])")
 
@@ -665,7 +722,10 @@ _S8_PLACES = ("עבודה", "בעבודה", "בית", "בבית", "חברים", 
               "במשפחה", "אשתי", "בעלי", "הבוס", "זוג", "אחים", "אחי", "אחותי", "לימודים", "צבא", "שכנים", "בכביש", "מול")
 _OCCASION = re.compile(rf"(?<![{_HE}])(?:פעם|אתמול|שלשום|השבוע|בשבוע|לפני|בחודש|בערב|בבוקר|בצהריים|בפגישה|בישיבה|"
                        rf"בארוחה|בחתונה|בטיול|ביום)(?![{_HE}])")
-_FIRST_PERSON_PAST = re.compile(rf"(?<![{_HE}])(?!(?:אשתי|אחותי|בתי|ביתי|דודתי|סבתי|אותי|איתי|לאשתי|מאשתי)(?![{_HE}]))[{_HE}]{{2,}}תי(?![{_HE}])")
+# nouns with "-תי" ("דעתי", "עבודתי") are no past verb — "גם בעבודה לפעמים אני נמנעת מלהביע את דעתי" passed as a described time
+_FIRST_PERSON_PAST = re.compile(rf"(?<![{_HE}])(?!(?:אשתי|אחותי|בתי|ביתי|דודתי|סבתי|אותי|איתי|לאשתי|מאשתי|[לבמו]?דעתי|[לבמו]?עבודתי|"
+                                rf"[לבמו]?משפחתי|[לבמו]?מטרתי|[לבמו]?תחושתי|[לבמו]?חברתי|[לבמו]?דמותי|[לבמו]?אמונתי|"
+                                rf"[לבמו]?מערכתי|[לבמו]?שכונתי|[לבמו]?כיתתי|[לבמו]?[{_HE}]+ותי)(?![{_HE}]))[{_HE}]{{2,}}תי(?![{_HE}])")
 _S8_OTHER_TIME = "פעם במקום אחר"
 
 
@@ -706,7 +766,7 @@ def _describes_occurrence(text: str) -> bool:
     t = text or ""
     return bool(_OCCASION.search(t) or len(_FIRST_PERSON_PAST.findall(t)) >= 1 and len(t.split()) >= 4)
 # S9 deepening question (the paradigm read as the pattern) — the answer, when it reads as a rule, is the paradigm
-_S9_DEEPEN_MARKERS = ("חוק פנימי", "כלל פנימי", "איזה כלל", "איזה חוק")
+_S9_DEEPEN_MARKERS = ("חוק פנימי", "כלל פנימי", "איזה כלל", "איזה חוק", "חוק הפעולה")
 
 
 # S10 after the trigger: the booklet's sub-question on control over the trigger (p.18) replaces the 5-link chain the
@@ -729,7 +789,7 @@ def _sounds_desired(text: str) -> bool:
 _NORMATIVE = re.compile(rf"(?<![{_HE}])ש?(?:עדיף|צריך|צריכה|חייב|חייבת|אסור|מוכרח|מוכרחה|כדאי)(?![{_HE}])|הדרך הנכונה")
 
 
-_RULE_TAIL = re.compile(rf"[\s,]+(?<![{_HE}])(?:ולכן|לכן)\s+(?=[^.;]*?(?:{_NORMATIVE.pattern}))")
+_RULE_TAIL = re.compile(rf"[\s,.]+(?<![{_HE}])(?:ולכן|לכן)[\s,]+(?=[^.;]*?(?:{_NORMATIVE.pattern}))")
 
 
 def _trim_rule_tail(sentence: str) -> str:
@@ -747,6 +807,10 @@ def _stance_is_a_rule(sentence: str) -> bool:
     return bool(_NORMATIVE.search(body))
 
 
+def _words_he(text: str) -> list:
+    return re.findall(rf"[{_HE}a-zA-Z0-9]+", text or "")
+
+
 def _clean_stances(cd: Dict[str, Any]) -> None:
     """Stored stance without the rule's tail; the short form keeps the client's "אני מאמין ש…" when the model dropped it
     ("כשאני מבקשת…, ולכן עדיף לי לשתוק" was quoted in S11 and entered the request)."""
@@ -757,6 +821,15 @@ def _clean_stances(cd: Dict[str, Any]) -> None:
         if isinstance(stance.get(k), str):
             stance[k] = _trim_rule_tail(stance[k])
     belief, short = stance.get("reality_belief") or "", stance.get("short") or ""
+    if isinstance(belief, str) and isinstance(short, str) and short and belief:
+        bw, sw = _words_he(belief), _words_he(short)
+        # cut mid-sentence ("אני מאמינה שאם אדרוש יותר מדי או אביע את עצמי.") — the consequence was dropped
+        dangling = (re.search(rf"(?<![{_HE}])(?:ש|ו|וש)?(?:אם|כש)", short)
+                    and not re.search(r"(?:אם|כש)[^,—–]*?(?:,|\sאז\s|[—–])\s*\S", short))
+        if (dangling and len(sw) < len(bw) and bw[:len(sw)] == sw) or len(sw) > 22:
+            sentences = [x.strip() for x in re.split(r"(?<=[.!?])\s+", belief) if len(_words_he(x)) >= 5]
+            pick = next((x for x in sentences if re.match(r"(?:אני מאמינה? ש|העמדה שלי)", x)), sentences[0] if sentences else belief)
+            stance["short"] = short = pick.rstrip(".") if len(sentences) > 1 else belief
     if (isinstance(short, str) and re.match(r"\s*(?:אני מאמינה? ש|העמדה שלי)", belief if isinstance(belief, str) else "")
             and re.match(r"\s*(?:כש|אם |ש)", short)):
         stance["short"] = ("אני מאמין" if short.lstrip().startswith("ש") else "אני מאמין ש") + short.lstrip()
@@ -976,20 +1049,33 @@ def _check_gate_met_v3(state: Dict[str, Any]) -> str | None:
         last8 = next((m.get("content") or "" for m in reversed(msgs) if m.get("sender") == "coach"), "")
         # the coach's closing reflection is his formulation cleaned to the reaction ("הדפוס שלך — להימנע מלהביע…") —
         # store that, not his raw sentence with the motive and the arenas (expert review of Yossi's conversation)
-        closing = re.search(r"הדפוס שלך\s*(?:הוא\s*)?[—–-]\s*(.+?)(?:\s[—–]\s|[.!?\n]|$)", last8)
+        closing = re.search(r"הדפוס שלך\s*(?:הוא\s*[—–-]?|[—–-])\s*(.+?)(?:\s[—–]\s|[.!?\n]|$)", last8)
         if closing and "?" not in last8 and len(closing.group(1).split()) >= 2:
             cd["pattern"] = _strip_pattern_arenas(_strip_pattern_motive(closing.group(1).strip()))[:300]
         if not cd.get("pattern"):
             return None
         # close only on a closing statement — never show the stage-complete screen under an open question
         return "S9" if "?" not in last8 else None
-    if step == "S9":
+    # The answer to the S9 deepening / action-rule question refines the paradigm — also when the coach asked the root
+    # question in the same turn and moved to S10 (the refined rule was never stored: the card's pattern-like
+    # "כשאני מרגישה לא מוערכת, אני שותקת" stayed the paradigm)
+    prev_step = ((prev_coach or {}).get("internal_state") or {}).get("current_step")
+    if step in ("S9", "S10") and prev_step == "S9":
         reply9 = (last_user.get("content") or "") if last_user else ""
         if (from_chat_reply and any(m in prev_text for m in _S9_DEEPEN_MARKERS)
                 and not _is_empty_answer(reply9) and _reads_as_rule(reply9)):
-            refined = reply9.strip()
+            refined = re.sub(r"^(?:ה?חוק(?: הפעולה)?(?: הפנימי)?(?: שלי)?\s+(?:הוא|אומר)\s+(?:לי\s+)?ש?)", "",
+                             reply9.strip().rstrip("."))
+            fear = _paradigm_body(str(cd.get("paradigm") or "")).rstrip(" .")
+            if _S9_ACTION_Q in prev_text and fear and not _has_action_rule(fear) and not refined.startswith("ככה זה"):
+                # "לכן עדיף לשתוק" answers the action-rule question — the paradigm is the fear with its rule
+                if fear not in refined:
+                    refined = f"{fear}, " + (refined if re.match(r"(?:ו?לכן|ו?אז)\s", refined) else f"ולכן {refined}")
             cd["paradigm"] = refined if refined.startswith("ככה זה") else f"ככה זה אצלי — {refined}"
+    if step == "S9":
         if not cd.get("paradigm"):
+            return None
+        if _s9_fear_only(state) and _turns_in("S9") < _S9_MAX_TURNS:
             return None
         # The coach moves to S10 itself once the paradigm holds and it asked the root question; anti-loop if it
         # keeps deepening
@@ -1028,10 +1114,11 @@ def _check_gate_met_v3(state: Dict[str, Any]) -> str | None:
         belief_followup = (prev_coach is not first10_coach and
                            any(m in prev_text for m in (_S10_BELIEF_FOLLOWUP, "מה אתה יודע על", "מה את יודעת על")))
         reply_text = last_user.get("content") or "" if last_user else ""
+        own_formulation = bool(re.search(r"אני מאמינה? ש|העמדה שלי", reply_text)) and not _stance_is_a_rule(reply_text)
         if (from_chat_reply and asked_stance and (belief_followup or not stance.get("reality_belief"))
                 and not _thin_answer(reply_text)
-                and not (_restates_rule(reply_text, cd.get("paradigm") or "") and not belief_followup)):
-            stance["reality_belief"] = reply_text[:300]
+                and not (_restates_rule(reply_text, cd.get("paradigm") or "") and not belief_followup and not own_formulation)):
+            stance["reality_belief"] = _trim_rule_tail(reply_text)[:300]
         if (from_chat_reply and asked_formulation and not _thin_answer(reply_text) and not _is_empty_answer(reply_text)
                 and not _same_as_event(reply_text, cd.get("event_description") or "")  # a retold event is no stance
                 and not _stance_is_a_rule(reply_text)):  # "אני מאמין שעדיף…" is the rule again
@@ -3137,8 +3224,10 @@ def build_conversation_context(
         reply8 = (user_message or "").strip()
         asked_describe = any(_S8_DESCRIBE in c for c in coach_s8)
         retried = any(_S8_RETRY in c for c in coach_s8)
-        close = ("**זה הדפוס.** שקף אותו **פעם אחת** במילים שלו (רק התגובה — בלי 'כדי' / 'מתוך פחד'), שמור ב-`pattern`, "
-                 "וסיים בהצהרה בלבד: \"עכשיו נגלה מה מפעיל את הדפוס מבפנים.\" **בלי שאלה**, וסמן `stage_ready_to_complete: true`.")
+        close = ("**זה הדפוס.** אשר אותו **פעם אחת** במבנה הקבוע: \"הדפוס שלך הוא ל…\" — הפעולה החוזרת **בשם הפועל** (נמנעת → להימנע, "
+                 "מתכווץ → להתכווץ, שותקת → לשתוק), מתוך המילים שלו, **רק הפעולה**: בלי הסיבה ('כדי', 'מתוך פחד') ובלי התוצאה הרגשית (מה זה גורם לו להרגיש). שמור "
+                 "ב-`pattern` את אותה פעולה, וסיים בהצהרה בלבד: \"עכשיו נגלה מה מפעיל את הדפוס מבפנים.\" **בלי שאלה**, וסמן "
+                 "`stage_ready_to_complete: true`.")
         formulate = ("שקף בקצרה במילים שלו את מה שתיאר, ושאל את **שאלת הזיהוי והניסוח** (חוברת) — **אל תנסח בשבילו** ואל תכריז "
                      "'הדפוס שלך —': \"כשאתה מסתכל על שני הרגעים — האם אתה מזהה כאן משהו שחוזר על עצמו? אם כן — איך היית "
                      "מנסח אותו במשפט אחד?\"")
@@ -3185,7 +3274,11 @@ def build_conversation_context(
         root = ("\"החוק הזה — מאיזו תפיסה על החיים, על אנשים או על עצמך הוא נולד? מה אתה יודע על העולם שגורם לו "
                 "להרגיש נכון?\" ועדכן `current_step` ל-\"S10\".")
         nxt9 = ""
-        if state.get("_tool_just_submitted") == "sentence_builder" and par and _reads_as_rule(body9):
+        if par and _s9_fear_only(state):
+            nxt9 = (f"מה שכתב ('{body9.strip()[:140]}') הוא **החשש** מהתוצאה — עוד לא **חוק הפעולה**: איך נכון להגיב. "
+                    "**אל תאשר אותו כפרדיגמה** ואל תשאל עדיין על השורש. שאלה **אחת**, בלי להציע תשובה: \"[החשש, במשפט קצר "
+                    "במילים שלו] — זהו החשש שלך. ומהו **חוק הפעולה** הפנימי שאומר לך איך נכון להגיב במצב כזה?\"")
+        elif state.get("_tool_just_submitted") == "sentence_builder" and par and _has_action_rule(body9):
             nxt9 = ("הפרדיגמה שכתב **מנסחת חוק — היא תקינה.** אל תחפש ניסוח 'עמוק יותר', אל תבקש את המילים 'ככה זה אצלי' "
                     "ואל תסביר תיאוריה. שקף אותה פעם אחת, מילה במילה, ושאל **שאלה אחת** — את שאלת השורש: " + root)
         elif deepened and not state.get("_tool_just_submitted"):
@@ -3223,7 +3316,9 @@ def build_conversation_context(
         rule_word = re.sub(r"^\s*ככה זה אצלי\s*[—–-]?\s*", "", (state.get("collected_data") or {}).get("paradigm") or "")[:60]
         formulate_q = "\"ואם תנסח את העמדה שלך במשפט אחד — 'אני מאמין ש…' — מה המשפט?\""
         # one level (booklet p.18-19; expert ruling): stance = belief → origin → his "אני מאמין ש…" → trigger → control
-        if (not asked_origin and not asked_formulation and s10_user and not belief_followup_asked
+        formulated_first = bool(s10_user) and bool(re.search(r"אני מאמינה? ש|העמדה שלי", s10_user[0])) \
+            and not _stance_is_a_rule(s10_user[0])
+        if (not asked_origin and not asked_formulation and s10_user and not belief_followup_asked and not formulated_first
                 and _restates_rule(s10_user[0], (state.get("collected_data") or {}).get("paradigm") or "")):
             nxt = (f"מה שענה חוזר על **החוק** ('{rule_word}') — זו עוד לא **העמדה** (תפיסת המציאות). "
                    + ("שקף בקצרה רק את מה שסיפר על המקור (הוא כבר סיפר — **אל תשאל 'מאיפה'**), " if told_origin else "שקף בקצרה, ")
@@ -3251,7 +3346,7 @@ def build_conversation_context(
             nxt = ("העמדה **כבר נוסחה** ('אני מאמין ש…') — **אל תבקש לנסח אותה שוב.** "
                    + ("שקף בקצרה את המקור שסיפר, ואז " if told_origin and not asked_formulation else "")
                    + "שמור ב-`stance.reality_belief` את המשפט שלו, וב-`stance.short` אותו משפט **מקוצר בהשמטה בלבד** — עד 12 "
-                   "מילים, אותן מילים שלו באותו סדר; **אל תהפוך שלילה לחיוב** ואל תחליף מילים (מותר רק לתקן שגיאת הקלדה בולטת). "
+                   "מילים, אותן מילים שלו באותו סדר, **ומשפט שלם** (אם יש 'אם…' — גם מה יקרה; אם אי אפשר לקצר בלי לקטוע — השאר שלם); **אל תהפוך שלילה לחיוב** ואל תחליף מילים (מותר רק לתקן שגיאת הקלדה בולטת). "
                    "צטט פעם אחת את הניסוח המקוצר — ומכאן והלאה, כשאתה מזכיר את העמדה, רק אותו. שאל **שאלת טריגר אחת**: "
                    "\"מה 'כפתור ההפעלה' — מה קורה במציאות שמדליק את העמדה הזו?\" **אל תחזיר אותו לאירוע.**")
         elif not any(_S10_CONTROL in c for c in coach_s10):
@@ -4032,7 +4127,8 @@ async def handle_conversation(
             if old_step == "S14" and state.get("current_step") == "S15" and "?" in coach_message:
                 state["current_step"] = "S14"
                 internal_state["current_step"] = "S14"
-            if (old_step == "S9" and state.get("current_step") == "S10" and not _asks_root_question(coach_message)
+            if (old_step == "S9" and state.get("current_step") == "S10"
+                    and (not _asks_root_question(coach_message) or (_s9_fear_only(state) and _S9_ACTION_Q not in coach_message))
                     and count_turns_in_step(state, "S9") < _S9_MAX_TURNS):
                 state["current_step"] = "S9"
                 internal_state["current_step"] = "S9"
@@ -4048,10 +4144,16 @@ async def handle_conversation(
         cur_step = state.get("current_step", "S0")
         cd = state.get("collected_data") or {}
         if is_v3 and isinstance(cd.get("pattern"), str):
-            cd["pattern"] = _strip_pattern_motive(cd["pattern"])
+            cd["pattern"] = _fix_pattern_infinitive(_strip_pattern_motive(cd["pattern"]))
         gate_next = _check_gate_met_v3(state) if is_v3 else _check_gate_met(cur_step, cd)
         if is_v3:
             _clean_stances(cd)
+            if language == "he":
+                # silent proofreading of the quotes that reach the coaching-request card (separate call; see proofread.py)
+                from .proofread import proofread_request_texts
+                if await proofread_request_texts(cd) and (cd.get("coaching_request") or {}).get("floor"):
+                    from .coaching_request import compose_coaching_request
+                    cd["commitment"] = compose_coaching_request(cd["coaching_request"])
             if user_gender == "female":
                 _feminize_stances(cd)
         if gate_next and cur_step != gate_next and not stage_completing:

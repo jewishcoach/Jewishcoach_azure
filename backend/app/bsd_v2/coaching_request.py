@@ -31,6 +31,8 @@ def _difficulty(text: str) -> str:
     if re.match(r"^(?:ה?קושי)", (text or "").strip()) and first.startswith("ל"):
         return f"הקושי שלי {t}"
     if t.startswith("כש"):
+        # the situation only — "כשאני מרגישה לא מוערכת…, אני נשארת לבד" left the main clause hanging in the request
+        t = re.sub(r",\s*(?:אז\s+|ואז\s+)?(?:אני|אז)\s.*$", "", t)
         return f"הקושי להתמודד עם הרגעים ש{t[2:]}"
     if first.startswith("ל") and len(first) >= 4 and first not in _NOT_INFINITIVE:
         return f"הקושי שלי {t}"

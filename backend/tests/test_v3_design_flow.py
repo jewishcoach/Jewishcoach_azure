@@ -54,7 +54,7 @@ def test_s9_paradigm_card_alone_does_not_skip_validation():
 
 
 def test_s9_anti_loop_moves_to_stance_not_past_it():
-    state = _v3_state("S9", paradigm="ככה זה אצלי — אם אדבר זה יחמיר")
+    state = _v3_state("S9", paradigm="ככה זה אצלי — אם אדבר זה יחמיר, אז עדיף לשתוק")
     state["messages"] = [_coach("x", "S9"), _coach("מאיזו תפיסה על החיים הוא נולד?", "S9")]
     assert _check_gate_met_v3(state) == "S10"  # one floor at a time — never straight to S11
 
@@ -823,3 +823,122 @@ def test_other_arena_time_is_not_the_event_on_common_words():
     event = "הזמנתי ארוחת ערב רומנטית והוא ביטל כי חבר הזמין אותו לכדורגל. אמרתי 'בסדר' וסידרתי לבד את השולחן."
     assert not _same_as_event("בפגישה בעבודה מישהו קטע אותי. לא אמרתי כלום, פשוט התכווצתי במקום להסביר למה הרעיון שלי חשוב", event)
     assert _same_as_event("כשהוא ביטל את ארוחת הערב בשביל הכדורגל", event)
+
+
+def test_s8_confirmation_uses_the_infinitive_and_drops_cause_and_feeling():
+    from app.bsd_v2.single_agent_coach import _strip_motive_in_pattern_reflection as f
+    out = f("הדפוס שלך — לשתוק ולוותר על הצרכים שלך מתוך פחד לאבד אותו, וזה גורם לך להרגיש לבד. עכשיו נגלה מה מפעיל את הדפוס מבפנים.")
+    assert out == "הדפוס שלך הוא לשתוק ולוותר על הצרכים שלך. עכשיו נגלה מה מפעיל את הדפוס מבפנים."
+    state = _v3_state("S8", event_description="בערב הוא ביטל את הארוחה ואמרתי בסדר")
+    state["messages"] = [_coach("כשאת מסתכלת על שני הרגעים — האם את מזהה כאן משהו שחוזר על עצמו? איך היית מנסחת אותו במשפט אחד?", "S8"),
+                         {"sender": "user", "content": "אני נמנעת מלבטא את הצרכים שלי"},
+                         _coach("הדפוס שלך הוא להימנע מלבטא את הצרכים שלך. עכשיו נגלה מה מפעיל את הדפוס מבפנים.", "S8")]
+    assert _check_gate_met_v3(state) == "S9"
+    assert state["collected_data"]["pattern"] == "להימנע מלבטא את הצרכים שלך"
+
+
+def test_s9_fear_only_paradigm_asks_for_the_action_rule_and_joins_the_answer():
+    from app.bsd_v2.single_agent_coach import build_conversation_context
+    fear = "ככה זה אצלי — אני חושבת שאם אבקש עזרה, ידחו אותי"
+    state = _v3_state("S9", paradigm=fear)
+    state["_tool_just_submitted"] = "sentence_builder"
+    state["messages"] = [_coach("זיהינו את הדפוס שלך — לשתוק. בכרטיס שמופיע מתחת — נשים לו מילים.", "S9")]
+    ctx = build_conversation_context(state, fear, "he")
+    assert "חוק הפעולה" in ctx and "שאלת השורש" not in ctx
+    state.pop("_tool_just_submitted")
+    state["messages"] += [{"sender": "user", "content": fear},
+                          _coach("זהו החשש שלך. ומהו חוק הפעולה הפנימי שאומר לך איך נכון להגיב במצב כזה?", "S9")]
+    assert _check_gate_met_v3(state) is None  # not before the question was asked and answered
+    state["messages"] += [{"sender": "user", "content": "לכן עדיף לשתוק"},
+                          _coach("החוק הזה — מאיזו תפיסה על החיים הוא נולד? מה את יודעת על העולם שגורם לו להרגיש נכון?", "S10")]
+    _check_gate_met_v3(state)
+    assert state["collected_data"]["paradigm"] == "ככה זה אצלי — אני חושבת שאם אבקש עזרה, ידחו אותי, לכן עדיף לשתוק"
+
+
+def test_s9_paradigm_with_an_action_rule_is_accepted():
+    from app.bsd_v2.single_agent_coach import _s9_fear_only
+    state = _v3_state("S9", paradigm="ככה זה אצלי — אם אבקש עזרה ידחו אותי, אז עדיף להסתדר לבד")
+    state["messages"] = []
+    assert not _s9_fear_only(state)
+
+
+def test_proofread_keeps_only_light_edits():
+    from app.bsd_v2.proofread import _acceptable
+    src = "אני מאמינה שאם אדבר, אנשים יתרחקו ויישארו לי לבד"
+    assert _acceptable(src, "אני מאמינה שאם אדבר, אנשים יתרחקו ואשאר לבד")
+    assert not _acceptable("אני מאמין שאם לא אשתוק, לא יאהבו אותי", "אני מאמין שאם אשתוק, יאהבו אותי")  # polarity
+    assert not _acceptable(src, "אני מאמינה שדיבור מרחיק אנשים")  # rewritten
+
+
+def test_pattern_head_infinitive_is_repaired_and_not_inside_a_sentence():
+    from app.bsd_v2.single_agent_coach import _fix_pattern_infinitive as g, _strip_motive_in_pattern_reflection as f
+    assert g("לנמנע מלהביע את עצמך") == "להימנע מלהביע את עצמך" and g("למתכווץ פנימה") == "להתכווץ פנימה"
+    assert g("לנסות לרצות את כולם") == "לנסות לרצות את כולם" and g("לנהל הכול לבד") == "לנהל הכול לבד"
+    assert f("זיהינו את הדפוס שלך — להימנע. מתחת לדפוס יש חוק פנימי.") == "זיהינו את הדפוס שלך — להימנע. מתחת לדפוס יש חוק פנימי."
+
+
+def test_short_stance_cut_inside_the_condition_falls_back_to_the_whole_sentence():
+    from app.bsd_v2.single_agent_coach import _clean_stances
+    belief = "אני מאמינה שאם אדרוש יותר מדי, אנשים יראו אותי כחסרת ערך"
+    cd = {"stance": {"reality_belief": belief, "short": "אני מאמינה שאם אדרוש יותר מדי."}}
+    _clean_stances(cd)
+    assert cd["stance"]["short"] == belief
+    cd = {"stance": {"reality_belief": "אני מאמינה שכשאני מבקשת, אנשים מתרחקים ממני ולא חוזרים", "short": "אני מאמינה שכשאני מבקשת, אנשים מתרחקים ממני"}}
+    _clean_stances(cd)
+    assert cd["stance"]["short"] == "אני מאמינה שכשאני מבקשת, אנשים מתרחקים ממני"  # a complete shortening stays
+
+
+def test_general_claim_with_a_ti_noun_is_not_a_described_time():
+    from app.bsd_v2.single_agent_coach import _describes_occurrence
+    assert not _describes_occurrence("כן, גם בעבודה לפעמים אני נמנעת מלהביע את דעתי או לבקש עזרה")
+    assert _describes_occurrence("ביקשתי עזרה בפרויקט ושתקתי כשסירבו")
+
+
+def test_s9_refined_rule_is_stored_when_the_coach_moves_to_s10_in_the_same_turn():
+    state = _v3_state("S10", paradigm="ככה זה אצלי — כשאני מרגישה לא מוערכת, אני שותקת")
+    state["messages"] = [_coach("המשפט מתאר את התגובה. איזה חוק פנימי שלך אומר שזו הדרך הנכונה להגיב?", "S9"),
+                         {"sender": "user", "content": "החוק הפנימי שלי הוא שאם אדבר זה יגרום לסכסוך, ולכן עדיף לשתוק"},
+                         _coach("החוק הזה — מאיזו תפיסה על החיים הוא נולד?", "S10")]
+    _check_gate_met_v3(state)
+    assert state["collected_data"]["paradigm"] == "ככה זה אצלי — אם אדבר זה יגרום לסכסוך, ולכן עדיף לשתוק"
+
+
+def test_request_situation_keeps_the_when_clause_only():
+    from app.bsd_v2.coaching_request import _difficulty
+    assert _difficulty("כשאני מרגישה לא מוערכת בבית, אני נשארת לבד עם הכאב שלי.") == \
+        "הקושי להתמודד עם הרגעים שאני מרגישה לא מוערכת בבית"
+
+
+def test_s9_pattern_hint_does_not_fire_on_a_fear_paradigm_after_the_action_question():
+    from app.bsd_v2.single_agent_coach import _build_v3_paradigm_hint
+    state = _v3_state("S9", paradigm="ככה זה אצלי — אני חושבת שאם אגיד מה אני מרגישה, אני אכשל")
+    state["messages"] = [_coach("זהו החשש שלך. ומהו חוק הפעולה הפנימי שאומר לך איך נכון להגיב במצב כזה?", "S9")]
+    assert _build_v3_paradigm_hint(state, "he") == ""
+
+
+def test_long_short_stance_takes_the_i_believe_sentence():
+    from app.bsd_v2.single_agent_coach import _clean_stances
+    b = ("אני חושבת שהעולם הוא מקום לא בטוח, שאם אני לא שקטה, אנשים יפסיקו לאהוב אותי או יפגעו בי בכל מקום. "
+         "אני מאמינה שאהבה תלויה בהתנהגות שלי, ולא בזכותי להיות מי שאני")
+    cd = {"stance": {"reality_belief": b, "short": b}}
+    _clean_stances(cd)
+    assert cd["stance"]["short"] == "אני מאמינה שאהבה תלויה בהתנהגות שלי, ולא בזכותי להיות מי שאני"
+
+
+def test_s10_stance_formulated_in_the_root_answer_is_taken_without_another_deepening():
+    from app.bsd_v2.single_agent_coach import build_conversation_context
+    state = _v3_state("S10", paradigm="ככה זה אצלי — עדיף לשתוק ולהימנע מעימות")
+    answer = "אני מאמינה שאם אגיד את מה שאני מרגישה, זה יהרוס את הקשר, ולכן עדיף לשמור על השקט"
+    state["messages"] = [_coach("החוק הזה — מאיזו תפיסה על החיים הוא נולד? מה את יודעת על העולם שגורם לו להרגיש נכון?", "S10"),
+                         {"sender": "user", "content": answer}, _coach("...", "S10")]
+    _check_gate_met_v3(state)
+    assert state["collected_data"]["stance"]["reality_belief"] == "אני מאמינה שאם אגיד את מה שאני מרגישה, זה יהרוס את הקשר"
+    state["messages"].pop()
+    ctx = build_conversation_context(state, answer, "he")
+    assert "שאלת המקור" in ctx and "שמעמיקה מתחת לחוק" not in ctx
+
+
+def test_result_depending_on_the_partner_in_present_tense():
+    from app.bsd_v2.single_agent_coach import _result_issue
+    assert _result_issue("אדבר איתו פעם בשבוע ומרגישה שהוא מקשיב ומכבד אותי") == "others"
+    assert _result_issue("כשהוא מבקש ממני, אגיד לו מה אני מרגישה") == ""

@@ -45,12 +45,12 @@ export function SentenceBuilder({ data, onSubmit, isSubmitting }: SentenceBuilde
             className="text-xs text-[rgba(45,70,88,0.5)] text-right leading-relaxed"
             style={{ fontFamily: "'Assistant', sans-serif" }}
           >
-            לא מה שאתה <strong>עושה</strong> (זה הדפוס למעלה), אלא <strong>הלוגיקה</strong> שגורמת לך להאמין שזו הדרך הנכונה. למשל: "אם לא ארים קול — לא יקשיבו לי"
+            לא מה שאתה <strong>עושה</strong> (זה הדפוס למעלה), אלא <strong>החוק</strong> שאומר לך איך נכון להגיב. למשל: "אם לא ארים קול לא יקשיבו לי, אז אני חייב לצעוק"
           </p>
           <textarea
             value={paradigm}
             onChange={(e) => setParadigm(e.target.value)}
-            placeholder="כי... / כש... / תמיד..."
+            placeholder="אם... אז עדיף / חייב / אסור..."
             rows={3}
             className="w-full px-4 py-3 rounded-xl border border-[#e0ddd8] text-sm text-[#2d4658]
                        placeholder:text-[rgba(45,70,88,0.3)] text-right resize-none
