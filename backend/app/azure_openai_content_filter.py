@@ -58,11 +58,17 @@ async def invoke_structured_coach_llm(
             if language == "en"
             else "\n\nהגב בטון תומך וניטרלי. שמור על ניסוח קצר ומקצועי."
         )
-        trimmed = context[-2500:] if len(context) > 2500 else context
-        retry_messages = [
-            SystemMessage(content=system_prompt + trim_note),
-            HumanMessage(content=trimmed),
-        ]
+        # trim the conversation only — the turn's notes travel in their own system message and must survive
+        retry_messages = []
+        for i, m in enumerate(messages):
+            if isinstance(m, SystemMessage):
+                retry_messages.append(SystemMessage(content=m.content + trim_note) if i == 0 else m)
+            else:
+                text = m.content if isinstance(m.content, str) else str(m.content)
+                retry_messages.append(HumanMessage(content=text[-2500:]))
+        if not retry_messages:
+            trimmed = context[-2500:] if len(context) > 2500 else context
+            retry_messages = [SystemMessage(content=system_prompt + trim_note), HumanMessage(content=trimmed)]
         try:
             return await structured_llm.ainvoke(retry_messages)
         except Exception as retry_err:

@@ -491,7 +491,7 @@ async def warm_prompt_cache(language: str = "he", steps: tuple = ("S0", "S1")) -
             placeholder = "כן" if language == "he" else "yes"
             context = build_conversation_context(state, placeholder, language)
             system_prompt = assemble_system_prompt(step, language)
-            messages = [SystemMessage(content=system_prompt), HumanMessage(content=context)]
+            messages = _coach_messages(system_prompt, context)
             cache_key = f"{cache_key_prefix}:main_coach:{language}:{step}"
             _ = await _ainvoke_with_prompt_cache(llm, messages, cache_key=cache_key)
             logger.info(f"[BSD V2] Prompt cache warmed: {cache_key}")
@@ -3553,6 +3553,22 @@ def build_conversation_context(
 # MAIN HANDLER
 # ══════════════════════════════════════════════════════════════════════════════
 
+_CONVO_HEADERS = ("\n# היסטוריה אחרונה", "\n# Recent History", "\n# הודעה חדשה", "\n# New Message")
+
+
+def _coach_messages(system_prompt: str, context: str, extra_notes: str = "") -> list:
+    """System prompt, then this turn's notes (stage lock, next question, collected data) as their own system message,
+    then the conversation as the user message. In the user message, Azure Prompt Shields scored the notes as a
+    jailbreak; the retry with the trimmed context then dropped them and the model answered without its note."""
+    cut = min((i for i in (context.find(h) for h in _CONVO_HEADERS) if i >= 0), default=-1)
+    notes, convo = (context[:cut].strip(), context[cut:].strip()) if cut > 0 else ("", context)
+    notes = (notes + ("\n" + extra_notes.strip() if extra_notes.strip() else "")).strip()
+    msgs = [SystemMessage(content=system_prompt)]
+    if notes:
+        msgs.append(SystemMessage(content=notes))
+    return msgs + [HumanMessage(content=convo)]
+
+
 def _handle_early_returns(
     user_message: str, state: Dict[str, Any], language: str
 ) -> Optional[Tuple[str, Dict[str, Any]]]:
@@ -3658,19 +3674,14 @@ async def _call_llm_and_parse(
     """Build context, call LLM, parse response. Returns (coach_message, suggestions, internal_state)."""
     t1 = time.time()
     context = build_conversation_context(state, user_message, language)
-    if state.get("ux_version", 2) >= 3:
-        # Turn-specific coaching checks go next to the user's message, where the model weighs them
-        context += _build_v3_paradigm_hint(state, language)
+    turn_hint = _build_v3_paradigm_hint(state, language) if state.get("ux_version", 2) >= 3 else ""
     t2 = time.time()
     logger.info(f"[PERF] Build context: {(t2-t1)*1000:.0f}ms ({len(context)} chars)")
 
     system_prompt = _get_system_prompt(state=state, user_message=user_message, language=language, user_gender=user_gender)
     logger.info("[PERF] System prompt chars from prompt_manager: %s", len(system_prompt))
 
-    messages = [
-        SystemMessage(content=system_prompt),
-        HumanMessage(content=context)
-    ]
+    messages = _coach_messages(system_prompt, context, turn_hint)
 
     t3 = time.time()
     coach_message = ""
@@ -3710,7 +3721,7 @@ async def _call_llm_and_parse(
         )
         response_dict = await invoke_structured_coach_llm(
             structured_llm,
-            [SystemMessage(content=system_prompt + minimal_note), HumanMessage(content=context)],
+            _coach_messages(system_prompt + minimal_note, context, turn_hint),
             context=context,
             system_prompt=system_prompt + minimal_note,
             language=language,

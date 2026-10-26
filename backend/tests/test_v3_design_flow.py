@@ -942,3 +942,29 @@ def test_result_depending_on_the_partner_in_present_tense():
     from app.bsd_v2.single_agent_coach import _result_issue
     assert _result_issue("אדבר איתו פעם בשבוע ומרגישה שהוא מקשיב ומכבד אותי") == "others"
     assert _result_issue("כשהוא מבקש ממני, אגיד לו מה אני מרגישה") == ""
+
+
+def test_turn_notes_travel_in_a_system_message_and_survive_the_filter_retry():
+    import asyncio
+    from langchain_core.messages import HumanMessage, SystemMessage
+    from app.bsd_v2.single_agent_coach import _coach_messages, build_conversation_context
+    from app.azure_openai_content_filter import invoke_structured_coach_llm
+    state = _v3_state("S10", paradigm="ככה זה אצלי — עדיף לשתוק")
+    state["messages"] = [_coach("מאיפה זה מגיע אצלך?", "S10"), {"sender": "user", "content": "מהבית"}]
+    ctx = build_conversation_context(state, "מהילדות", "he")
+    msgs = _coach_messages("SYSTEM", ctx, "\n**בדיקת מערכת (S9):** x")
+    assert [type(m) for m in msgs] == [SystemMessage, SystemMessage, HumanMessage]
+    assert "שלב נעול" in msgs[1].content and "בדיקת מערכת" in msgs[1].content
+    assert "שלב נעול" not in msgs[2].content and msgs[2].content.endswith("משתמש: מהילדות")
+
+    class FilterOnce:
+        def __init__(self): self.calls = []
+        async def ainvoke(self, m):
+            self.calls.append(m)
+            if len(self.calls) == 1:
+                raise Exception("Error code: 400 content_filter jailbreak")
+            return {"parsed": None}
+    llm = FilterOnce()
+    asyncio.run(invoke_structured_coach_llm(llm, msgs, context=ctx, system_prompt="SYSTEM", language="he"))
+    retry = llm.calls[1]
+    assert isinstance(retry[1], SystemMessage) and "שלב נעול" in retry[1].content  # the notes are kept
