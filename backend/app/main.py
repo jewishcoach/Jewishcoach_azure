@@ -41,6 +41,16 @@ def _configure_app_logging() -> None:
         logging.getLogger(name).setLevel(level)
     # BSD V2 coach logs: always INFO so [PERF], [BSD], collected_data are visible
     logging.getLogger("app.bsd_v2.single_agent_coach").setLevel(logging.INFO)
+    # Under gunicorn no handler reaches the app loggers, so nothing above was ever written. The content-filter
+    # events carry no user text (filter names only) — they get their own stdout handler, so App Service logs
+    # show how often Azure blocks a coach call. (The coach's INFO lines quote user messages — not enabled.)
+    cf = logging.getLogger("app.azure_openai_content_filter")
+    if not cf.handlers:
+        h = logging.StreamHandler()
+        h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
+        cf.addHandler(h)
+        cf.setLevel(logging.WARNING)
+        cf.propagate = False
 
 
 _configure_app_logging()

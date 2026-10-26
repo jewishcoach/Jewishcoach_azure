@@ -19,6 +19,14 @@ class ContentFilterBlockedError(Exception):
     """Azure OpenAI content management policy blocked coach response."""
 
 
+def _filter_categories(err: BaseException) -> str:
+    """Which filter fired ("jailbreak", "hate"…) — names only, never the content."""
+    body = getattr(err, "body", None) or {}
+    result = ((body.get("innererror") or {}).get("content_filter_result") or {}) if isinstance(body, dict) else {}
+    hits = [k for k, v in result.items() if isinstance(v, dict) and (v.get("filtered") or v.get("detected"))]
+    return ",".join(sorted(hits)) or "unknown"
+
+
 def is_content_filter_error(err: BaseException) -> bool:
     text = str(err).lower()
     return any(marker in text for marker in _CONTENT_FILTER_MARKERS)
@@ -52,7 +60,8 @@ async def invoke_structured_coach_llm(
     except Exception as first_err:
         if not is_content_filter_error(first_err):
             raise
-        logger.warning("[BSD V2] Content filter on first attempt — retrying with trimmed context")
+        logger.warning("[ContentFilter] first attempt blocked (%s) — retrying with trimmed conversation",
+                       _filter_categories(first_err))
         trim_note = (
             "\n\nRespond in neutral, supportive coaching tone. Keep language brief and professional."
             if language == "en"
@@ -73,5 +82,7 @@ async def invoke_structured_coach_llm(
             return await structured_llm.ainvoke(retry_messages)
         except Exception as retry_err:
             if is_content_filter_error(retry_err):
+                logger.warning("[ContentFilter] retry blocked too (%s) — user gets the fallback message",
+                               _filter_categories(retry_err))
                 raise ContentFilterBlockedError() from retry_err
             raise
