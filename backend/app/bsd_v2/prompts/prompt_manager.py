@@ -205,7 +205,8 @@ def _get_collected_value(cd: dict, data_key: str):
     return value
 
 
-def assemble_system_prompt(current_step: str, language: str = "he", user_gender: str = None, ux_version: int = 2, collected_data: dict = None) -> str:
+def assemble_system_prompt(current_step: str, language: str = "he", user_gender: str = None, ux_version: int = 2,
+                           collected_data: dict = None, s12_phase: str = None) -> str:
     """Assemble focused prompt for current stage and language.
     user_gender: 'male', 'female', or None - from user dashboard. Affects אתה/את etc.
     ux_version: 2 or 3 - when 3, includes v3_hybrid_addon.md.
@@ -289,6 +290,10 @@ def assemble_system_prompt(current_step: str, language: str = "he", user_gender:
                                          else f"{overlay_content}\n\n---\n\n{v2_content}")
                     else:
                         stage_content = v2_content
+            elif current_step == "S12" and s12_phase in ("permission", "to_card"):
+                # S12 3+3: the permission turn, then a one-line turn under each card (the explanation before the
+                # old card is gone — the permission question replaces it)
+                stage_content = _load_file(str(stages_dir / "v3" / f"s12_{s12_phase}.md")).strip()
             else:
                 # Pre-card: check for stage-specific pre-tool first, then generic
                 stage_pre_tool_path = stages_dir / "v3" / f"pre_tool_{current_step.lower()}.md"

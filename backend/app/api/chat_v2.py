@@ -23,7 +23,9 @@ from ..security.chat_input import (
 )
 from ..middleware.usage_limiter import require_message_quota
 from ..bsd_v2.single_agent_coach import handle_conversation, warm_prompt_cache, _check_gate_met
-from ..bsd_v2.stage_tool_triggers import resolve_post_turn_tool_call, mark_trait_picker_sent, mark_matzui_summary_sent
+from ..bsd_v2.stage_tool_triggers import (
+    resolve_post_turn_tool_call, mark_trait_picker_sent, mark_matzui_summary_sent, mark_kamaz_discovery_sent,
+)
 from ..bsd_v2.state_schema_v2 import create_initial_state, add_message
 from ..bsd_v2.safety_check import screen_message
 from ..bsd_v2.station_checkpoint import ensure_training_started_at, apply_station_intent
@@ -518,6 +520,8 @@ async def send_message_v2(
             mark_trait_picker_sent(updated_state)
         if tool_call and tool_call.get("tool_type") == "matzui_summary":
             mark_matzui_summary_sent(updated_state)
+        if tool_call and tool_call.get("tool_type") == "kamaz_discovery":
+            mark_kamaz_discovery_sent(updated_state)
         if tool_call:
             logger.debug(
                 "[BSD V2 API] tool_call: %s (step %s→%s, ux_v%s)",

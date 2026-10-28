@@ -186,6 +186,49 @@ def _build_dynamic_system_prompt(base_prompt: str, stage: str, user_message: str
     return core + example_block
 
 
+# S12 (spec "כמ"ז בתוך אימון 3+3"): the opening turn asks permission; the answer picks the card (3+3 or the bank)
+_KAMAZ_PERMISSION_MARK = "יש לי רשות"
+_KAMAZ_DECLINE = re.compile(r"^\s*(?:לא(?:\s|[,.!]|$)|ממש לא|לא עכשיו|לא רוצה|לא בא לי|אני מעדיפ|אעדיף שלא|בוא נדלג|"
+                            r"בואי נדלג|נדלג|דלג|אין לי כוח|פחות מתאים)")
+_KAMAZ_ACCEPT = re.compile(r"^\s*(?:כן|בטח|ברור|יאללה|בסדר|אוקיי|אוקי|אפשר|בשמחה|נשמע טוב|מוכנ)")
+
+
+def _kamaz_permission_answer(text: str) -> str:
+    """yes / no / question — a question instead of an answer ("למה צריך?") gets one explanation."""
+    t = (text or "").strip()
+    if _KAMAZ_DECLINE.match(t):
+        return "no"
+    if "?" in t and not _KAMAZ_ACCEPT.match(t):
+        return "question"
+    return "yes"
+
+
+def _s12_update_permission(state: Dict[str, Any], user_message: str) -> None:
+    """Before the turn: read the answer to the permission question (the card and the prompt depend on it)."""
+    if state.get("current_step") != "S12" or state.get("ux_version", 2) < 3 or state.get("_tool_just_submitted"):
+        return
+    if state.get("kamaz_permission") in ("yes", "no") or state.get("_stage_opening"):
+        return
+    last = next((m.get("content") or "" for m in reversed(state.get("messages") or []) if m.get("sender") == "coach"), "")
+    if _KAMAZ_PERMISSION_MARK not in last:
+        return
+    answer = _kamaz_permission_answer(user_message)
+    if answer == "question" and state.get("kamaz_permission") == "question":
+        answer = "yes"  # asked once and explained — go on
+    state["kamaz_permission"] = answer
+
+
+def _s12_phase(state: Dict[str, Any]) -> str:
+    """permission → to_card → post_card (the prompt file for S12)."""
+    cd = state.get("collected_data") or {}
+    forces = cd.get("forces") if isinstance(cd.get("forces"), dict) else {}
+    if forces.get("source"):
+        return "post_card"
+    if cd.get("kamaz_answers") or state.get("kamaz_permission") in ("yes", "no"):
+        return "to_card"
+    return "permission"
+
+
 def _get_system_prompt(
     state: Dict[str, Any],
     user_message: str,
@@ -219,7 +262,9 @@ def _get_system_prompt(
         return prompt
 
     logger.info("[PROMPT] Using markdown stage mode (ux_v%s)", ux_version)
-    assembled = assemble_system_prompt(current_step=current_step, language=language, user_gender=user_gender, ux_version=ux_version, collected_data=state.get("collected_data"))
+    assembled = assemble_system_prompt(current_step=current_step, language=language, user_gender=user_gender,
+                                       ux_version=ux_version, collected_data=state.get("collected_data"),
+                                       s12_phase=_s12_phase(state) if current_step == "S12" and ux_version >= 3 else None)
     # The station-checkpoint instruction (build_station_wrap_instruction) is no longer added: its commit step
     # (maybe_commit_station_checkpoint) is never called, so after 10 minutes every turn told the model to "summarize the
     # floor" and point to a mission card that no UI shows — it drove long recaps at stage transitions
@@ -331,6 +376,8 @@ def _fix_arabic_lookalikes(text: str) -> str:
 
 
 _MASC_TO_FEM = [
+    (re.compile(rf"(?<![{_HE}])השלם כל משפט"), "השלימי כל משפט"),  # S12 "yes" note, copied verbatim
+    (re.compile(rf"(?<![{_HE}])תבחר(?![{_HE}])"), "תבחרי"),  # "בכרטיס שמתחת תבחר 6…" (S12 note, copied verbatim)
     (re.compile(rf"(?<![{_HE}])בוא(?=\s+נ)"), "בואי"),  # "בוא נסכם" → "בואי נסכם" (templates are written for men)
     (re.compile(rf"(?<![{_HE}])(כש|ש)?את\s+חי(?![{_HE}])"), r"\1את חיה"),  # "כשאת חי מתוך האמונה" (S10 template)
     # fixed phrases of the per-turn notes, written in the masculine and copied as is
@@ -462,6 +509,8 @@ def _sanitize_coach_message(coach_message: str) -> str:
         cleaned = cleaned.replace("מאמן:", "", 1).strip()
     if cleaned.startswith("Coach:"):
         cleaned = cleaned.replace("Coach:", "", 1).strip()
+    # "וצרך בשייכות" — the defective spelling the model writes for the nature forces ("צורך ב…")
+    cleaned = re.sub(rf"(?<![{_HE}])(ו?ה?)צרך ב", r"\1צורך ב", cleaned)
     return cleaned
 
 
@@ -3178,14 +3227,50 @@ def build_conversation_context(
 
     # S12/S13: the leading traits are the first of each כמ"ז list (booklet p.28) — the coach once named another one
     # ("זהירות" for "רגישות לאחרים"), and the request card must carry the same ones
-    forces12 = (state.get("collected_data") or {}).get("forces") or {}
+    cd12 = state.get("collected_data") or {}
+    forces12 = cd12.get("forces") or {}
+    sel_src = [t for t in (cd12.get("selected_makor") or []) if t]
+    sel_nat = [t for t in (cd12.get("selected_teva") or []) if t]
     lead_src = (forces12.get("source") or [None])[0] if isinstance(forces12, dict) else None
     lead_nat = (forces12.get("nature") or [None])[0] if isinstance(forces12, dict) else None
-    if state.get("current_step") in ("S12", "S13") and state.get("ux_version", 2) >= 3 and (lead_src or lead_nat):
+    if state.get("current_step") in ("S12", "S13") and state.get("ux_version", 2) >= 3 and (sel_src or sel_nat):
+        # the forces he chose for this event (spec, S12 step 4) — they go into the request too
+        context_parts.append(
+            "\n# הכוחות שבחר לאירוע הזה\n"
+            + (f"מקור: {', '.join(repr(t) for t in sel_src)}. " if sel_src else "")
+            + (f"טבע: {', '.join(repr(t) for t in sel_nat)}. " if sel_nat else "")
+            + "כשאתה מזכיר כוח מוביל — **רק את אלה, בשמם**; אל תחליף בתכונה אחרת מהרשימה.")
+    elif state.get("current_step") in ("S12", "S13") and state.get("ux_version", 2) >= 3 and (lead_src or lead_nat):
         context_parts.append(
             "\n# התכונות המובילות (הראשונות שבחר בכל צד)\n"
             + (f"מקור: '{lead_src}'. " if lead_src else "") + (f"טבע: '{lead_nat}'. " if lead_nat else "")
             + "כשאתה מזכיר כוח מוביל — **רק את אלה, בשמם**; אל תחליף בתכונה אחרת מהרשימה.")
+    # S12 (3+3 flow): which card appears under this turn, or the closing reflection
+    if state.get("current_step") == "S12" and state.get("ux_version", 2) >= 3:
+        phase12 = _s12_phase(state)
+        perm12 = state.get("kamaz_permission")
+        nxt12 = ""
+        if phase12 == "permission" and perm12 == "question":
+            nxt12 = ("הוא שאל במקום לענות. ענה במשפט אחד פשוט — למה זה חשוב לבחירה שלו — ושאל שוב את שאלת הרשות "
+                     "(\"יש לי רשות…?\").")
+        elif phase12 == "to_card" and cd12.get("kamaz_answers"):
+            nxt12 = ("הוא השלים את הבזקי המקור והטבע. **אל תסכם את התשובות** ואל תזכיר תכונות או פחדים — הכרטיס מציג "
+                     "אותם. כתוב רק: \"מתוך מה שכתבת עלו כמה כוחות — בכרטיס שמתחת תבחר 6 מכל צד.\" **בלי שאלה.**")
+        elif phase12 == "to_card" and perm12 == "yes":
+            nxt12 = ("הוא הסכים. **בלי הגדרות ובלי הסבר** — ההסבר כבר ניתן. כתוב רק: \"תודה. בכרטיס שמתחת — השלם כל "
+                     "משפט במילים שלך, מה שעולה ראשון.\" **בלי שאלה.**")
+        elif phase12 == "to_card" and perm12 == "no":
+            nxt12 = ("הוא העדיף לא להיכנס לשאלות — זה בסדר, בלי לשכנע. כתוב רק: \"בסדר גמור. בכרטיס שמתחת תבחר 6 כוחות "
+                     "מקור ו-6 כוחות טבע.\" **בלי שאלה.**")
+        elif phase12 == "post_card" and (sel_src or sel_nat):
+            from .coaching_request import he_list
+            chosen12 = "בחרת לגייס היום " + ("מהמקור: " + he_list(sel_src) if sel_src else "") \
+                + (", ומהטבע: " + sel_nat[0] if sel_src and sel_nat else ("מהטבע: " + sel_nat[0] if sel_nat else "")) + "."
+            nxt12 = ("הוא אישר את הכרטיס ובחר את הכוחות לאירוע הזה. כתוב **בדיוק** את שני המשפטים האלה (בגוף ובמין שלו), "
+                     f"בלי להוסיף: \"{chosen12} השכל שלך — 'ראש העיר' — הוא שיכוון את הטבע הזה לשירות המקור, בבחירת "
+                     "העמדה החדשה.\" **בלי שאלה**, וסמן `stage_ready_to_complete: true`.")
+        if nxt12:
+            context_parts.append("\n# שלב 12 — התור הזה\n" + nxt12)
 
     # S13: a choice that is only an action gets the "from which new place" question (the model celebrated it)
     last_coach13 = next((m.get("content") or "" for m in reversed(state.get("messages") or [])
@@ -3199,7 +3284,7 @@ def build_conversation_context(
             "הוא ענה על שאלת ההעמקה — **זו העמדה החדשה שלו** (עדכן `renewal` למילים שלו). **אל תשאל עוד שאלה.** "
             "תור אחד: צטט את העמדה החדשה שלו **פעם אחת**"
             + (f", העמד אותה במשפט אחד מול העמדה הישנה ('{str(old_pos)[:100]}')" if old_pos else "")
-            + ", וחבר במשפט אחד לכוח מקור מוביל שלו מכרטיס הכוחות — **בלי להוסיף תוכן משלך**. "
+            + ", וחבר במשפט אחד לכוח המקור שבחר לאירוע (או המוביל שלו מכרטיס הכוחות) — **בלי להוסיף תוכן משלך**. "
             "סמן `stage_ready_to_complete: true`.")
     if state.get("current_step") == "S13" and state.get("ux_version", 2) >= 3 and _s13_stance_question_pending(state):
         cd13 = state.get("collected_data") or {}
@@ -4094,6 +4179,9 @@ async def handle_conversation(
     early = _handle_early_returns(user_message, state, language)
     if early:
         return early
+    if user_gender:
+        state["_user_gender"] = user_gender  # the cards are worded in the client's gender (S12 3+3)
+    _s12_update_permission(state, user_message)
 
     try:
         start_time = time.time()

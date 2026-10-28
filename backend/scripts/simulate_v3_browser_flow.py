@@ -27,7 +27,8 @@ CARD_TITLES = {
     "האירוע": "event_form", "מה הרגשת באותו רגע?": "emotion_selector", "מה עשית?": "action_field",
     "תמונת המצוי שלך": "matzui_summary", "באותו רגע בדיוק — מה היית רוצה?": "comparison_card",
     "הפער": "gap_card", "מה החוק הפנימי שלך?": "sentence_builder",
-    "מה אני מרוויח ומה אני מפסיד?": "balance_scale", "כרטיס כוחות — מקור וטבע": "trait_card_builder",
+    "מה אני מרוויח ומה אני מפסיד?": "balance_scale", "כרטיס כמ\"ז — מקור וטבע": "trait_card_builder",
+    "הבזקי מקור וטבע": "kamaz_discovery",
     "הבחירה החדשה שלך": "declaration_card", "המחויבות שלך": "commitment_card", "הבקשה שלך לאימון": "commitment_card",
 }
 
@@ -282,32 +283,61 @@ class Driver:
             submit = btn("המשך")
         elif tool_type == "sentence_builder":
             paradigm = re.sub(r"^\s*ככה זה אצלי\s*[—–-]?\s*", "", s(data.get("paradigm")))
-            ph("כי... / כש...").fill(paradigm or "עדיף לשתוק")
+            ph("אם... אז עדיף").fill(paradigm or "עדיף לשתוק")
             submit = btn("הבנתי את החוק שלי")
         elif tool_type == "balance_scale":
-            tags("הוסף רווח", data.get("gains") or [], 2)
-            tags("הוסף הפסד", data.get("losses") or [], 2)
+            tags("אני מרגיש מוגן", data.get("gains") or [], 2)
+            tags("אני מפסיד קרבה", data.get("losses") or [], 2)
             submit = btn("סיימתי את המאזן")
+        elif tool_type == "kamaz_discovery":
+            answers = {a.get("id"): s(a.get("text")) for a in data.get("answers") or [] if isinstance(a, dict)}
+            qs = (tool.get("data") or {}).get("questions") or []
+            for side, nxt in (("source", "המשך לטבע"), ("nature", None)):
+                for i, q in enumerate([q for q in qs if q.get("side") == side]):
+                    card.locator("textarea").nth(i).fill(answers.get(q.get("id")) or "לא בטוח")
+                if side == "source":  # the hidden example chips, opened once — for the screenshot
+                    card.get_by_role("button", name="💡 נתקעת? לחץ להצגת דוגמאות").first.click()
+                self.shot(f"kamaz_{side}")
+                if nxt:
+                    btn(nxt).click()
+            submit = btn("סיימתי")
         elif tool_type == "trait_card_builder":
-            tags("הוסף תכונת מקור", data.get("source_forces") or [], 6)
-            tags("הוסף תכונת טבע", data.get("nature_forces") or [], 6)
-            submit = btn("סיימתי את הכרטיס")
+            bank = (tool.get("data") or {}).get("bank") or {}
+            label = {t["short"]: t["label"] for side in ("source", "nature") for t in bank.get(side) or []}
+            for side, key in (("source", "source_forces"), ("nature", "nature_forces")):
+                picked = 0
+                options = [t["short"] for t in bank.get(side) or []]
+                for v in [x for x in (data.get(key) or []) if x in options] + options:
+                    if picked >= 6:
+                        break
+                    chip = card.get_by_role("button", name=f"+ {label.get(v, v)}", exact=True)
+                    if self.visible(chip) and chip.is_enabled():
+                        chip.click(); picked += 1
+            self.shot("kamaz_card")
+            btn("המשך").click()
+            for side, key in (("source", "selected_source"), ("nature", "selected_nature")):
+                for v in data.get(key) or []:
+                    chip = card.get_by_role("button", name=label.get(v, v), exact=True)
+                    if self.visible(chip):
+                        chip.click()
+            self.shot("kamaz_event")
+            submit = btn("זה הכרטיס שלי")
         elif tool_type == "declaration_card":
-            ph("כתוב את האמונה החדשה").fill(s(data.get("renewal")))
+            ph("תפיסה חדשה, במשפט קצר").fill(s(data.get("renewal")))
             ph("תאר פעולה קונקרטית").fill(s(data.get("next_action")))
             btn("כן, זה אני!").click()
             submit = btn("זו הבחירה שלי")
         elif tool_type == "commitment_card":  # בקשה לאימון
-            floor = {"paradigm": "הפרדיגמה", "stance": "העמדה"}.get(data.get("floor"), "הדפוס")
-            btn(floor).click()
-            areas = card.locator("textarea")  # situation, old, new, result
+            areas = card.locator("textarea")  # situation, old, new, result (the floor is fixed: stance)
             areas.nth(0).fill(s(data.get("situation")))
             for i, key in ((1, "old"), (2, "new")):
                 if not areas.nth(i).input_value().strip():
                     areas.nth(i).fill(s(data.get(key)))
             areas.nth(3).fill(s(data.get("result")))
             tool_data = (tool or {}).get("data") or {}
-            for key in ("forces_source", "forces_nature"):
+            for key, sel in (("forces_source", "selected_source"), ("forces_nature", "selected_nature")):
+                if tool_data.get(sel):
+                    continue  # preselected from his S12 choice — a click would turn it off
                 options = tool_data.get(key) or []
                 wanted = [o for o in (data.get("source" if key == "forces_source" else "nature") or []) if o in options]
                 for o in (wanted or options[:1]):

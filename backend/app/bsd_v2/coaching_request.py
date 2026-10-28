@@ -41,13 +41,20 @@ def _difficulty(text: str) -> str:
     return f"הקושי להתמודד עם {t}"
 
 
+def he_list(items: list) -> str:
+    """"כנות ונאמנות", "אומץ, כנות ונתינה" — the last one joined with ו (a comma read as two separate clauses)."""
+    if len(items) <= 1:
+        return "".join(items)
+    return ", ".join(items[:-1]) + " ו" + items[-1]
+
+
 def compose_coaching_request(data: Dict[str, Any]) -> str:
     """The booklet's complex coaching request (p.37-38), as one sentence in the client's words."""
     name, that, old_adj, new_adj = _REQUEST_FLOOR_HE.get(data.get("floor"), _REQUEST_FLOOR_HE["stance"])
     def as_list(v: Any) -> list:  # the API accepts a string too — joining a str listed it letter by letter
         return [v] if isinstance(v, str) else list(v or [])
-    source = ", ".join(x.strip() for x in as_list(data.get("source")) if x and x.strip())
-    nature = ", ".join(x.strip() for x in as_list(data.get("nature")) if x and x.strip())
+    source = he_list([x.strip() for x in as_list(data.get("source")) if x and x.strip()])
+    nature = he_list([x.strip() for x in as_list(data.get("nature")) if x and x.strip()])
     noun = name[1:]  # "הדפוס" → "דפוס" for "מופיע הדפוס הישן שלי"
     # booklet wording (p.37-38): "אני מבקש להתאמן על הקושי להתמודד עם [תיאור הסיטואציה]"
     parts = [f"אני מבקש/ת להתאמן על {_difficulty(data.get('situation') or '')}"]

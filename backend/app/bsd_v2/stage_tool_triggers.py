@@ -98,13 +98,18 @@ V3_TOOL_DEFS: Dict[str, Dict[str, Any]] = {
         "title_he": "מאזן רווח והפסד",
         "instruction_he": "מה אתה מרוויח מלהחזיק בעמדה הזו? ומה אתה מפסיד?",
     },
+    "kamaz_discovery": {
+        "type": "tool",
+        "tool_type": "kamaz_discovery",
+        "title_he": "הבזקי מקור וטבע",
+        "instruction_he": "השלם כל משפט במילים שלך — קצר, מה שעולה ראשון.",
+    },
     "trait_card_builder": {
         "type": "tool",
         "tool_type": "trait_card_builder",
         "title_he": "כרטיס מהות זהות",
         "instruction_he": (
-            "בנה את כרטיס הכוחות שלך — 6 תכונות מקור ו-6 תכונות טבע. "
-            "בחר מההצעות או כתוב משלך. גרור לסדר — הראשון הוא המוביל."
+            "בחר 6 תכונות מקור ו-6 תכונות טבע — מתוך מה שעלה בתשובות שלך, מהמאגר, או במילים שלך."
         ),
     },
     "declaration_card": {
@@ -155,9 +160,19 @@ def _build_v3_tool_call(tool_key: str, state: Dict[str, Any]) -> Dict[str, Any]:
         base["data"] = {
             "pattern": cd.get("pattern", ""),
         }
+    elif tool_key == "kamaz_discovery":
+        from .kamaz_bank import questions_for
+        base["data"] = {"questions": questions_for(state.get("_user_gender"))}
     elif tool_key == "trait_card_builder":
+        from .kamaz_bank import bank_for_card
+        found = cd.get("kamaz_suggestions") if isinstance(cd.get("kamaz_suggestions"), dict) else {}
         base["data"] = {
-            "suggestions": _generate_trait_suggestions(cd),
+            "bank": bank_for_card(),
+            # "עלה מתוך מה שכתבת" — each with the words it came from (empty when he declined the 3+3)
+            "suggested": found.get("suggested") or {"source": [], "nature": []},
+            # the gentle default for the forces for this event (step 4)
+            "event_rank": found.get("event_rank") or {"source": [], "nature": []},
+            "suggestions": _generate_trait_suggestions(cd),  # the previous card version (cached clients)
         }
     elif tool_key == "declaration_card":
         stance = cd.get("stance") or {}
@@ -176,6 +191,9 @@ def _build_v3_tool_call(tool_key: str, state: Dict[str, Any]) -> Dict[str, Any]:
         base["data"] = {
             "forces_source": list(forces.get("source") or [])[:6] if isinstance(forces, dict) else [],
             "forces_nature": list(forces.get("nature") or [])[:6] if isinstance(forces, dict) else [],
+            # the forces he chose for this event at S12 (spec: selected_makor / selected_teva) — preselected on the card
+            "selected_source": list(cd.get("selected_makor") or []),
+            "selected_nature": list(cd.get("selected_teva") or []),
             "old": {
                 "pattern": cd.get("pattern", ""),
                 "paradigm": cd.get("paradigm", ""),
@@ -227,32 +245,26 @@ def _suggest_emotions_for_event(cd: Dict[str, Any]) -> List[str]:
     return result[:6] if result else ["כעס", "עצב", "תסכול", "חרדה", "עלבון", "אכזבה"]
 
 
-# BSD: source = values (נפש אלוקית), nature = needs/defenses (נפש טבעית) — traits of life
-# as a whole, not of the coaching event. Book example card — source: חסד, תמימות, אמון,
-# אהבה, ישרות, אומץ; nature: הכבוד שלי = אני, להיות ראשון בכל, לא משתייך, מחפש מחמאות.
-_SOURCE_TRAITS = [
-    "אהבה", "חסד", "אמת", "ישרות", "אומץ", "אמון", "נתינה", "אחריות",
-    "נאמנות", "שמחה", "ענווה", "תמימות", "חכמה", "שליחות", "רגישות לאחרים", "התמדה",
-]
-_NATURE_TRAITS = [
-    # Natural qualities and tendencies in their healthy, constructive form — the tools a person acts with
-    # (BSD expert review, Oct 2026). Fears and avoidances ("פחד מדחייה", "הימנעות מעימות") are expressions of
-    # the old stance, NOT nature forces — a request "אפעל מתוך הטבע שלי, שהוא פחד מדחייה" is absurd.
-    "רגישות לאחרים", "זהירות", "יסודיות", "קליטת ניואנסים", "יכולת הכלה", "שאיפה להרמוניה",
-    "צורך בביטחון ויציבות", "צורך בשייכות", "התמדה", "אנרגיה ותנועה", "דייקנות", "ערנות לסביבה",
-]
+# BSD: source = values (נפש אלוקית), nature = natural tendencies and needs in their healthy form (נפש טבעית) — traits
+# of life as a whole, not of the coaching event. The bank is kamaz_bank (the S12 spec); fears and avoidances are not
+# nature forces (expert review) — a request "אפעל מתוך הטבע שלי, שהוא פחד מדחייה" is absurd.
+from .kamaz_bank import NATURE_TRAITS as _NATURE_BANK, SOURCE_TRAITS as _SOURCE_BANK  # noqa: E402
+
+_SOURCE_TRAITS = [t["short"] for t in _SOURCE_BANK]
+_NATURE_TRAITS = [t["short"] for t in _NATURE_BANK]
 # Pattern/belief words → the natural qualities and values most likely in play, listed first
 _NATURE_HINTS = [
-    (("שותק", "שתקתי", "נסגר", "בולע", "לא אומר", "לא אמרתי", "מחייך", "בלגן", "עניין"), ["שאיפה להרמוניה", "רגישות לאחרים"]),
-    (("צועק", "צעקתי", "מתפרץ", "כעס", "בכוח", "שולט"), ["אנרגיה ותנועה", "צורך בביטחון ויציבות"]),
-    (("לא רואים", "שקוף", "לא סופרים", "לא חשוב", "לא נספר"), ["ערנות לסביבה", "צורך בשייכות"]),
-    (("נכשל", "כישלון", "לא מספיק", "גרוע"), ["יסודיות", "דייקנות"]),
+    (("שותק", "שתקתי", "נסגר", "בולע", "לא אומר", "לא אמרתי", "מחייך", "בלגן", "עניין"),
+     ["שאיפה להרמוניה ושקט", "רגישות לתגובות הסביבה"]),
+    (("צועק", "צעקתי", "מתפרץ", "כעס", "בכוח", "שולט"), ["צורך בשליטה וודאות", "שמירה על גבולות וצדק"]),
+    (("לא רואים", "שקוף", "לא סופרים", "לא חשוב", "לא נספר"), ["צורך בהערכה וכבוד", "צורך בשייכות וקבלה"]),
+    (("נכשל", "כישלון", "לא מספיק", "גרוע"), ["יסודיות ודיוק", "שאיפה למצוינות"]),
 ]
 _SOURCE_HINTS = [
-    (("להגיד", "לומר", "קול", "לבטא", "ישיר"), ["אומץ", "אמת"]),
+    (("להגיד", "לומר", "קול", "לבטא", "ישיר"), ["אומץ", "כנות"]),
     (("קרבה", "קשר", "ביחד", "חיבוק"), ["אהבה", "נתינה"]),
-    (("רגוע", "סבלנות", "להקשיב"), ["חסד", "רגישות לאחרים"]),
-    (("אחריות", "לעמוד", "גבול"), ["אחריות", "ישרות"]),
+    (("רגוע", "סבלנות", "להקשיב"), ["הכלה", "חמלה"]),
+    (("אחריות", "לעמוד", "גבול"), ["אחריות", "יושרה"]),
 ]
 
 
@@ -301,17 +313,29 @@ def _action_looks_interpretive(action: str) -> bool:
     return action in _INTERPRETIVE_ONLY
 
 
+def _s12_tool_call(prev_step: str, state: Dict[str, Any], from_tool_submission: Optional[str]) -> Optional[Dict[str, Any]]:
+    cd = state.get("collected_data") or {}
+    if state.get("trait_picker_tool_sent") or prev_step == "__stage_intro__":
+        return None
+    if from_tool_submission == "kamaz_discovery" or cd.get("kamaz_answers"):
+        return _build_v3_tool_call("trait_card_builder", state)
+    permission = state.get("kamaz_permission")
+    if permission == "no":
+        return _build_v3_tool_call("trait_card_builder", state)
+    if permission == "yes" and not state.get("kamaz_discovery_sent"):
+        return _build_v3_tool_call("kamaz_discovery", state)
+    return None  # waiting for the answer to the permission question
+
+
 def _resolve_v3_tool_call(prev_step: str, state: Dict[str, Any], from_tool_submission: Optional[str] = None) -> Optional[Dict[str, Any]]:
     """V3-specific tool resolution with broader stage triggers."""
     new_step = state.get("current_step", "S0")
     cd = state.get("collected_data") or {}
 
-    # S12: the card opens the stage right after a short explanation (design: docs/bsd-redesign/synthesis.md)
-    # — no chat collection of 6+6 first. offer_trait_picker is the V2 chat-first signal.
-    if new_step == "S12" and not state.get("trait_picker_tool_sent"):
-        forces = cd.get("forces") or {}
-        if _trait_picker_eligible(state) or not forces.get("source"):
-            return _build_v3_tool_call("trait_card_builder", state)
+    # S12 (spec "כמ"ז בתוך אימון 3+3"): the opening turn asks permission (no card); "כן" → the 3+3 discovery card;
+    # "לא" or after the 3+3 → the 6+6 card (with the event choice); after it — no card, the stage closes.
+    if new_step == "S12":
+        return _s12_tool_call(prev_step, state, from_tool_submission)
 
     # Only trigger on step transitions (new_step != prev_step)
     if new_step == prev_step:
@@ -383,6 +407,11 @@ def resolve_post_turn_tool_call(
 def mark_trait_picker_sent(state: Dict[str, Any]) -> Dict[str, Any]:
     """Mutate and return state so we do not re-offer the trait picker in the same conversation."""
     state["trait_picker_tool_sent"] = True
+    return state
+
+
+def mark_kamaz_discovery_sent(state: Dict[str, Any]) -> Dict[str, Any]:
+    state["kamaz_discovery_sent"] = True
     return state
 
 

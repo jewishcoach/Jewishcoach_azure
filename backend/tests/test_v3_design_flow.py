@@ -124,21 +124,33 @@ def test_s11_pre_card_uses_pre_tool_not_post_card_overlay():
     assert "V3 Card Overlay — S11" not in prompt
 
 
-def test_s12_pre_card_is_short_explanation():
+def test_s12_opening_prompt_is_the_permission_question_only():
     state = _v3_state("S12")
-    prompt = assemble_system_prompt("S12", "he", ux_version=3, collected_data=state["collected_data"])
-    assert "S12 Pre-Tool" in prompt
+    prompt = assemble_system_prompt("S12", "he", ux_version=3, collected_data=state["collected_data"], s12_phase="permission")
+    assert "יש לי רשות" in prompt and "מנגנוני השמירה" in prompt and "מנגנוני ההגנה" not in prompt
     assert "שאלות חקירת מקור" not in prompt
+    prompt = assemble_system_prompt("S12", "he", ux_version=3, collected_data=state["collected_data"], s12_phase="to_card")
+    assert "**אסור לשאול שאלה**" in prompt and "יש לי רשות להיכנס" not in prompt
 
 
 # ---------------------------------------------------------------------------
 # Cards
 # ---------------------------------------------------------------------------
 
-def test_s12_card_opens_the_stage():
+def test_s12_opening_has_no_card_then_the_answer_picks_it():
     state = _v3_state("S12")
-    tool_call = resolve_post_turn_tool_call("__stage_intro__", state, ux_version=3)
-    assert tool_call and tool_call["tool_type"] == "trait_card_builder"
+    assert resolve_post_turn_tool_call("__stage_intro__", state, ux_version=3) is None  # the permission question
+    state["kamaz_permission"] = "yes"
+    tool_call = resolve_post_turn_tool_call("S12", state, ux_version=3)
+    assert tool_call["tool_type"] == "kamaz_discovery" and len(tool_call["data"]["questions"]) == 6
+    state["kamaz_discovery_sent"] = True
+    state["collected_data"]["kamaz_answers"] = [{"id": "s1", "side": "source", "text": "הקשבה"}]
+    tool_call = resolve_post_turn_tool_call("S12", state, ux_version=3, from_tool_submission="kamaz_discovery")
+    assert tool_call["tool_type"] == "trait_card_builder" and len(tool_call["data"]["bank"]["source"]) == 22
+    declined = _v3_state("S12")
+    declined["kamaz_permission"] = "no"
+    tool_call = resolve_post_turn_tool_call("S12", declined, ux_version=3)
+    assert tool_call["tool_type"] == "trait_card_builder" and tool_call["data"]["suggested"] == {"source": [], "nature": []}
 
 
 def test_s12_card_not_resent_after_submission():
@@ -968,3 +980,67 @@ def test_turn_notes_travel_in_a_system_message_and_survive_the_filter_retry():
     asyncio.run(invoke_structured_coach_llm(llm, msgs, context=ctx, system_prompt="SYSTEM", language="he"))
     retry = llm.calls[1]
     assert isinstance(retry[1], SystemMessage) and "שלב נעול" in retry[1].content  # the notes are kept
+
+
+
+def test_kamaz_bank_is_whole_and_every_chip_maps_into_its_side():
+    from app.bsd_v2.kamaz_bank import DISCOVERY_QUESTIONS, NATURE_TRAITS, SOURCE_TRAITS, normalize_trait, questions_for, side_of
+    assert len(SOURCE_TRAITS) == 22 and len(NATURE_TRAITS) == 17
+    shorts = [t["short"] for t in SOURCE_TRAITS + NATURE_TRAITS]
+    assert len(shorts) == len(set(shorts))
+    assert [q["side"] for q in DISCOVERY_QUESTIONS] == ["source"] * 3 + ["nature"] * 3
+    assert all(side_of(m) == q["side"] for q in DISCOVERY_QUESTIONS for c in q["chips"] for m in c["maps_to"])
+    assert normalize_trait("אמת / כנות") == "כנות" and normalize_trait("עצמאות (נטייה להסתדר לבד)") == "עצמאות"
+    assert normalize_trait("פחד מדחייה") is None
+    assert "מתמלאת" in questions_for("female")[1]["prompt"] and "מתמלא " in questions_for("male")[1]["prompt"]
+
+
+def test_kamaz_extraction_keeps_bank_traits_with_his_words_only():
+    from app.bsd_v2.kamaz_extract import _Extraction, _Suggestion, validate_extraction
+    answers = [{"id": "n1", "side": "nature", "prompt": "כשאני מוותרת…", "text": "אני מפחדת שיכעסו עליי"}]
+    raw = _Extraction(
+        source=[_Suggestion(trait="חכמה", quote="אני מפחדת שיכעסו עליי")],  # not in the bank
+        nature=[_Suggestion(trait="צורך בשייכות וקבלה", quote="כשאני מוותרת… אני מפחדת שיכעסו עליי"),
+                _Suggestion(trait="זהירות", quote="אני תמיד בודקת הכול")],  # quote not in his words
+        event_nature=["צורך בשייכות וקבלה", "פחד"])
+    out = validate_extraction(raw, answers, {})
+    assert out["suggested"]["source"] == []
+    assert out["suggested"]["nature"] == [{"trait": "צורך בשייכות וקבלה", "quote": "אני מפחדת שיכעסו עליי"}]
+    assert out["event_rank"]["nature"] == ["צורך בשייכות וקבלה"]
+
+
+def test_kamaz_chips_map_without_the_model():
+    from app.bsd_v2.kamaz_bank import chip_traits
+    out = chip_traits([{"id": "n2", "text": "פחד לטעות ורצון שהכל ייעשה מדויק", "chips_used": ["n2b"]}])
+    assert [x["trait"] for x in out["nature"]] == ["יסודיות ודיוק", "שאיפה למצוינות"] and out["source"] == []
+
+
+def test_kamaz_permission_answer():
+    from app.bsd_v2.single_agent_coach import _kamaz_permission_answer as f, _s12_update_permission
+    assert f("כן, בשמחה") == "yes" and f("יאללה") == "yes" and f("לא עכשיו") == "no" and f("לא, אני מעדיף לדלג") == "no"
+    assert f("למה צריך את זה?") == "question" and f("כן, מה זה אומר?") == "yes"
+    state = _v3_state("S12")
+    state["messages"] = [_coach("… יש לי רשות להיכנס איתך לגילוי קצר וממוקד של הכוחות האלה?", "S12")]
+    _s12_update_permission(state, "למה זה חשוב?")
+    assert state["kamaz_permission"] == "question"
+    state["messages"].append({"sender": "user", "content": "למה זה חשוב?"})
+    state["messages"].append(_coach("כי מתוך הכוחות שלך תבחר עמדה חדשה. יש לי רשות להמשיך?", "S12"))
+    _s12_update_permission(state, "אני עדיין לא בטוח למה?")
+    assert state["kamaz_permission"] == "yes"  # explained once — go on
+
+
+def test_request_carries_the_forces_chosen_for_the_event():
+    state = _v3_state("S15", forces={"source": ["כנות", "אומץ", "אהבה", "נתינה", "שמחה", "אמונה"],
+                                     "nature": ["זהירות", "מחושבות", "עצמאות", "מעשיות", "שמירה על עצמי", "שאיפה למצוינות"]},
+                      selected_makor=["אומץ", "כנות"], selected_teva=["מחושבות"])
+    tool_call = resolve_post_turn_tool_call("S14", state, ux_version=3)
+    assert tool_call["data"]["selected_source"] == ["אומץ", "כנות"] and tool_call["data"]["selected_nature"] == ["מחושבות"]
+
+
+def test_s12_post_card_note_reflects_the_event_choice():
+    from app.bsd_v2.single_agent_coach import build_conversation_context
+    state = _v3_state("S12", forces={"source": ["כנות"] * 6, "nature": ["זהירות"] * 6},
+                      selected_makor=["אומץ"], selected_teva=["מחושבות"])
+    state["messages"] = []
+    ctx = build_conversation_context(state, "הכרטיס שלי", "he")
+    assert "ראש העיר" in ctx and "'אומץ'" in ctx and "מהמקור: אומץ, ומהטבע: מחושבות" in ctx

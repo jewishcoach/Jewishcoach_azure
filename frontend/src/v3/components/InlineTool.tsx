@@ -1,6 +1,7 @@
 import type { ActiveInlineTool } from '../types';
 import { CardShell } from './shared/CardShell';
 import { TraitCardBuilder } from './tools/TraitCardBuilder';
+import { KamazDiscoveryCard } from './tools/KamazDiscoveryCard';
 import { EventForm } from './tools/EventForm';
 import { EmotionSelector, type EmotionSelectorProps } from './tools/EmotionSelector';
 import { ActionField } from './tools/ActionField';
@@ -80,11 +81,20 @@ export function InlineTool({ tool, onSubmit, isSubmitting }: InlineToolProps) {
         />
       );
 
+    case 'kamaz_discovery':
+      return (
+        <KamazDiscoveryCard
+          data={tool.data as Parameters<typeof KamazDiscoveryCard>[0]['data']}
+          onSubmit={onSubmit}
+          isSubmitting={isSubmitting}
+        />
+      );
+
     case 'trait_card_builder':
       return (
         <CardShell>
           <TraitCardBuilder
-            data={tool.data as { suggestions?: { source: string[]; nature: string[] }; existing_source?: string[]; existing_nature?: string[] } | undefined}
+            data={tool.data as Parameters<typeof TraitCardBuilder>[0]['data']}
             onSubmit={onSubmit}
             isSubmitting={isSubmitting}
           />

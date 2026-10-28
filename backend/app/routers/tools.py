@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from ..database import get_db, release_db_connection, utc_now
@@ -8,7 +9,11 @@ from typing import Dict, Any, List
 from datetime import datetime
 import logging
 from ..bsd_v2.single_agent_coach import handle_conversation, _check_gate_met
-from ..bsd_v2.stage_tool_triggers import resolve_post_turn_tool_call, mark_trait_picker_sent, mark_matzui_summary_sent
+from ..bsd_v2.kamaz_bank import DISCOVERY_QUESTIONS, normalize_trait
+from ..bsd_v2.kamaz_extract import extract_kamaz
+from ..bsd_v2.stage_tool_triggers import (
+    resolve_post_turn_tool_call, mark_trait_picker_sent, mark_matzui_summary_sent, mark_kamaz_discovery_sent,
+)
 from ..bsd_v2.onboarding_topics_context import inject_onboarding_topics_into_state
 from ..security.chat_input import ChatMessageRejected, sanitize_chat_message
 from ..api.chat_v2 import save_v2_state, build_stage_complete_payload, strip_question_before_card
@@ -140,6 +145,13 @@ async def submit_tool_response(
                 "commitment_card": ["commitment", "result"],
             }
             fields_to_check = _text_fields_to_check.get(request.tool_type, [])
+            if request.tool_type == "kamaz_discovery":
+                for a in request.data.get("answers") or []:
+                    val = (a or {}).get("text") or ""
+                    if isinstance(val, str) and val.strip() and _is_gibberish(val):
+                        raise HTTPException(status_code=422, detail={
+                            "error": "gibberish", "field": (a or {}).get("id") or "answers",
+                            "message": "התשובה לא ברורה — נסה לנסח אחרת"})
             for field in fields_to_check:
                 val = request.data.get(field, "")
                 if isinstance(val, str) and _is_gibberish(val):
@@ -166,13 +178,35 @@ async def submit_tool_response(
             elif request.tool_type in ("trait_picker", "trait_card_builder"):
                 cd = dict(v2_state.get("collected_data") or {})
                 forces = dict(cd.get("forces") or {})
-                source = request.data.get("source_forces") or request.data.get("source_traits") or []
-                nature = request.data.get("nature_forces") or request.data.get("nature_traits") or []
+                # bank traits as their short form — that is what reads inside the coaching request ("…שהוא כנות")
+                source = [normalize_trait(t, "source") or str(t).strip() for t in
+                          (request.data.get("source_forces") or request.data.get("source_traits") or []) if str(t).strip()]
+                nature = [normalize_trait(t, "nature") or str(t).strip() for t in
+                          (request.data.get("nature_forces") or request.data.get("nature_traits") or []) if str(t).strip()]
                 if source:
                     forces["source"] = source
                 if nature:
                     forces["nature"] = nature
                 cd["forces"] = forces
+                # the forces he chose for this event (spec: selected_makor / selected_teva) — outside the model's
+                # schema, so a coach turn cannot overwrite them; they prefill the coaching request (S15)
+                sel_src = [normalize_trait(t, "source") or str(t).strip() for t in request.data.get("selected_source") or []]
+                sel_nat = [normalize_trait(t, "nature") or str(t).strip() for t in request.data.get("selected_nature") or []]
+                if sel_src or sel_nat:
+                    cd["selected_makor"] = [t for t in sel_src if t in source][:2]
+                    cd["selected_teva"] = [t for t in sel_nat if t in nature][:1]
+                v2_state["collected_data"] = cd
+
+            elif request.tool_type == "kamaz_discovery":
+                cd = dict(v2_state.get("collected_data") or {})
+                by_id = {q["id"]: q for q in DISCOVERY_QUESTIONS}
+                cd["kamaz_answers"] = [
+                    {"id": a.get("id"), "side": (by_id.get(a.get("id")) or {}).get("side") or a.get("side"),
+                     "prompt": (by_id.get(a.get("id")) or {}).get("prompt", ""),
+                     "text": str(a.get("text") or "").strip()[:400],
+                     "chips_used": [c for c in (a.get("chips_used") or []) if isinstance(c, str)][:6]}
+                    for a in (request.data.get("answers") or []) if isinstance(a, dict)
+                ]
                 v2_state["collected_data"] = cd
 
             elif request.tool_type == "event_form":
@@ -285,13 +319,23 @@ async def submit_tool_response(
                         db.expunge(o)
                     release_db_connection(db)
                 try:
-                    coach_message, updated_state = await handle_conversation(
+                    coach_turn = handle_conversation(
                         user_message=summary,
                         state=v2_state,
                         language=language,
                         user_gender=user_gender,
                         conversation_id=conversation_id,
                     )
+                    if request.tool_type == "kamaz_discovery":
+                        # the traits in his 3+3 answers, for the 6+6 card — alongside the coach's one-line turn
+                        answers = (v2_state.get("collected_data") or {}).get("kamaz_answers") or []
+                        (coach_message, updated_state), found = await asyncio.gather(
+                            coach_turn, extract_kamaz(answers, dict(v2_state.get("collected_data") or {})))
+                        ucd = dict(updated_state.get("collected_data") or {})
+                        ucd["kamaz_suggestions"] = found
+                        updated_state["collected_data"] = ucd
+                    else:
+                        coach_message, updated_state = await coach_turn
                 finally:
                     if can_release:
                         for o in pending:
@@ -365,6 +409,8 @@ async def submit_tool_response(
                     mark_trait_picker_sent(updated_state)
                 if tool_call and tool_call.get("tool_type") == "matzui_summary":
                     mark_matzui_summary_sent(updated_state)
+                if tool_call and tool_call.get("tool_type") == "kamaz_discovery":
+                    mark_kamaz_discovery_sent(updated_state)
 
                 # A card can be the step that ends a macro-stage (e.g. declaration_card, commitment_card)
                 stage_complete_payload = await build_stage_complete_payload(updated_state, current_step, language)
@@ -474,7 +520,24 @@ def _generate_tool_summary(tool_type: str, data: Dict[str, Any]) -> str:
             for trait in nature:
                 summary += f"- {trait}\n"
 
+        sel_src, sel_nat = data.get("selected_source") or [], data.get("selected_nature") or []
+        if sel_src or sel_nat:
+            summary += ("\n**לאירוע הזה בחרתי:** "
+                        + (f"מקור — {', '.join(sel_src)}" if sel_src else "")
+                        + ("; " if sel_src and sel_nat else "")
+                        + (f"טבע — {', '.join(sel_nat)}" if sel_nat else "") + "\n")
+
         return summary.strip()
+
+    elif tool_type == "kamaz_discovery":
+        by_id = {q["id"]: q for q in DISCOVERY_QUESTIONS}
+        lines = []
+        for side, title in (("source", "מקור"), ("nature", "טבע")):
+            for a in data.get("answers") or []:
+                q = by_id.get((a or {}).get("id")) or {}
+                if q.get("side") == side and str(a.get("text") or "").strip():
+                    lines.append(f"- [{title}] {q.get('prompt', '').rstrip('.')} — {str(a['text']).strip()}")
+        return ("✨ **הבזקי מקור וטבע — התשובות שלי:**\n" + "\n".join(lines)) if lines else ""
 
     elif tool_type == "vision_board_input":
         vision = data.get("vision", "")

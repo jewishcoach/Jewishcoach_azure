@@ -98,11 +98,16 @@ CARD_SCHEMAS = {
     "gap_card": '{"gap_name": str (1-2 words), "gap_score": int 1-10}',
     "sentence_builder": '{"paradigm": "ככה זה אצלי — ..."}',
     "balance_scale": '{"gains": [2-3 str], "losses": [2-3 str]}  (gains/losses of HOLDING THE OLD STANCE — write each item in FIRST PERSON, e.g. "אני מרגיש מוגן", "אני מפספס קרבה"; gains are what the old stance protects him from or keeps — safety, avoiding conflict or rejection, control, quiet — never things the stance takes away, like boundaries or voicing needs)',
-    "trait_card_builder": '{"source_forces": [6 str values/light traits], "nature_forces": [6 str needs/defenses]}',
+    "kamaz_discovery": ('{"answers": [{"id": str (each id of data.questions), "side": "source"|"nature", "text": str (your own short '
+                        'completion of that sentence, 3-12 words, in your persona voice), "chips_used": []}]}  — exactly one answer per question (6)'),
+    "trait_card_builder": ('{"source_forces": [exactly 6 "short" values from data.bank.source — start from data.suggested.source], '
+                           '"nature_forces": [exactly 6 "short" values from data.bank.nature — start from data.suggested.nature], '
+                           '"selected_source": [1-2 of your source_forces — the ones that help most with your situation, '
+                           'data.event_rank.source is preselected], "selected_nature": [exactly 1 of your nature_forces]}'),
     "declaration_card": '{"renewal": str, "next_action": str, "feels_right": true}  (card labels: renewal = "העמדה החדשה שאני בוחר — אני מאמין ש…" (placeholder: "תפיסה חדשה, במשפט קצר ובמילים שלך"); next_action = "מה תעשה אחרת בפעם הבאה?". Answer in your persona voice — like a real client, you may misread the field)',
     "commitment_card": ('{"floor": "stance" (the literal word stance — fixed on the card), "situation": str (the difficulty to train on), '
-                        '"old": str (the old stance, from data.old.stance), "source": [data.forces_source[0] — preselected on the card as the leading trait — optionally one more], '
-                        '"nature": [data.forces_nature[0] — preselected as the leading trait], "new": str (the new stance, from data.new.stance), '
+                        '"old": str (the old stance, from data.old.stance), "source": [data.selected_source — preselected on the card], '
+                        '"nature": [data.selected_nature — preselected], "new": str (the new stance, from data.new.stance), '
                         '"result": str (a MEASURABLE result: when/how many/what is seen)}'),
 }
 
@@ -129,7 +134,12 @@ def persona_sys(p):
     return base + (" " + STYLES[STYLE] if STYLE else "")
 
 
+DECLINE_KAMAZ = False
+
+
 async def user_reply(p, history):
+    if DECLINE_KAMAZ and history and "יש לי רשות" in history[-1]:
+        return "לא, אני מעדיף לא להיכנס לשאלות — אבחר ישר מהרשימה."
     convo = "\n".join(history[-8:])
     return await ask_llm(persona_sys(p), f"השיחה עד כה:\n{convo}\n\nכתוב/י רק את התשובה הבאה שלך למאמן.")
 
@@ -277,5 +287,7 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--persona", default="relationships")
     ap.add_argument("--max-turns", type=int, default=70)
+    ap.add_argument("--decline-kamaz", action="store_true", help="answer 'no' to the S12 permission question")
     a = ap.parse_args()
+    DECLINE_KAMAZ = a.decline_kamaz
     run(a.persona, a.max_turns)

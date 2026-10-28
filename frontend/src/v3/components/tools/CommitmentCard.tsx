@@ -16,6 +16,8 @@ const FLOORS: { id: Floor; label: string; that: string; oldAdj: string; newAdj: 
 interface CommitmentCardData {
   forces_source?: string[];
   forces_nature?: string[];
+  selected_source?: string[];  // the forces he chose for this event at S12
+  selected_nature?: string[];
   old?: Partial<Record<Floor, string>>;
   new?: Partial<Record<Floor, string>>;
 }
@@ -51,6 +53,11 @@ function clause(text: string): string {
   return t.startsWith('העמדה שלי') || t.split(/\s+/).slice(0, 4).includes('אני') ? `"${t}"` : t;
 }
 
+// Same as the backend composer: "כנות ונאמנות" — the last one joined with ו
+function heList(items: string[]): string {
+  return items.length <= 1 ? items.join('') : `${items.slice(0, -1).join(', ')} ו${items[items.length - 1]}`;
+}
+
 function Chips({ options, selected, onToggle }: { options: string[]; selected: string[]; onToggle: (s: string) => void }) {
   return (
     <div className="flex flex-wrap gap-2 justify-start" dir="rtl">
@@ -77,10 +84,12 @@ export function CommitmentCard({ data, onSubmit, isSubmitting }: CommitmentCardP
   const [situation, setSituation] = useState('');
   const [oldText, setOldText] = useState(data?.old?.stance ?? '');
   const [newText, setNewText] = useState(data?.new?.stance ?? '');
-  // The leading traits (first in each כמ"ז list, booklet p.28) are the ones the coach reflected in S12 — preselected so
-  // the request carries the same forces (still editable)
-  const [source, setSource] = useState<string[]>(data?.forces_source?.length ? [data.forces_source[0]] : []);
-  const [nature, setNature] = useState<string[]>(data?.forces_nature?.length ? [data.forces_nature[0]] : []);
+  // The forces he chose for this event at S12 (spec "כמ"ז בתוך אימון") are the ones the coach reflected — preselected
+  // so the request carries the same forces (still editable); older sessions: the first of each list
+  const [source, setSource] = useState<string[]>(data?.selected_source?.length ? data.selected_source
+    : data?.forces_source?.length ? [data.forces_source[0]] : []);
+  const [nature, setNature] = useState<string[]>(data?.selected_nature?.length ? data.selected_nature
+    : data?.forces_nature?.length ? [data.forces_nature[0]] : []);
   const [result, setResult] = useState('');
 
   const f = FLOORS.find((x) => x.id === floor)!;
@@ -98,8 +107,8 @@ export function CommitmentCard({ data, onSubmit, isSubmitting }: CommitmentCardP
   const preview = useMemo(() => {
     const parts = [`אני מבקש/ת להתאמן על ${difficultyPhrase(situation)}`];
     parts.push(`שכאשר מופיע${f.feminine ? 'ה' : ''} ה${noun} ${f.oldAdj} שלי, ${f.that} ${clause(oldText)}`);
-    if (source.length) parts.push(`אפעל מתוך המקור שלי, שהוא ${source.join(', ')}`);
-    if (nature.length) parts.push(`ומתוך הטבע שלי, שהוא ${nature.join(', ')}`);
+    if (source.length) parts.push(`אפעל מתוך המקור שלי, שהוא ${heList(source)}`);
+    if (nature.length) parts.push(`ומתוך הטבע שלי, שהוא ${heList(nature)}`);
     parts.push(`ומתוך ה${noun} ${f.newAdj} שבחרתי, ${f.that} ${clause(newText)}`);
     parts.push(`כדי שהתוצאה שאשיג תהיה: ${result.trim() || '…'}`);
     return parts.join(', ') + '.';

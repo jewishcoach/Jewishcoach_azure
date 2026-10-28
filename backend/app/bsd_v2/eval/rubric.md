@@ -458,28 +458,28 @@ budget is a fatigue signal (W3).
   - (d) a moralizing tone about the losses.
 - **Budget:** 1 turn, 2 with an exception.
 
-### S12: Forces / כמ"ז (מקור וטבע, 6+6)
-- **Gate.** 6 source traits and 6 nature traits, with a leading trait first on each side. They are traits of
-  **life in general**, not momentary emotions from the event.
-  - **Source (מקור):** values and light, for example חסד, אמת, אומץ, אמון.
-  - **Nature (טבע):** natural qualities and tendencies in their healthy, constructive form — the tools he acts
-    with: רגישות לאחרים, זהירות, יסודיות, קליטת ניואנסים, יכולת הכלה, שאיפה להרמוניה, צורך בביטחון. **Fears and
-    avoidances ("פחד מדחייה", "הימנעות מעימות") are NOT nature forces** (expert review, Oct 2026) — they express the
-    old stance; accepting them as forces is a failure (it produces "אפעל מתוך הטבע שלי, שהוא פחד מדחייה").
-    Nature is a tool; it is never "the enemy".
-- **Source.** `BKL p.24`: "המקור שלי: הופעת הנפש האלוקית... ערכים, תכונות והנהגות"; "הטבע שלי: צרכים והרגלים
-  טבעיים, גופניים ויצריים... מניעים או מונעים עשייה". `BKL p.28`: "המתאמן בוחר... 6 תכונות מקור ו-6 תכונות
-  טבע, ובראשן התכונה הראשית המובילה". `BOOK ~L2845`: "הם מניעים אותי קדימה, או, חוסמים אותי". `COACH` never
-  cut: "nature isn't 'the enemy' but 'a tool'".
-- **Coach after the card.** One warm, concentrated reflection: name the leading trait on each side and connect
-  it to the story in one sentence. No question. Never reorder the client's leading traits.
-- **Deepen if:** an item is a momentary emotion ("עלבון") or a full sentence, or a value has been placed on the
-  nature side or the reverse. Ask one open question about the most salient item ("מה הוא אומר עליך כשאתה מסתכל
-  על החיים שלך בכלל?"). Do not correct it on the client's behalf, and do not offer "this or that".
+### S12: Forces / כמ"ז (מקור וטבע, 6+6) — the 3+3 flow (spec "כמ"ז בתוך אימון 3+3", Oct 2026)
+- **Flow.** (1) The coach asks **permission** in chat (`BKL p.24`: "המאמן צריך לבקש ולקבל את רשות והסכמת
+  הלקוח"), with the spec's fixed wording — one question, nothing else. (2) "כן" → the card "הבזקי מקור וטבע":
+  3 source + 3 nature completion sentences (based on `BKL p.25`); example chips are hidden until he asks.
+  "לא" → straight to the 6+6 card, without persuading. (3) The 6+6 card: the traits that came up in his answers
+  appear as suggestions **with the words they came from**; he chooses (`BKL p.28`: he gathers, removes
+  duplicates, chooses 6+6). (4) On the same card he chooses 1–2 source forces and one nature force **for this
+  event**; these replace the "leading trait" and go into the request (S15).
+- **Gate.** 6 source traits and 6 nature traits plus the event choice, all **his**. Traits of **life in general**,
+  not momentary emotions from the event.
+  - **Source (מקור):** values, light and gifts (the bank: אהבה, חמלה, כנות, אומץ, אחריות, שליחות…).
+  - **Nature (טבע):** natural needs and tendencies in their healthy form (זהירות, צורך בשייכות וקבלה, יסודיות
+    ודיוק, עצמאות…). **Fears and avoidances ("פחד מדחייה") are NOT nature forces** (expert review, Oct 2026) — a
+    fear in his answer maps to the need beneath it; nature is a tool, never "the enemy".
+- **Coach turns.** Permission (one question) → one line under each card (no question, no listing of traits, no
+  summary of his answers) → after the card: one sentence reflecting **exactly** the forces he chose for the event,
+  plus one sentence on the mind as "ראש העיר" managing nature in the service of the source (`BKL p.27`). No question.
 - **Failure modes:** (a) framing nature as negative or shameful; (b) the coach choosing or adding traits for the
-  client; (c) counting traits aloud, or "מה עוד?" loops; (d) accepting event emotions as traits; (e) the
-  same traits reflected twice in one message. (Reflecting the client's traits back is correct, not a failure.)
-- **Budget:** 1 turn, 2 with an exception.
+  client, or naming forces he did not choose; (c) summarizing the 3+3 answers, or listing fears as forces;
+  (d) asking more than the permission question; (e) persuading after "לא"; (f) a long theory on "ראש העיר".
+- **Budget:** 3 coach turns (permission, under the card(s), the reflection); one more if he asks why before
+  answering the permission question.
 
 ### S13: Choice / declaration (בחירה, התחדשות)
 - **Gate.** A **new stance** in the client's **own words** — a new perception of reality at the same floor as

@@ -11,7 +11,8 @@ const TOOL_LABELS: Record<string, string> = {
   gap_card: 'הפער',
   sentence_builder: 'פרדיגמה',
   balance_scale: 'רווח והפסד',
-  trait_card_builder: 'כרטיס כוחות',
+  trait_card_builder: 'כרטיס כמ"ז',
+  kamaz_discovery: 'הבזקי מקור וטבע',
   declaration_card: 'הבחירה החדשה',
   commitment_card: 'בקשה לאימון',
 };
@@ -34,6 +35,11 @@ const FIELD_LABELS: Record<string, string> = {
   losses: 'הפסדים',
   source: 'מקור',
   nature: 'טבע',
+  source_forces: 'מקור',
+  nature_forces: 'טבע',
+  selected_source: 'מקור לאירוע',
+  selected_nature: 'טבע לאירוע',
+  answers: 'תשובות',
   renewal: 'העמדה החדשה',
   commitment: 'מחויבות',
   vision: 'חזון',
@@ -48,6 +54,10 @@ const FLOOR_LABELS: Record<string, string> = { pattern: 'הדפוס', paradigm: 
 
 function formatValue(value: unknown): string {
   if (typeof value === 'string' && FLOOR_LABELS[value]) return FLOOR_LABELS[value];
+  // the 3+3 answers: his words only
+  if (Array.isArray(value) && value.every((v) => typeof v === 'object' && v !== null && 'text' in v)) {
+    return value.map((v) => String((v as { text?: unknown }).text ?? '')).filter(Boolean).join(' · ');
+  }
   if (Array.isArray(value)) return value.join(', ');
   if (typeof value === 'object' && value !== null) {
     return Object.entries(value)
