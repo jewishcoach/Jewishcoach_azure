@@ -22,7 +22,10 @@ from app.models import Conversation, CoupleMember, CoupleSession, Message, User 
 from app.services import couple_service as cs  # noqa: E402
 
 FRONTEND_DIR = os.path.join(os.path.dirname(os.getcwd()), "frontend")
-BACKEND_PORT, FRONTEND_PORT = 8000, 5173
+# Other sessions run their own dev servers (simulate_v3_browser_flow.py: 8000/5173 or SIM_* ports) — own defaults here,
+# and a busy port stops the run instead of photographing another branch
+BACKEND_PORT = int(os.getenv("SIM_BACKEND_PORT", "8020"))
+FRONTEND_PORT = int(os.getenv("SIM_FRONTEND_PORT", "5176"))
 APP = f"http://localhost:{FRONTEND_PORT}"
 OUT = "/tmp/couple_browser"
 TITLE = "הוויכוח על ההוצאות, מוצאי שבת"
@@ -101,11 +104,22 @@ def seed():
     return sid, token
 
 
+def _port_busy(port):
+    import socket
+    with socket.socket() as sock:
+        return sock.connect_ex(("127.0.0.1", port)) == 0
+
+
 def start_servers():
-    env = dict(os.environ, ALLOW_DEMO_MODE="true", ALLOW_DEMO_LOCALHOST="true", COUPLE_PILOT_EMAILS="*")
+    for port in (BACKEND_PORT, FRONTEND_PORT):
+        if _port_busy(port):
+            sys.exit(f"port {port} is in use (another session's server?) — set SIM_BACKEND_PORT / SIM_FRONTEND_PORT")
+    env = dict(os.environ, ALLOW_DEMO_MODE="true", ALLOW_DEMO_LOCALHOST="true", COUPLE_PILOT_EMAILS="*",
+               CORS_ORIGINS=f"http://localhost:{FRONTEND_PORT}")
     be = subprocess.Popen([sys.executable, "-m", "uvicorn", "app.main:app", "--port", str(BACKEND_PORT)], env=env,
                           stdout=open(f"{OUT}/backend.log", "w"), stderr=subprocess.STDOUT, start_new_session=True)
     fe = subprocess.Popen(["npm", "run", "dev", "--", "--port", str(FRONTEND_PORT), "--strictPort"], cwd=FRONTEND_DIR,
+                          env=dict(os.environ, VITE_API_URL=f"http://localhost:{BACKEND_PORT}"),
                           stdout=open(f"{OUT}/frontend.log", "w"), stderr=subprocess.STDOUT, start_new_session=True)
     if not wait_http(f"http://localhost:{BACKEND_PORT}/docs") or not wait_http(f"{APP}/"):
         stop(be, fe)
