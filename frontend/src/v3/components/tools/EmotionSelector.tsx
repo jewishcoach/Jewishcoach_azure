@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CardShell } from '../shared/CardShell';
 import { ChipGroup } from '../shared/ChipGroup';
+import { useG } from '../shared/gender';
 
 const ALL_EMOTIONS = [
   'כעס', 'עצב', 'חרדה', 'תסכול', 'בושה', 'פחד',
@@ -14,6 +15,7 @@ export interface EmotionSelectorProps {
 }
 
 export function EmotionSelector({ data, onSubmit, isSubmitting }: EmotionSelectorProps) {
+  const g = useG();
   // Build emotion list: suggested first (highlighted), then the rest
   const suggested = data?.suggested_emotions || [];
   const suggestedSet = new Set(suggested);
@@ -35,7 +37,7 @@ export function EmotionSelector({ data, onSubmit, isSubmitting }: EmotionSelecto
   return (
     <CardShell
       titleHe="מה הרגשת באותו רגע?"
-      instructionHe="בחר לפחות 2 רגשות. אפשר גם להוסיף רגש משלך."
+      instructionHe={g('בחר לפחות 2 רגשות. אפשר גם להוסיף רגש משלך.', 'בחרי לפחות 2 רגשות. אפשר גם להוסיף רגש משלך.')}
     >
       <div className="space-y-5">
         <ChipGroup

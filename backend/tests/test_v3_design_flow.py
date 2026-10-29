@@ -1044,3 +1044,42 @@ def test_s12_post_card_note_reflects_the_event_choice():
     state["messages"] = []
     ctx = build_conversation_context(state, "הכרטיס שלי", "he")
     assert "ראש העיר" in ctx and "'אומץ'" in ctx and "מהמקור: אומץ, ומהטבע: מחושבות" in ctx
+
+
+def test_cards_carry_the_clients_gender_and_the_request_opens_in_it():
+    from app.bsd_v2.coaching_request import compose_coaching_request
+    state = _v3_state("S3", event_description="הוא ביטל את הארוחה")
+    state["_user_gender"] = "female"
+    tool_call = resolve_post_turn_tool_call("S2", state, ux_version=3)
+    assert tool_call["tool_type"] == "emotion_selector" and tool_call["data"]["gender"] == "female"
+    base = {"situation": "לדבר על מה שאני צריכה", "old": "x", "new": "y", "result": "z"}
+    assert compose_coaching_request({**base, "gender": "female"}).startswith("אני מבקשת להתאמן")
+    assert compose_coaching_request({**base, "gender": "male"}).startswith("אני מבקש להתאמן")
+    assert compose_coaching_request(base).startswith("אני מבקש/ת להתאמן")
+
+
+def test_stage_insight_quotes_skip_the_stage_button_message():
+    import asyncio
+    import app.bsd_v2.stage_intro_generator as sig
+    seen = {}
+
+    class FakeLLM:
+        def with_structured_output(self, *a, **k):
+            return self
+        async def ainvoke(self, messages):
+            seen["prompt"] = "\\n".join(str(getattr(m, "content", "")) for m in messages)
+            raise RuntimeError("stop")  # the prompt is what we check
+    state = _v3_state("S12")
+    state["messages"] = [{"sender": "user", "content": "אני מוכן להתחיל"}, {"sender": "user", "content": "אני רוצה להבין את הכוחות שלי"}]
+    orig = sig.get_azure_chat_llm_4o_mini if hasattr(sig, "get_azure_chat_llm_4o_mini") else None
+    try:
+        if orig:
+            sig.get_azure_chat_llm_4o_mini = lambda: FakeLLM()
+        try:
+            asyncio.run(sig._generate_insight_card(state, {}, "kamaz", True))
+        except Exception:
+            pass
+    finally:
+        if orig:
+            sig.get_azure_chat_llm_4o_mini = orig
+    assert "אני מוכן להתחיל" not in seen["prompt"] and "אני רוצה להבין את הכוחות שלי" in seen["prompt"]

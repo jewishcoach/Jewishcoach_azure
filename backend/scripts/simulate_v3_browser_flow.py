@@ -286,8 +286,8 @@ class Driver:
             ph("אם... אז עדיף").fill(paradigm or "עדיף לשתוק")
             submit = btn("הבנתי את החוק שלי")
         elif tool_type == "balance_scale":
-            tags("אני מרגיש מוגן", data.get("gains") or [], 2)
-            tags("אני מפסיד קרבה", data.get("losses") or [], 2)
+            tags("אני מרגיש", data.get("gains") or [], 2)
+            tags("אני מפסיד", data.get("losses") or [], 2)
             submit = btn("סיימתי את המאזן")
         elif tool_type == "kamaz_discovery":
             answers = {a.get("id"): s(a.get("text")) for a in data.get("answers") or [] if isinstance(a, dict)}
@@ -296,7 +296,7 @@ class Driver:
                 for i, q in enumerate([q for q in qs if q.get("side") == side]):
                     card.locator("textarea").nth(i).fill(answers.get(q.get("id")) or "לא בטוח")
                 if side == "source":  # the hidden example chips, opened once — for the screenshot
-                    card.get_by_role("button", name="💡 נתקעת? לחץ להצגת דוגמאות").first.click()
+                    card.get_by_role("button", name="נתקעת?").first.click()
                 self.shot(f"kamaz_{side}")
                 if nxt:
                     btn(nxt).click()
@@ -324,7 +324,7 @@ class Driver:
             submit = btn("זה הכרטיס שלי")
         elif tool_type == "declaration_card":
             ph("תפיסה חדשה, במשפט קצר").fill(s(data.get("renewal")))
-            ph("תאר פעולה קונקרטית").fill(s(data.get("next_action")))
+            ph("פעולה קונקרטית").fill(s(data.get("next_action")))
             btn("כן, זה אני!").click()
             submit = btn("זו הבחירה שלי")
         elif tool_type == "commitment_card":  # בקשה לאימון
@@ -355,6 +355,9 @@ class Driver:
         except PWTimeout:
             self.flag(f"submit button not found on {tool_type}"); self.shot(f"nosubmit_{tool_type}")
             return False
+        if getattr(self, "mobile", False):
+            card.scroll_into_view_if_needed()
+            self.shot(f"card_{tool_type}")  # every filled card on the phone, before it is sent
         n = len(self.api)
         submit.click()
         res = self.wait_api(n)
@@ -493,7 +496,9 @@ def main():
             else:
                 page = browser.new_page(viewport={"width": 1280, "height": 900}, locale="he-IL")
             page.set_default_timeout(15000)
-            Driver(page, a.persona, out).run(a.max_turns, a.probe_resume_at, a.probe_gibberish_at)
+            driver = Driver(page, a.persona, out)
+            driver.mobile = mobile
+            driver.run(a.max_turns, a.probe_resume_at, a.probe_gibberish_at)
             browser.close()
     finally:
         stop_servers(be, fe)

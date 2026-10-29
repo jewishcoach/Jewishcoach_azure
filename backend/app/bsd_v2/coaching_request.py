@@ -57,7 +57,8 @@ def compose_coaching_request(data: Dict[str, Any]) -> str:
     nature = he_list([x.strip() for x in as_list(data.get("nature")) if x and x.strip()])
     noun = name[1:]  # "הדפוס" → "דפוס" for "מופיע הדפוס הישן שלי"
     # booklet wording (p.37-38): "אני מבקש להתאמן על הקושי להתמודד עם [תיאור הסיטואציה]"
-    parts = [f"אני מבקש/ת להתאמן על {_difficulty(data.get('situation') or '')}"]
+    opener = {"female": "אני מבקשת", "male": "אני מבקש"}.get(data.get("gender") or "", "אני מבקש/ת")
+    parts = [f"{opener} להתאמן על {_difficulty(data.get('situation') or '')}"]
     if (data.get("old") or "").strip():
         parts.append(f"שכאשר מופיע{'ה' if that == 'שהיא' else ''} ה{noun} {old_adj} שלי, {that} {_request_clause(data['old'])}")
     if source:

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CardShell } from '../shared/CardShell';
+import { useG } from '../shared/gender';
 
 interface EventFormProps {
   onSubmit: (toolType: string, data: { when: string; with_whom: string; what_happened: string }) => void;
@@ -7,6 +8,7 @@ interface EventFormProps {
 }
 
 export function EventForm({ onSubmit, isSubmitting }: EventFormProps) {
+  const g = useG();
   const [when, setWhen] = useState('');
   const [withWhom, setWithWhom] = useState('');
   const [whatHappened, setWhatHappened] = useState('');
@@ -16,7 +18,7 @@ export function EventForm({ onSubmit, isSubmitting }: EventFormProps) {
   return (
     <CardShell
       titleHe="האירוע"
-      instructionHe="ספר על אירוע ספציפי — שיחה או אינטראקציה שהתרחשה לאחרונה, עם אנשים אחרים."
+      instructionHe={g('ספר על אירוע ספציפי — שיחה או אינטראקציה שהתרחשה לאחרונה, עם אנשים אחרים.', 'ספרי על אירוע ספציפי — שיחה או אינטראקציה שהתרחשה לאחרונה, עם אנשים אחרים.')}
     >
       <div className="space-y-4">
         <div>
@@ -62,7 +64,7 @@ export function EventForm({ onSubmit, isSubmitting }: EventFormProps) {
             className="block text-sm font-medium text-[#2d4658] text-right mb-1"
             style={{ fontFamily: "'Heebo', sans-serif" }}
           >
-            ספר בקצרה מה קרה (2-3 משפטים)
+            {g('ספר בקצרה מה קרה (2-3 משפטים)', 'ספרי בקצרה מה קרה (2-3 משפטים)')}
           </label>
           <textarea
             value={whatHappened}

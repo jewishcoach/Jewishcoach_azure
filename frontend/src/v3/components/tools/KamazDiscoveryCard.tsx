@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { CardShell } from '../shared/CardShell';
+import { useG } from '../shared/gender';
 
 // הבזקי מקור וטבע (S12, spec "כמ"ז בתוך אימון 3+3"): 3 completion sentences for the source (blue) and 3 for the
 // nature (red), based on booklet p.25. The example chips are hidden by default — the client first answers in his
@@ -26,6 +27,7 @@ const SIDES = {
 const MIN_CHARS = 2;
 
 export function KamazDiscoveryCard({ data, onSubmit, isSubmitting }: KamazDiscoveryCardProps) {
+  const g = useG();
   const questions = useMemo(() => data?.questions ?? [], [data?.questions]);
   const [screen, setScreen] = useState<'source' | 'nature'>('source');
   const [texts, setTexts] = useState<Record<string, string>>({});
@@ -53,7 +55,7 @@ export function KamazDiscoveryCard({ data, onSubmit, isSubmitting }: KamazDiscov
   };
 
   return (
-    <CardShell titleHe="הבזקי מקור וטבע" instructionHe="השלם כל משפט במילים שלך — קצר, מה שעולה ראשון.">
+    <CardShell titleHe="הבזקי מקור וטבע" instructionHe={g('השלם כל משפט במילים שלך — קצר, מה שעולה ראשון.', 'השלימי כל משפט במילים שלך — קצר, מה שעולה ראשון.')}>
       <div className="space-y-5" dir="rtl">
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full" style={{ background: side.accent }} />
@@ -101,7 +103,7 @@ export function KamazDiscoveryCard({ data, onSubmit, isSubmitting }: KamazDiscov
                 className="text-xs text-[rgba(45,70,88,0.55)] hover:text-[#2d4658] underline-offset-2 hover:underline"
                 style={HEEBO}
               >
-                💡 נתקעת? לחץ להצגת דוגמאות
+                💡 נתקעת? {g('לחץ', 'לחצי')} להצגת דוגמאות
               </button>
             )}
           </div>
@@ -112,7 +114,7 @@ export function KamazDiscoveryCard({ data, onSubmit, isSubmitting }: KamazDiscov
             <button
               type="button"
               onClick={() => { setScreen('source'); setOpenChips(null); }}
-              className="h-[53px] px-5 rounded-xl border border-[#e0ddd8] text-[#2d4658] text-sm hover:bg-[#f6f4f0]"
+              className="h-[53px] px-5 whitespace-nowrap shrink-0 rounded-xl border border-[#e0ddd8] text-[#2d4658] text-sm hover:bg-[#f6f4f0]"
               style={HEEBO}
             >
               חזרה

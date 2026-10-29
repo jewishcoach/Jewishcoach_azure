@@ -293,9 +293,11 @@ async def submit_tool_response(
             elif request.tool_type == "commitment_card":
                 cd = dict(v2_state.get("collected_data") or {})
                 if request.data.get("floor"):  # בקשה לאימון (booklet p.37-38)
+                    # "אני מבקשת" / "אני מבקש" — the request reads in his gender (kept for the S15 recompose)
+                    request.data["gender"] = getattr(user, "gender", None) or None
                     cd["commitment"] = compose_coaching_request(request.data)
                     cd["coaching_request"] = {k: request.data.get(k) for k in
-                                              ("floor", "situation", "old", "source", "nature", "new", "result")}
+                                              ("floor", "situation", "old", "source", "nature", "new", "result", "gender")}
                 else:  # legacy commitment card (open sessions from before the redesign)
                     parts = [request.data.get("commitment", "")]
                     if request.data.get("when"):

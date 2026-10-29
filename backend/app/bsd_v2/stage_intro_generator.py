@@ -121,7 +121,10 @@ async def _generate_insight_card(
     from .state_schema_v2 import get_conversation_history
 
     history = get_conversation_history(state, last_n=8)
-    user_messages = [m["content"] for m in history if m.get("sender") == "user"]
+    # "אני מוכן להתחיל" is sent by the stage button, not typed — it was quoted as "מה גיליתי"
+    auto = {"אני מוכן להתחיל", "I'm ready to start"}
+    user_messages = [m["content"] for m in history
+                     if m.get("sender") == "user" and (m.get("content") or "").strip() not in auto]
     user_quotes = "\n".join(f"- {msg}" for msg in user_messages[-5:])
 
     relevant_keys = _STAGE_RELEVANT_KEYS.get(macro_id, [])

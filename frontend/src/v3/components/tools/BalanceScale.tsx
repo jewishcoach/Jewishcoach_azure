@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CardShell } from '../shared/CardShell';
 import { TagInput } from '../shared/TagInput';
+import { useG } from '../shared/gender';
 
 interface BalanceScaleProps {
   onSubmit: (toolType: string, data: { gains: string[]; losses: string[] }) => void;
@@ -8,6 +9,7 @@ interface BalanceScaleProps {
 }
 
 export function BalanceScale({ onSubmit, isSubmitting }: BalanceScaleProps) {
+  const g = useG();
   const [gains, setGains] = useState<string[]>([]);
   const [losses, setLosses] = useState<string[]>([]);
 
@@ -16,7 +18,7 @@ export function BalanceScale({ onSubmit, isSubmitting }: BalanceScaleProps) {
   return (
     <CardShell
       titleHe="מה אני מרוויח ומה אני מפסיד?"
-      instructionHe="הוסף רווחים והפסדים מהעמדה שגילית"
+      instructionHe={g('הוסף רווחים והפסדים מהעמדה שגילית', 'הוסיפי רווחים והפסדים מהעמדה שגילית')}
     >
       <div className="space-y-5">
         {/* Two columns — stack on mobile */}
@@ -35,7 +37,7 @@ export function BalanceScale({ onSubmit, isSubmitting }: BalanceScaleProps) {
               tags={gains}
               onAdd={(tag) => setGains((prev) => [...prev, tag])}
               onRemove={(idx) => setGains((prev) => prev.filter((_, i) => i !== idx))}
-              placeholder="בגוף ראשון — למשל: אני מרגיש מוגן..."
+              placeholder={g('בגוף ראשון — למשל: אני מרגיש מוגן...', 'בגוף ראשון — למשל: אני מרגישה מוגנת...')}
               minTags={2}
             />
             <p
@@ -60,7 +62,7 @@ export function BalanceScale({ onSubmit, isSubmitting }: BalanceScaleProps) {
               tags={losses}
               onAdd={(tag) => setLosses((prev) => [...prev, tag])}
               onRemove={(idx) => setLosses((prev) => prev.filter((_, i) => i !== idx))}
-              placeholder="בגוף ראשון — למשל: אני מפסיד קרבה..."
+              placeholder={g('בגוף ראשון — למשל: אני מפסיד קרבה...', 'בגוף ראשון — למשל: אני מפסידה קרבה...')}
               minTags={2}
             />
             <p

@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
 import { CardShell } from '../shared/CardShell';
+import { useG } from '../shared/gender';
+import { AutoTextarea } from '../shared/AutoTextarea';
 
 // בקשה לאימון — the booklet's complex coaching request (p.37-38): choose a floor, then
 // "אני מבקש להתאמן על הקושי להתמודד עם [...], שכאשר מופיע [הישן] [...], אפעל מתוך המקור [...]
@@ -79,6 +81,8 @@ function Chips({ options, selected, onToggle }: { options: string[]; selected: s
 }
 
 export function CommitmentCard({ data, onSubmit, isSubmitting }: CommitmentCardProps) {
+  const g = useG();
+  const opener = g('אני מבקש', 'אני מבקשת');
   // Always the stance floor — "קומת העמדה היא קומת השינוי" (booklet p.36); the backend enforces it too
   const floor: Floor = 'stance';
   const [situation, setSituation] = useState('');
@@ -105,30 +109,30 @@ export function CommitmentCard({ data, onSubmit, isSubmitting }: CommitmentCardP
     && (natureOptions.length === 0 || nature.length > 0);
 
   const preview = useMemo(() => {
-    const parts = [`אני מבקש/ת להתאמן על ${difficultyPhrase(situation)}`];
+    const parts = [`${opener} להתאמן על ${difficultyPhrase(situation)}`];
     parts.push(`שכאשר מופיע${f.feminine ? 'ה' : ''} ה${noun} ${f.oldAdj} שלי, ${f.that} ${clause(oldText)}`);
     if (source.length) parts.push(`אפעל מתוך המקור שלי, שהוא ${heList(source)}`);
     if (nature.length) parts.push(`ומתוך הטבע שלי, שהוא ${heList(nature)}`);
     parts.push(`ומתוך ה${noun} ${f.newAdj} שבחרתי, ${f.that} ${clause(newText)}`);
     parts.push(`כדי שהתוצאה שאשיג תהיה: ${result.trim() || '…'}`);
     return parts.join(', ') + '.';
-  }, [situation, oldText, newText, source, nature, result, f, noun]);
+  }, [situation, oldText, newText, source, nature, result, f, noun, opener]);
 
   return (
     <CardShell
       titleHe="הבקשה שלך לאימון"
-      instructionHe="בקשה לאימון היא הדרך שלך לקחת אחריות על השינוי — לבקש אותו מעצמך, מתוך הכוחות שלך. היא שלך, ואתה זה שמממש אותה."
+      instructionHe={g('בקשה לאימון היא הדרך שלך לקחת אחריות על השינוי — לבקש אותו מעצמך, מתוך הכוחות שלך. היא שלך, ואתה זה שמממש אותה.', 'בקשה לאימון היא הדרך שלך לקחת אחריות על השינוי — לבקש אותו מעצמך, מתוך הכוחות שלך. היא שלך, ואת זו שמממשת אותה.')}
     >
       <div className="space-y-5">
         <div>
-          <label className={LABEL} style={HEEBO}>אני מבקש/ת להתאמן על הקושי להתמודד עם…</label>
-          <textarea value={situation} onChange={(e) => setSituation(e.target.value)} rows={2} className={FIELD} style={HEEBO}
+          <label className={LABEL} style={HEEBO}>{opener} להתאמן על הקושי להתמודד עם…</label>
+          <AutoTextarea value={situation} onChange={(e) => setSituation(e.target.value)} rows={2} className={FIELD} style={HEEBO}
             placeholder="הסיטואציה עצמה — למשל: ויכוחים על כסף בבית, שיחות כנות מול הבוס" />
         </div>
 
         <div>
           <label className={LABEL} style={HEEBO}>שכאשר מופיע{f.feminine ? 'ה' : ''} ה{noun} {f.oldAdj} שלי, {f.that}…</label>
-          <textarea value={oldText} onChange={(e) => setOldText(e.target.value)} rows={2} className={FIELD} style={HEEBO} />
+          <AutoTextarea value={oldText} onChange={(e) => setOldText(e.target.value)} rows={2} className={FIELD} style={HEEBO} />
         </div>
 
         {sourceOptions.length > 0 && (
@@ -147,13 +151,13 @@ export function CommitmentCard({ data, onSubmit, isSubmitting }: CommitmentCardP
 
         <div>
           <label className={LABEL} style={HEEBO}>ומתוך ה{noun} {f.newAdj} שבחרתי, {f.that}…</label>
-          <textarea value={newText} onChange={(e) => setNewText(e.target.value)} rows={2} className={FIELD} style={HEEBO} />
+          <AutoTextarea value={newText} onChange={(e) => setNewText(e.target.value)} rows={2} className={FIELD} style={HEEBO} />
         </div>
 
         <div>
           <label className={LABEL} style={HEEBO}>כדי שהתוצאה שאשיג תהיה…</label>
-          <p className="text-xs text-[rgba(45,70,88,0.55)] text-right mb-1" style={HEEBO}>תוצאה מדידה <strong>שתלויה בך</strong> — מה אתה תעשה או איך תהיה, לא איך אחרים יגיבו.</p>
-          <textarea value={result} onChange={(e) => setResult(e.target.value)} rows={2} className={FIELD} style={HEEBO}
+          <p className="text-xs text-[rgba(45,70,88,0.55)] text-right mb-1" style={HEEBO}>תוצאה מדידה <strong>שתלויה בך</strong> — {g('מה אתה תעשה או איך תהיה', 'מה את תעשי או איך תהיי')}, לא איך אחרים יגיבו.</p>
+          <AutoTextarea value={result} onChange={(e) => setResult(e.target.value)} rows={2} className={FIELD} style={HEEBO}
             placeholder="למשל: בשבועיים הקרובים אסיים שני ויכוחים בלי לצעוק" />
         </div>
 

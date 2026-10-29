@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { CardShell } from '../shared/CardShell';
+import { useG } from '../shared/gender';
+import { AutoTextarea } from '../shared/AutoTextarea';
 
 interface DeclarationCardProps {
   data?: { old_pattern?: string; old_paradigm?: string; old_stance?: string };
@@ -12,6 +14,7 @@ interface DeclarationCardProps {
 }
 
 export function DeclarationCard({ data, onSubmit, isSubmitting }: DeclarationCardProps) {
+  const g = useG();
   const [renewal, setRenewal] = useState('');
   const [nextAction, setNextAction] = useState('');
   const [feelsRight, setFeelsRight] = useState<boolean | null>(null);
@@ -29,7 +32,7 @@ export function DeclarationCard({ data, onSubmit, isSubmitting }: DeclarationCar
   return (
     <CardShell
       titleHe="הבחירה החדשה שלך"
-      instructionHe="הגיע הזמן לבחור מה מחליף את הישן: מה אתה מאמין מעכשיו, ואיך תפעל אחרת."
+      instructionHe={g('הגיע הזמן לבחור מה מחליף את הישן: מה אתה מאמין מעכשיו, ואיך תפעל אחרת.', 'הגיע הזמן לבחור מה מחליף את הישן: מה את מאמינה מעכשיו, ואיך תפעלי אחרת.')}
     >
       <div className="space-y-5">
         {/* Old vs new context — the choice faces the old stance (booklet: בחירת עמדה חדשה) */}
@@ -67,9 +70,9 @@ export function DeclarationCard({ data, onSubmit, isSubmitting }: DeclarationCar
             className="block text-sm font-medium text-[#2d4658] text-right mb-1"
             style={{ fontFamily: "'Heebo', sans-serif" }}
           >
-            העמדה החדשה שאני בוחר — אני מאמין ש…
+            {g('העמדה החדשה שאני בוחר — אני מאמין ש…', 'העמדה החדשה שאני בוחרת — אני מאמינה ש…')}
           </label>
-          <textarea
+          <AutoTextarea
             value={renewal}
             onChange={(e) => setRenewal(e.target.value)}
             placeholder="תפיסה חדשה, במשפט קצר ובמילים שלך"
@@ -87,12 +90,12 @@ export function DeclarationCard({ data, onSubmit, isSubmitting }: DeclarationCar
             className="block text-sm font-medium text-[#2d4658] text-right mb-1"
             style={{ fontFamily: "'Heebo', sans-serif" }}
           >
-            מה תעשה אחרת בפעם הבאה?
+            {g('מה תעשה אחרת בפעם הבאה?', 'מה תעשי אחרת בפעם הבאה?')}
           </label>
-          <textarea
+          <AutoTextarea
             value={nextAction}
             onChange={(e) => setNextAction(e.target.value)}
-            placeholder="תאר פעולה קונקרטית"
+            placeholder={g('תאר פעולה קונקרטית', 'תארי פעולה קונקרטית')}
             rows={2}
             className="w-full px-3 py-2.5 rounded-xl border border-[#e0ddd8] text-sm text-[#2d4658] text-right
                        placeholder:text-[rgba(45,70,88,0.35)] resize-none
@@ -107,7 +110,7 @@ export function DeclarationCard({ data, onSubmit, isSubmitting }: DeclarationCar
             className="text-sm font-medium text-[#2d4658] text-right"
             style={{ fontFamily: "'Heebo', sans-serif" }}
           >
-            האם זה מרגיש כמו אתה? זה משמח אותך?
+            {g('האם זה מרגיש כמו אתה? זה משמח אותך?', 'האם זה מרגיש כמו את? זה משמח אותך?')}
           </p>
           <div className="flex gap-3">
             <button

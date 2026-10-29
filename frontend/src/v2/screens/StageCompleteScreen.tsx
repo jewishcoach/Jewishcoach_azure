@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Lightbulb, Share2, Download, Heart, Gift } from 'lucide-react';
 import { useAuth } from '@clerk/clerk-react';
-import type { StageSummaryPayload } from '../types';
+import { MACRO_STAGES, type StageSummaryPayload } from '../types';
 import { fetchDeepAnalysis, type DeepViewLetter } from '../services/api';
 
 const TREE_IMAGES: Record<string, string> = {
@@ -27,6 +27,9 @@ export function StageCompleteScreen({ summary, onContinue, language, userMessage
   const [loadingGift, setLoadingGift] = useState(false);
   const [giftError, setGiftError] = useState(false);
   const isLastStage = !summary.next_stage_id;
+  // the stage that was just completed — its number of the 5 and its line (was fixed to stage 1 on every screen)
+  const stageIdx = Math.max(0, MACRO_STAGES.findIndex((m) => m.id === summary.stage_id));
+  const stageMeta = MACRO_STAGES[stageIdx];
 
   const insightLabels = isHe
     ? ['מה גיליתי', 'מה מנהל אותי כרגע', 'מה אני מבקש לבחור', 'משפט לקחת איתי']
@@ -44,7 +47,7 @@ export function StageCompleteScreen({ summary, onContinue, language, userMessage
               {isHe ? 'משימת היום' : "Today's task"}
             </p>
             <p className="text-[17px] font-semibold text-[#2d4658]" style={{ fontFamily: "'Heebo', sans-serif" }}>
-              {isHe ? 'לעצור לרגע כדי לראות מה באמת קורה בי' : 'Stop to see what\'s really happening'}
+              {stageMeta ? (isHe ? stageMeta.description_he : stageMeta.description_en) : ''}
             </p>
           </div>
           <div className="text-center">
@@ -52,7 +55,7 @@ export function StageCompleteScreen({ summary, onContinue, language, userMessage
               {isHe ? 'משימה' : 'Task'}
             </p>
             <p className="text-lg font-semibold text-[#2d4658]" style={{ fontFamily: "'Heebo', sans-serif" }}>
-              1/5
+              {stageIdx + 1}/{MACRO_STAGES.length}
             </p>
           </div>
         </div>
@@ -72,7 +75,7 @@ export function StageCompleteScreen({ summary, onContinue, language, userMessage
           style={{ fontFamily: "'Karantina', cursive", lineHeight: '77px' }}
         >
           {isHe
-            ? `סיימת את שלב ״ה${summary.stage_title}״`
+            ? `סיימת את שלב ״${summary.stage_title}״`
             : `You completed the "${summary.stage_title}" stage`}
         </h2>
 

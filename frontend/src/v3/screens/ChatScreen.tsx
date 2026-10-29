@@ -45,6 +45,14 @@ export function ChatScreen({
   const [messageAudioMap] = useState(() => new Map<string, { file: string; label: string }>());
 
   const inputDisabled = !!activeTool || isLoading || !!onShowSummary;
+  const fem = (activeTool?.data as { gender?: string | null } | undefined)?.gender === 'female';
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // the input keeps the height it grew to while typing; once sent (or a card opens) it returns to one line —
+  // on the phone the grown, disabled input covered a third of the screen under every card
+  useEffect(() => {
+    if (!inputText && inputRef.current) inputRef.current.style.height = '';
+  }, [inputText, activeTool]);
 
   // Mobile: the input bar is fixed over the page — reserve exactly its height (it grows with multi-line
   // input) so the bottom of the last card (its submit button) is never hidden behind it.
@@ -237,6 +245,7 @@ export function ChatScreen({
           </button>
           <div className="flex-1">
             <textarea
+              ref={inputRef}
               dir="auto"
               value={inputText}
               onChange={(e) => {
@@ -245,7 +254,7 @@ export function ChatScreen({
                 e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
               }}
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-              placeholder={activeTool ? 'מלא את הכרטיס למעלה...' : 'כתוב את תשובתך כאן...'}
+              placeholder={activeTool ? (fem ? 'מלאי את הכרטיס למעלה...' : 'מלא את הכרטיס למעלה...') : 'כתוב את תשובתך כאן...'}
               disabled={!!activeTool}
               rows={1}
               className={`w-full px-4 py-3 rounded-xl border-[0.8px] bg-white text-base text-[#2d4658]
@@ -265,7 +274,7 @@ export function ChatScreen({
             className="mt-2 text-xs text-[rgba(45,70,88,0.4)] hover:text-[#2d4658] transition-colors"
             style={{ fontFamily: "'Heebo', sans-serif" }}
           >
-            אני מעדיף לכתוב
+            {fem ? 'אני מעדיפה לכתוב' : 'אני מעדיף לכתוב'}
           </button>
         )}
       </div>

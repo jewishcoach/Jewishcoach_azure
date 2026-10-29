@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CardShell } from '../shared/CardShell';
+import { useG } from '../shared/gender';
 
 interface SentenceBuilderProps {
   data?: { pattern?: string };
@@ -9,6 +10,7 @@ interface SentenceBuilderProps {
 }
 
 export function SentenceBuilder({ data, onSubmit, isSubmitting }: SentenceBuilderProps) {
+  const g = useG();
   const [paradigm, setParadigm] = useState('');
   const canSubmit = paradigm.trim().length > 0 && !isSubmitting;
 
@@ -22,7 +24,7 @@ export function SentenceBuilder({ data, onSubmit, isSubmitting }: SentenceBuilde
               className="text-[10px] font-semibold uppercase tracking-wider text-[rgba(45,70,88,0.5)] mb-1"
               style={{ fontFamily: "'Heebo', sans-serif" }}
             >
-              הדפוס שזיהית (מה שאתה עושה)
+              הדפוס שזיהית (מה {g('שאתה', 'שאת')} עושה)
             </p>
             <p
               className="text-sm text-[#2d4658] leading-relaxed"
@@ -45,7 +47,7 @@ export function SentenceBuilder({ data, onSubmit, isSubmitting }: SentenceBuilde
             className="text-xs text-[rgba(45,70,88,0.5)] text-right leading-relaxed"
             style={{ fontFamily: "'Assistant', sans-serif" }}
           >
-            לא מה שאתה <strong>עושה</strong> (זה הדפוס למעלה), אלא <strong>החוק</strong> שאומר לך איך נכון להגיב. למשל: "אם לא ארים קול לא יקשיבו לי, אז אני חייב לצעוק"
+            לא מה {g('שאתה', 'שאת')} <strong>עושה</strong> (זה הדפוס למעלה), אלא <strong>החוק</strong> שאומר לך איך נכון להגיב. למשל: "אם לא ארים קול לא יקשיבו לי, אז אני {g('חייב', 'חייבת')} לצעוק"
           </p>
           <textarea
             value={paradigm}

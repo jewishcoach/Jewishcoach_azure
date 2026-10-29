@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { TagInput } from '../shared/TagInput';
+import { useG } from '../shared/gender';
 
 // כרטיס כמ"ז (S12, spec "כמ"ז בתוך אימון 3+3"). Screen 1: the client builds 6 source + 6 nature — from the traits
 // that came up in his answers (each shown with the words it came from), from the bank, or in his own words
@@ -31,6 +32,7 @@ const SIDE_UI: Record<Side, { title: string; subtitle: string; accent: string; s
 };
 
 export function TraitCardBuilder({ data, onSubmit, isSubmitting }: TraitCardBuilderProps) {
+  const g = useG();
   const [chosen, setChosen] = useState<Record<Side, string[]>>({ source: [], nature: [] });
   const [screen, setScreen] = useState<'build' | 'event'>('build');
   const [eventPick, setEventPick] = useState<Record<Side, string[]>>({ source: [], nature: [] });
@@ -82,7 +84,7 @@ export function TraitCardBuilder({ data, onSubmit, isSubmitting }: TraitCardBuil
             זהו כרטיס הכמ"ז שלך
           </h3>
           <p className="text-sm text-[rgba(45,70,88,0.7)] leading-relaxed" style={HEEBO}>
-            כעת, בחר מתוכו 1–2 כוחות מקור וכוח טבע אחד שהכי נכון לך לגייס היום מול הסיטואציה שעליה אנחנו עובדים:
+            כעת, {g('בחר', 'בחרי')} מתוכו 1–2 כוחות מקור וכוח טבע אחד שהכי נכון לך לגייס היום מול הסיטואציה שעליה אנחנו עובדים:
           </p>
         </div>
         {(['source', 'nature'] as Side[]).map((side) => (
@@ -106,7 +108,7 @@ export function TraitCardBuilder({ data, onSubmit, isSubmitting }: TraitCardBuil
         ))}
         <div className="flex justify-center gap-3 pt-1">
           <button type="button" onClick={() => setScreen('build')}
-            className="h-[53px] px-5 rounded-xl border border-[#e0ddd8] text-[#2d4658] text-sm hover:bg-[#f6f4f0]" style={HEEBO}>
+            className="h-[53px] px-5 whitespace-nowrap shrink-0 rounded-xl border border-[#e0ddd8] text-[#2d4658] text-sm hover:bg-[#f6f4f0]" style={HEEBO}>
             חזרה לכרטיס
           </button>
           <button type="button" disabled={!eventReady || isSubmitting} onClick={submit}
@@ -130,7 +132,7 @@ export function TraitCardBuilder({ data, onSubmit, isSubmitting }: TraitCardBuil
           כרטיס כמ"ז — מקור וטבע
         </h3>
         <p className="text-sm text-[rgba(45,70,88,0.6)] mt-1" style={HEEBO}>
-          בחר 6 מכל צד — ממה שעלה בתשובות שלך, מהרשימה, או במילים שלך
+          {g('בחר', 'בחרי')} 6 מכל צד — ממה שעלה בתשובות שלך, מהרשימה, או במילים שלך
         </p>
       </div>
 

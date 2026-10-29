@@ -1,5 +1,6 @@
 import type { ActiveInlineTool } from '../types';
 import { CardShell } from './shared/CardShell';
+import { GenderProvider } from './shared/gender';
 import { TraitCardBuilder } from './tools/TraitCardBuilder';
 import { KamazDiscoveryCard } from './tools/KamazDiscoveryCard';
 import { EventForm } from './tools/EventForm';
@@ -19,7 +20,12 @@ interface InlineToolProps {
   isSubmitting: boolean;
 }
 
-export function InlineTool({ tool, onSubmit, isSubmitting }: InlineToolProps) {
+export function InlineTool(props: InlineToolProps) {
+  const gender = (props.tool.data as { gender?: string | null } | undefined)?.gender;
+  return <GenderProvider value={gender}>{renderTool(props)}</GenderProvider>;
+}
+
+function renderTool({ tool, onSubmit, isSubmitting }: InlineToolProps) {
   switch (tool.tool_type) {
     case 'event_form':
       return (

@@ -203,6 +203,8 @@ def _build_v3_tool_call(tool_key: str, state: Dict[str, Any]) -> Dict[str, Any]:
             "new": {"stance": cd.get("renewal_belief", ""), "pattern": cd.get("new_action", "")},
         }
 
+    # every card is worded in the client's gender ("בחרי", "את מאמינה") — the coach already is
+    base["data"] = {**(base.get("data") or {}), "gender": state.get("_user_gender")}
     return base
 
 

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CardShell } from '../shared/CardShell';
+import { useG } from '../shared/gender';
 
 interface ActionFieldProps {
   onSubmit: (toolType: string, data: { action_actual: string }) => void;
@@ -7,6 +8,7 @@ interface ActionFieldProps {
 }
 
 export function ActionField({ onSubmit, isSubmitting }: ActionFieldProps) {
+  const g = useG();
   const [action, setAction] = useState('');
 
   const canSubmit = action.trim().length >= 3;
@@ -14,7 +16,7 @@ export function ActionField({ onSubmit, isSubmitting }: ActionFieldProps) {
   return (
     <CardShell
       titleHe="מה עשית?"
-      instructionHe="תאר את הפעולה שעשית בפועל — משהו שאפשר לראות מבחוץ."
+      instructionHe={g('תאר את הפעולה שעשית בפועל — משהו שאפשר לראות מבחוץ.', 'תארי את הפעולה שעשית בפועל — משהו שאפשר לראות מבחוץ.')}
     >
       <div className="space-y-3">
         <textarea
@@ -32,7 +34,7 @@ export function ActionField({ onSubmit, isSubmitting }: ActionFieldProps) {
           className="text-xs text-[rgba(45,70,88,0.4)] text-right"
           style={{ fontFamily: "'Assistant', sans-serif" }}
         >
-          תאר פעולה נצפית, לא פרשנות (לא &quot;ויתרתי&quot; אלא &quot;שתקתי ויצאתי מהחדר&quot;)
+          {g('תאר', 'תארי')} פעולה נצפית, לא פרשנות (לא &quot;ויתרתי&quot; אלא &quot;שתקתי ויצאתי מהחדר&quot;)
         </p>
 
         <div className="flex justify-center pt-1">
