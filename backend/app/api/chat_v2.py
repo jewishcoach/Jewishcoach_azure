@@ -28,6 +28,7 @@ from ..bsd_v2.stage_tool_triggers import (
 )
 from ..bsd_v2.state_schema_v2 import create_initial_state, add_message
 from ..bsd_v2.safety_check import screen_message
+from ..bsd_v2.partner_safety import screen_partner_message
 from ..bsd_v2.station_checkpoint import ensure_training_started_at, apply_station_intent
 from ..bsd_v2.onboarding_topics_context import inject_onboarding_topics_into_state
 from ..bsd_v2.stage_intro_schema import (
@@ -47,6 +48,7 @@ from ..database import SessionLocal, get_db, release_db_connection
 from ..limiter import limiter
 from ..models import User, Conversation as ConversationModel, Message
 from ..routers.chat import try_autotitle_conversation
+from ..services.couple_service import apply_safety_hold, clamp_before_mirror, waiting_for_mirror
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -294,6 +296,10 @@ def save_v2_state(
 
     _prune_state_messages(state)
 
+    if state.get("couple"):
+        # Couple process: the conversation waits at the end of discovery until the shared mirror screen opens
+        clamp_before_mirror(db, conversation_id, state)
+
     conv.v2_state = state
     conv.current_phase = state.get("current_step", "S0")
     conv.v2_state_version = (conv.v2_state_version or 0) + 1
@@ -419,6 +425,11 @@ async def send_message_v2(
 
         # Safety screen BEFORE the coach: a risk statement gets a check-in, not the next coaching step
         safety_result = await screen_message(safe_message, state, request.headers.get("x-user-timezone"))
+        if not safety_result.intercept and state.get("couple"):
+            # Couple process: violence from the partner / fear of the partner — private check-in, shared screens held
+            partner = await screen_partner_message(safe_message, state, request.headers.get("x-user-timezone"), user_gender)
+            apply_safety_hold(db, body.conversation_id, partner.hold_action)
+            safety_result = partner.result
         if safety_result.intercept:
             from app.database import utc_now
             add_message(state, "user", safe_message)
@@ -652,6 +663,7 @@ class ConversationLoadResponse(BaseModel):
     collected_data: dict | None = None
     personal_statements: dict | None = None
     updated_at: str | None = None
+    couple: dict | None = None  # {session_id, role, event_title} for a couple-process conversation
 
 
 @router.get("/conversation/{conversation_id}")
@@ -698,6 +710,7 @@ async def load_conversation(
         collected_data=collected_data,
         personal_statements=personal_statements if personal_statements else None,
         updated_at=updated_at,
+        couple=state.get("couple"),
     )
 
 
@@ -898,6 +911,13 @@ class StageIntroAnswerRequest(BaseModel):
     language: str = "he"
 
 
+def _hold_for_couple(db: Session, conversation_id: int, state: Dict[str, Any], target_macro: str) -> None:
+    """Couple process: the stages after discovery open only once the shared mirror screen opened."""
+    if (state.get("couple") and MACRO_STAGE_IDS.index(target_macro) >= MACRO_STAGE_IDS.index("kamaz")
+            and waiting_for_mirror(db, conversation_id)):
+        raise HTTPException(status_code=409, detail={"code": "couple_waiting"})
+
+
 @router.post("/stage-intro")
 @limiter.limit("20/minute")
 async def get_stage_intro(
@@ -917,6 +937,7 @@ async def get_stage_intro(
 
     _get_conversation_or_404(body.conversation_id, current_user.id, db)
     state, ver = load_v2_state(body.conversation_id, db)
+    _hold_for_couple(db, body.conversation_id, state, body.target_macro_stage)
     release_db_connection(db)
 
     try:
@@ -956,6 +977,7 @@ async def submit_stage_intro_answers(
 
     _get_conversation_or_404(body.conversation_id, current_user.id, db)
     state, ver = load_v2_state(body.conversation_id, db)
+    _hold_for_couple(db, body.conversation_id, state, body.macro_stage)
 
     pending = state.get("pending_stage_intro")
     if not pending:

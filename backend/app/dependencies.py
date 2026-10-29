@@ -15,6 +15,7 @@ from .client_safe import client_error_detail
 import json
 import logging
 import os
+import re
 import time
 import urllib.error
 import urllib.parse
@@ -421,14 +422,15 @@ async def get_current_user(
         if _verbose_http_logs():
             logger.info("Demo mode request (tunnel or localhost load-test origin)")
         
-        # Get or create demo user
-        demo_clerk_id = "demo_user_tunnel"
+        # Get or create demo user. Multi-user browser tests (couple process) send "demo_tunnel_token:<suffix>"
+        suffix = re.fullmatch(r"(?:Bearer )?demo_tunnel_token:([a-z0-9_]{1,20})", (authorization or "").strip())
+        demo_clerk_id = f"demo_user_tunnel_{suffix.group(1)}" if suffix else "demo_user_tunnel"
         user = db.query(User).filter(User.clerk_id == demo_clerk_id).first()
-        
+
         if not user:
             user = User(
                 clerk_id=demo_clerk_id,
-                email="demo@tunnel.test",
+                email=f"demo+{suffix.group(1)}@tunnel.test" if suffix else "demo@tunnel.test",
                 display_name="Demo User",
                 is_admin=False,
                 created_at=utc_now()

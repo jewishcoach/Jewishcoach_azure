@@ -707,9 +707,9 @@ _HEDGE = re.compile(rf"(?<![{_HE}])[וש]?(?:אנסה|אשתדל|ננסה|נשת
 _S15_RESULT_QUESTIONS = ("תלוי בך", "מה אתה מתחייב", "מה את מתחייבת", "באיזו זירה")
 
 
-def _result_issue(result: str) -> str:
+def _result_issue(result: str, names: tuple = ()) -> str:
     """One booklet requirement the result misses (p.9, 37): in his hands, a committed step, one real arena."""
-    if _result_depends_on_others(result):
+    if _result_depends_on_others(result, names):
         return "others"
     if _HEDGE.search(result or ""):
         return "hedge"
@@ -717,12 +717,31 @@ def _result_issue(result: str) -> str:
     return "two_arenas" if len(arenas) >= 2 else ""
 
 
-def _result_depends_on_others(result: str) -> bool:
+def _result_depends_on_others(result: str, names: tuple = ()) -> bool:
+    """`names`: people the client named in the conversation — "ואיתי מגיב בשיחה" is the partner acting, like "שהוא יקשיב"."""
     if not result:
         return False
     if _OTHERS_ACT.search(result) or _RECEIVE_FROM_OTHERS.search(result):
         return True
+    for name in names:
+        # "ואיתי מגיב" / "כדי שנועה תקשיב" / ", דני יבין" — not a condition like "בפעם הבאה שנועה תדבר…, אסביר"
+        if re.search(rf"(?:^|,\s*|\sו|\sכדי\sש){re.escape(name)}\s+(?:לא\s+)?(?:[יתנ][{_HE}]{{2,}}|מ[{_HE}]{{3,}})", result):
+            return True
     return bool(_RELATIONAL_OUTCOME.search(result)) and not _SELF_ACT.search(result)
+
+
+def _people_names(cd: dict) -> tuple:
+    """First words of the people in the event card ("עם איתי, בעלי") and entities.people."""
+    candidates = list((cd.get("entities") or {}).get("people") or [])
+    m = re.search(r"(?:^| — )עם ([^—]+?)(?: — |$)", cd.get("event_description") or "")
+    if m:
+        candidates.append(m.group(1))
+    names = []
+    for person in candidates:
+        first = re.split(r"[\s,()\-–—]+", str(person).strip())[0] if str(person).strip() else ""
+        if len(first) >= 2 and re.fullmatch(rf"[{_HE}]+", first) and first not in names:
+            names.append(first)
+    return tuple(names)
 
 
 # S9→S10 only once the coach asked the root question (where the rule comes from). A paradigm-deepening question
@@ -3108,6 +3127,25 @@ def build_conversation_context(
             if language == "he"
             else "\n# Intake context — focus areas (limited use)\n" + ot
         )
+
+    # Couple process: each partner works alone on the same event; the partner's data never reaches this coach
+    couple_title = ((state.get("couple") or {}).get("event_title") or "").strip()
+    if couple_title:
+        context_parts.append(
+            "\n# תהליך זוגי\n"
+            f"המתאמן ובן/בת הזוג עובדים כל אחד לבד, בשיחה נפרדת, על אותו אירוע: \"{couple_title}\". "
+            "עבוד רק על מה שקרה בתוכו — הרגש, המחשבה, המעשה והעמדה שלו — כמו בכל תהליך. "
+            "אל תנתח את בן/בת הזוג, אל תשער מה הוא/היא הרגיש/ה ואל תיקח צד. "
+            "אם ישאל מה יראה בן/בת הזוג: רק את מה שיבחר לשתף בסוף שלב הגילוי, אחרי תצוגה מקדימה; השיחה עצמה לא מוצגת."
+            + (" בשלב הזה בקש לתאר את האירוע הזה עצמו — לא אירוע אחר." if step == "S2" else "")
+            if language == "he" else
+            "\n# Couple process\n"
+            f"The client and their partner each work alone, in separate conversations, on the same event: \"{couple_title}\". "
+            "Work only on what happened inside the client — emotion, thought, action, stance — as in any process. "
+            "Don't analyze the partner, don't guess what they felt, don't take sides. "
+            "If asked what the partner will see: only what the client chooses to share at the end of the discovery "
+            "stage, after a preview; the conversation itself is never shown."
+        )
     
     # Entities section — prominent placement so LLM uses real names/places throughout
     entities = (state.get("collected_data") or {}).get("entities") or {}
@@ -3464,7 +3502,7 @@ def build_conversation_context(
     # (the overlay rule alone was ignored: "פחות ריבים, יותר שקט בבית" was accepted and the process closed)
     if state.get("_tool_just_submitted") == "commitment_card":
         result = ((state.get("collected_data") or {}).get("coaching_request") or {}).get("result") or ""
-        issue = _result_issue(result)
+        issue = _result_issue(result, _people_names(state.get("collected_data") or {}))
         ask = {
             "others": ("התוצאה תלויה גם בתגובה של אחרים. באימון התוצאה היא **מה שבידיו**",
                        "מה מתוך זה תלוי בך — מה אתה תעשה, או איך תהיה, שאפשר יהיה לראות?"),
@@ -3494,8 +3532,13 @@ def build_conversation_context(
     # Right after the client answered a safety check-in that they're OK: one-turn note (not in the static
     # prompt — a permanent rule there shifted the coach's attention on every turn)
     from .safety_check import is_safety_message
+    from .partner_safety import is_partner_safety_message
     last_coach = next((m for m in reversed(state.get("messages") or []) if m.get("sender") == "coach"), None)
-    if last_coach and is_safety_message(last_coach.get("content")) and (state.get("safety") or {}).get("status") == "cleared":
+    last_coach_text = (last_coach or {}).get("content")
+    if last_coach and (
+        (is_safety_message(last_coach_text) and (state.get("safety") or {}).get("status") == "cleared")
+        or (is_partner_safety_message(last_coach_text) and (state.get("partner_safety") or {}).get("status") == "cleared")
+    ):
         context_parts.append(
             "\n# הערת בטיחות\nהמתאמן ענה הרגע לבדיקת הבטיחות שהוא בסדר. אל תשאל שוב על בטיחות ואל תחזור על קווי העזרה — "
             "הכר בתשובה במשפט חם אחד (\"תודה שענית לי\"), והמשך בעדינות מאיפה שעצרתם."

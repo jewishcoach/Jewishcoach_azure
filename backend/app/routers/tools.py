@@ -1,5 +1,5 @@
 import asyncio
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from ..database import get_db, release_db_connection, utc_now
 from ..models import ToolResponse, Conversation, Message, User
@@ -17,6 +17,9 @@ from ..bsd_v2.stage_tool_triggers import (
 from ..bsd_v2.onboarding_topics_context import inject_onboarding_topics_into_state
 from ..security.chat_input import ChatMessageRejected, sanitize_chat_message
 from ..api.chat_v2 import save_v2_state, build_stage_complete_payload, strip_question_before_card
+from ..bsd_v2.partner_safety import screen_partner_message
+from ..bsd_v2.state_schema_v2 import add_message
+from ..services.couple_service import apply_safety_hold
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +68,7 @@ class ToolResponseModel(BaseModel):
     collected_data: Dict[str, Any] | None = None
     suggestions: list[str] = []
     stage_complete: Dict[str, Any] | None = None
+    safety: str | None = None  # set when coach_message is a safety response (couple process: partner check-in)
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -73,6 +77,7 @@ class ToolResponseModel(BaseModel):
 async def submit_tool_response(
     conversation_id: int,
     request: ToolSubmitRequest,
+    raw_request: Request,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -128,6 +133,7 @@ async def submit_tool_response(
     saturation_score: float | None = None
     tool_call: Dict[str, Any] | None = None
     stage_complete_payload: Dict[str, Any] | None = None
+    safety_level: str | None = None
 
     # Inject structured tool output into V2 state and run an immediate coach turn.
     if conversation.v2_state and isinstance(conversation.v2_state, dict):
@@ -307,7 +313,25 @@ async def submit_tool_response(
                     cd["commitment"] = ". ".join(p.rstrip(".") for p in parts if p) + "."
                 v2_state["collected_data"] = cd
 
-            if summary:
+            # Couple process: the event card is where violence by the partner is usually told — screened like a chat
+            # message; a signal gets the private check-in instead of the coach turn (the step stays at S2)
+            partner_check = None
+            if v2_state.get("couple") and request.tool_type == "event_form":
+                partner_check = await screen_partner_message(
+                    " ".join(str(request.data.get(k) or "") for k in ("with_whom", "what_happened")), v2_state,
+                    raw_request.headers.get("x-user-timezone"), getattr(user, "gender", None))
+                apply_safety_hold(db, conversation_id, partner_check.hold_action)
+
+            if partner_check and partner_check.result.intercept:
+                coach_message = partner_check.result.message
+                safety_level = partner_check.result.level
+                add_message(v2_state, "user", summary)
+                add_message(v2_state, "coach", coach_message)
+                db.add(Message(conversation_id=conversation_id, role="assistant", content=coach_message,
+                               timestamp=utc_now(), meta={"safety": safety_level}))
+                current_step = v2_state.get("current_step")
+                save_v2_state(conversation_id, v2_state, db, expected_version=state_version, commit=False)
+            elif summary:
                 language = v2_state.get("language", "he")
                 inject_onboarding_topics_into_state(v2_state, user.preferences or {}, language)
                 v2_state["_tool_just_submitted"] = request.tool_type
@@ -459,6 +483,7 @@ async def submit_tool_response(
         collected_data=result_collected_data,
         suggestions=result_suggestions,
         stage_complete=stage_complete_payload,
+        safety=safety_level,
     )
 
 

@@ -9,6 +9,7 @@ from ..middleware.usage_limiter import require_message_quota
 from ..limiter import limiter
 from ..schemas import MessageCreate, ConversationResponse, ConversationListItemResponse
 from ..models import Conversation, Message, User, ConversationFlag, BsdSessionState, BsdAuditLog
+from ..services.couple_service import on_conversation_deleted as on_couple_conversation_deleted
 from ..bsd.engine import BsdEngine
 from typing import List, Dict, Optional
 from datetime import datetime
@@ -784,6 +785,8 @@ def delete_conversation(
     db.query(ConversationFlag).filter(ConversationFlag.conversation_id == conversation_id).delete()
     db.query(BsdAuditLog).filter(BsdAuditLog.conversation_id == conversation_id).delete()
     db.query(BsdSessionState).filter(BsdSessionState.conversation_id == conversation_id).delete()
+    # Couple process: ends the shared part and removes what this member shared with the partner
+    on_couple_conversation_deleted(db, conversation_id)
 
     db.delete(conv)
     db.commit()

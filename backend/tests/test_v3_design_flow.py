@@ -1083,3 +1083,13 @@ def test_stage_insight_quotes_skip_the_stage_button_message():
         if orig:
             sig.get_azure_chat_llm_4o_mini = orig
     assert "אני מוכן להתחיל" not in seen["prompt"] and "אני רוצה להבין את הכוחות שלי" in seen["prompt"]
+
+
+def test_s15_result_naming_the_partner_depends_on_others():
+    from app.bsd_v2.single_agent_coach import _people_names, _result_issue
+    names = _people_names({"event_description": "מוצאי שבת — עם איתי, בעלי — ביקשתי מאיתי שיעזור"})
+    assert names == ("איתי",)
+    assert _result_issue("אסביר בלי להרים קול פעמיים בשבוע, ואיתי מגיב בשיחה במקום לברוח", names) == "others"
+    assert _result_issue("אדבר בשקט פעמיים בשבוע כדי שאיתי יקשיב", names) == "others"
+    # a condition on the partner, then the client's own step — in his hands
+    assert _result_issue("בפעם הבאה שאיתי ידבר בטון חריף, אסביר בשקט שאני צריך זמן, שלוש פעמים החודש", names) == ""

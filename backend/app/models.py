@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, Boolean
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, Boolean, UniqueConstraint
 from sqlalchemy.orm import relationship, backref
 from datetime import datetime
 from .database import Base, utc_now
@@ -419,4 +419,53 @@ class CoachFeedbackSurveySubmission(Base):
     respondent_name = Column(String(200), nullable=False)
     responses = Column(JSON, nullable=False)
     created_at = Column(DateTime, default=utc_now, nullable=False, index=True)
+
+
+# ============================================================================
+# COUPLE PROCESS — one shared event, each partner in a private conversation, two shared screens
+# ============================================================================
+
+
+class CoupleSession(Base):
+    """A shared event two partners work on, each in their own conversation (see services/couple_service.py)."""
+
+    __tablename__ = "couple_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    event_title = Column(String(80), nullable=False)  # short neutral title by the inviter — the only shared text
+    invite_token_hash = Column(String(64), unique=True, index=True, nullable=True)  # sha256 of the link token
+    invite_expires_at = Column(DateTime, nullable=True)
+    status = Column(String(20), default="invited", nullable=False)  # invited | active | cancelled
+    cancelled_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
+
+    members = relationship("CoupleMember", back_populates="session", cascade="all, delete-orphan",
+                           order_by="CoupleMember.id")
+
+
+class CoupleMember(Base):
+    """One partner: their conversation and the lines they approved for each shared screen."""
+
+    __tablename__ = "couple_members"
+    __table_args__ = (UniqueConstraint("session_id", "role", name="uq_couple_member_role"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(Integer, ForeignKey("couple_sessions.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    conversation_id = Column(Integer, ForeignKey("conversations.id"), nullable=True, unique=True)  # None once deleted
+    role = Column(String(10), nullable=False)  # inviter | invitee
+    display_name = Column(String(40), nullable=False)  # the name the partner sees
+    gender = Column(String(10), nullable=True)  # male | female
+    joined_at = Column(DateTime, default=utc_now, nullable=False)
+    mirror = Column(JSON, nullable=True)  # [{id, text}] approved for the shared screen after S11
+    mirror_at = Column(DateTime, nullable=True)
+    mirror_seen_at = Column(DateTime, nullable=True)
+    commitment = Column(JSON, nullable=True)  # [{id, text}] approved for the commitment screen after S15
+    commitment_at = Column(DateTime, nullable=True)
+    commitment_seen_at = Column(DateTime, nullable=True)
+    safety_hold_at = Column(DateTime, nullable=True)  # partner-violence signal: shared screens stay closed, silently
+    left_at = Column(DateTime, nullable=True)  # left quietly after a safety hold — continues alone
+
+    session = relationship("CoupleSession", back_populates="members")
 
