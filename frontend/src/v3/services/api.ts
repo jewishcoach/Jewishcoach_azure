@@ -43,7 +43,7 @@ async function authHeaders(
   };
 }
 
-async function fetchWithAuthRetry(
+export async function fetchWithAuthRetry(
   url: string,
   getToken: (opts?: { skipCache?: boolean }) => Promise<string | null>,
   init?: RequestInit,

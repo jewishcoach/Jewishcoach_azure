@@ -19,6 +19,13 @@ import { QuotaExceededModal } from '../components/QuotaExceededModal';
 import { ChatScreen } from './screens/ChatScreen';
 import { OnboardingScreen } from './screens/OnboardingScreen';
 
+// Couple process (shared event, each partner in a private conversation, two shared screens)
+import './couple/pendingInvite';
+import { useCouple } from './couple/useCouple';
+import { CoupleLayer } from './couple/CoupleLayer';
+import type { Gender } from './couple/coupleApi';
+import { gFor } from './couple/lines';
+
 interface V3AppProps {
   language?: string;
 }
@@ -70,12 +77,29 @@ export function V3App({ language = 'he' }: V3AppProps) {
     submitIntroAnswers,
     quotaExceeded,
     dismissQuotaExceeded,
+    startConversationWith,
+    goToStage,
+    savePersonalStatement,
     // V3-specific
     activeTool,
     toolSubmitting,
     submitTool,
     dismissTool,
   } = useStageFlowV3(language);
+
+  const couple = useCouple({ getToken, isSignedIn, startConversationWith, goToStage, resumeConversation });
+  const { syncConversation, refreshSessions, clearStatus } = couple;
+  useEffect(() => {
+    if (menuOpen) refreshSessions();  // the ♥ marks in the conversation list
+  }, [menuOpen, refreshSessions]);
+  const currentStep = flowState.currentStep;
+  // The open conversation changed (start / resume / reload): find its couple process and, at a couple step, show it
+  useEffect(() => {
+    if (conversationId) syncConversation(conversationId, currentStep);
+    else clearStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when the conversation changes, with its step at that moment
+  }, [conversationId, syncConversation, clearStatus]);
+  const coupleActive = !!couple.status && couple.status.status !== 'cancelled' && !couple.status.me.left;
 
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
@@ -191,6 +215,18 @@ export function V3App({ language = 'he' }: V3AppProps) {
                   {isHe ? 'שיחה חדשה' : 'New conversation'}
                 </span>
               </button>
+              {couple.canStart && (
+                <button
+                  type="button"
+                  onClick={() => { couple.openStart(); setMenuOpen(false); }}
+                  className="w-full mt-2 flex items-center gap-3 px-4 py-3 rounded-xl border border-[#9747ff] hover:bg-white/10 transition-colors text-right"
+                >
+                  <Heart size={18} className="text-[#03ffe6] flex-shrink-0" />
+                  <span className="text-sm font-semibold text-white" style={{ fontFamily: "'Heebo', sans-serif" }}>
+                    תהליך זוגי חדש
+                  </span>
+                </button>
+              )}
             </div>
             {flowState.phase === 'chatting' && (
               <div className="px-3">
@@ -224,10 +260,12 @@ export function V3App({ language = 'he' }: V3AppProps) {
                 <button
                   key={conv.id}
                   type="button"
-                  onClick={() => { resumeConversation(conv.id); setMenuOpen(false); }}
+                  onClick={() => { couple.close(); resumeConversation(conv.id); setMenuOpen(false); }}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-colors text-right"
                 >
-                  <MessageSquare size={16} className="text-[#03ffe6] flex-shrink-0" />
+                  {couple.sessions.some((s) => s.conversation_id === conv.id)
+                    ? <Heart size={16} className="text-[#03ffe6] flex-shrink-0" />
+                    : <MessageSquare size={16} className="text-[#03ffe6] flex-shrink-0" />}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-white truncate" style={{ fontFamily: "'Heebo', sans-serif" }}>
                       {isHe && /^New Conversation/.test(conv.title || '') ? 'שיחת אימון' : conv.title}
@@ -291,6 +329,11 @@ export function V3App({ language = 'he' }: V3AppProps) {
       {/* Main content */}
       <div className="flex-1 flex min-h-0">
         <main className="flex-1 flex flex-col min-h-0">
+          {couple.view && (
+            <CoupleLayer couple={couple} defaultName={user?.firstName || ''} profileGender={(userGender as Gender | null) ?? null} />
+          )}
+
+          {!couple.view && <>
           {flowState.phase === 'welcome_back' && conversationId && (
             <div className="flex-1 flex flex-col min-h-0 animate-[fadeIn_0.3s_ease-out]">
               <WelcomeBackScreen
@@ -306,7 +349,11 @@ export function V3App({ language = 'he' }: V3AppProps) {
 
           {flowState.phase === 'onboarding' && (
             <div className="flex-1 flex flex-col min-h-0 animate-[fadeIn_0.3s_ease-out]">
-              <OnboardingScreen onComplete={handleOnboardingComplete} gender={userGender} />
+              <OnboardingScreen
+                onComplete={handleOnboardingComplete}
+                gender={userGender}
+                onStartCouple={couple.canStart ? couple.openStart : undefined}
+              />
             </div>
           )}
 
@@ -332,7 +379,22 @@ export function V3App({ language = 'he' }: V3AppProps) {
             <div className="flex-1 flex flex-col min-h-0 animate-[fadeIn_0.3s_ease-out]">
               <StageCompleteScreen
                 summary={flowState.summary}
-                onContinue={requestNextStageIntro}
+                onContinue={coupleActive && couple.status && flowState.summary.stage_id === 'discovery'
+                  ? async (statement) => {
+                    // couple process: after discovery comes the preview of the shared lines, not כמ"ז
+                    await savePersonalStatement(statement);
+                    if (!(await couple.openCheckpoint('mirror', couple.status!.session_id))) requestNextStageIntro();
+                  }
+                  : requestNextStageIntro}
+                continueLabel={coupleActive && flowState.summary.stage_id === 'discovery' ? 'להמשך: מה לשתף' : undefined}
+                nextStepText={coupleActive && flowState.summary.stage_id === 'discovery'
+                  ? (couple.status?.partner
+                    ? `הצעד הבא — לבחור מה ${couple.status.partner.name} ${gFor(couple.status.partner.gender)('יראה', 'תראה')} מהשלב הזה`
+                    : 'הצעד הבא — לבחור מה בן/בת הזוג יראו מהשלב הזה')
+                  : undefined}
+                extraAction={coupleActive && couple.status && !flowState.summary.next_stage_id
+                  ? { label: 'למסך ההתחייבות הזוגית', onClick: () => { couple.openCheckpoint('commitment', couple.status!.session_id); } }
+                  : undefined}
                 language={language}
                 conversationId={conversationId}
                 userMessages={messages.filter((m) => m.role === 'user').map((m) => m.content)}
@@ -368,6 +430,7 @@ export function V3App({ language = 'he' }: V3AppProps) {
               <div className="animate-spin w-8 h-8 border-3 border-[#03ffe6] border-t-transparent rounded-full" />
             </div>
           )}
+          </>}
         </main>
 
         {flowState.phase !== 'onboarding' && flowState.phase !== 'welcome_back' && (

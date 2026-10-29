@@ -50,6 +50,8 @@ export interface ToolSubmitResponse {
   collected_data?: Record<string, unknown> | null;
   suggestions?: string[];
   stage_complete?: StageSummaryPayload | null;
+  /** couple process: the coach message is a partner-safety check-in (rendered as SafetyMessage) */
+  safety?: string | null;
 }
 
 export interface V3ChatMessage {

@@ -145,7 +145,7 @@ export function ChatScreen({
             const isLastAssistant = showQuickReplies && msg.role === 'assistant' && msg.id === lastMessage?.id;
 
             if (msg.safety) {
-              return <SafetyMessage key={msg.id} content={msg.content} onQuickReply={isLastAssistant ? onSend : undefined} />;
+              return <SafetyMessage key={msg.id} content={msg.content} level={msg.safety} onQuickReply={isLastAssistant ? onSend : undefined} />;
             }
 
             const prevDeduped = idx > 0 ? dedupedMessages[idx - 1] : null;

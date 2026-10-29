@@ -203,6 +203,7 @@ export function useStageFlowV3(language: string = 'he') {
             content: response.coach_message,
             phase: response.current_step ?? undefined,
             suggestions: response.suggestions,
+            safety: response.safety ?? undefined,
           };
           setMessages((prev) => [...prev, assistantMsg]);
         }
@@ -263,9 +264,9 @@ export function useStageFlowV3(language: string = 'he') {
   }, []);
 
   // ---------------------------------------------------------------------------
-  // Start onboarding — V3 accepts optional freeText
+  // Open a conversation with its first message (onboarding line / couple process)
   // ---------------------------------------------------------------------------
-  const startOnboarding = useCallback(async (emotions?: string[], domain?: string, freeText?: string) => {
+  const openConversation = useCallback(async (getConversationId: () => Promise<number>, contextMessage: string) => {
     setFlowState((prev) => ({
       ...prev,
       phase: 'chatting',
@@ -274,15 +275,7 @@ export function useStageFlowV3(language: string = 'he') {
     setIsLoading(true);
 
     try {
-      const parts = [
-        // the options already read "אני מרגיש(ה) …" — "אני מרגיש: אני מרגיש תקוע" doubled it in the topic
-        emotions?.length ? (/^(אני|קשה)/.test(emotions[0]) ? emotions.join(', ') : `אני מרגיש: ${emotions.join(', ')}`) : '',
-        domain ? `בתחום: ${domain}` : '',
-        freeText?.trim() ? freeText.trim() : '',
-      ].filter(Boolean);
-      const contextMessage = parts.join('. ') || 'אני רוצה להתחיל';
-
-      const convId = await createConversation(language, getToken);
+      const convId = await getConversationId();
       setConversationId(convId);
 
       const response = await sendMessageV3(contextMessage, convId, language, getToken);
@@ -326,6 +319,27 @@ export function useStageFlowV3(language: string = 'he') {
     }
   }, [language, getToken]);
 
+  // Start onboarding — V3 accepts optional freeText
+  const startOnboarding = useCallback((emotions?: string[], domain?: string, freeText?: string) => {
+    const parts = [
+      // the options already read "אני מרגיש(ה) …" — "אני מרגיש: אני מרגיש תקוע" doubled it in the topic
+      emotions?.length ? (/^(אני|קשה)/.test(emotions[0]) ? emotions.join(', ') : `אני מרגיש: ${emotions.join(', ')}`) : '',
+      domain ? `בתחום: ${domain}` : '',
+      freeText?.trim() ? freeText.trim() : '',
+    ].filter(Boolean);
+    return openConversation(() => createConversation(language, getToken), parts.join('. ') || 'אני רוצה להתחיל');
+  }, [openConversation, language, getToken]);
+
+  // Couple process: the member's conversation already exists (created with the shared event)
+  const startConversationWith = useCallback((convId: number, contextMessage: string) => {
+    clearSession();
+    setMessages([]);
+    setCollectedData({});
+    setSaturationScore(0);
+    setActiveTool(null);
+    return openConversation(async () => convId, contextMessage);
+  }, [openConversation]);
+
   // ---------------------------------------------------------------------------
   // Stage transitions (same as V2)
   // ---------------------------------------------------------------------------
@@ -338,24 +352,24 @@ export function useStageFlowV3(language: string = 'he') {
       promise: fetchStageIntro(conversationId, nextId, language, getToken).catch(() => null),
     };
   }, [conversationId, endedStageSummary?.next_stage_id, language, getToken]);
-  const requestNextStageIntro = useCallback(async (personalStatement?: string) => {
-    if (!conversationId || !flowState.summary?.next_stage_id) return;
-    const nextStageId = flowState.summary.next_stage_id;
+  const savePersonalStatement = useCallback(async (personalStatement?: string) => {
+    if (!conversationId || !personalStatement) return;
+    try {
+      const base = getApiBase();
+      const token = await getToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = `Bearer ${token}`;
+      await fetch(`${base}/chat/v2/conversations/${conversationId}/statement`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ stage_id: flowState.currentMacroStage, statement: personalStatement }),
+      });
+    } catch { /* best effort */ }
+  }, [conversationId, flowState.currentMacroStage, getToken]);
 
-    if (personalStatement) {
-      try {
-        const base = getApiBase();
-        const token = await getToken();
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (token) headers.Authorization = `Bearer ${token}`;
-        await fetch(`${base}/chat/v2/conversations/${conversationId}/statement`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({ stage_id: flowState.currentMacroStage, statement: personalStatement }),
-        });
-      } catch { /* best effort */ }
-    }
-
+  /** The intro of a macro-stage — after a stage summary, or after the couple mirror screen (כמ"ז) */
+  const goToStage = useCallback(async (nextStageId: string) => {
+    if (!conversationId) return;
     setFlowState((prev) => ({
       ...prev,
       phase: 'loading_intro',
@@ -374,7 +388,13 @@ export function useStageFlowV3(language: string = 'he') {
     } catch {
       setFlowState((prev) => ({ ...prev, phase: 'chatting' }));
     }
-  }, [conversationId, flowState.summary, flowState.currentMacroStage, language, getToken]);
+  }, [conversationId, language, getToken]);
+
+  const requestNextStageIntro = useCallback(async (personalStatement?: string) => {
+    if (!conversationId || !flowState.summary?.next_stage_id) return;
+    await savePersonalStatement(personalStatement);
+    await goToStage(flowState.summary.next_stage_id);
+  }, [conversationId, flowState.summary, savePersonalStatement, goToStage]);
 
   const submitIntroAnswers = useCallback(
     async (answers: Record<string, string[]>) => {
@@ -544,6 +564,10 @@ export function useStageFlowV3(language: string = 'he') {
     resumeConversation,
     requestNextStageIntro,
     submitIntroAnswers,
+    // couple process
+    startConversationWith,
+    goToStage,
+    savePersonalStatement,
     // V3-specific
     activeTool,
     toolSubmitting,

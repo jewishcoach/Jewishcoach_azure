@@ -18,9 +18,15 @@ interface StageCompleteScreenProps {
   language: string;
   userMessages?: string[];
   conversationId?: number | string | null;
+  /** V3 couple process: the next step is a shared screen, not the next stage */
+  continueLabel?: string;
+  nextStepText?: string;
+  extraAction?: { label: string; onClick: () => void };
 }
 
-export function StageCompleteScreen({ summary, onContinue, language, userMessages, conversationId }: StageCompleteScreenProps) {
+export function StageCompleteScreen({
+  summary, onContinue, language, userMessages, conversationId, continueLabel, nextStepText, extraAction,
+}: StageCompleteScreenProps) {
   const isHe = language.startsWith('he');
   const { getToken } = useAuth();
   const [personalStatement, setPersonalStatement] = useState('');
@@ -226,6 +232,18 @@ export function StageCompleteScreen({ summary, onContinue, language, userMessage
           </div>
         ) : isLastStage ? (
           <div className="flex flex-col items-center gap-3 pt-4">
+            {extraAction && (
+              <button
+                type="button"
+                onClick={extraAction.onClick}
+                className="w-[280px] h-[53px] rounded-xl border-2 border-[#9747ff] text-[#9747ff] text-base
+                           hover:bg-[rgba(151,71,255,0.06)] transition-colors flex items-center justify-center gap-2"
+                style={{ fontFamily: "'Heebo', sans-serif" }}
+              >
+                <Heart size={18} />
+                <span>{extraAction.label}</span>
+              </button>
+            )}
             <button
               type="button"
               disabled={loadingGift}
@@ -288,13 +306,13 @@ export function StageCompleteScreen({ summary, onContinue, language, userMessage
                            flex items-center justify-center gap-2"
                 style={{ fontFamily: "'Heebo', sans-serif" }}
               >
-                <span>{isHe ? 'המשך לצעד הבא' : 'Continue to next step'}</span>
+                <span>{continueLabel ?? (isHe ? 'המשך לצעד הבא' : 'Continue to next step')}</span>
               </button>
 
               <p className="text-base text-[#2d4658]" style={{ fontFamily: "'Heebo', sans-serif" }}>
-                {isHe
+                {nextStepText ?? (isHe
                   ? `הצעד הבא שלך - ${summary.next_stage_title}`
-                  : `Your next step — ${summary.next_stage_title}`}
+                  : `Your next step — ${summary.next_stage_title}`)}
               </p>
             </div>
           </>

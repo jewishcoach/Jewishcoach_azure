@@ -1,6 +1,12 @@
 import { Heart } from 'lucide-react';
 
 const SAFE_REPLIES = ['אני בסדר, אפשר להמשיך', 'קשה לי עכשיו'];
+// Couple process (partner-safety check-in, backend bsd_v2/partner_safety.py) — worded the same for both genders
+const PARTNER_REPLIES: Record<string, string[]> = {
+  partner_check: ['הכול בטוח, זה היה ויכוח', 'לא תמיד בטוח לי'],
+  partner_danger: ['הכול בטוח עכשיו', 'לא בטוח לי'],
+  partner_held: [],
+};
 
 // Help-line numbers in the backend's safety text (1201, 101, 988, 911, 112, 999, 000, 13 11 14…) become tel: links
 const PHONE_RE = /(13 11 14|\b\d{3,4}\b)/g;
@@ -20,13 +26,16 @@ function linkifyPhones(line: string) {
 
 interface SafetyMessageProps {
   content: string;
+  /** backend safety level — picks the quick answers */
+  level?: string;
   /** Only on the latest message: quick answers so the user doesn't have to phrase one in a hard moment */
   onQuickReply?: (text: string) => void;
 }
 
 /** Backend safety response (risk check-in) — same coach voice, visually set apart, help lines tappable. */
-export function SafetyMessage({ content, onQuickReply }: SafetyMessageProps) {
+export function SafetyMessage({ content, level, onQuickReply }: SafetyMessageProps) {
   const lines = content.split('\n');
+  const replies = (level ? PARTNER_REPLIES[level] : undefined) ?? SAFE_REPLIES;
   return (
     <div className="flex flex-col gap-3 w-full" dir="rtl">
       <div className="flex items-center gap-2 justify-start">
@@ -42,9 +51,9 @@ export function SafetyMessage({ content, onQuickReply }: SafetyMessageProps) {
           ),
         )}
       </div>
-      {onQuickReply && (
+      {onQuickReply && replies.length > 0 && (
         <div className="flex flex-wrap gap-2 w-full">
-          {SAFE_REPLIES.map((reply) => (
+          {replies.map((reply) => (
             <button
               key={reply}
               type="button"

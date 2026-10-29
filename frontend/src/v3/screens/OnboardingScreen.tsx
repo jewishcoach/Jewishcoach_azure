@@ -1,8 +1,11 @@
 import { useState, useRef, useCallback } from 'react';
+import { Heart } from 'lucide-react';
 
 interface OnboardingScreenProps {
   onComplete: (emotions: string[], domain: string, freeText?: string) => void;
   gender?: string | null;
+  /** couple process (pilot) — shown only when the user may open one */
+  onStartCouple?: () => void;
 }
 
 const EMOTION_OPTIONS = [
@@ -37,7 +40,7 @@ const DOMAIN_OPTIONS = [
   'אחר',
 ];
 
-export function OnboardingScreen({ onComplete, gender }: OnboardingScreenProps) {
+export function OnboardingScreen({ onComplete, gender, onStartCouple }: OnboardingScreenProps) {
   const fem = gender === 'female';
   const emotionOptions = fem ? EMOTION_OPTIONS_F : EMOTION_OPTIONS;
   const [selectedEmotion, setSelectedEmotion] = useState<string>('');
@@ -132,6 +135,21 @@ export function OnboardingScreen({ onComplete, gender }: OnboardingScreenProps) 
             </p>
           )}
         </div>
+
+        {onStartCouple && (
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={onStartCouple}
+              className="flex items-center gap-2 px-5 py-3 rounded-xl border border-[#9747ff] text-[#2d4658] text-base
+                         hover:bg-[rgba(151,71,255,0.06)] transition-colors"
+              style={{ fontFamily: "'Heebo', sans-serif" }}
+            >
+              <Heart size={18} className="text-[#9747ff]" />
+              <span>תהליך זוגי — לעבוד על אירוע עם בן/בת הזוג</span>
+            </button>
+          </div>
+        )}
 
         {/* Emotions section */}
         <div className="space-y-6">
