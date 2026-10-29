@@ -17,9 +17,10 @@ interface StageCompleteScreenProps {
   onContinue: (personalStatement?: string) => void;
   language: string;
   userMessages?: string[];
+  conversationId?: number | string | null;
 }
 
-export function StageCompleteScreen({ summary, onContinue, language, userMessages }: StageCompleteScreenProps) {
+export function StageCompleteScreen({ summary, onContinue, language, userMessages, conversationId }: StageCompleteScreenProps) {
   const isHe = language.startsWith('he');
   const { getToken } = useAuth();
   const [personalStatement, setPersonalStatement] = useState('');
@@ -232,7 +233,7 @@ export function StageCompleteScreen({ summary, onContinue, language, userMessage
                 setLoadingGift(true);
                 setGiftError(false);
                 try {
-                  const result = await fetchDeepAnalysis(getToken);
+                  const result = await fetchDeepAnalysis(getToken, conversationId);
                   setDeepView(result);
                 } catch {
                   setGiftError(true);

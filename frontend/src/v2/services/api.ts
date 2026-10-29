@@ -169,13 +169,16 @@ export interface DeepViewLetter {
 
 export async function fetchDeepAnalysis(
   getToken: (opts?: { skipCache?: boolean }) => Promise<string | null>,
+  conversationId?: number | string | null,
 ): Promise<DeepViewLetter> {
   const base = getApiBase();
   const headers = await authHeaders(getToken);
-  const res = await fetch(`${base}/profile/insights`, { headers });
+  // the end-of-process gift reads only this conversation
+  const url = `${base}/profile/insights${conversationId ? `?conversation_id=${conversationId}` : ''}`;
+  const res = await fetch(url, { headers });
   if (res.status === 403) {
     await grantAnalysisConsent(getToken);
-    const retry = await fetch(`${base}/profile/insights`, { headers: await authHeaders(getToken) });
+    const retry = await fetch(url, { headers: await authHeaders(getToken) });
     if (!retry.ok) throw new Error(`Deep analysis failed: ${retry.status}`);
     return retry.json();
   }

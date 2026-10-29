@@ -332,6 +332,7 @@ export function V3App({ language = 'he' }: V3AppProps) {
                 summary={flowState.summary}
                 onContinue={requestNextStageIntro}
                 language={language}
+                conversationId={conversationId}
                 userMessages={messages.filter((m) => m.role === 'user').map((m) => m.content)}
               />
             </div>

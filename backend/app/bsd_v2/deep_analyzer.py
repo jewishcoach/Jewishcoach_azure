@@ -63,7 +63,7 @@ ANALYSIS_SYSTEM_PROMPT = """אתה "בני", מאמן אישי חם ואבהי. 
 החזר JSON תקני בלבד (ללא טקסט מסביב).
 """
 
-ANALYSIS_HUMAN_TEMPLATE = """=== נתונים מ-{n_conversations} שיחות אימון ===
+ANALYSIS_HUMAN_TEMPLATE = """{scope}
 
 --- נתונים מובנים (collected_data לפי שלבים) ---
 {structured_json}
@@ -94,7 +94,7 @@ ANALYSIS_HUMAN_TEMPLATE = """=== נתונים מ-{n_conversations} שיחות א
 }}
 
 דוגמה לטון הנכון במכתב:
-"עברנו יחד כמה חודשים, ואני רוצה לספר לך מה ראיתי. אתה בן אדם שמרגיש עמוק אבל רגיל להסתיר את זה מאחורי הומור. כשאמרת 'אני תמיד האחד שמחזיק את כולם' — הבנתי שאתה נושא הרבה, ולפעמים שוכח שגם אתה צריך מישהו שיחזיק אותך..."
+"עברנו יחד את המסע הזה, ואני רוצה לספר לך מה ראיתי. אתה בן אדם שמרגיש עמוק אבל רגיל להסתיר את זה מאחורי הומור. כשאמרת 'אני תמיד האחד שמחזיק את כולם' — הבנתי שאתה נושא הרבה, ולפעמים שוכח שגם אתה צריך מישהו שיחזיק אותך..."
 """
 
 
@@ -102,6 +102,7 @@ ANALYSIS_HUMAN_TEMPLATE = """=== נתונים מ-{n_conversations} שיחות א
 
 async def run_deep_analysis(
     conversations_data: List[Dict[str, Any]],
+    single_conversation: bool = False,
 ) -> DeepViewLetter:
     """
     Generate Beni's personal letter — the "gift" at the end of the journey.
@@ -137,6 +138,8 @@ async def run_deep_analysis(
 
     human_text = ANALYSIS_HUMAN_TEMPLATE.format(
         n_conversations=n,
+        scope=("=== נתונים משיחת האימון הזו בלבד — כתוב רק על מה שעלה בה ===" if single_conversation
+               else f"=== נתונים מ-{n} שיחות אימון ==="),
         structured_json=structured_json[:6000],
         raw_messages=raw_messages[:8000],
     )

@@ -1,6 +1,7 @@
 """
 User profile and dashboard endpoints
 """
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -260,6 +261,7 @@ def get_insights_status(
 @router.get("/insights")
 async def get_profile_insights(
     refresh: bool = False,
+    conversation_id: Optional[int] = None,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -279,18 +281,22 @@ async def get_profile_insights(
     if not consent.get("granted", False):
         raise HTTPException(status_code=403, detail="analysis_consent_required")
 
-    # Collect conversations with sufficient content
-    conversations = (
-        db.query(Conversation)
-        .filter(Conversation.user_id == user.id)
-        .order_by(Conversation.created_at.asc())
-        .all()
-    )
+    # The end-of-process gift (conversation_id) reads only that conversation — it used to read all of them, keep the
+    # first 8000 chars (the oldest), and return a cached analysis of an earlier conversation. The profile tab
+    # (no conversation_id) stays across conversations.
+    query = db.query(Conversation).filter(Conversation.user_id == user.id)
+    if conversation_id is not None:
+        query = query.filter(Conversation.id == conversation_id)
+    conversations = query.order_by(Conversation.created_at.asc()).all()
+    if conversation_id is not None and not conversations:
+        raise HTTPException(status_code=404, detail="conversation_not_found")
 
     conversations_data = []
     total_words = 0
     for conv in conversations:
-        user_msgs = [m.content for m in conv.messages if m.role == "user" and m.content]
+        # "אני מוכן להתחיל" is sent by the stage button, not typed
+        user_msgs = [m.content for m in conv.messages if m.role == "user" and m.content
+                     and m.content.strip() not in ("אני מוכן להתחיל", "I'm ready to start")]
         words = sum(len(t.split()) for t in user_msgs)
         total_words += words
         if words < 20:
@@ -313,6 +319,17 @@ async def get_profile_insights(
 
     if not conversations_data:
         raise HTTPException(status_code=422, detail="no_qualifying_conversations")
+
+    if conversation_id is not None:
+        by_conv = dict(prefs.get("conversation_analyses") or {})
+        if by_conv.get(str(conversation_id)) and not refresh:
+            return by_conv[str(conversation_id)]
+        result = (await run_deep_analysis(conversations_data, single_conversation=True)).model_dump()
+        by_conv[str(conversation_id)] = result
+        prefs["conversation_analyses"] = dict(list(by_conv.items())[-10:])  # the last 10 gifts
+        user.preferences = prefs
+        db.commit()
+        return result
 
     # Return cache if fresh and not forced refresh
     cached = prefs.get("last_analysis")
