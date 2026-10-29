@@ -133,13 +133,14 @@ class Driver:
 
     def detect(self):
         pg = self.page
-        if self.visible(pg.get_by_role("button", name="אני מרגיש תקוע")) or self.visible(pg.get_by_placeholder("למשל: יש לי קונפליקט", exact=False)):
+        if (self.visible(pg.get_by_role("button", name=re.compile(r"^אני מרגיש(?:ה)? תקוע(?:ה)?$")))
+                or self.visible(pg.get_by_placeholder("למשל: יש לי קונפליקט", exact=False))):
             return "onboarding"
         if self.visible(pg.get_by_role("button", name="להמשך לסיכום השלב")):
             return "summary_button"
         if self.visible(pg.get_by_text("כרטיס התובנה שלך")):
             return "stage_complete"
-        if self.visible(pg.get_by_role("button", name="אני מוכן להתחיל")):
+        if self.visible(pg.get_by_role("button", name=re.compile(r"^אני מוכנ(?:ה)? להתחיל$"))):
             return "stage_intro"
         if self.visible(pg.get_by_role("button", name="נמשיך מאיפה שעצרנו")):
             return "welcome_back"
@@ -190,7 +191,10 @@ class Driver:
     def do_onboarding(self):
         pg = self.page
         name, gender, topic, emo, event, bg = self.p
-        pg.get_by_role("button", name="אני מרגיש תקוע").click()  # selecting a chip advances the step
+        if getattr(self, "mobile", False):  # the opening questions on the phone (long options overflowed fixed boxes)
+            pg.get_by_role("button", name=re.compile(r"שהחיים שלי יכולים להיות אחרת")).scroll_into_view_if_needed()
+            self.page.screenshot(path=f"{self.out}/{self.turn:02d}_onboarding.png")
+        pg.get_by_role("button", name=re.compile(r"^אני מרגיש(?:ה)? תקוע(?:ה)?$")).click()  # a chip advances the step
         domain = {"זוגיות": "זוגיות", "הורות": "משפחה", "קריירה": "עבודה", "עבודה": "עבודה", "משפחה": "משפחה",
                   "הגשמה אישית": "הגשמה אישית", "בריאות": "בריאות", "כסף": "כסף"}.get(topic, "אחר")
         pg.get_by_role("button", name=domain, exact=True).click()
@@ -454,12 +458,14 @@ class Driver:
                 pg.wait_for_timeout(int(float(os.getenv("SIM_READ_SECONDS", "0")) * 1000))  # a human reads the summary
                 t0 = time.time()
                 self.click_and_wait("המשך לצעד הבא", expect_api=False)
-                if self.visible(pg.get_by_role("button", name="אני מוכן להתחיל"), 60000):
+                if self.visible(pg.get_by_role("button", name=re.compile(r"^אני מוכנ(?:ה)? להתחיל$")), 60000):
                     print(f"   ⏱ stage intro ready {time.time() - t0:.1f}s after 'המשך לצעד הבא'")
             elif state == "summary_button":
                 self.click_and_wait("להמשך לסיכום השלב", expect_api=False)
             elif state == "stage_intro":
-                self.click_and_wait("אני מוכן להתחיל", expect_api=True)
+                if getattr(self, "mobile", False):
+                    self.shot("stage_intro")
+                self.click_and_wait(re.compile(r"^אני מוכנ(?:ה)? להתחיל$"), expect_api=True)
             elif state == "welcome_back":
                 self.click_and_wait("נמשיך מאיפה שעצרנו", expect_api=False)
         if self.safety and not self.safety_said:

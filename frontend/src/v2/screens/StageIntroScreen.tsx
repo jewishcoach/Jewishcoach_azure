@@ -9,7 +9,7 @@ const STAGE_TREES: Record<string, string> = {
   change: '/trees/tree-change.png',
 };
 
-const STAGE_DESCRIPTIONS: Record<string, { time: string; description: string }> = {
+const STAGE_DESCRIPTIONS: Record<string, { time: string; description: string; description_f?: string }> = {
   identification: {
     time: 'כ - 10 דקות',
     description: 'בשלב הזה נעצור לרגע כדי לראות מה באמת קורה בך.\nנזהה את הרגשות, המחשבות והפעולות שחוזרים על עצמם — בלי לשפוט, רק להתבונן.',
@@ -17,18 +17,22 @@ const STAGE_DESCRIPTIONS: Record<string, { time: string; description: string }> 
   discovery: {
     time: 'כ - 7 דקות',
     description: 'שינוי מתחיל כשעוצרים לרגע להתבונן.\nבשלב הזה נגלה מה באמת חשוב לך — לא מה שמצופה ממך, אלא מה שנכון עבורך.\nאין כאן תשובה נכונה. יש רק את המקום שממנו אתה מתחיל היום.',
+    description_f: 'שינוי מתחיל כשעוצרים לרגע להתבונן.\nבשלב הזה נגלה מה באמת חשוב לך — לא מה שמצופה ממך, אלא מה שנכון עבורך.\nאין כאן תשובה נכונה. יש רק את המקום שממנו את מתחילה היום.',
   },
   kamaz: {
     time: 'כ - 10 דקות',
     description: 'בשלב הזה נבנה יחד את כרטיס מהות הזהות שלך.\nנזהה את כוחות המקור והטבע שפועלים בך — כדי שתוכל לבחור מתוך מודעות.',
+    description_f: 'בשלב הזה נבנה יחד את כרטיס מהות הזהות שלך.\nנזהה את כוחות המקור והטבע שפועלים בך — כדי שתוכלי לבחור מתוך מודעות.',
   },
   choice: {
     time: 'כ - 5 דקות',
     description: 'הגענו לרגע הבחירה.\nאחרי שהתבוננת בדפוס, בעמדה ובכוחות — עכשיו תבחר איך אתה רוצה לחיות מהיום.',
+    description_f: 'הגענו לרגע הבחירה.\nאחרי שהתבוננת בדפוס, בעמדה ובכוחות — עכשיו תבחרי איך את רוצה לחיות מהיום.',
   },
   vision: {
     time: 'כ - 5 דקות',
     description: 'בשלב האחרון נצייר יחד את החזון שלך.\nאיך נראים החיים כשאתה חי מתוך הבחירה החדשה? ומה הצעד הראשון?',
+    description_f: 'בשלב האחרון נצייר יחד את החזון שלך.\nאיך נראים החיים כשאת חיה מתוך הבחירה החדשה? ומה הצעד הראשון?',
   },
 };
 
@@ -59,7 +63,7 @@ export function StageIntroScreen({ payload, onSubmit, isSubmitting, previousInsi
           className="text-[40px] text-[#2d4658] text-center"
           style={{ fontFamily: "'Karantina', cursive", lineHeight: '77px' }}
         >
-          ברוך הבא לשלב הבא שלך
+          {userGender === 'female' ? 'ברוכה הבאה לשלב הבא שלך' : 'ברוך הבא לשלב הבא שלך'}
         </h1>
 
         {/* Main card */}
@@ -90,7 +94,7 @@ export function StageIntroScreen({ payload, onSubmit, isSubmitting, previousInsi
             className="text-sm text-[#2d4658] text-center max-w-[591px] leading-[21px] whitespace-pre-line"
             style={{ fontFamily: "'Assistant', sans-serif" }}
           >
-            {stageInfo.description}
+            {userGender === 'female' && stageInfo.description_f ? stageInfo.description_f : stageInfo.description}
           </p>
         </div>
 
@@ -103,7 +107,7 @@ export function StageIntroScreen({ payload, onSubmit, isSubmitting, previousInsi
             className="w-[239px] h-[53px] rounded-xl bg-[#9747ff] text-white text-base hover:bg-[#8035e6] drop-shadow-[0px_8px_2.9px_rgba(0,0,0,0.12)] transition-colors disabled:opacity-50"
             style={{ fontFamily: "'Heebo', sans-serif" }}
           >
-            {isSubmitting ? '...' : 'אני מוכן להתחיל'}
+            {isSubmitting ? '...' : userGender === 'female' ? 'אני מוכנה להתחיל' : 'אני מוכן להתחיל'}
           </button>
         </div>
 

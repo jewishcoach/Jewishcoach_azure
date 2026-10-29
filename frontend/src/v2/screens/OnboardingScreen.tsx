@@ -128,7 +128,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
                   type="button"
                   onClick={() => toggleEmotion(emotion)}
                   className={`
-                    h-[68px] px-6 rounded-xl border text-base text-center
+                    min-h-[68px] py-3 px-3 sm:px-6 leading-snug rounded-xl border text-base text-center
                     transition-all duration-200
                     ${
                       isSelected
@@ -164,7 +164,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
                     type="button"
                     onClick={() => selectDomain(domain)}
                     className={`
-                      h-[68px] px-3 rounded-xl border text-base text-center
+                      min-h-[68px] py-3 px-3 leading-snug rounded-xl border text-base text-center
                       transition-all duration-200
                       ${
                         isSelected

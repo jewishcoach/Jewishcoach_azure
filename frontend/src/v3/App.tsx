@@ -304,7 +304,7 @@ export function V3App({ language = 'he' }: V3AppProps) {
 
           {flowState.phase === 'onboarding' && (
             <div className="flex-1 flex flex-col min-h-0 animate-[fadeIn_0.3s_ease-out]">
-              <OnboardingScreen onComplete={handleOnboardingComplete} />
+              <OnboardingScreen onComplete={handleOnboardingComplete} gender={userGender} />
             </div>
           )}
 

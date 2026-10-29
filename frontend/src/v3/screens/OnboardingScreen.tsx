@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 
 interface OnboardingScreenProps {
   onComplete: (emotions: string[], domain: string, freeText?: string) => void;
+  gender?: string | null;
 }
 
 const EMOTION_OPTIONS = [
@@ -12,6 +13,17 @@ const EMOTION_OPTIONS = [
   'אני מרגיש שאני לא ממש את עצמי',
   'אני מרגיש שאני מגיב במקום לבחור',
   'אני מרגיש שהחיים שלי יכולים להיות אחרת',
+  'קשה לי להגדיר',
+];
+// the same options for a woman — her own words go into the topic ("אני מרגישה תקועה")
+const EMOTION_OPTIONS_F = [
+  'אני מרגישה תקועה',
+  'אני מרגישה מבולבלת',
+  'אני מרגישה שחוקה',
+  'אני מרגישה רחוקה מעצמי',
+  'אני מרגישה שאני לא ממש את עצמי',
+  'אני מרגישה שאני מגיבה במקום לבחור',
+  'אני מרגישה שהחיים שלי יכולים להיות אחרת',
   'קשה לי להגדיר',
 ];
 
@@ -25,7 +37,9 @@ const DOMAIN_OPTIONS = [
   'אחר',
 ];
 
-export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
+export function OnboardingScreen({ onComplete, gender }: OnboardingScreenProps) {
+  const fem = gender === 'female';
+  const emotionOptions = fem ? EMOTION_OPTIONS_F : EMOTION_OPTIONS;
   const [selectedEmotion, setSelectedEmotion] = useState<string>('');
   const [selectedDomain, setSelectedDomain] = useState<string>('');
   const [freeText, setFreeText] = useState('');
@@ -85,7 +99,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
             className="text-[40px] text-[#2d4658] leading-[77px]"
             style={{ fontFamily: "'Karantina', cursive" }}
           >
-            בוא נפגוש את המקום שבו אתה נמצא היום.
+            {fem ? 'בואי נפגוש את המקום שבו את נמצאת היום.' : 'בוא נפגוש את המקום שבו אתה נמצא היום.'}
           </h1>
           <p
             className="text-base text-[#2d4658] leading-[29px]"
@@ -105,7 +119,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
             className="px-6 py-3 rounded-xl border border-[#01897b] text-[#2d4658] text-lg hover:bg-[rgba(1,137,123,0.05)] transition-colors"
             style={{ fontFamily: "'Heebo', sans-serif" }}
           >
-            למה מתחילים מהמקום שבו אני נמצא?
+            {fem ? 'למה מתחילים מהמקום שבו אני נמצאת?' : 'למה מתחילים מהמקום שבו אני נמצא?'}
           </button>
           {showExplanation && (
             <p
@@ -126,18 +140,18 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
               className="text-[25px] font-semibold text-[#2d4658] tracking-[-1px] text-right"
               style={{ fontFamily: "'Heebo', sans-serif" }}
             >
-              מה הכי מתאר את מה שאתה מרגיש בתקופה הזו?
+              {fem ? 'מה הכי מתאר את מה שאת מרגישה בתקופה הזו?' : 'מה הכי מתאר את מה שאתה מרגיש בתקופה הזו?'}
             </h2>
             <p
               className="text-base text-[#2d4658] text-right"
               style={{ fontFamily: "'Heebo', sans-serif" }}
             >
-              אין צורך לדייק עכשיו. מספיק לבחור את מה שהכי קרוב למה שאתה מרגיש
+              {fem ? 'אין צורך לדייק עכשיו. מספיק לבחור את מה שהכי קרוב למה שאת מרגישה' : 'אין צורך לדייק עכשיו. מספיק לבחור את מה שהכי קרוב למה שאתה מרגיש'}
             </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            {EMOTION_OPTIONS.map((emotion) => {
+            {emotionOptions.map((emotion) => {
               const isSelected = selectedEmotion === emotion;
               return (
                 <button
@@ -145,7 +159,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
                   type="button"
                   onClick={() => selectEmotion(emotion)}
                   className={`
-                    h-[68px] px-6 rounded-xl border text-base text-center
+                    min-h-[68px] py-3 px-3 sm:px-6 leading-snug rounded-xl border text-base text-center
                     transition-all duration-200
                     ${isSelected
                       ? 'border-[#04c4b1] bg-[rgba(3,255,230,0.3)] text-[#2d4658]'
@@ -180,7 +194,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
                     type="button"
                     onClick={() => selectDomain(domain)}
                     className={`
-                      h-[68px] px-3 rounded-xl border text-base text-center
+                      min-h-[68px] py-3 px-3 leading-snug rounded-xl border text-base text-center
                       transition-all duration-200
                       ${isSelected
                         ? 'border-[#04c4b1] bg-[rgba(3,255,230,0.3)] text-[#2d4658]'
@@ -204,7 +218,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
               className="text-[25px] font-semibold text-[#2d4658] text-right tracking-[-1px]"
               style={{ fontFamily: "'Heebo', sans-serif" }}
             >
-              ספר בקצרה מה עובר עליך
+              {fem ? 'ספרי בקצרה מה עובר עלייך' : 'ספר בקצרה מה עובר עליך'}
             </h2>
             <p
               className="text-base text-[#2d4658] text-right"

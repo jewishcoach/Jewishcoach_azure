@@ -54,7 +54,7 @@ export function ChipGroup({
               }
             }}
             className={`
-              h-[42px] px-4 rounded-xl text-sm transition-all duration-200
+              min-h-[42px] py-2 px-4 leading-snug rounded-xl text-sm transition-all duration-200
               ${isSelected
                 ? 'border-[1.5px] border-[#04c4b1] bg-[rgba(3,255,230,0.3)] text-[#2d4658] font-medium'
                 : 'border border-[#d2d2d2] bg-white text-[#2d4658] hover:border-[#03ffe6] hover:bg-[rgba(3,255,230,0.05)]'
