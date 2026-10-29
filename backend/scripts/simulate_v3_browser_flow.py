@@ -19,8 +19,17 @@ import simulate_v3_e2e_flow as sim  # personas, LLM sim-user, temp DB (sim._db)
 from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
 
 FRONTEND_DIR = os.path.join(os.path.dirname(os.getcwd()), "frontend")
-BACKEND_PORT, FRONTEND_PORT = 8000, 5173
+# Other sessions run their own dev servers — ports are configurable, and a busy port stops the run (a vite on a busy
+# port fails while wait_http() succeeded against the other session's server, and we photographed its branch)
+BACKEND_PORT = int(os.getenv("SIM_BACKEND_PORT", "8000"))
+FRONTEND_PORT = int(os.getenv("SIM_FRONTEND_PORT", "5173"))
 APP_URL = f"http://localhost:{FRONTEND_PORT}/?v3"
+
+
+def _port_busy(port):
+    import socket
+    with socket.socket() as sock:
+        return sock.connect_ex(("127.0.0.1", port)) == 0
 API_PATHS = ("/chat/v2/message", "/tools/", "/chat/v2/stage-intro-answers")
 
 CARD_TITLES = {
@@ -54,6 +63,9 @@ SAFETY_WORDS = ("ער\"ן", "1201", "סה\"ר", "101", "1221", "עזרה מקצ�
 
 
 def start_servers(out_dir, gender):
+    for port in (BACKEND_PORT, FRONTEND_PORT):
+        if _port_busy(port):
+            sys.exit(f"port {port} is in use (another session's server?) — set SIM_BACKEND_PORT / SIM_FRONTEND_PORT")
     sim.Base.metadata.create_all(bind=sim.engine)
     # Pre-create the demo user (backend demo mode reuses it) so the coach addresses the persona's gender
     db = sim.sessionmaker(bind=sim.engine)()
@@ -66,6 +78,7 @@ def start_servers(out_dir, gender):
                           start_new_session=True)
     fe = subprocess.Popen(["npm", "run", "dev", "--", "--port", str(FRONTEND_PORT), "--strictPort"],
                           cwd=FRONTEND_DIR, stdout=open(f"{out_dir}/frontend.log", "w"), stderr=subprocess.STDOUT,
+                          env=dict(os.environ, VITE_API_URL=f"http://localhost:{BACKEND_PORT}"),
                           start_new_session=True)
     if not wait_http(f"http://localhost:{BACKEND_PORT}/docs") or not wait_http(f"http://localhost:{FRONTEND_PORT}/"):
         stop_servers(be, fe)

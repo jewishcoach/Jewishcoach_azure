@@ -11,9 +11,11 @@ interface PauseModalProps {
   stageNumber?: number;
   onContinue: () => void;
   onGoHome: () => void;
+  gender?: string | null;
 }
 
-export function PauseModal({ isOpen, stageNumber = 1, onContinue, onGoHome }: PauseModalProps) {
+export function PauseModal({ isOpen, stageNumber = 1, onContinue, onGoHome, gender }: PauseModalProps) {
+  const fem = gender === 'female';
   if (!isOpen) return null;
 
   const treeImg = STAGE_TREES[Math.min(stageNumber - 1, STAGE_TREES.length - 1)];
@@ -24,7 +26,7 @@ export function PauseModal({ isOpen, stageNumber = 1, onContinue, onGoHome }: Pa
       <div className="absolute inset-0 bg-black/40" onClick={onContinue} />
 
       {/* Card */}
-      <div className="relative bg-white rounded-2xl shadow-xl max-w-[580px] w-[92%] px-8 pt-14 pb-7 space-y-4 animate-[fadeIn_0.2s_ease-out]">
+      <div className="relative bg-white rounded-2xl shadow-xl max-w-[580px] w-[92%] px-8 pt-20 pb-7 space-y-4 animate-[fadeIn_0.2s_ease-out]">
         {/* Tree — overflows above the card */}
         <div className="absolute -top-16 left-1/2 -translate-x-1/2">
           <img src={treeImg} alt="" className="w-32 h-32 object-contain drop-shadow-md" />
@@ -43,11 +45,11 @@ export function PauseModal({ isOpen, stageNumber = 1, onContinue, onGoHome }: Pa
           className="text-[15px] text-[#2d4658] text-center leading-relaxed"
           style={{ fontFamily: "'Heebo', sans-serif" }}
         >
-          לפעמים נכון לעצור ולנוח. כשתרגיש מוכן, תמיד אפשר
+          {fem ? 'לפעמים נכון לעצור ולנוח. כשתרגישי מוכנה, תמיד אפשר' : 'לפעמים נכון לעצור ולנוח. כשתרגיש מוכן, תמיד אפשר'}
           <br />
           להמשיך בדיוק מהמקום שבו עצרת.
           <br />
-          מה תרצה לעשות עכשיו?
+          {fem ? 'מה תרצי לעשות עכשיו?' : 'מה תרצה לעשות עכשיו?'}
         </p>
 
         {/* Buttons */}

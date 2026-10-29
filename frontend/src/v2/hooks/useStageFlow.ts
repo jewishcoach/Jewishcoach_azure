@@ -181,7 +181,8 @@ export function useStageFlow(language: string = 'he') {
 
     try {
       const contextMessage = [
-        emotions?.length ? `אני מרגיש: ${emotions.join(', ')}` : '',
+        // the options already read "אני מרגיש(ה) …" — "אני מרגיש: אני מרגיש תקוע" doubled it in the topic
+        emotions?.length ? (/^(אני|קשה)/.test(emotions[0]) ? emotions.join(', ') : `אני מרגיש: ${emotions.join(', ')}`) : '',
         domain ? `בתחום: ${domain}` : '',
       ].filter(Boolean).join('. ');
 

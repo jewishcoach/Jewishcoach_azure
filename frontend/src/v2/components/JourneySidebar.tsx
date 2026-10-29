@@ -16,9 +16,12 @@ interface JourneySidebarProps {
   currentStep: string;
   collectedData?: CollectedData;
   language: string;
+  /** Opened as the mobile drawer: the whole panel scrolls as one, and the page's bottom stage bar is not repeated
+   *  inside it (it covered the counters, and the stage list got a tiny hidden-scroll box — 3 of 5 stages) */
+  inDrawer?: boolean;
 }
 
-export function JourneySidebar({ currentMacroStage, currentStep, collectedData, language }: JourneySidebarProps) {
+export function JourneySidebar({ currentMacroStage, currentStep, collectedData, language, inDrawer }: JourneySidebarProps) {
   const isHe = language.startsWith('he');
   const currentIdx = MACRO_STAGES.findIndex((s) => s.id === currentMacroStage);
   const [activeTab, setActiveTab] = useState<'journey' | 'insights'>('journey');
@@ -57,7 +60,7 @@ export function JourneySidebar({ currentMacroStage, currentStep, collectedData, 
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-6 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
+        <div className={`${inDrawer ? '' : 'flex-1 overflow-y-auto'} p-5 space-y-6 scrollbar-hide`} style={{ scrollbarWidth: 'none' }}>
           {activeTab === 'journey' && (
             <>
               {/* Section title */}
@@ -126,7 +129,7 @@ export function JourneySidebar({ currentMacroStage, currentStep, collectedData, 
       </aside>
 
       {/* Mobile bottom bar */}
-      <div className="fixed bottom-0 inset-x-0 lg:hidden bg-[#2d4658]/95 backdrop-blur-sm border-t border-[#3c5465] z-10">
+      {!inDrawer && <div className="fixed bottom-0 inset-x-0 lg:hidden bg-[#2d4658]/95 backdrop-blur-sm border-t border-[#3c5465] z-10">
         <div className="flex items-center justify-start gap-3 py-2.5 px-4" dir="ltr">
           {MACRO_STAGES.map((stage, idx) => {
             const isActive = idx === currentIdx;
@@ -151,7 +154,7 @@ export function JourneySidebar({ currentMacroStage, currentStep, collectedData, 
             );
           })}
         </div>
-      </div>
+      </div>}
     </>
   );
 }

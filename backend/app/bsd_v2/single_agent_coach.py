@@ -1239,6 +1239,15 @@ def _infer_step_from_coach_message(coach_message: str, language: str) -> Optiona
     return None
 
 
+def _clip_words(text: str, limit: int = 80) -> str:
+    """Shorten at a word boundary with "…" — the topic was cut mid-word ("…ואמרתי שזה") in the insights panel."""
+    t = (text or "").strip()
+    if len(t) <= limit:
+        return t
+    cut = t[:limit].rsplit(" ", 1)[0].rstrip(" ,.;:—–-")
+    return (cut or t[:limit]) + "…"
+
+
 def _extract_topic_from_conversation(state: Dict[str, Any], user_message: Optional[str], language: str) -> str:
     """Extract topic from conversation when model doesn't return JSON (collected_data empty)."""
     skip = ("מה שמך", "שלום", "היי", "what's your name", "hello", "hi")
@@ -1248,11 +1257,11 @@ def _extract_topic_from_conversation(state: Dict[str, Any], user_message: Option
         if msg.get("sender") == "user":
             c = (msg.get("content") or "").strip()
             if len(c) >= 10 and not any(s in c.lower() for s in skip) and not any(m in c.lower() for m in meta):
-                candidates.append(c[:80])
+                candidates.append(_clip_words(c))
     if user_message and len(user_message.strip()) >= 10:
         um = user_message.strip()
         if not any(s in um.lower() for s in skip) and not any(m in um.lower() for m in meta):
-            candidates.insert(0, um[:80])
+            candidates.insert(0, _clip_words(um))
     return candidates[0] if candidates else ""
 
 

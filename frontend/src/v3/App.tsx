@@ -230,7 +230,7 @@ export function V3App({ language = 'he' }: V3AppProps) {
                   <MessageSquare size={16} className="text-[#03ffe6] flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-white truncate" style={{ fontFamily: "'Heebo', sans-serif" }}>
-                      {conv.title}
+                      {isHe && /^New Conversation/.test(conv.title || '') ? 'שיחת אימון' : conv.title}
                     </p>
                     <p className="text-xs text-[rgba(255,255,255,0.4)]" style={{ fontFamily: "'Heebo', sans-serif" }}>
                       {new Date(conv.created_at).toLocaleDateString('he-IL')} · {conv.message_count} הודעות
@@ -259,7 +259,7 @@ export function V3App({ language = 'he' }: V3AppProps) {
       {journeyOpen && flowState.phase !== 'onboarding' && flowState.phase !== 'welcome_back' && (
         <>
           <div className="fixed inset-0 bg-black/40 z-40 lg:hidden" onClick={() => setJourneyOpen(false)} />
-          <div className="fixed top-0 right-0 h-full w-[330px] z-50 lg:hidden animate-[slideIn_0.2s_ease-out] [&_aside]:flex [&_aside]:flex-col [&_aside]:h-full" dir="rtl">
+          <div className="fixed top-0 right-0 h-full w-[330px] z-50 lg:hidden animate-[slideIn_0.2s_ease-out] [&_aside]:flex [&_aside]:flex-col [&_aside]:h-full [&_aside]:overflow-y-auto" dir="rtl">
             <button type="button" onClick={() => setJourneyOpen(false)} className="absolute top-4 left-4 p-1 rounded-lg hover:bg-white/10 z-10">
               <X size={20} className="text-gray-300" />
             </button>
@@ -268,6 +268,7 @@ export function V3App({ language = 'he' }: V3AppProps) {
               currentStep={flowState.currentStep}
               collectedData={collectedData}
               language={language}
+              inDrawer
             />
           </div>
         </>
@@ -279,6 +280,7 @@ export function V3App({ language = 'he' }: V3AppProps) {
         stageNumber={stageNumber}
         onContinue={() => setShowPauseModal(false)}
         onGoHome={() => { setShowPauseModal(false); startNewConversation(); }}
+        gender={userGender}
       />
       <QuotaExceededModal
         isOpen={quotaExceeded}
