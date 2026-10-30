@@ -16,7 +16,10 @@ export interface CoupleStatus {
   status: 'invited' | 'active' | 'cancelled';
   role: 'inviter' | 'invitee';
   conversation_id: number | null;
-  me: { name: string; gender: Gender | null; mirror_done: boolean; commitment_done: boolean; left: boolean };
+  me: {
+    name: string; gender: Gender | null; mirror_done: boolean; commitment_done: boolean; left: boolean;
+    step?: string | null;  // in the sessions list only — "S0": my part never started
+  };
   partner: { name: string; gender: Gender | null; mirror_done: boolean; commitment_done: boolean } | null;
   mirror_open: boolean;
   commitment_open: boolean;

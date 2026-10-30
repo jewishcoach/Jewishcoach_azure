@@ -448,6 +448,8 @@ export function useStageFlowV3(language: string = 'he') {
       const data = await loadConversation(convId, getToken);
       setConversationId(data.conversation_id);
       setMessages(data.messages as V3ChatMessage[]);
+      // the card the coach announced ("עכשיו נבדוק יחד מה הפער…") — without it a fresh window had nothing to answer
+      setActiveTool(data.pending_tool_call ? toolCallToActiveTool(data.pending_tool_call) : null);
       if (data.collected_data) {
         setCollectedData(data.collected_data as CollectedData);
       }

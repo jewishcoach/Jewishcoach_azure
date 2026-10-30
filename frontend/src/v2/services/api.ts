@@ -115,6 +115,8 @@ export interface ConversationLoadData {
   current_step: string;
   messages: { id: string; role: 'user' | 'assistant'; content: string }[];
   collected_data?: Record<string, unknown> | null;
+  /** V3: the card the coach is waiting for — cards are not part of the saved history */
+  pending_tool_call?: Record<string, unknown> | null;
 }
 
 export async function loadConversation(

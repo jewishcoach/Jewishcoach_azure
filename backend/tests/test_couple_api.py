@@ -322,6 +322,15 @@ def test_pattern_line_is_shown_in_first_person():
     assert cs._first_person("להסביר את הצורך שלי") == "להסביר את הצורך שלי"  # the object marker "את" is kept
 
 
+def test_sessions_list_tells_whether_my_part_started(ctx):
+    a, opened = _open(ctx)
+    assert ctx.as_(a).get("/api/couple/sessions").json()[0]["me"]["step"] == "S0"
+    conv = ctx.db.get(Conversation, opened["conversation_id"])
+    conv.current_phase = "S2"
+    ctx.db.commit()
+    assert ctx.as_(a).get("/api/couple/sessions").json()[0]["me"]["step"] == "S2"
+
+
 def test_status_emails_go_to_the_waiting_partner_without_any_content(ctx):
     a, opened = _open(ctx)
     b, joined = _join(ctx, opened["invite_token"])

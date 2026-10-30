@@ -25,6 +25,7 @@ from ..middleware.usage_limiter import require_message_quota
 from ..bsd_v2.single_agent_coach import handle_conversation, warm_prompt_cache, _check_gate_met
 from ..bsd_v2.stage_tool_triggers import (
     resolve_post_turn_tool_call, mark_trait_picker_sent, mark_matzui_summary_sent, mark_kamaz_discovery_sent,
+    pending_card_on_resume,
 )
 from ..bsd_v2.state_schema_v2 import create_initial_state, add_message
 from ..bsd_v2.safety_check import screen_message
@@ -664,6 +665,7 @@ class ConversationLoadResponse(BaseModel):
     personal_statements: dict | None = None
     updated_at: str | None = None
     couple: dict | None = None  # {session_id, role, event_title} for a couple-process conversation
+    pending_tool_call: dict | None = None  # V3: the card the coach is waiting for (cards are not in the history)
 
 
 @router.get("/conversation/{conversation_id}")
@@ -711,6 +713,7 @@ async def load_conversation(
         personal_statements=personal_statements if personal_statements else None,
         updated_at=updated_at,
         couple=state.get("couple"),
+        pending_tool_call=pending_card_on_resume(state) if state else None,
     )
 
 

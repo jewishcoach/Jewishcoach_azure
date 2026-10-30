@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CardShell } from '../shared/CardShell';
 import { SliderInput } from '../shared/SliderInput';
+import { useG } from '../shared/gender';
 
 interface GapCardProps {
   // The card only names and measures the gap. The booklet's belief and opportunity questions (p.13) are
@@ -10,6 +11,7 @@ interface GapCardProps {
 }
 
 export function GapCard({ onSubmit, isSubmitting }: GapCardProps) {
+  const g = useG();
   const [gapName, setGapName] = useState('');
   const [gapScore, setGapScore] = useState(5);
 
@@ -31,7 +33,7 @@ export function GapCard({ onSubmit, isSubmitting }: GapCardProps) {
             className="block text-sm font-medium text-[#2d4658] text-right mb-1"
             style={{ fontFamily: "'Heebo', sans-serif" }}
           >
-            איך תקרא לפער הזה? (1-2 מילים)
+            {g('איך תקרא לפער הזה?', 'איך תקראי לפער הזה?')} (1-2 מילים)
           </label>
           <input
             type="text"

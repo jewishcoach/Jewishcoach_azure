@@ -24,6 +24,7 @@ import { AccountModal } from './components/AccountModal';
 import './couple/pendingInvite';
 import { useCouple } from './couple/useCouple';
 import { CoupleLayer } from './couple/CoupleLayer';
+import { UnstartedBanner } from './couple/UnstartedBanner';
 import type { Gender } from './couple/coupleApi';
 import { gFor } from './couple/lines';
 
@@ -369,6 +370,16 @@ export function V3App({ language = 'he' }: V3AppProps) {
 
           {flowState.phase === 'onboarding' && (
             <div className="flex-1 flex flex-col min-h-0 animate-[fadeIn_0.3s_ease-out]">
+              {couple.ongoing && couple.ongoing.conversation_id && (
+                <UnstartedBanner
+                  session={couple.ongoing}
+                  onStart={() => {
+                    const s = couple.ongoing!;
+                    if (!s.me.step || s.me.step === 'S0') couple.beginMyPart(s.conversation_id as number, s.session_id, s.event_title);
+                    else resumeConversation(s.conversation_id as number);
+                  }}
+                />
+              )}
               <OnboardingScreen
                 onComplete={handleOnboardingComplete}
                 gender={userGender}

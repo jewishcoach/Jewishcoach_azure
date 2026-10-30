@@ -372,6 +372,44 @@ def _resolve_v3_tool_call(prev_step: str, state: Dict[str, Any], from_tool_submi
     return None
 
 
+# Resume: cards live in the client, not in the saved history — a fresh window showed only the coach's lead-in
+# ("עכשיו נבדוק יחד מה הפער…") with nothing to answer (pilot couple, Oct 30). The step's card comes back while its
+# data is still missing and the coach's last message is a statement; a question there is answered in the chat.
+_RESUME_CARDS = {
+    "S2": ("event_form", "event_description"),
+    "S3": ("emotion_selector", "emotions"),
+    "S5": ("action_field", "action_actual"),
+    "S6": ("comparison_card", "action_desired"),
+    "S7": ("gap_card", "gap_name"),
+    "S9": ("sentence_builder", "paradigm"),
+    "S11": ("balance_scale", "stance.gains"),
+    "S13": ("declaration_card", "renewal_belief"),
+    "S15": ("commitment_card", "commitment"),
+}
+
+
+def pending_card_on_resume(state: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    if int(state.get("ux_version", 2) or 2) < 3:
+        return None
+    from .safety_check import is_safety_message
+    from .partner_safety import is_partner_safety_message
+    last_coach = next((m.get("content") or "" for m in reversed(state.get("messages") or [])
+                       if m.get("sender") == "coach"), "")
+    if not last_coach or is_safety_message(last_coach) or is_partner_safety_message(last_coach):
+        return None
+    step = state.get("current_step")
+    cd = state.get("collected_data") or {}
+    asks = last_coach.rstrip().endswith("?")
+    if step == "S5" and cd.get("action_actual"):
+        return None if asks else _build_v3_tool_call("matzui_summary", state)
+    entry = _RESUME_CARDS.get(step)
+    if not entry or (asks and step != "S2"):  # S2: the event card is the only way into the process
+        return None
+    tool, key = entry
+    filled = (cd.get("stance") or {}).get("gains") if key == "stance.gains" else cd.get(key)
+    return None if filled else _build_v3_tool_call(tool, state)
+
+
 def resolve_post_turn_tool_call(
     prev_step: str,
     state: Dict[str, Any],

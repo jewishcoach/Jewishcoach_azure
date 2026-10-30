@@ -209,7 +209,14 @@ def accept_invite(
 @router.get("/sessions")
 def list_sessions(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     members = db.query(CoupleMember).filter(CoupleMember.user_id == user.id).order_by(CoupleMember.id.desc()).all()
-    return [cs.status_for(m) for m in members]
+    steps = dict(db.query(Conversation.id, Conversation.current_phase).filter(
+        Conversation.id.in_([m.conversation_id for m in members if m.conversation_id])).all())
+    out = []
+    for m in members:
+        st = cs.status_for(m)
+        st["me"]["step"] = steps.get(m.conversation_id)  # "S0" = the member's part never started
+        out.append(st)
+    return out
 
 
 @router.get("/sessions/{session_id}")

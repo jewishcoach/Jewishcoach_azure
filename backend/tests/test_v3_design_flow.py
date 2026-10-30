@@ -1093,3 +1093,25 @@ def test_s15_result_naming_the_partner_depends_on_others():
     assert _result_issue("אדבר בשקט פעמיים בשבוע כדי שאיתי יקשיב", names) == "others"
     # a condition on the partner, then the client's own step — in his hands
     assert _result_issue("בפעם הבאה שאיתי ידבר בטון חריף, אסביר בשקט שאני צריך זמן, שלוש פעמים החודש", names) == ""
+
+
+def test_resume_brings_back_the_card_the_coach_was_waiting_for():
+    from app.bsd_v2.stage_tool_triggers import pending_card_on_resume
+
+    def state(step, coach, **cd):
+        return {"ux_version": 3, "current_step": step, "collected_data": cd,
+                "messages": [{"sender": "user", "content": "x"}, {"sender": "coach", "content": coach}]}
+
+    # pilot Oct 30: after the רצוי card the coach announced the gap — a fresh window showed no card
+    lead_in = "באותו רגע היית רוצה להרגיש רוגע. עכשיו נבדוק יחד מה הפער בין מה שהיה לבין מה שהיית רוצה."
+    assert pending_card_on_resume(state("S7", lead_in, action_desired="לחבק"))["tool_type"] == "gap_card"
+    # the card was submitted, the coach now asks the booklet question in the chat
+    assert pending_card_on_resume(state("S7", "האם את מאמינה שבפער הזה יש משהו טוב בשבילך?", gap_name="כבוד")) is None
+    assert pending_card_on_resume(state("S7", lead_in, gap_name="כבוד")) is None
+    # a question is answered in the chat — except the event card, the only way into the process
+    assert pending_card_on_resume(state("S6", "מה היית רוצה?")) is None
+    assert pending_card_on_resume(state("S2", "מה בדיוק קרה שם?"))["tool_type"] == "event_form"
+    assert pending_card_on_resume(state("S5", "זו התגובה שלך באותו רגע.", action_actual="צעקתי"))["tool_type"] == "matzui_summary"
+    assert pending_card_on_resume(state("S11", "עכשיו נבדוק מה העמדה נותנת לך.", stance={"gains": []}))["tool_type"] == "balance_scale"
+    assert pending_card_on_resume(state("S4", "מה עבר לך בראש?")) is None  # S4 has no card
+    assert pending_card_on_resume({**state("S7", lead_in), "ux_version": 2}) is None

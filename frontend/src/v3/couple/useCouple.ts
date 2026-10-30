@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   coupleApi, CoupleApiError, inviteLink,
   type Checkpoint, type CoupleStatus, type Gender, type InvitePreview, type SharedScreenData, type ShareLine,
@@ -39,11 +39,14 @@ export function useCouple({ getToken, isSignedIn, startConversationWith, goToSta
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [remind, setRemind] = useState<{ text: string; link: string } | null>(null);
+  // the conversation whose first message is on its way — a second start would send it twice
+  const startingRef = useRef<number | null>(null);
 
   // Pilot flag + an invite link that waited through sign-in
   useEffect(() => {
     if (!isSignedIn) return;
     coupleApi.enabled(getToken).then((r) => setCanStart(r.can_start)).catch(() => setCanStart(false));
+    coupleApi.sessions(getToken).then(setSessions).catch(() => {});  // a part that never started → start screen
     const token = pendingInvite.get();
     if (token) setView({ kind: 'join', token, preview: null });
   }, [isSignedIn, getToken]);
@@ -71,9 +74,15 @@ export function useCouple({ getToken, isSignedIn, startConversationWith, goToSta
   }, [getToken]);
 
   const beginMyPart = useCallback(async (conversationId: number, sessionId: number, title: string) => {
+    if (startingRef.current === conversationId) return;
+    startingRef.current = conversationId;
     setView(null);
     coupleApi.status(getToken, sessionId).then(setStatus).catch(() => {});
-    await startConversationWith(conversationId, firstMessage(title));
+    try {
+      await startConversationWith(conversationId, firstMessage(title));
+    } finally {
+      startingRef.current = null;
+    }
   }, [getToken, startConversationWith]);
 
   const join = useCallback(async (name: string, gender: Gender | null) => {
@@ -187,9 +196,12 @@ export function useCouple({ getToken, isSignedIn, startConversationWith, goToSta
     setStatus(mine);
     if (!mine || mine.status === 'cancelled' || mine.me.left) return;
     const n = stepNum(currentStep);
-    if (n === 11) await openCheckpoint('mirror', mine.session_id);
+    // opened before its first message (the app reloaded on the invite screen, e.g. back from WhatsApp): start it
+    if (n === 0 && mine.me.step === 'S0' && startingRef.current !== conversationId) {
+      await beginMyPart(conversationId, mine.session_id, mine.event_title);
+    } else if (n === 11) await openCheckpoint('mirror', mine.session_id);
     else if (n >= 15) await openCheckpoint('commitment', mine.session_id);
-  }, [getToken, openCheckpoint]);
+  }, [getToken, openCheckpoint, beginMyPart]);
 
   /** No open conversation (new conversation screen) — nothing couple-related applies */
   const clearStatus = useCallback(() => setStatus(null), []);
@@ -198,8 +210,11 @@ export function useCouple({ getToken, isSignedIn, startConversationWith, goToSta
     try { setSessions(await coupleApi.sessions(getToken)); } catch { /* */ }
   }, [getToken]);
 
+  // my ongoing couple process — offered on the start screen (to start my part, or to go back to it)
+  const ongoing = sessions.find((s) => s.conversation_id && s.status !== 'cancelled' && !s.me.left && !s.commitment_seen) ?? null;
+
   return {
-    canStart, view, status, sessions, busy, error, remind,
+    canStart, view, status, sessions, busy, error, remind, ongoing,
     openStart, close, start, beginMyPart, join, dismissJoin, continueJoined,
     openCheckpoint, approve, prepareRemind, afterShared, cancel, syncConversation, refreshSessions, clearStatus,
   };
