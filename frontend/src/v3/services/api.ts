@@ -152,3 +152,35 @@ export async function submitToolResponse(
   if (!res.ok) throw new Error(`Tool submit failed: ${res.status}`);
   return res.json();
 }
+
+// ---------------------------------------------------------------------------
+// Account — the client's own name and how to address them (PATCH /profile/me)
+// ---------------------------------------------------------------------------
+
+export interface MyProfile {
+  display_name: string | null;
+  email: string | null;
+  gender: 'male' | 'female' | null;
+}
+
+export async function fetchMyProfile(
+  getToken: (opts?: { skipCache?: boolean }) => Promise<string | null>,
+): Promise<MyProfile> {
+  const res = await fetchWithAuthRetry(`${getApiBase()}/profile/me`, getToken);
+  if (!res.ok) throw new Error(`profile ${res.status}`);
+  const d = await res.json();
+  return { display_name: d.display_name ?? null, email: d.email ?? null, gender: d.gender ?? null };
+}
+
+export async function updateMyProfile(
+  getToken: (opts?: { skipCache?: boolean }) => Promise<string | null>,
+  update: { display_name?: string; gender?: 'male' | 'female' },
+): Promise<MyProfile> {
+  const res = await fetchWithAuthRetry(`${getApiBase()}/profile/me`, getToken, {
+    method: 'PATCH',
+    body: JSON.stringify(update),
+  });
+  if (!res.ok) throw new Error(`profile update ${res.status}`);
+  const d = await res.json();
+  return { display_name: d.display_name ?? null, email: d.email ?? null, gender: d.gender ?? null };
+}

@@ -18,6 +18,7 @@ import { QuotaExceededModal } from '../components/QuotaExceededModal';
 // V3-specific screens
 import { ChatScreen } from './screens/ChatScreen';
 import { OnboardingScreen } from './screens/OnboardingScreen';
+import { AccountModal } from './components/AccountModal';
 
 // Couple process (shared event, each partner in a private conversation, two shared screens)
 import './couple/pendingInvite';
@@ -39,6 +40,7 @@ export function V3App({ language = 'he' }: V3AppProps) {
   const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [loadingConversations, setLoadingConversations] = useState(false);
   const [userGender, setUserGender] = useState<string | null>(null);
+  const [accountOpen, setAccountOpen] = useState(false);
 
   useEffect(() => {
     if (isSignedIn) {
@@ -228,6 +230,18 @@ export function V3App({ language = 'he' }: V3AppProps) {
                 </button>
               )}
             </div>
+            <div className="px-3">
+              <button
+                type="button"
+                onClick={() => { setAccountOpen(true); setMenuOpen(false); }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-colors text-right"
+              >
+                <User size={18} className="text-[#03ffe6] flex-shrink-0" />
+                <span className="text-sm text-white" style={{ fontFamily: "'Heebo', sans-serif" }}>
+                  {isHe ? 'החשבון שלי' : 'My account'}
+                </span>
+              </button>
+            </div>
             {flowState.phase === 'chatting' && (
               <div className="px-3">
                 <button
@@ -313,6 +327,12 @@ export function V3App({ language = 'he' }: V3AppProps) {
       )}
 
       {/* Modals */}
+      <AccountModal
+        open={accountOpen}
+        onClose={() => setAccountOpen(false)}
+        getToken={getToken}
+        onSaved={(p) => setUserGender(p.gender)}
+      />
       <PauseModal
         isOpen={showPauseModal}
         stageNumber={stageNumber}
