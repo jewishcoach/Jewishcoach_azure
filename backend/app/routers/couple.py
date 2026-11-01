@@ -48,8 +48,9 @@ class ApproveRequest(BaseModel):
 
 
 def can_open_process(user: User) -> bool:
-    """Pilot: opening a process is limited to COUPLE_PILOT_EMAILS ("*" = everyone) and admins; joining by link is open."""
-    allowed = os.getenv("COUPLE_PILOT_EMAILS", "").strip()
+    """Open to everyone (user, Nov 1). COUPLE_PILOT_EMAILS set to a comma list limits opening a process to those
+    emails and admins again; joining by link is always open."""
+    allowed = os.getenv("COUPLE_PILOT_EMAILS", "*").strip() or "*"
     if allowed == "*" or user.is_admin:
         return True
     emails = {e.strip().lower() for e in allowed.split(",") if e.strip()}

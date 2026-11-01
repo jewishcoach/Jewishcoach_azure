@@ -111,6 +111,12 @@ def _join(ctx, token, name="איתי", gender="male"):
     return b, r.json()
 
 
+def test_open_to_everyone_unless_a_pilot_list_is_set(ctx, monkeypatch):
+    monkeypatch.delenv("COUPLE_PILOT_EMAILS", raising=False)
+    anyone = ctx.user()
+    assert ctx.as_(anyone).get("/api/couple/enabled").json() == {"can_start": True}
+
+
 def test_pilot_gate(ctx):
     outsider = ctx.user()
     assert ctx.as_(outsider).get("/api/couple/enabled").json() == {"can_start": False}
