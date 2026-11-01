@@ -45,6 +45,7 @@ from ..bsd_v2.stage_intro_generator import (
     generate_stage_summary,
     format_intro_answers_as_context,
 )
+from ..bsd.llm import get_azure_chat_llm_4o_mini
 from ..database import SessionLocal, get_db, release_db_connection
 from ..limiter import limiter
 from ..models import User, Conversation as ConversationModel, Message
@@ -53,6 +54,19 @@ from ..services.couple_service import apply_safety_hold, clamp_before_mirror, wa
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
+timing_log = logging.getLogger("app.timing")  # printed in prod (main.py) — milliseconds and steps, no user text
+
+
+def _turn_timing(request: Request, api_start: float, marks: Dict[str, float]) -> Dict[str, int]:
+    """Milliseconds per part of a chat turn. "pre" = auth + quota + rate limit (before the endpoint body)."""
+    arrived = getattr(request.state, "arrived_at", None)
+    out = {"pre": int((api_start - arrived) * 1000)} if arrived else {}
+    prev = api_start
+    for name, t in marks.items():
+        out[name] = int((t - prev) * 1000)
+        prev = t
+    out["total"] = int((prev - (arrived or api_start)) * 1000)
+    return out
 
 router = APIRouter(prefix="/api/chat/v2", tags=["BSD V2"])
 
@@ -333,6 +347,21 @@ async def warmup_cache(request: Request, language: str = "he"):
     return {"status": "warmup_started", "language": lang}
 
 
+@router.post("/warm")
+@limiter.limit("10/minute")
+async def warm_connections(request: Request, db: Session = Depends(get_db),
+                           current_user: User = Depends(get_current_user)):
+    """V3 onboarding opens → warm what the first coach turn needs on this worker, while the client answers:
+    the user lookup (DB + Clerk), a DB connection (the DB is in another region — a new connection is several round
+    trips), and the connection to Azure OpenAI (kept alive 4 minutes, bsd/llm.py). No model call, no tokens."""
+    release_db_connection(db)
+    try:
+        await asyncio.wait_for(get_azure_chat_llm_4o_mini().root_async_client.models.list(), timeout=5)
+    except Exception as e:  # best effort
+        logger.debug("[BSD V2 API] warm: azure connection failed: %s", type(e).__name__)
+    return {"ok": True}
+
+
 @router.post("/station-intent")
 def station_intent_v2(
     body: StationIntentRequest,
@@ -386,6 +415,8 @@ async def send_message_v2(
     try:
         safe_message = sanitize_chat_message(body.message)
         api_start = time.time()
+        api_start_pc = time.perf_counter()
+        marks: Dict[str, float] = {}
 
         logger.debug(
             "[BSD V2 API] request user=%s conv=%s msg_len=%s",
@@ -450,6 +481,8 @@ async def send_message_v2(
                 safety=safety_result.level,
             )
 
+        marks["load"] = time.perf_counter()  # ownership + state load + safety screen
+        first_turn = not last_msgs
         # Snapshot previous step BEFORE any V3 skip or handle_conversation.
         prev_step = state.get("current_step", "S0")
 
@@ -484,6 +517,8 @@ async def send_message_v2(
             conversation_id=body.conversation_id,
         )
         t4 = time.time()
+        marks["coach"] = time.perf_counter()
+        llm_ms = updated_state.pop("_llm_ms", None)
         logger.debug("[PERF API] handle_conversation: %.0fms", (t4 - t3) * 1000)
 
         station_checkpoint = updated_state.pop("last_station_checkpoint_api", None)
@@ -568,7 +603,11 @@ async def send_message_v2(
             timestamp=utc_now()
         )
         db.add(user_msg)
-        coach_meta: Dict[str, Any] = {"phase": updated_state["current_step"]}
+        marks["post"] = time.perf_counter()  # gates, cards, stage summary
+        timing = _turn_timing(request, api_start_pc, marks)
+        if llm_ms is not None:
+            timing["llm"] = llm_ms  # part of "coach"
+        coach_meta: Dict[str, Any] = {"phase": updated_state["current_step"], "timing_ms": timing}
         if station_checkpoint:
             coach_meta["station_checkpoint"] = station_checkpoint
         coach_msg = Message(
@@ -582,6 +621,9 @@ async def send_message_v2(
 
         db.commit()
         t6 = time.time()
+        timing_log.info("[Timing] turn step=%s->%s first=%s %s commit=%d", prev_step, updated_state["current_step"],
+                        first_turn,
+                        " ".join(f"{k}={v}" for k, v in timing.items()), int((t6 - t5) * 1000))
         logger.debug("[PERF API] Atomic commit (state + messages): %.0fms", (t6 - t5) * 1000)
 
         # Auto-title runs AFTER the atomic commit (non-critical, can fail independently)
@@ -1020,6 +1062,7 @@ async def submit_stage_intro_answers(
             conversation_id=body.conversation_id,
         )
         updated_state.pop("_stage_opening", None)
+        updated_state.pop("_llm_ms", None)
 
         # V3: resolve tool_call for the new stage opening
         ux_version = int(request.headers.get("x-ux-version", "2") or "2")

@@ -102,6 +102,10 @@ export function V3App({ language = 'he' }: V3AppProps) {
     else clearStatus();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only when the conversation changes, with its step at that moment
   }, [conversationId, syncConversation, clearStatus]);
+  // A conversation opened during an onboarding the client left has no messages — not a conversation to return to
+  const listedConversations = conversations.filter(
+    (c) => c.message_count > 0 || couple.sessions.some((s) => s.conversation_id === c.id),
+  );
   const coupleActive = !!couple.status && couple.status.status !== 'cancelled' && !couple.status.me.left;
 
   useEffect(() => {
@@ -266,12 +270,12 @@ export function V3App({ language = 'he' }: V3AppProps) {
                   <div className="animate-spin w-5 h-5 border-2 border-[#03ffe6] border-t-transparent rounded-full" />
                 </div>
               )}
-              {!loadingConversations && conversations.length === 0 && (
+              {!loadingConversations && listedConversations.length === 0 && (
                 <p className="px-4 py-2 text-xs text-[rgba(255,255,255,0.4)]" style={{ fontFamily: "'Heebo', sans-serif" }}>
                   {isHe ? 'אין שיחות קודמות' : 'No conversations yet'}
                 </p>
               )}
-              {conversations.map((conv) => (
+              {listedConversations.map((conv) => (
                 <button
                   key={conv.id}
                   type="button"

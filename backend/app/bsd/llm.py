@@ -3,7 +3,9 @@ from __future__ import annotations
 import os
 from functools import lru_cache
 
+import httpx
 from langchain_openai import AzureChatOpenAI
+from openai import DefaultAsyncHttpxClient
 
 """
 LLM configuration for BSD coaching system.
@@ -20,6 +22,16 @@ TEMPERATURE_MAP = {
     "talker": 0.2,     # Low for JSON stability; still natural for coaching
     "judge": 0.15,     # Cold for quality evaluation
 }
+
+
+@lru_cache(maxsize=1)
+def _async_http_client() -> httpx.AsyncClient:
+    """One connection pool for the Azure calls in this process. httpx closes an idle connection after 5s by default,
+    so almost every coach turn (the client types for longer than that) paid a new TLS handshake (~0.7s measured);
+    4 minutes stays under Azure's idle cutoff and keeps the connection opened by /warm alive through the onboarding."""
+    keepalive = float(os.getenv("AZURE_OPENAI_KEEPALIVE_SECONDS", "240"))
+    return DefaultAsyncHttpxClient(limits=httpx.Limits(max_connections=1000, max_keepalive_connections=100,
+                                                       keepalive_expiry=keepalive))
 
 
 def _build_azure_llm(*, deployment: str, temperature: float = 0.2) -> AzureChatOpenAI:
@@ -44,6 +56,7 @@ def _build_azure_llm(*, deployment: str, temperature: float = 0.2) -> AzureChatO
         max_tokens=max_tokens,
         request_timeout=timeout_seconds,
         max_retries=max_retries,
+        http_async_client=_async_http_client(),
     )
 
 
@@ -118,6 +131,7 @@ def get_azure_chat_llm(*, purpose: str, deployment: str | None = None) -> AzureC
         temperature=temperature,
         request_timeout=timeout_seconds,
         max_retries=max_retries,
+        http_async_client=_async_http_client(),
     )
 
 

@@ -83,6 +83,15 @@ export async function sendMessageV3(
 // Stage transitions — same endpoints, V3 header
 // ---------------------------------------------------------------------------
 
+/** Onboarding on screen: the server opens its DB and Azure connections for the first coach turn (best effort). */
+export async function warmConnections(
+  getToken: (opts?: { skipCache?: boolean }) => Promise<string | null>,
+): Promise<void> {
+  try {
+    await fetchWithAuthRetry(`${getApiBase()}/chat/v2/warm`, getToken, { method: 'POST' });
+  } catch { /* best effort */ }
+}
+
 export async function fetchStageIntro(
   conversationId: number,
   targetMacroStage: string,

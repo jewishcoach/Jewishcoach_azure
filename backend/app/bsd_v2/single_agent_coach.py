@@ -4241,6 +4241,7 @@ async def handle_conversation(
         coach_message, suggestions, internal_state = await _call_llm_and_parse(
             state, user_message, language, user_gender
         )
+        state["_llm_ms"] = int((time.time() - start_time) * 1000)  # the API's turn timing pops it
 
         old_step = state["current_step"]
         llm = get_azure_chat_llm_4o_mini()

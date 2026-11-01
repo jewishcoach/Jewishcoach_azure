@@ -367,6 +367,7 @@ async def submit_tool_response(
                         for o in pending:
                             db.add(o)
 
+                updated_state.pop("_llm_ms", None)
                 current_step = updated_state.get("current_step")
                 saturation_score = float(updated_state.get("saturation_score", 0.0))
 

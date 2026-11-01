@@ -30,6 +30,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import logging
+import time
 
 _main_log = logging.getLogger(__name__)
 
@@ -45,13 +46,15 @@ def _configure_app_logging() -> None:
     # Under gunicorn no handler reaches the app loggers, so nothing above was ever written. The content-filter
     # events carry no user text (filter names only) — they get their own stdout handler, so App Service logs
     # show how often Azure blocks a coach call. (The coach's INFO lines quote user messages — not enabled.)
-    cf = logging.getLogger("app.azure_openai_content_filter")
-    if not cf.handlers:
-        h = logging.StreamHandler()
-        h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
-        cf.addHandler(h)
-        cf.setLevel(logging.WARNING)
-        cf.propagate = False
+    # Same for the per-turn timings (milliseconds and step names only).
+    for name, lvl in (("app.azure_openai_content_filter", logging.WARNING), ("app.timing", logging.INFO)):
+        lg = logging.getLogger(name)
+        if not lg.handlers:
+            h = logging.StreamHandler()
+            h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
+            lg.addHandler(h)
+            lg.setLevel(lvl)
+            lg.propagate = False
 
 
 _configure_app_logging()
@@ -101,6 +104,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 @app.middleware("http")
 async def security_headers_middleware(request: Request, call_next):
     """Reduce browser-side abuse (clickjacking, MIME sniffing); voice keeps mic on same origin."""
+    request.state.arrived_at = time.perf_counter()  # the turn timings count auth + quota from here
     response = await call_next(request)
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "DENY")

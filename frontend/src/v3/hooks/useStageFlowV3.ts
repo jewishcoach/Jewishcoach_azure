@@ -13,6 +13,7 @@ import { stepToMacroStage } from '../types';
 import {
   createConversation,
   fetchStageIntro,
+  warmConnections,
   listConversations,
   loadConversation,
   sendMessageV3,
@@ -89,6 +90,8 @@ export function useStageFlowV3(language: string = 'he') {
   // Next stage's intro questions, fetched in the background as soon as the stage ends (the LLM call takes
   // ~12-16s; the user is reading the closing message + summary meanwhile)
   const introPrefetchRef = useRef<{ stageId: string; promise: Promise<StageIntroPayload | null> } | null>(null);
+  // The conversation opened while the client answers the onboarding (saves a round trip after "start")
+  const preparedConvRef = useRef<Promise<number | null> | null>(null);
 
   // ---------------------------------------------------------------------------
   // Send chat message
@@ -327,8 +330,20 @@ export function useStageFlowV3(language: string = 'he') {
       domain ? `בתחום: ${domain}` : '',
       freeText?.trim() ? freeText.trim() : '',
     ].filter(Boolean);
-    return openConversation(() => createConversation(language, getToken), parts.join('. ') || 'אני רוצה להתחיל');
+    const conversationForOnboarding = async () => {
+      const prepared = preparedConvRef.current ? await preparedConvRef.current : null;
+      preparedConvRef.current = null;
+      return prepared ?? createConversation(language, getToken);
+    };
+    return openConversation(conversationForOnboarding, parts.join('. ') || 'אני רוצה להתחיל');
   }, [openConversation, language, getToken]);
+
+  // Onboarding on screen → warm the server's connections and open the conversation while the client answers
+  useEffect(() => {
+    if (flowState.phase !== 'onboarding' || !isSignedIn) return;
+    void warmConnections(getToken);
+    if (!preparedConvRef.current) preparedConvRef.current = createConversation(language, getToken).catch(() => null);
+  }, [flowState.phase, isSignedIn, language, getToken]);
 
   // Couple process: the member's conversation already exists (created with the shared event)
   const startConversationWith = useCallback((convId: number, contextMessage: string) => {
