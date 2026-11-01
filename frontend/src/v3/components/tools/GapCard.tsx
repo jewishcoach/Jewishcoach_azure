@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CardShell } from '../shared/CardShell';
+import { SubmitButton } from '../shared/SubmitButton';
 import { SliderInput } from '../shared/SliderInput';
 import { useG } from '../shared/gender';
 
@@ -15,7 +16,7 @@ export function GapCard({ onSubmit, isSubmitting }: GapCardProps) {
   const [gapName, setGapName] = useState('');
   const [gapScore, setGapScore] = useState(5);
 
-  const canSubmit = gapName.trim().length > 0;
+  const missing = gapName.trim() ? null : g('כדי להמשיך — תן שם לפער', 'כדי להמשיך — תני שם לפער');
 
   const handleSubmit = () => {
     onSubmit('gap_card', { gap_name: gapName.trim(), gap_score: gapScore });
@@ -36,6 +37,7 @@ export function GapCard({ onSubmit, isSubmitting }: GapCardProps) {
             {g('איך תקרא לפער הזה?', 'איך תקראי לפער הזה?')} (1-2 מילים)
           </label>
           <input
+            id="gap-name"
             type="text"
             value={gapName}
             onChange={(e) => setGapName(e.target.value)}
@@ -56,17 +58,17 @@ export function GapCard({ onSubmit, isSubmitting }: GapCardProps) {
 
         {/* Submit */}
         <div className="flex justify-center pt-2">
-          <button
-            type="button"
-            disabled={!canSubmit || isSubmitting}
-            onClick={handleSubmit}
+          <SubmitButton
+            label="המשך"
+            missing={missing}
+            target={() => document.getElementById('gap-name')}
+            isSubmitting={isSubmitting}
+            onSubmit={handleSubmit}
             className="w-full max-w-[300px] h-[48px] rounded-xl bg-[#9747ff] text-white text-sm font-medium
-                       hover:bg-[#8035e6] transition-colors disabled:opacity-50
+                       hover:bg-[#8035e6] transition-colors
                        drop-shadow-[0px_4px_2px_rgba(0,0,0,0.08)]"
             style={{ fontFamily: "'Heebo', sans-serif" }}
-          >
-            {isSubmitting ? '...' : 'המשך'}
-          </button>
+          />
         </div>
       </div>
     </CardShell>

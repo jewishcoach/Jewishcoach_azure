@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CardShell } from '../shared/CardShell';
+import { SubmitButton } from '../shared/SubmitButton';
 import { useG } from '../shared/gender';
 import { AutoTextarea } from '../shared/AutoTextarea';
 
@@ -19,7 +20,10 @@ export function DeclarationCard({ data, onSubmit, isSubmitting }: DeclarationCar
   const [nextAction, setNextAction] = useState('');
   const [feelsRight, setFeelsRight] = useState<boolean | null>(null);
 
-  const canSubmit = renewal.trim().length > 0 && nextAction.trim().length > 0 && feelsRight !== null;
+  const missing = !renewal.trim() ? { text: g('חסר: העמדה החדשה שאתה בוחר', 'חסר: העמדה החדשה שאת בוחרת'), id: 'decl-renewal' }
+    : !nextAction.trim() ? { text: g('חסר: מה תעשה אחרת', 'חסר: מה תעשי אחרת'), id: 'decl-next' }
+    : feelsRight === null ? { text: g('סמן אם זה מרגיש כמוך', 'סמני אם זה מרגיש כמוך'), id: 'decl-feels' }
+    : null;
 
   const handleSubmit = () => {
     onSubmit('declaration_card', {
@@ -73,6 +77,7 @@ export function DeclarationCard({ data, onSubmit, isSubmitting }: DeclarationCar
             {g('העמדה החדשה שאני בוחר — אני מאמין ש…', 'העמדה החדשה שאני בוחרת — אני מאמינה ש…')}
           </label>
           <AutoTextarea
+            id="decl-renewal"
             value={renewal}
             onChange={(e) => setRenewal(e.target.value)}
             placeholder="תפיסה חדשה, במשפט קצר ובמילים שלך"
@@ -93,6 +98,7 @@ export function DeclarationCard({ data, onSubmit, isSubmitting }: DeclarationCar
             {g('מה תעשה אחרת בפעם הבאה?', 'מה תעשי אחרת בפעם הבאה?')}
           </label>
           <AutoTextarea
+            id="decl-next"
             value={nextAction}
             onChange={(e) => setNextAction(e.target.value)}
             placeholder={g('תאר פעולה קונקרטית', 'תארי פעולה קונקרטית')}
@@ -105,7 +111,7 @@ export function DeclarationCard({ data, onSubmit, isSubmitting }: DeclarationCar
         </div>
 
         {/* Joy check */}
-        <div className="space-y-2">
+        <div id="decl-feels" tabIndex={-1} className="space-y-2 rounded-xl outline-none">
           <p
             className="text-sm font-medium text-[#2d4658] text-right"
             style={{ fontFamily: "'Heebo', sans-serif" }}
@@ -146,20 +152,16 @@ export function DeclarationCard({ data, onSubmit, isSubmitting }: DeclarationCar
 
         {/* Submit */}
         <div className="flex justify-center pt-2">
-          <button
-            type="button"
-            disabled={!canSubmit || isSubmitting}
-            onClick={handleSubmit}
-            className={`
-              w-full max-w-[300px] h-[48px] rounded-xl text-white text-sm font-medium
-              transition-colors disabled:opacity-50
-              drop-shadow-[0px_4px_2px_rgba(0,0,0,0.08)]
-              bg-[#9747ff] hover:bg-[#8035e6]
-            `}
+          <SubmitButton
+            label={feelsRight ? 'זו הבחירה שלי' : g('שלח בכל זאת', 'שלחי בכל זאת')}
+            missing={missing?.text}
+            target={() => (missing ? document.getElementById(missing.id) : null)}
+            isSubmitting={isSubmitting}
+            onSubmit={handleSubmit}
+            className="w-full max-w-[300px] h-[48px] rounded-xl text-white text-sm font-medium transition-colors
+                       drop-shadow-[0px_4px_2px_rgba(0,0,0,0.08)] bg-[#9747ff] hover:bg-[#8035e6]"
             style={{ fontFamily: "'Heebo', sans-serif" }}
-          >
-            {isSubmitting ? '...' : feelsRight ? 'זו הבחירה שלי' : 'שלח בכל זאת'}
-          </button>
+          />
         </div>
       </div>
     </CardShell>

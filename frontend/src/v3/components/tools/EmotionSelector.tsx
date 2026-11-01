@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { CardShell } from '../shared/CardShell';
 import { ChipGroup } from '../shared/ChipGroup';
 import { useG } from '../shared/gender';
+import { SubmitButton } from '../shared/SubmitButton';
 
 const ALL_EMOTIONS = [
   'כעס', 'עצב', 'חרדה', 'תסכול', 'בושה', 'פחד',
@@ -32,7 +33,9 @@ export function EmotionSelector({ data, onSubmit, isSubmitting }: EmotionSelecto
     );
   };
 
-  const canSubmit = selected.length >= 2;
+  const chipsRef = useRef<HTMLDivElement>(null);
+  const missing = selected.length >= 2 ? null
+    : selected.length === 1 ? g('בחר עוד רגש אחד', 'בחרי עוד רגש אחד') : g('בחר לפחות 2 רגשות', 'בחרי לפחות 2 רגשות');
 
   return (
     <CardShell
@@ -40,6 +43,7 @@ export function EmotionSelector({ data, onSubmit, isSubmitting }: EmotionSelecto
       instructionHe={g('בחר לפחות 2 רגשות. אפשר גם להוסיף רגש משלך.', 'בחרי לפחות 2 רגשות. אפשר גם להוסיף רגש משלך.')}
     >
       <div className="space-y-5">
+        <div ref={chipsRef} tabIndex={-1} className="rounded-xl outline-none">
         <ChipGroup
           options={EMOTION_OPTIONS}
           selected={selected}
@@ -49,6 +53,7 @@ export function EmotionSelector({ data, onSubmit, isSubmitting }: EmotionSelecto
           allowCustom
           customPlaceholder="רגש אחר..."
         />
+        </div>
 
         {selected.length > 0 && (
           <div className="text-right">
@@ -64,17 +69,17 @@ export function EmotionSelector({ data, onSubmit, isSubmitting }: EmotionSelecto
         )}
 
         <div className="flex justify-center pt-1">
-          <button
-            type="button"
-            disabled={!canSubmit || isSubmitting}
-            onClick={() => onSubmit('emotion_selector', { emotions: selected })}
+          <SubmitButton
+            label="המשך"
+            missing={missing}
+            target={() => chipsRef.current}
+            isSubmitting={isSubmitting}
+            onSubmit={() => onSubmit('emotion_selector', { emotions: selected })}
             className="w-full max-w-[300px] h-[48px] rounded-xl bg-[#9747ff] text-white text-sm font-medium
-                       hover:bg-[#8035e6] transition-colors disabled:opacity-50
+                       hover:bg-[#8035e6] transition-colors
                        drop-shadow-[0px_4px_2px_rgba(0,0,0,0.08)]"
             style={{ fontFamily: "'Heebo', sans-serif" }}
-          >
-            {isSubmitting ? '...' : 'המשך'}
-          </button>
+          />
         </div>
       </div>
     </CardShell>

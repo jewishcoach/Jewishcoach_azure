@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CardShell } from '../shared/CardShell';
+import { SubmitButton } from '../shared/SubmitButton';
 
 interface ComparisonCardProps {
   data?: {
@@ -16,7 +17,10 @@ export function ComparisonCard({ data, onSubmit, isSubmitting }: ComparisonCardP
   const [thoughtDesired, setThoughtDesired] = useState('');
   const [actionDesired, setActionDesired] = useState('');
 
-  const canSubmit = emotionDesired.trim() && thoughtDesired.trim() && actionDesired.trim();
+  const missing = !emotionDesired.trim() ? { text: 'חסר: מה היית רוצה להרגיש', id: 'cmp-emotion' }
+    : !thoughtDesired.trim() ? { text: 'חסר: מה היית רוצה לומר לעצמך', id: 'cmp-thought' }
+    : !actionDesired.trim() ? { text: 'חסר: מה היית רוצה לעשות', id: 'cmp-action' }
+    : null;
 
   const matzuiEmotions = data?.emotions?.join(', ') || '—';
   const matzuiThought = data?.thought || '—';
@@ -52,18 +56,21 @@ export function ComparisonCard({ data, onSubmit, isSubmitting }: ComparisonCardP
               מה שהייתי רוצה (רצוי)
             </h4>
             <EditableField
+              id="cmp-emotion"
               label="הייתי רוצה להרגיש"
               value={emotionDesired}
               onChange={setEmotionDesired}
               placeholder="איזה רגש?"
             />
             <EditableField
+              id="cmp-thought"
               label="הייתי רוצה לומר לעצמי"
               value={thoughtDesired}
               onChange={setThoughtDesired}
               placeholder="איזו אמירה פנימית?"
             />
             <EditableField
+              id="cmp-action"
               label="הייתי רוצה לעשות"
               value={actionDesired}
               onChange={setActionDesired}
@@ -73,21 +80,21 @@ export function ComparisonCard({ data, onSubmit, isSubmitting }: ComparisonCardP
         </div>
 
         <div className="flex justify-center pt-2">
-          <button
-            type="button"
-            disabled={!canSubmit || isSubmitting}
-            onClick={() => onSubmit('comparison_card', {
+          <SubmitButton
+            label="המשך"
+            missing={missing?.text}
+            target={() => (missing ? document.getElementById(missing.id) : null)}
+            isSubmitting={isSubmitting}
+            onSubmit={() => onSubmit('comparison_card', {
               emotion_desired: emotionDesired.trim(),
               thought_desired: thoughtDesired.trim(),
               action_desired: actionDesired.trim(),
             })}
             className="w-full max-w-[300px] h-[48px] rounded-xl bg-[#9747ff] text-white text-sm font-medium
-                       hover:bg-[#8035e6] transition-colors disabled:opacity-50
+                       hover:bg-[#8035e6] transition-colors
                        drop-shadow-[0px_4px_2px_rgba(0,0,0,0.08)]"
             style={{ fontFamily: "'Heebo', sans-serif" }}
-          >
-            {isSubmitting ? '...' : 'המשך'}
-          </button>
+          />
         </div>
       </div>
     </CardShell>
@@ -114,11 +121,13 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
 }
 
 function EditableField({
+  id,
   label,
   value,
   onChange,
   placeholder,
 }: {
+  id: string;
   label: string;
   value: string;
   onChange: (v: string) => void;
@@ -133,6 +142,7 @@ function EditableField({
         {label}
       </p>
       <input
+        id={id}
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}

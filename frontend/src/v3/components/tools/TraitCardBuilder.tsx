@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { TagInput } from '../shared/TagInput';
 import { useG } from '../shared/gender';
+import { SubmitButton } from '../shared/SubmitButton';
 
 // כרטיס כמ"ז (S12, spec "כמ"ז בתוך אימון 3+3"). Screen 1: the client builds 6 source + 6 nature — from the traits
 // that came up in his answers (each shown with the words it came from), from the bank, or in his own words
@@ -66,7 +67,18 @@ export function TraitCardBuilder({ data, onSubmit, isSubmitting }: TraitCardBuil
     return { ...prev, source: cur.length >= MAX_EVENT.source ? [cur[1], value] : [...cur, value] };
   });
 
-  const eventReady = eventPick.source.length >= 1 && eventPick.nature.length === 1;
+  const eventMissing = eventPick.source.length === 0 ? { text: g('בחר לפחות כוח מקור אחד', 'בחרי לפחות כוח מקור אחד'), id: 'tcb-event-source' }
+    : eventPick.nature.length === 0 ? { text: g('בחר כוח טבע אחד', 'בחרי כוח טבע אחד'), id: 'tcb-event-nature' }
+    : null;
+  const eventReady = !eventMissing;
+
+  // switching screens kept the scroll position — the new screen appeared without its heading (as in the 3+3 card)
+  const topRef = useRef<HTMLDivElement>(null);
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) { firstRender.current = false; return; }
+    topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [screen]);
 
   const submit = () => {
     if (!ready || !eventReady || isSubmitting) return;
@@ -78,7 +90,7 @@ export function TraitCardBuilder({ data, onSubmit, isSubmitting }: TraitCardBuil
 
   if (screen === 'event') {
     return (
-      <div className="space-y-5" dir="rtl">
+      <div className="space-y-5 scroll-mt-24" dir="rtl" ref={topRef}>
         <div className="text-center space-y-1">
           <h3 className="text-[26px] text-[#2d4658]" style={{ fontFamily: "'Karantina', cursive", lineHeight: '1.3' }}>
             זהו כרטיס הכמ"ז שלך
@@ -88,7 +100,7 @@ export function TraitCardBuilder({ data, onSubmit, isSubmitting }: TraitCardBuil
           </p>
         </div>
         {(['source', 'nature'] as Side[]).map((side) => (
-          <div key={side} className="rounded-xl p-3 space-y-2" style={{ background: SIDE_UI[side].soft }}>
+          <div key={side} id={`tcb-event-${side}`} tabIndex={-1} className="rounded-xl p-3 space-y-2 outline-none" style={{ background: SIDE_UI[side].soft }}>
             <p className="text-sm font-semibold" style={{ ...HEEBO, color: SIDE_UI[side].accent }}>
               {SIDE_UI[side].title} — {side === 'source' ? 'עד 2' : 'אחד'}
             </p>
@@ -111,11 +123,15 @@ export function TraitCardBuilder({ data, onSubmit, isSubmitting }: TraitCardBuil
             className="h-[53px] px-5 whitespace-nowrap shrink-0 rounded-xl border border-[#e0ddd8] text-[#2d4658] text-sm hover:bg-[#f6f4f0]" style={HEEBO}>
             חזרה לכרטיס
           </button>
-          <button type="button" disabled={!eventReady || isSubmitting} onClick={submit}
+          <SubmitButton
+            label="זה הכרטיס שלי"
+            missing={eventMissing?.text}
+            target={() => (eventMissing ? document.getElementById(eventMissing.id) : null)}
+            isSubmitting={isSubmitting}
+            onSubmit={submit}
             className="w-full max-w-[300px] h-[53px] rounded-xl text-white text-base bg-[#9747ff] hover:bg-[#8035e6]
-                       transition-all disabled:opacity-40 drop-shadow-[0px_8px_2.9px_rgba(0,0,0,0.12)]" style={HEEBO}>
-            {isSubmitting ? '...' : 'זה הכרטיס שלי'}
-          </button>
+                       transition-all drop-shadow-[0px_8px_2.9px_rgba(0,0,0,0.12)]" style={HEEBO}
+          />
         </div>
       </div>
     );
@@ -126,7 +142,7 @@ export function TraitCardBuilder({ data, onSubmit, isSubmitting }: TraitCardBuil
     .map(([s, n]) => `${n} ${s === 'source' ? 'מקור' : 'טבע'}`).join(' ו-');
 
   return (
-    <div className="space-y-5" dir="rtl">
+    <div className="space-y-5 scroll-mt-24" dir="rtl" ref={topRef}>
       <div className="text-center">
         <h3 className="text-[28px] text-[#2d4658]" style={{ fontFamily: "'Karantina', cursive", lineHeight: '1.3' }}>
           כרטיס כמ"ז — מקור וטבע
@@ -152,11 +168,14 @@ export function TraitCardBuilder({ data, onSubmit, isSubmitting }: TraitCardBuil
       </div>
 
       <div className="flex justify-center pt-2">
-        <button type="button" disabled={!ready} onClick={goToEvent}
+        <SubmitButton
+          label="המשך לבחירה לאירוע"
+          missing={ready ? null : `צריך עוד ${missing}`}
+          target={() => document.getElementById(`tcb-${chosen.source.length < PER_SIDE ? 'source' : 'nature'}`)}
+          onSubmit={goToEvent}
           className="w-full max-w-[300px] h-[53px] rounded-xl text-white text-base bg-[#9747ff] hover:bg-[#8035e6]
-                     transition-all disabled:opacity-40 drop-shadow-[0px_8px_2.9px_rgba(0,0,0,0.12)]" style={HEEBO}>
-          {ready ? 'המשך' : `צריך עוד ${missing}`}
-        </button>
+                     transition-all drop-shadow-[0px_8px_2.9px_rgba(0,0,0,0.12)]" style={HEEBO}
+        />
       </div>
     </div>
   );
@@ -195,7 +214,7 @@ function ForceColumn({ side, bank, found, legacy, chosen, labelOf, onToggle }: F
   };
 
   return (
-    <div className="rounded-xl overflow-hidden" style={{ background: ui.soft }}>
+    <div id={`tcb-${side}`} tabIndex={-1} className="rounded-xl overflow-hidden outline-none" style={{ background: ui.soft }}>
       <div className="px-4 py-3 flex items-start justify-between">
         <div>
           <h4 className="text-sm font-semibold" style={{ ...HEEBO, color: ui.accent }}>{ui.title}</h4>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CardShell } from '../shared/CardShell';
 import { useG } from '../shared/gender';
+import { SubmitButton } from '../shared/SubmitButton';
 
 interface EventFormProps {
   onSubmit: (toolType: string, data: { when: string; with_whom: string; what_happened: string }) => void;
@@ -13,7 +14,11 @@ export function EventForm({ onSubmit, isSubmitting }: EventFormProps) {
   const [withWhom, setWithWhom] = useState('');
   const [whatHappened, setWhatHappened] = useState('');
 
-  const canSubmit = when.trim() && withWhom.trim() && whatHappened.trim().length >= 20;
+  const missing = !when.trim() ? { text: 'חסר: מתי זה קרה', id: 'event-when' }
+    : !withWhom.trim() ? { text: 'חסר: עם מי', id: 'event-who' }
+    : whatHappened.trim().length < 20
+      ? { text: whatHappened.trim() ? 'עוד כמה מילים על מה שקרה' : 'חסר: מה קרה', id: 'event-what' }
+      : null;
 
   return (
     <CardShell
@@ -29,6 +34,7 @@ export function EventForm({ onSubmit, isSubmitting }: EventFormProps) {
             מתי זה קרה?
           </label>
           <input
+            id="event-when"
             type="text"
             value={when}
             onChange={(e) => setWhen(e.target.value)}
@@ -48,6 +54,7 @@ export function EventForm({ onSubmit, isSubmitting }: EventFormProps) {
             עם מי?
           </label>
           <input
+            id="event-who"
             type="text"
             value={withWhom}
             onChange={(e) => setWithWhom(e.target.value)}
@@ -67,6 +74,7 @@ export function EventForm({ onSubmit, isSubmitting }: EventFormProps) {
             {g('ספר בקצרה מה קרה (2-3 משפטים)', 'ספרי בקצרה מה קרה (2-3 משפטים)')}
           </label>
           <textarea
+            id="event-what"
             value={whatHappened}
             onChange={(e) => setWhatHappened(e.target.value)}
             placeholder="מה קרה שם? מה נאמר או נעשה?"
@@ -79,17 +87,17 @@ export function EventForm({ onSubmit, isSubmitting }: EventFormProps) {
         </div>
 
         <div className="flex justify-center pt-2">
-          <button
-            type="button"
-            disabled={!canSubmit || isSubmitting}
-            onClick={() => onSubmit('event_form', { when, with_whom: withWhom, what_happened: whatHappened })}
+          <SubmitButton
+            label="המשך"
+            missing={missing?.text}
+            target={() => (missing ? document.getElementById(missing.id) : null)}
+            isSubmitting={isSubmitting}
+            onSubmit={() => onSubmit('event_form', { when, with_whom: withWhom, what_happened: whatHappened })}
             className="w-full max-w-[300px] h-[48px] rounded-xl bg-[#9747ff] text-white text-sm font-medium
-                       hover:bg-[#8035e6] transition-colors disabled:opacity-50
+                       hover:bg-[#8035e6] transition-colors
                        drop-shadow-[0px_4px_2px_rgba(0,0,0,0.08)]"
             style={{ fontFamily: "'Heebo', sans-serif" }}
-          >
-            {isSubmitting ? '...' : 'המשך'}
-          </button>
+          />
         </div>
       </div>
     </CardShell>

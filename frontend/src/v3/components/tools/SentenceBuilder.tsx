@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CardShell } from '../shared/CardShell';
+import { SubmitButton } from '../shared/SubmitButton';
 import { useG } from '../shared/gender';
 
 interface SentenceBuilderProps {
@@ -12,7 +13,7 @@ interface SentenceBuilderProps {
 export function SentenceBuilder({ data, onSubmit, isSubmitting }: SentenceBuilderProps) {
   const g = useG();
   const [paradigm, setParadigm] = useState('');
-  const canSubmit = paradigm.trim().length > 0 && !isSubmitting;
+  const missing = paradigm.trim() ? null : g('כתוב את החוק שלך כדי להמשיך', 'כתבי את החוק שלך כדי להמשיך');
 
   return (
     <CardShell titleHe="מה החוק הפנימי שלך?">
@@ -50,6 +51,7 @@ export function SentenceBuilder({ data, onSubmit, isSubmitting }: SentenceBuilde
             לא מה {g('שאתה', 'שאת')} <strong>עושה</strong> (זה הדפוס למעלה), אלא <strong>החוק</strong> שאומר לך איך נכון להגיב. למשל: "אם לא ארים קול לא יקשיבו לי, אז אני {g('חייב', 'חייבת')} לצעוק"
           </p>
           <textarea
+            id="paradigm-text"
             value={paradigm}
             onChange={(e) => setParadigm(e.target.value)}
             placeholder="אם... אז עדיף / חייב / אסור..."
@@ -63,17 +65,17 @@ export function SentenceBuilder({ data, onSubmit, isSubmitting }: SentenceBuilde
 
         {/* Submit */}
         <div className="flex justify-center pt-2">
-          <button
-            type="button"
-            disabled={!canSubmit}
-            onClick={() => onSubmit('sentence_builder', { paradigm: paradigm.trim() })}
+          <SubmitButton
+            label="הבנתי את החוק שלי"
+            missing={missing}
+            target={() => document.getElementById('paradigm-text')}
+            isSubmitting={isSubmitting}
+            onSubmit={() => onSubmit('sentence_builder', { paradigm: paradigm.trim() })}
             className="px-8 h-[53px] rounded-xl bg-[#9747ff] text-white text-base
-                       hover:bg-[#8035e6] transition-colors disabled:opacity-50
+                       hover:bg-[#8035e6] transition-colors
                        drop-shadow-[0px_8px_2.9px_rgba(0,0,0,0.12)]"
             style={{ fontFamily: "'Heebo', sans-serif" }}
-          >
-            {isSubmitting ? '...' : 'הבנתי את החוק שלי'}
-          </button>
+          />
         </div>
       </div>
     </CardShell>

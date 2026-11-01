@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CardShell } from '../shared/CardShell';
 import { useG } from '../shared/gender';
+import { SubmitButton } from '../shared/SubmitButton';
 
 // הבזקי מקור וטבע (S12, spec "כמ"ז בתוך אימון 3+3"): 3 completion sentences for the source (blue) and 3 for the
 // nature (red), based on booklet p.25. The example chips are hidden by default — the client first answers in his
@@ -21,9 +22,10 @@ interface KamazDiscoveryCardProps {
 
 const HEEBO = { fontFamily: "'Heebo', sans-serif" };
 const SIDES = {
-  source: { title: 'חשיפת המקור שלי', accent: '#2f5fd0', soft: 'rgba(47,95,208,0.07)', border: 'rgba(47,95,208,0.35)' },
-  nature: { title: 'חשיפת הטבע שלי', accent: '#c93c3c', soft: 'rgba(201,60,60,0.06)', border: 'rgba(201,60,60,0.35)' },
+  source: { title: 'המקור שלי', accent: '#2f5fd0', soft: 'rgba(47,95,208,0.07)', border: 'rgba(47,95,208,0.35)' },
+  nature: { title: 'הטבע שלי', accent: '#c93c3c', soft: 'rgba(201,60,60,0.06)', border: 'rgba(201,60,60,0.35)' },
 } as const;
+const ORDER = ['source', 'nature'] as const;
 const MIN_CHARS = 2;
 
 export function KamazDiscoveryCard({ data, onSubmit, isSubmitting }: KamazDiscoveryCardProps) {
@@ -36,8 +38,24 @@ export function KamazDiscoveryCard({ data, onSubmit, isSubmitting }: KamazDiscov
 
   const onScreen = questions.filter((q) => q.side === screen);
   const answered = (q: DiscoveryQuestion) => (texts[q.id] || '').trim().length >= MIN_CHARS;
-  const screenDone = onScreen.length > 0 && onScreen.every(answered);
+  const countOf = (s: 'source' | 'nature') => {
+    const qs = questions.filter((q) => q.side === s);
+    return { done: qs.filter(answered).length, all: qs.length };
+  };
+  const firstOpen = onScreen.find((q) => !answered(q));
+  const openCount = onScreen.filter((q) => !answered(q)).length;
+  const missing = !firstOpen ? null : openCount === 1 ? 'חסרה תשובה למשפט אחד' : `חסרות תשובות ל-${openCount} משפטים`;
   const side = SIDES[screen];
+
+  // The switch to the red screen kept the scroll at the bottom: red boxes appeared with no heading, and the blue
+  // answers seemed gone (user, Nov 1). Bring the top of the card — the two-part bar and the explanation — into view.
+  const topRef = useRef<HTMLDivElement>(null);
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) { firstRender.current = false; return; }
+    topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [screen]);
+  const goTo = (s: 'source' | 'nature') => { setScreen(s); setOpenChips(null); };
 
   const applyChip = (q: DiscoveryQuestion, chip: { id: string; text: string }) => {
     setTexts((prev) => {
@@ -56,14 +74,36 @@ export function KamazDiscoveryCard({ data, onSubmit, isSubmitting }: KamazDiscov
 
   return (
     <CardShell titleHe="הבזקי מקור וטבע" instructionHe={g('השלם כל משפט במילים שלך — קצר, מה שעולה ראשון.', 'השלימי כל משפט במילים שלך — קצר, מה שעולה ראשון.')}>
-      <div className="space-y-5" dir="rtl">
-        <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full" style={{ background: side.accent }} />
-          <h4 className="text-sm font-semibold" style={{ ...HEEBO, color: side.accent }}>{side.title}</h4>
-          <span className="text-xs text-[rgba(45,70,88,0.45)] mr-auto" style={HEEBO}>
-            {screen === 'source' ? '1' : '2'} / 2
-          </span>
+      <div className="space-y-5 scroll-mt-24" dir="rtl" ref={topRef}>
+        {/* the two parts, always visible: where you are, what is done, what comes next */}
+        <div className="grid grid-cols-2 gap-2">
+          {ORDER.map((s, i) => {
+            const st = SIDES[s];
+            const current = s === screen;
+            const { done, all } = countOf(s);
+            const finished = all > 0 && done === all && !current;
+            return (
+              <button
+                key={s}
+                type="button"
+                onClick={() => !current && (s === 'source' || countOf('source').done === countOf('source').all) && goTo(s)}
+                className="rounded-xl px-3 py-2 text-right transition-all"
+                style={{ ...HEEBO, border: `1.5px solid ${current ? st.accent : st.border}`,
+                         background: current ? st.accent : finished ? st.soft : '#fff', color: current ? '#fff' : st.accent }}
+              >
+                <span className="block text-[11px] opacity-80">חלק {i + 1}{finished ? ' ✓' : ''}</span>
+                <span className="block text-sm font-semibold">{st.title}</span>
+                <span className="block text-[11px] opacity-80">{done}/{all} תשובות</span>
+              </button>
+            );
+          })}
         </div>
+
+        <p className="text-sm text-[#2d4658] leading-relaxed rounded-lg px-3 py-2" style={{ ...HEEBO, background: side.soft }}>
+          {screen === 'source'
+            ? <>שני חלקים קצרים: קודם <strong style={{ color: SIDES.source.accent }}>המקור</strong> שלך — האור, הערכים והמתנות שלך. אחר כך <strong style={{ color: SIDES.nature.accent }}>הטבע</strong> שלך — הצרכים והנטיות הטבעיות.</>
+            : <>✓ חלק המקור נשמר ({countOf('source').done} תשובות) — אפשר לחזור אליו בלחיצה למעלה. עכשיו החלק השני: <strong style={{ color: SIDES.nature.accent }}>הטבע</strong> שלך — הצרכים והנטיות הטבעיות שלך.</>}
+        </p>
 
         {onScreen.map((q) => (
           <div key={q.id} className="rounded-xl p-3 space-y-2" style={{ background: side.soft, border: `1px solid ${side.border}` }}>
@@ -113,23 +153,23 @@ export function KamazDiscoveryCard({ data, onSubmit, isSubmitting }: KamazDiscov
           {screen === 'nature' && (
             <button
               type="button"
-              onClick={() => { setScreen('source'); setOpenChips(null); }}
+              onClick={() => goTo('source')}
               className="h-[53px] px-5 whitespace-nowrap shrink-0 rounded-xl border border-[#e0ddd8] text-[#2d4658] text-sm hover:bg-[#f6f4f0]"
               style={HEEBO}
             >
-              חזרה
+              חזרה למקור
             </button>
           )}
-          <button
-            type="button"
-            disabled={!screenDone || isSubmitting}
-            onClick={() => (screen === 'source' ? (setScreen('nature'), setOpenChips(null)) : submit())}
+          <SubmitButton
+            label={screen === 'source' ? 'המשך לחלק 2: הטבע' : 'סיימתי'}
+            missing={missing}
+            target={() => (firstOpen ? document.getElementById(`kq-${firstOpen.id}`) : null)}
+            isSubmitting={isSubmitting}
+            onSubmit={() => (screen === 'source' ? goTo('nature') : submit())}
             className="w-full max-w-[300px] h-[53px] rounded-xl text-white text-base bg-[#9747ff] hover:bg-[#8035e6]
-                       transition-all disabled:opacity-40 drop-shadow-[0px_8px_2.9px_rgba(0,0,0,0.12)]"
+                       transition-all drop-shadow-[0px_8px_2.9px_rgba(0,0,0,0.12)]"
             style={HEEBO}
-          >
-            {isSubmitting ? '...' : screen === 'source' ? 'המשך לטבע' : 'סיימתי'}
-          </button>
+          />
         </div>
       </div>
     </CardShell>

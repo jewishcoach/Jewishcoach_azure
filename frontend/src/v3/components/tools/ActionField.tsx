@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CardShell } from '../shared/CardShell';
+import { SubmitButton } from '../shared/SubmitButton';
 import { useG } from '../shared/gender';
 
 interface ActionFieldProps {
@@ -11,7 +12,7 @@ export function ActionField({ onSubmit, isSubmitting }: ActionFieldProps) {
   const g = useG();
   const [action, setAction] = useState('');
 
-  const canSubmit = action.trim().length >= 3;
+  const missing = action.trim().length >= 3 ? null : g('תאר מה עשית בפועל', 'תארי מה עשית בפועל');
 
   return (
     <CardShell
@@ -20,6 +21,7 @@ export function ActionField({ onSubmit, isSubmitting }: ActionFieldProps) {
     >
       <div className="space-y-3">
         <textarea
+          id="action-actual"
           value={action}
           onChange={(e) => setAction(e.target.value)}
           placeholder="מה עשית בפועל? (פעולה שאפשר לראות מבחוץ — למשל: 'קמתי ויצאתי בלי מילה')"
@@ -38,17 +40,17 @@ export function ActionField({ onSubmit, isSubmitting }: ActionFieldProps) {
         </p>
 
         <div className="flex justify-center pt-1">
-          <button
-            type="button"
-            disabled={!canSubmit || isSubmitting}
-            onClick={() => onSubmit('action_field', { action_actual: action.trim() })}
+          <SubmitButton
+            label="המשך"
+            missing={missing}
+            target={() => document.getElementById('action-actual')}
+            isSubmitting={isSubmitting}
+            onSubmit={() => onSubmit('action_field', { action_actual: action.trim() })}
             className="w-full max-w-[300px] h-[48px] rounded-xl bg-[#9747ff] text-white text-sm font-medium
-                       hover:bg-[#8035e6] transition-colors disabled:opacity-50
+                       hover:bg-[#8035e6] transition-colors
                        drop-shadow-[0px_4px_2px_rgba(0,0,0,0.08)]"
             style={{ fontFamily: "'Heebo', sans-serif" }}
-          >
-            {isSubmitting ? '...' : 'המשך'}
-          </button>
+          />
         </div>
       </div>
     </CardShell>

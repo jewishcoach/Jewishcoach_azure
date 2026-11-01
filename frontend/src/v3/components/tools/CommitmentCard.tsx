@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { CardShell } from '../shared/CardShell';
 import { useG } from '../shared/gender';
+import { SubmitButton } from '../shared/SubmitButton';
 import { AutoTextarea } from '../shared/AutoTextarea';
 
 // בקשה לאימון — the booklet's complex coaching request (p.37-38): choose a floor, then
@@ -103,10 +104,13 @@ export function CommitmentCard({ data, onSubmit, isSubmitting }: CommitmentCardP
 
   const sourceOptions = data?.forces_source ?? [];
   const natureOptions = data?.forces_nature ?? [];
-  const canSubmit = situation.trim().length > 2 && oldText.trim().length > 0 && newText.trim().length > 0
-    && result.trim().length > 2
-    && (sourceOptions.length === 0 || source.length > 0)
-    && (natureOptions.length === 0 || nature.length > 0);
+  const missing = situation.trim().length <= 2 ? { text: 'חסר: הקושי — על מה להתאמן', id: 'req-situation' }
+    : !oldText.trim() ? { text: `חסר: ה${noun} ${f.oldAdj}`, id: 'req-old' }
+    : sourceOptions.length > 0 && source.length === 0 ? { text: g('בחר לפחות כוח מקור אחד', 'בחרי לפחות כוח מקור אחד'), id: 'req-source' }
+    : natureOptions.length > 0 && nature.length === 0 ? { text: g('בחר לפחות כוח טבע אחד', 'בחרי לפחות כוח טבע אחד'), id: 'req-nature' }
+    : !newText.trim() ? { text: `חסר: ה${noun} ${f.newAdj}`, id: 'req-new' }
+    : result.trim().length <= 2 ? { text: g('חסר: התוצאה שתשיג', 'חסר: התוצאה שתשיגי'), id: 'req-result' }
+    : null;
 
   const preview = useMemo(() => {
     const parts = [`${opener} להתאמן על ${difficultyPhrase(situation)}`];
@@ -126,24 +130,24 @@ export function CommitmentCard({ data, onSubmit, isSubmitting }: CommitmentCardP
       <div className="space-y-5">
         <div>
           <label className={LABEL} style={HEEBO}>{opener} להתאמן על הקושי להתמודד עם…</label>
-          <AutoTextarea value={situation} onChange={(e) => setSituation(e.target.value)} rows={2} className={FIELD} style={HEEBO}
+          <AutoTextarea id="req-situation" value={situation} onChange={(e) => setSituation(e.target.value)} rows={2} className={FIELD} style={HEEBO}
             placeholder="הסיטואציה עצמה — למשל: ויכוחים על כסף בבית, שיחות כנות מול הבוס" />
         </div>
 
         <div>
           <label className={LABEL} style={HEEBO}>שכאשר מופיע{f.feminine ? 'ה' : ''} ה{noun} {f.oldAdj} שלי, {f.that}…</label>
-          <AutoTextarea value={oldText} onChange={(e) => setOldText(e.target.value)} rows={2} className={FIELD} style={HEEBO} />
+          <AutoTextarea id="req-old" value={oldText} onChange={(e) => setOldText(e.target.value)} rows={2} className={FIELD} style={HEEBO} />
         </div>
 
         {sourceOptions.length > 0 && (
-          <div>
+          <div id="req-source" tabIndex={-1} className="rounded-xl outline-none">
             <p className={LABEL} style={HEEBO}>אפעל מתוך המקור שלי, שהוא…</p>
             <Chips options={sourceOptions} selected={source} onToggle={toggle(source, setSource)} />
           </div>
         )}
 
         {natureOptions.length > 0 && (
-          <div>
+          <div id="req-nature" tabIndex={-1} className="rounded-xl outline-none">
             <p className={LABEL} style={HEEBO}>ומתוך הטבע שלי, שהוא…</p>
             <Chips options={natureOptions} selected={nature} onToggle={toggle(nature, setNature)} />
           </div>
@@ -151,13 +155,13 @@ export function CommitmentCard({ data, onSubmit, isSubmitting }: CommitmentCardP
 
         <div>
           <label className={LABEL} style={HEEBO}>ומתוך ה{noun} {f.newAdj} שבחרתי, {f.that}…</label>
-          <AutoTextarea value={newText} onChange={(e) => setNewText(e.target.value)} rows={2} className={FIELD} style={HEEBO} />
+          <AutoTextarea id="req-new" value={newText} onChange={(e) => setNewText(e.target.value)} rows={2} className={FIELD} style={HEEBO} />
         </div>
 
         <div>
           <label className={LABEL} style={HEEBO}>כדי שהתוצאה שאשיג תהיה…</label>
           <p className="text-xs text-[rgba(45,70,88,0.55)] text-right mb-1" style={HEEBO}>תוצאה מדידה <strong>שתלויה בך</strong> — {g('מה אתה תעשה או איך תהיה', 'מה את תעשי או איך תהיי')}, לא איך אחרים יגיבו.</p>
-          <AutoTextarea value={result} onChange={(e) => setResult(e.target.value)} rows={2} className={FIELD} style={HEEBO}
+          <AutoTextarea id="req-result" value={result} onChange={(e) => setResult(e.target.value)} rows={2} className={FIELD} style={HEEBO}
             placeholder="למשל: בשבועיים הקרובים אסיים שני ויכוחים בלי לצעוק" />
         </div>
 
@@ -168,19 +172,19 @@ export function CommitmentCard({ data, onSubmit, isSubmitting }: CommitmentCardP
         </div>
 
         <div className="flex justify-center pt-1">
-          <button
-            type="button"
-            disabled={!canSubmit || isSubmitting}
-            onClick={() => onSubmit('commitment_card', {
+          <SubmitButton
+            label="זו הבקשה שלי"
+            missing={missing?.text}
+            target={() => (missing ? document.getElementById(missing.id) : null)}
+            isSubmitting={isSubmitting}
+            onSubmit={() => onSubmit('commitment_card', {
               floor, situation: situation.trim(), old: oldText.trim(), source, nature, new: newText.trim(), result: result.trim(),
             })}
             className="w-full max-w-[320px] h-[54px] rounded-xl bg-[#9747ff] text-white text-base font-semibold
-                       hover:bg-[#8035e6] transition-all duration-200 disabled:opacity-50
+                       hover:bg-[#8035e6] transition-all duration-200
                        drop-shadow-[0px_8px_2.9px_rgba(0,0,0,0.12)] active:scale-[0.97]"
             style={HEEBO}
-          >
-            {isSubmitting ? '...' : 'זו הבקשה שלי'}
-          </button>
+          />
         </div>
       </div>
     </CardShell>

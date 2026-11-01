@@ -257,6 +257,11 @@ class Driver:
         btn = lambda name: card.get_by_role("button", name=name, exact=True)
         ph = lambda text: card.get_by_placeholder(text, exact=False)
         s = lambda v: str(v or "").strip() or "לא בטוח"
+        # the empty card: its button must say what is missing, not just look faded (Nov 1)
+        empty_btn = card.get_by_role("button", name=re.compile(r"^(חסר|חסרה|חסרות|בחר|בחרי|כדי להמשיך|כתוב|כתבי|תאר|תארי|סמן|סמני|צריך עוד)"))
+        if tool_type not in ("matzui_summary",) and not empty_btn.count():
+            self.flag(f"{tool_type}: empty card's button doesn't say what is missing")
+        self.shot(f"empty_{tool_type}")
 
         def tags(placeholder, values, minimum):
             inp = ph(placeholder)
@@ -309,7 +314,7 @@ class Driver:
         elif tool_type == "kamaz_discovery":
             answers = {a.get("id"): s(a.get("text")) for a in data.get("answers") or [] if isinstance(a, dict)}
             qs = (tool.get("data") or {}).get("questions") or []
-            for side, nxt in (("source", "המשך לטבע"), ("nature", None)):
+            for side, nxt in (("source", "המשך לחלק 2: הטבע"), ("nature", None)):
                 for i, q in enumerate([q for q in qs if q.get("side") == side]):
                     card.locator("textarea").nth(i).fill(answers.get(q.get("id")) or "לא בטוח")
                 if side == "source":  # the hidden example chips, opened once — for the screenshot
@@ -317,6 +322,8 @@ class Driver:
                 self.shot(f"kamaz_{side}")
                 if nxt:
                     btn(nxt).click()
+                    self.page.wait_for_timeout(900)  # the card scrolls to its top: the two-part bar + "חלק המקור נשמר"
+                    self.page.screenshot(path=f"{self.out}/{self.turn:02d}_kamaz_nature_start.png")
             submit = btn("סיימתי")
         elif tool_type == "trait_card_builder":
             bank = (tool.get("data") or {}).get("bank") or {}
@@ -331,7 +338,7 @@ class Driver:
                     if self.visible(chip) and chip.is_enabled():
                         chip.click(); picked += 1
             self.shot("kamaz_card")
-            btn("המשך").click()
+            btn("המשך לבחירה לאירוע").click()
             for side, key in (("source", "selected_source"), ("nature", "selected_nature")):
                 for v in data.get(key) or []:
                     chip = card.get_by_role("button", name=label.get(v, v), exact=True)
@@ -366,7 +373,8 @@ class Driver:
 
         try:
             submit.wait_for(state="visible", timeout=5000)
-            if not submit.is_enabled():
+            # the card buttons say what is missing instead of being disabled (aria-disabled, Nov 1)
+            if not submit.is_enabled() or submit.get_attribute("aria-disabled") == "true":
                 self.flag(f"submit disabled on {tool_type} after filling"); self.shot(f"disabled_{tool_type}")
                 return False
         except PWTimeout:
