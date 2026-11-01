@@ -391,6 +391,8 @@ _MASC_TO_FEM = [
     (re.compile(rf"(?<![{_HE}])מה אתה עושה בדרך כלל"), "מה את עושה בדרך כלל"),
     (re.compile(rf"(?<![{_HE}])ואתה מוביל מכאן"), "ואת מובילה מכאן"),
     (re.compile(rf"(?<![{_HE}])איך אתה רואה את עצמך"), "איך את רואה את עצמך"),
+    # "צודק, זה באמת יצא חפרני" to a woman — only where it addresses her (message/sentence start, "את צודק"), not "הוא צודק"
+    (re.compile(rf"(^|[.!?:\n]\s*|(?<![{_HE}])את\s+)צודק(?![{_HE}])"), r"\1צודקת"),
 ]
 
 # S8: the pattern is the reaction only — a motive clause ("כדי להימנע…", "מתוך פחד ש…") belongs to the
@@ -1038,7 +1040,11 @@ def _check_gate_met_v3(state: Dict[str, Any]) -> str | None:
         last = (state.get("messages") or [{}])[-1]
         if last.get("sender") == "coach" and "?" not in (last.get("content") or ""):
             return "S3"
-        return None
+        # anti-loop: a coach that keeps asking after the card never closes the stage (Nov 1, a couple conversation:
+        # 12 questions in S2, the emotions/thought/action stages asked inside it). Counts only turns since the card
+        # (the couple safety check-in before it is answered outside the coach and never reaches the gate).
+        state["_s2_turns_since_card"] = s2_turns = state.get("_s2_turns_since_card", 0) + 1
+        return "S3" if s2_turns >= 3 else None
     # S7: the gap card only names + scores the gap; the coach asks the booklet's belief and opportunity
     # questions in chat (p.13). The LLM often forgets gap_booklet_moves — mark a question as answered when the
     # previous coach turn asked it and the user replied. Exit once both were answered (or after 4 turns).
@@ -3137,7 +3143,9 @@ def build_conversation_context(
             "עבוד רק על מה שקרה בתוכו — הרגש, המחשבה, המעשה והעמדה שלו — כמו בכל תהליך. "
             "אל תנתח את בן/בת הזוג, אל תשער מה הוא/היא הרגיש/ה ואל תיקח צד. "
             "אם ישאל מה יראה בן/בת הזוג: רק את מה שיבחר לשתף בסוף שלב הגילוי, אחרי תצוגה מקדימה; השיחה עצמה לא מוצגת."
-            + (" בשלב הזה בקש לתאר את האירוע הזה עצמו — לא אירוע אחר." if step == "S2" else "")
+            # only before the event card: after it, this kept the coach asking about the event (Nov 1: 12 turns in S2)
+            + (" בשלב הזה בקש לתאר את האירוע הזה עצמו — לא אירוע אחר."
+               if step == "S2" and not (state.get("collected_data") or {}).get("event_description") else "")
             if language == "he" else
             "\n# Couple process\n"
             f"The client and their partner each work alone, in separate conversations, on the same event: \"{couple_title}\". "

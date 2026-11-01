@@ -1115,3 +1115,39 @@ def test_resume_brings_back_the_card_the_coach_was_waiting_for():
     assert pending_card_on_resume(state("S11", "עכשיו נבדוק מה העמדה נותנת לך.", stance={"gains": []}))["tool_type"] == "balance_scale"
     assert pending_card_on_resume(state("S4", "מה עבר לך בראש?")) is None  # S4 has no card
     assert pending_card_on_resume({**state("S7", lead_in), "ux_version": 2}) is None
+
+
+# ---------------------------------------------------------------------------
+# S2 after the event card (Nov 1, a couple conversation stuck 12 turns in S2)
+# ---------------------------------------------------------------------------
+
+def test_s2_exits_after_three_questions_since_the_card():
+    state = _v3_state("S2", event_description="מוצ\"ש, עם בן הזוג — הוא הציע חופשה ואני אמרתי שזה לא הזמן")
+    state["messages"] = [{"sender": "coach", "content": "מה עשית או אמרת ברגע הזה?"}]
+    assert _check_gate_met_v3(state) is None
+    assert _check_gate_met_v3(state) is None
+    assert _check_gate_met_v3(state) == "S3"  # the third question in a row after the card → the emotions card
+
+
+def test_s2_still_exits_at_once_on_a_warm_close():
+    state = _v3_state("S2", event_description="אירוע")
+    state["messages"] = [{"sender": "coach", "content": "תודה ששיתפת, זה רגע טעון."}]
+    assert _check_gate_met_v3(state) == "S3"
+
+
+def test_couple_s2_note_only_before_the_event_card():
+    from app.bsd_v2.single_agent_coach import build_conversation_context
+    ask = "בקש לתאר את האירוע הזה עצמו"
+    state = _v3_state("S2")
+    state["couple"] = {"event_title": "חופשה זוגית"}
+    assert ask in build_conversation_context(state, "שלום", "he")
+    state["collected_data"]["event_description"] = "מוצ\"ש, עם בן הזוג"
+    ctx = build_conversation_context(state, "שלום", "he")
+    assert ask not in ctx and "חופשה זוגית" in ctx  # the couple frame stays, the request to describe it doesn't
+
+
+def test_tzodek_to_a_woman_only_where_it_addresses_her():
+    from app.bsd_v2.single_agent_coach import _fix_addressee
+    assert _fix_addressee("צודק, זה באמת יצא קצת חפרני.", "female", "he").startswith("צודקת,")
+    assert _fix_addressee("אולי הוא צודק בזה.", "female", "he") == "אולי הוא צודק בזה."
+    assert _fix_addressee("צודק, זה יצא ארוך.", "male", "he") == "צודק, זה יצא ארוך."
