@@ -34,11 +34,6 @@ export const gFor = (gender: Gender | null | undefined) => (m: string, f: string
 export const FONT = { fontFamily: "'Heebo', sans-serif" };
 export const TITLE_FONT = { fontFamily: "'Karantina', cursive" };
 
-// Shown on the opening screens — numbers to verify before launch
-export const SAFETY_NOTE =
-  'התהליך מיועד לוויכוחים ולרגעים טעונים בזוגיות. אם יש פחד מבן/בת הזוג או אלימות — זה לא המקום. '
-  + 'אפשר לפנות בדיסקרטיות למוקד 118 של משרד הרווחה (אלימות במשפחה), ובמצב מסוכן — למשטרה 100.';
-
 /** The invite the inviter sends (WhatsApp / share sheet), in the inviter's gender */
 export function inviteMessage(name: string, gender: Gender | null, title: string, link: string) {
   const g = gFor(gender);

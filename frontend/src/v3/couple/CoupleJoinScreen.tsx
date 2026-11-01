@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Gender, InvitePreview } from './coupleApi';
-import { FONT, gFor, SAFETY_NOTE } from './lines';
+import { FONT, gFor } from './lines';
 import { CoupleScreen, ErrorText, Field, GenderPicker, HowItWorks, inputClass, Note, Panel, PrimaryButton, ScreenTitle, SecondaryButton, Spinner } from './ui';
 
 interface CoupleJoinScreenProps {
@@ -78,7 +78,6 @@ export function CoupleJoinScreen({ preview, defaultName, profileGender, busy, er
         )}
       </Panel>
 
-      <Note>{SAFETY_NOTE}</Note>
       <ErrorText>{error}</ErrorText>
 
       <div className="flex flex-col items-center gap-3">
