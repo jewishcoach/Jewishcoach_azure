@@ -162,6 +162,7 @@
     ]
   },
   "mimeTypes": {
-    ".vtt": "text/vtt"
+    ".vtt": "text/vtt",
+    ".mp4": "video/mp4"
   }
 }
