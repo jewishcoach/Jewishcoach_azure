@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { APP_URL } from '../config'
 import { Seo } from '../components/Seo'
 
@@ -39,6 +39,45 @@ const TESTIMONIALS = [
   { quote: 'לאחר שנים של חיים על טייס אוטומטי, לראשונה עצרתי ושאלתי את עצמי את השאלות הנכונות.', name: 'אורי פנחסי', role: 'מתאמן', photo: '/images/testimonial-ori.png' },
   { quote: 'הייתי סקפטית לגבי AI, אבל התהליך הרגיש אמיתי מהרגע הראשון. כל שאלה הייתה בדיוק במקום הנכון.', name: 'מיכל ד׳', role: 'מתאמנ/ת', photo: '/images/testimonial-michal.png' },
 ]
+
+// The 55 s film (landing-video/, Benny's voice): the cover is a button, and play() runs inside its click
+// handler so the browser allows sound (iOS Safari only does inside the gesture). Nothing loads before the click.
+function IntroVideo() {
+  const video = useRef<HTMLVideoElement>(null)
+  const [started, setStarted] = useState(false)
+  const start = () => {
+    setStarted(true)
+    void video.current?.play()
+  }
+  return (
+    <div className="relative mx-auto max-w-[1000px] aspect-video rounded-xl overflow-hidden shadow-lg mb-8 bg-navy">
+      <video
+        ref={video}
+        className="absolute inset-0 w-full h-full"
+        src="/videos/bsd-ai-intro.mp4"
+        poster="/images/bsd-ai-intro-poster.webp"
+        preload="none"
+        playsInline
+        controls={started}
+      >
+        <track kind="subtitles" srcLang="he" label="עברית" src="/videos/bsd-ai-intro.he.vtt" />
+      </video>
+      {!started && (
+        <button type="button" onClick={start} aria-label="נגן את הסרטון: מהו אימון יהודי" className="group absolute inset-0 w-full h-full cursor-pointer">
+          <img src="/images/bsd-ai-intro-poster.webp" alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+            <div className="size-16 sm:size-20 rounded-full bg-cream/90 shadow-lg flex items-center justify-center transition group-hover:scale-110">
+              <img src="/images/play-icon.svg" alt="" className="size-5 sm:size-6 mr-[-2px]" />
+            </div>
+          </div>
+          <div className="absolute bottom-0 right-0 bg-white px-4 py-2.5 rounded-tl-lg">
+            <span className="text-sm font-medium text-navy/80">בני גל מסביר על השיטה · 0:55</span>
+          </div>
+        </button>
+      )}
+    </div>
+  )
+}
 
 export function TryAiPage() {
   return (
@@ -87,17 +126,7 @@ export function TryAiPage() {
         <div className="mx-auto max-w-4xl text-center">
           <h2 className="font-display text-4xl sm:text-5xl lg:text-[100px] text-navy mb-8 leading-tight">מהו אימון יהודי?</h2>
 
-          <div className="relative mx-auto max-w-[1000px] rounded-xl overflow-hidden shadow-lg mb-8">
-            <img src="/images/video-thumb.png" alt="בני גל מסביר על השיטה" className="w-full" />
-            <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-              <div className="size-16 sm:size-20 rounded-full bg-cream/90 shadow-lg flex items-center justify-center">
-                <img src="/images/play-icon.svg" alt="נגן" className="size-5 sm:size-6 mr-[-2px]" />
-              </div>
-            </div>
-            <div className="absolute bottom-0 right-0 bg-white px-4 py-2.5 rounded-tl-lg">
-              <span className="text-sm font-medium text-navy/80">בני גל מסביר על השיטה · 4:32</span>
-            </div>
-          </div>
+          <IntroVideo />
 
           <p className="text-navy/80 text-base sm:text-lg lg:text-[22px] leading-[1.8] max-w-4xl mx-auto">
             שיטת האימון היהודי (BSD) פותחה על ידי בני גל מתוך 25 שנות עבודה עם אלפי מתאמנים. השיטה משלבת את תורת הנפש היהודית עם פרקטיקה יישומית, ותוביל אותך למסע של התבוננות, זיהוי דפוסים, בניית חזון אישי והפיכתו לדרך חיים.

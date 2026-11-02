@@ -153,12 +153,15 @@
     "rewrite": "/index.html",
     "exclude": [
       "/assets/*",
-      "/*.{png,ico,svg,jpg,jpeg,webp,css,js}",
+      "/*.{png,ico,svg,jpg,jpeg,webp,css,js,mp4,vtt}",
       "/blog",
       "/api/*",
       "/sitemap.xml",
       "/robots.txt",
       "/video-sitemap.xml"
     ]
+  },
+  "mimeTypes": {
+    ".vtt": "text/vtt"
   }
 }
