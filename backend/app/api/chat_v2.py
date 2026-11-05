@@ -607,7 +607,8 @@ async def send_message_v2(
         timing = _turn_timing(request, api_start_pc, marks)
         if llm_ms is not None:
             timing["llm"] = llm_ms  # part of "coach"
-        coach_meta: Dict[str, Any] = {"phase": updated_state["current_step"], "timing_ms": timing}
+        # "from" = the step the client was answering — the admin journey dashboard counts each step's turns by it
+        coach_meta: Dict[str, Any] = {"phase": updated_state["current_step"], "from": prev_step, "timing_ms": timing}
         if station_checkpoint:
             coach_meta["station_checkpoint"] = station_checkpoint
         coach_msg = Message(

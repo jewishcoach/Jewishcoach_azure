@@ -83,6 +83,67 @@ export async function sendMessageV3(
 // Stage transitions — same endpoints, V3 header
 // ---------------------------------------------------------------------------
 
+/** Admin account? (/users/me) — the V3 menu shows "ניהול" only to admins. */
+export async function fetchIsAdmin(getToken: (opts?: { skipCache?: boolean }) => Promise<string | null>): Promise<boolean> {
+  try {
+    const res = await fetchWithAuthRetry(`${getApiBase()}/users/me`, getToken);
+    return res.ok ? !!(await res.json()).isAdmin : false;
+  } catch {
+    return false;
+  }
+}
+
+export class DashboardAccessError extends Error {
+  code: 'wrong_password' | 'not_set' | 'forbidden';
+  constructor(code: 'wrong_password' | 'not_set' | 'forbidden') {
+    super(code);
+    this.code = code;
+  }
+}
+
+/** The journey dashboard (numbers only). The dashboard password goes in a header, never in the URL. */
+export async function fetchJourney(
+  getToken: (opts?: { skipCache?: boolean }) => Promise<string | null>,
+  password: string,
+  days: number,
+): Promise<JourneyData> {
+  const res = await fetchWithAuthRetry(`${getApiBase()}/admin/journey?days=${days}`, getToken, {
+    headers: { 'X-Admin-Password': password },
+  });
+  if (res.status === 503) throw new DashboardAccessError('not_set');
+  if (res.status === 403) {
+    const code = (await res.json().catch(() => ({})))?.detail?.code;
+    throw new DashboardAccessError(code === 'wrong_dashboard_password' ? 'wrong_password' : 'forbidden');
+  }
+  if (!res.ok) throw new Error(`journey ${res.status}`);
+  return res.json();
+}
+
+export interface JourneyWhere { kind: 'completed' | 'stage_intro' | 'card' | 'chat'; step: string; card?: string }
+export interface JourneyData {
+  generated_at: string;
+  days: number;
+  overview: {
+    users_total: number; users_new: number; active_24h: number; active_7d: number; conversations: number;
+    completed: number; completion_rate: number | null; stalled: number; couple_conversations: number;
+    median_turns_to_complete: number | null;
+  };
+  steps: {
+    step: string; reached: number; here_now: number; stalled_here: number; avg_turns: number | null;
+    p90_turns: number | null; loops: number; median_minutes: number | null; latency_p50: number | null; latency_p90: number | null;
+  }[];
+  users: {
+    id: number; name: string | null; email: string | null; gender: string | null; plan: string; created_at: string | null;
+    last_active: string | null; conversations: number; messages_used: number; messages_limit: number;
+    latest: { step: string; where: JourneyWhere; status: string } | null;
+  }[];
+  conversations: {
+    id: number; user_id: number; created_at: string | null; last_active: string; step: string; where: JourneyWhere;
+    status: 'completed' | 'stalled' | 'active'; user_turns: number; most_turns_step: string; most_turns: number; couple: boolean; cards: number;
+  }[];
+  thresholds: { stall_hours: number; loop_turns: number };
+}
+
 /** Deletes the conversation with everything in it (messages, cards, the analyses that read it). */
 export async function deleteConversation(
   conversationId: number,

@@ -418,6 +418,8 @@ async def submit_tool_response(
                         role="assistant",
                         content=coach_message,
                         timestamp=utc_now(),
+                        # the admin journey dashboard counts the turns of each step from these
+                        meta={"phase": current_step, "from": prev_step, "card": request.tool_type},
                     )
                     db.add(coach_db_msg)
 

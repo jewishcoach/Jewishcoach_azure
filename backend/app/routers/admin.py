@@ -5,16 +5,19 @@ Protected endpoints for admin users to view quality flags,
 system stats, user directory / usage summaries, and manage the LLM-as-a-Judge audit results.
 """
 
+import hmac
 import os
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..dependencies import get_current_admin_user, resolve_email_from_db_and_clerk, warm_clerk_email_cache_for_users
 from ..database import get_db
+from ..limiter import limiter
+from ..services.journey_metrics import compute_journey
 from ..email_visibility import normalize_public_email
 from ..models import ConversationFlag, User, Conversation, Message, UsageRecord, CouponRedemption
 from ..schemas.billing import PLAN_LIMITS
@@ -55,6 +58,29 @@ def _maybe_persist_resolved_email(db: Session, u: User, visible: Optional[str]) 
         return
     u.email = visible
 
+
+
+def require_dashboard_password(x_admin_password: Optional[str] = Header(default=None)) -> None:
+    """The journey dashboard asks for its own password on top of the admin account (user, Nov 5). It lives only in
+    the App Service setting ADMIN_DASHBOARD_PASSWORD; unset = the dashboard is closed. 403, not 401 — a 401 makes
+    the client refresh its Clerk token and retry."""
+    expected = os.getenv("ADMIN_DASHBOARD_PASSWORD", "")
+    if not expected:
+        raise HTTPException(status_code=503, detail={"code": "dashboard_password_not_set"})
+    if not x_admin_password or not hmac.compare_digest(x_admin_password.encode(), expected.encode()):
+        raise HTTPException(status_code=403, detail={"code": "wrong_dashboard_password"})
+
+
+@router.get("/journey")
+@limiter.limit("20/minute")
+async def journey_dashboard(
+    request: Request,
+    days: int = 30,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_dashboard_password),
+):
+    """Where users are in the process and where they stop — numbers only, no conversation text."""
+    return compute_journey(db, days=max(0, min(days, 3650)))
 
 
 @router.get("/flags")
