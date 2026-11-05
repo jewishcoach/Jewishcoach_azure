@@ -15,11 +15,12 @@ const COLORS = {
 
 interface TermsOfUsePageProps {
   onBack: () => void;
+  backLabel?: string;  // V3 has no dashboard to go back to
 }
 
-export const TermsOfUsePage = ({ onBack }: TermsOfUsePageProps) => {
+export const TermsOfUsePage = ({ onBack, backLabel }: TermsOfUsePageProps) => {
   const { t, i18n } = useTranslation();
-  const isHe = i18n.language === 'he';
+  const isHe = i18n.language.startsWith('he');  // 'he-IL' from the browser showed the English text
   const sections = isHe ? TERMS_SECTIONS_HE : TERMS_SECTIONS_EN;
 
   useEffect(() => {
@@ -43,7 +44,7 @@ export const TermsOfUsePage = ({ onBack }: TermsOfUsePageProps) => {
           style={{ color: COLORS.textMuted }}
         >
           <ArrowRight className="w-4 h-4" />
-          {t('privacy.back')}
+          {backLabel ?? t('privacy.back')}
         </button>
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <Scale className="w-5 h-5 flex-shrink-0" style={{ color: COLORS.accent }} />
@@ -81,7 +82,7 @@ export const TermsOfUsePage = ({ onBack }: TermsOfUsePageProps) => {
               className="w-full md:w-auto px-6 py-3 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90"
               style={{ background: COLORS.accent }}
             >
-              {t('privacy.back')}
+              {backLabel ?? t('privacy.back')}
             </button>
           </div>
         </div>

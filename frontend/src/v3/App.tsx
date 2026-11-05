@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Heart, Menu, X, LogOut, MessageSquare, User, PlusCircle, Pause } from 'lucide-react';
+import { Heart, Menu, X, LogOut, MessageSquare, User, PlusCircle, Pause, Trash2 } from 'lucide-react';
 import { useV3Auth, useV3User } from './hooks/useV3Auth';
 import { MACRO_STAGES } from './types';
 import { useStageFlowV3 } from './hooks/useStageFlowV3';
-import { listConversations, fetchUserGender } from './services/api';
+import { listConversations, fetchUserGender, deleteConversation } from './services/api';
 import type { ConversationListItem } from './services/api';
 
 // Reuse V2 components that don't change
@@ -14,6 +14,8 @@ import { StageIntroScreen } from '../v2/screens/StageIntroScreen';
 import { WelcomeBackScreen } from '../v2/screens/WelcomeBackScreen';
 import { LoginScreen } from '../v2/screens/LoginScreen';
 import { QuotaExceededModal } from '../components/QuotaExceededModal';
+import { PrivacyPolicyPage } from '../components/PrivacyPolicyPage';
+import { TermsOfUsePage } from '../components/TermsOfUsePage';
 
 // V3-specific screens
 import { ChatScreen } from './screens/ChatScreen';
@@ -42,6 +44,11 @@ export function V3App({ language = 'he' }: V3AppProps) {
   const [loadingConversations, setLoadingConversations] = useState(false);
   const [userGender, setUserGender] = useState<string | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [legalOpen, setLegalOpen] = useState<'privacy' | 'terms' | null>(null);
+  // deleting a conversation from "השיחות שלי" (privacy: there was no way to remove one in V3)
+  const [toDelete, setToDelete] = useState<ConversationListItem | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteFailed, setDeleteFailed] = useState(false);
 
   useEffect(() => {
     if (isSignedIn) {
@@ -60,6 +67,22 @@ export function V3App({ language = 'he' }: V3AppProps) {
       setLoadingConversations(false);
     }
   }, [getToken]);
+
+  const confirmDelete = async () => {
+    if (!toDelete) return;
+    setDeleting(true);
+    setDeleteFailed(false);
+    try {
+      await deleteConversation(toDelete.id, getToken);
+      setConversations((prev) => prev.filter((c) => c.id !== toDelete.id));
+      if (toDelete.id === conversationId) startNewConversation();  // the open conversation is gone
+      setToDelete(null);
+    } catch {
+      setDeleteFailed(true);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   useEffect(() => {
     if (menuOpen) loadConversationsList();
@@ -276,11 +299,11 @@ export function V3App({ language = 'he' }: V3AppProps) {
                 </p>
               )}
               {listedConversations.map((conv) => (
+                <div key={conv.id} className="flex items-center rounded-xl hover:bg-white/10 transition-colors">
                 <button
-                  key={conv.id}
                   type="button"
                   onClick={() => { couple.close(); resumeConversation(conv.id); setMenuOpen(false); }}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-colors text-right"
+                  className="flex-1 min-w-0 flex items-center gap-3 px-4 py-3 text-right"
                 >
                   {couple.sessions.some((s) => s.conversation_id === conv.id)
                     ? <Heart size={16} className="text-[#03ffe6] flex-shrink-0" />
@@ -294,9 +317,28 @@ export function V3App({ language = 'he' }: V3AppProps) {
                     </p>
                   </div>
                 </button>
+                <button
+                  type="button"
+                  onClick={() => { setDeleteFailed(false); setToDelete(conv); }}
+                  className="p-3 rounded-xl text-[rgba(255,255,255,0.45)] hover:text-red-300 hover:bg-white/10 transition-colors"
+                  aria-label={isHe ? 'מחיקת השיחה' : 'Delete conversation'}
+                  title={isHe ? 'מחיקת השיחה' : 'Delete conversation'}
+                >
+                  <Trash2 size={16} />
+                </button>
+                </div>
               ))}
             </div>
-            <div className="p-5 border-t border-[rgba(3,255,230,0.2)]">
+            <div className="px-5 pt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-[rgba(3,255,230,0.2)]">
+              {([['privacy', isHe ? 'מדיניות פרטיות' : 'Privacy policy'], ['terms', isHe ? 'תנאי שימוש' : 'Terms of use']] as const).map(([key, label]) => (
+                <button key={key} type="button" onClick={() => { setLegalOpen(key); setMenuOpen(false); }}
+                  className="text-xs text-[rgba(255,255,255,0.55)] hover:text-white underline-offset-2 hover:underline py-1"
+                  style={{ fontFamily: "'Heebo', sans-serif" }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="p-5 pt-2">
               <button
                 type="button"
                 onClick={() => signOut()}
@@ -332,6 +374,46 @@ export function V3App({ language = 'he' }: V3AppProps) {
       )}
 
       {/* Modals */}
+      {legalOpen && (
+        <div className="fixed inset-0 z-[70] bg-[#F0F1F3]">
+          {legalOpen === 'privacy'
+            ? <PrivacyPolicyPage onBack={() => setLegalOpen(null)} backLabel={isHe ? 'חזרה' : 'Back'} />
+            : <TermsOfUsePage onBack={() => setLegalOpen(null)} backLabel={isHe ? 'חזרה' : 'Back'} />}
+        </div>
+      )}
+      {toDelete && (
+        <div className="fixed inset-0 z-[70] bg-black/50 flex items-center justify-center p-4" dir={isHe ? 'rtl' : 'ltr'}
+          onClick={() => !deleting && setToDelete(null)}>
+          <div className="bg-white rounded-2xl p-5 w-full max-w-sm space-y-3 text-right" onClick={(e) => e.stopPropagation()}
+            style={{ fontFamily: "'Heebo', sans-serif" }}>
+            <h3 className="text-lg font-semibold text-[#2d4658]">{isHe ? 'למחוק את השיחה?' : 'Delete this conversation?'}</h3>
+            <p className="text-sm text-[rgba(45,70,88,0.8)] leading-relaxed">
+              {isHe
+                ? 'השיחה תימחק לצמיתות — כל ההודעות, הכרטיסים והתובנות שלה. אי אפשר לשחזר אותה.'
+                : 'The conversation will be deleted for good — all its messages, cards and insights. It cannot be restored.'}
+            </p>
+            {couple.sessions.some((cs) => cs.conversation_id === toDelete.id) && (
+              <p className="text-sm text-[rgba(45,70,88,0.8)] leading-relaxed">
+                {isHe ? 'זו שיחה בתהליך זוגי: גם מה ששיתפת עם בן/בת הזוג יוסר, והחלק המשותף יסתיים.'
+                      : 'This is a couple-process conversation: what you shared with your partner is removed too, and the shared part ends.'}
+              </p>
+            )}
+            {deleteFailed && (
+              <p className="text-sm text-red-600">{isHe ? 'המחיקה לא הצליחה. אפשר לנסות שוב.' : 'Deleting failed. Please try again.'}</p>
+            )}
+            <div className="flex gap-3 pt-1">
+              <button type="button" disabled={deleting} onClick={() => setToDelete(null)}
+                className="flex-1 h-[44px] rounded-xl border border-[#e0ddd8] text-sm text-[#2d4658] hover:bg-[#f6f4f0]">
+                {isHe ? 'ביטול' : 'Cancel'}
+              </button>
+              <button type="button" disabled={deleting} onClick={confirmDelete}
+                className="flex-1 h-[44px] rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-medium disabled:opacity-60">
+                {deleting ? '...' : isHe ? 'מחיקה לצמיתות' : 'Delete for good'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <AccountModal
         open={accountOpen}
         onClose={() => setAccountOpen(false)}

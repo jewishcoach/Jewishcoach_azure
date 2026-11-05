@@ -83,6 +83,15 @@ export async function sendMessageV3(
 // Stage transitions — same endpoints, V3 header
 // ---------------------------------------------------------------------------
 
+/** Deletes the conversation with everything in it (messages, cards, the analyses that read it). */
+export async function deleteConversation(
+  conversationId: number,
+  getToken: (opts?: { skipCache?: boolean }) => Promise<string | null>,
+): Promise<void> {
+  const res = await fetchWithAuthRetry(`${getApiBase()}/chat/conversations/${conversationId}`, getToken, { method: 'DELETE' });
+  if (!res.ok) throw new Error(`Delete conversation failed: ${res.status}`);
+}
+
 /** Onboarding on screen: the server opens its DB and Azure connections for the first coach turn (best effort). */
 export async function warmConnections(
   getToken: (opts?: { skipCache?: boolean }) => Promise<string | null>,

@@ -787,6 +787,13 @@ def delete_conversation(
     db.query(BsdSessionState).filter(BsdSessionState.conversation_id == conversation_id).delete()
     # Couple process: ends the shared part and removes what this member shared with the partner
     on_couple_conversation_deleted(db, conversation_id)
+    # The personality analyses read this conversation's words — the one written for it, and the overall one
+    prefs = dict(user.preferences or {})
+    by_conv = dict(prefs.get("conversation_analyses") or {})
+    if by_conv.pop(str(conversation_id), None) is not None or prefs.get("last_analysis"):
+        prefs["conversation_analyses"] = by_conv
+        prefs.pop("last_analysis", None)
+        user.preferences = prefs
 
     db.delete(conv)
     db.commit()
