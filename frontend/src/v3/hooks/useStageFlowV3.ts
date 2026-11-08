@@ -310,6 +310,11 @@ export function useStageFlowV3(language: string = 'he') {
         if (tool) setActiveTool(tool);
       }
     } catch (err) {
+      if (err instanceof QuotaExceededError) {
+        // out of messages before the first reply: the limit window (with "המנוי שלי"), not a made-up coach line
+        setQuotaExceeded(true);
+        return;
+      }
       console.error('[V3 Chat] startOnboarding error:', err);
       setMessages([{
         id: `a-opening-${Date.now()}`,

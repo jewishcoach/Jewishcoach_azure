@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Heart, Menu, X, LogOut, MessageSquare, User, PlusCircle, Pause, Trash2, Shield } from 'lucide-react';
+import { Heart, Menu, X, LogOut, MessageSquare, User, PlusCircle, Pause, Trash2, Shield, CreditCard } from 'lucide-react';
 import { useV3Auth, useV3User } from './hooks/useV3Auth';
 import { MACRO_STAGES } from './types';
 import { useStageFlowV3 } from './hooks/useStageFlowV3';
@@ -22,6 +22,7 @@ import { ChatScreen } from './screens/ChatScreen';
 import { OnboardingScreen } from './screens/OnboardingScreen';
 import { AccountModal } from './components/AccountModal';
 import { AdminDashboard } from './components/AdminDashboard';
+import { SubscriptionScreen } from './components/SubscriptionScreen';
 
 // Couple process (shared event, each partner in a private conversation, two shared screens)
 import './couple/pendingInvite';
@@ -48,6 +49,8 @@ export function V3App({ language = 'he' }: V3AppProps) {
   const [legalOpen, setLegalOpen] = useState<'privacy' | 'terms' | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
+  // "המנוי שלי": from the menu, or from the limit window (V3 had no subscription screen — the button reloaded the app)
+  const [subscriptionOpen, setSubscriptionOpen] = useState<null | 'menu' | 'quota'>(null);
   // deleting a conversation from "השיחות שלי" (privacy: there was no way to remove one in V3)
   const [toDelete, setToDelete] = useState<ConversationListItem | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -274,6 +277,18 @@ export function V3App({ language = 'he' }: V3AppProps) {
                 </span>
               </button>
             </div>
+            <div className="px-3">
+              <button
+                type="button"
+                onClick={() => { setSubscriptionOpen('menu'); setMenuOpen(false); }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-colors text-right"
+              >
+                <CreditCard size={18} className="text-[#03ffe6] flex-shrink-0" />
+                <span className="text-sm text-white" style={{ fontFamily: "'Heebo', sans-serif" }}>
+                  {isHe ? 'המנוי שלי' : 'My subscription'}
+                </span>
+              </button>
+            </div>
             {isAdmin && (
               <div className="px-3">
                 <button
@@ -392,6 +407,13 @@ export function V3App({ language = 'he' }: V3AppProps) {
       )}
 
       {/* Modals */}
+      <SubscriptionScreen
+        open={subscriptionOpen !== null}
+        reason={subscriptionOpen ?? 'menu'}
+        gender={userGender}
+        getToken={getToken}
+        onClose={() => setSubscriptionOpen(null)}
+      />
       {isAdmin && <AdminDashboard open={adminOpen} onClose={() => setAdminOpen(false)} getToken={getToken} />}
       {legalOpen && (
         <div className="fixed inset-0 z-[70] bg-[#F0F1F3]">
@@ -449,7 +471,7 @@ export function V3App({ language = 'he' }: V3AppProps) {
       <QuotaExceededModal
         isOpen={quotaExceeded}
         onClose={dismissQuotaExceeded}
-        onGoToSubscription={() => { window.location.href = '/billing'; }}
+        onGoToSubscription={() => setSubscriptionOpen('quota')}
       />
 
       {/* Main content */}
