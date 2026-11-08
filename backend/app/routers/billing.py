@@ -25,6 +25,7 @@ from ..schemas.billing import (
     BILLING_PLANS_IN_CATALOG,
     PayMeSubscribeRequest,
     effective_messages_per_month,
+    PAID_PACK_MESSAGES,
 )
 from ..services.payme_settings import (
     payme_api_base_url,
@@ -111,13 +112,7 @@ def check_usage_limit(db: Session, user: User, usage_type: str = "message") -> b
     plan_limits = PLAN_LIMITS.get(user.current_plan, PLAN_LIMITS["basic"])
 
     if usage_type == "message":
-        limit = effective_messages_per_month(
-            email=user.email,
-            plan_key=user.current_plan,
-            clerk_id=user.clerk_id,
-            coupon_messages_limit=active_coupon_messages_limit(db, user),
-            is_admin=bool(user.is_admin),
-        )
+        limit = user_messages_limit(db, user)
         if limit == -1:  # Unlimited
             return True
         used = count_user_messages_quota_usage(db, user.id)
@@ -162,6 +157,24 @@ def active_coupon_messages_limit(db: Session, user: User) -> int | None:
     return redemption.coupon.messages_limit
 
 
+def paid_messages_limit(user: User) -> int | None:
+    """Total message cap bought with PayMe (1,000 per payment), or None if the user never paid."""
+    v = (user.preferences or {}).get("paid_messages_limit")
+    return int(v) if isinstance(v, (int, float)) else None
+
+
+def user_messages_limit(db: Session, user: User) -> int:
+    """The one place the message cap of a user is resolved (-1 = unlimited)."""
+    return effective_messages_per_month(
+        email=user.email,
+        plan_key=user.current_plan,
+        clerk_id=user.clerk_id,
+        coupon_messages_limit=active_coupon_messages_limit(db, user),
+        is_admin=bool(user.is_admin),
+        paid_messages_limit=paid_messages_limit(user),
+    )
+
+
 def _payme_plan_rank(plan_key: str) -> int:
     """Higher = better tier (used to block downgrades via checkout)."""
     return {"basic": 0, "premium": 1, "pro": 2}.get(plan_key, 0)
@@ -174,9 +187,22 @@ def _apply_payme_paid_plan(
     transaction_id: str,
     payme_resp: dict | None,
 ) -> None:
-    """Grant paid plan after successful PayMe payment (one-time unlock)."""
+    """After a successful PayMe payment: 1,000 more messages from now on (what was left is kept), plan → premium.
+    Idempotent per transaction — the webhook and the direct charge may both report the same sale."""
     now = datetime.now(timezone.utc)
     period_end = now + timedelta(days=31)
+    # lock the user row so a webhook racing the direct charge can't add the pack twice (no-op on sqlite)
+    user = db.query(User).filter(User.id == user.id).with_for_update().populate_existing().one()
+    prefs = dict(user.preferences or {})
+    done = list(prefs.get("paid_transactions") or [])
+    if transaction_id in done:
+        return
+    current = user_messages_limit(db, user)
+    used = count_user_messages_quota_usage(db, user.id)
+    start = used if current == -1 else max(used, current)
+    prefs["paid_messages_limit"] = start + PAID_PACK_MESSAGES
+    prefs["paid_transactions"] = (done + [transaction_id])[-50:]
+    user.preferences = prefs  # a new dict, so SQLAlchemy sees the JSON change
     user.current_plan = plan
     sale_ref = payme_sale_reference(payme_resp or {})
     ext_id = f"payme:{sale_ref}" if sale_ref else f"payme_tx:{transaction_id}"
@@ -257,8 +283,9 @@ def payme_subscribe_with_token(
     if plan != "premium":
         raise HTTPException(status_code=400, detail="Invalid plan")
 
-    if user.current_plan == plan:
-        raise HTTPException(status_code=400, detail="Already subscribed to this plan")
+    # buying again is allowed (another 1,000 messages) — only an account that is already unlimited is refused
+    if user_messages_limit(db, user) == -1:
+        raise HTTPException(status_code=400, detail="Account already has unlimited messages")
 
     if _payme_plan_rank(plan) < _payme_plan_rank(user.current_plan):
         raise HTTPException(status_code=400, detail="Downgrades are not handled via PayMe checkout")
@@ -404,13 +431,7 @@ def get_billing_overview(
         period_start=usage_record.period_start,
         period_end=usage_record.period_end,
         messages_used=count_user_messages_quota_usage(db, user.id),
-        messages_limit=effective_messages_per_month(
-            email=user.email,
-            plan_key=user.current_plan,
-            clerk_id=user.clerk_id,
-            coupon_messages_limit=coupon_msg_cap,
-            is_admin=bool(user.is_admin),
-        ),
+        messages_limit=user_messages_limit(db, user),
         speech_minutes_used=usage_record.speech_minutes_used,
         speech_minutes_limit=plan_limits["speech_minutes_per_month"],
         plan=user.current_plan
@@ -545,13 +566,7 @@ def get_current_usage(
         period_start=usage_record.period_start,
         period_end=usage_record.period_end,
         messages_used=count_user_messages_quota_usage(db, user.id),
-        messages_limit=effective_messages_per_month(
-            email=user.email,
-            plan_key=user.current_plan,
-            clerk_id=user.clerk_id,
-            coupon_messages_limit=active_coupon_messages_limit(db, user),
-            is_admin=bool(user.is_admin),
-        ),
+        messages_limit=user_messages_limit(db, user),
         speech_minutes_used=usage_record.speech_minutes_used,
         speech_minutes_limit=plan_limits["speech_minutes_per_month"],
         plan=user.current_plan

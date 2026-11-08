@@ -20,8 +20,7 @@ from sqlalchemy.orm import Session
 from ..bsd_v2.stage_intro_schema import MACRO_STAGES
 from ..bsd_v2.stage_tool_triggers import pending_card_on_resume
 from ..models import Conversation, CoupleMember, Message, ToolResponse, User
-from ..routers.billing import active_coupon_messages_limit
-from ..schemas.billing import effective_messages_per_month
+from ..routers.billing import user_messages_limit
 
 STEPS = [f"S{i}" for i in range(16)]
 STALL_AFTER = timedelta(hours=24)   # no activity for this long and not finished → "stopped here"
@@ -192,9 +191,7 @@ def compute_journey(db: Session, days: int = 30, now: Optional[datetime] = None)
                 .filter(Message.role == "user").group_by(Conversation.user_id).all())
     user_rows = []
     for u in users:
-        limit = effective_messages_per_month(email=u.email, plan_key=u.current_plan, clerk_id=u.clerk_id,
-                                             coupon_messages_limit=active_coupon_messages_limit(db, u),
-                                             is_admin=bool(u.is_admin))
+        limit = user_messages_limit(db, u)
         latest = latest_by_user.get(u.id)
         la = last_active_by_user.get(u.id)
         user_rows.append({

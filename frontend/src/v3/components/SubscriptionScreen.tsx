@@ -6,8 +6,8 @@ import { PayMeCheckoutModal } from '../../components/PayMeCheckoutModal';
 import { formatCouponRedeemError } from '../../lib/couponRedeemError';
 import { useTranslation } from 'react-i18next';
 
-// "המנוי שלי" (Nov 8). The paid plan is one payment that unlocks the coach without a limit — sold as "מאמן אישי,
-// תמיד איתך" (the user's name for it). A marketing page: the value to the client first, the price and one button,
+// "המנוי שלי" (Nov 8). The paid plan is one payment of 89 ₪ for 1,000 more messages ("כ-10 תהליכי אימון מלאים"),
+// which can be bought again when they run out — sold as "מאמן אישי, תמיד איתך" (the user's name for it). A marketing page: the value to the client first, the price and one button,
 // then Basic and a coupon. Large type, two columns on a computer. Opened from the menu or by the limit window.
 
 interface Plan { id: string; name_he: string; name_en: string; price: number; currency: string; messages_per_month: number }
@@ -100,9 +100,9 @@ export function SubscriptionScreen({ open, reason = 'menu', couponFirst = false,
   };
 
   const benefits = [
-    { icon: Footprints, title: 'תהליך שלם, עד הבחירה החדשה', text: 'בלי מגבלת הודעות שעוצרת אותך באמצע הדרך' },
+    { icon: Footprints, title: '1,000 הודעות — כ-10 תהליכי אימון מלאים', text: 'כל תהליך עד הבחירה החדשה, בלי לעצור באמצע הדרך' },
     { icon: Clock, title: `${g('חוזר', 'חוזרת')} מתי שנוח לך`, text: 'אירוע חדש, יום קשה, הצעד הבא — המאמן כאן, בכל שעה' },
-    { icon: Heart, title: 'תשלום אחד וזהו', text: 'בלי מנוי ובלי חיוב חוזר' },
+    { icon: Heart, title: 'תשלום חד פעמי, בלי מנוי', text: `בלי חיוב חוזר. נגמרו? אפשר להוסיף עוד 1,000 מתי ${g('שתרצה', 'שתרצי')}` },
   ];
 
   return (
@@ -124,7 +124,8 @@ export function SubscriptionScreen({ open, reason = 'menu', couponFirst = false,
         </div>
       ) : hasCoach ? (
         <ActiveCoach overview={overview} justPaid={justPaid} gender={gender} benefits={benefits}
-          onBack={() => onClose(true)} />
+          price={coach?.price} onBuyMore={coach ? () => setCheckoutPlan(coach) : undefined}
+          onBack={() => onClose(!outOfMessages)} />
       ) : (
         <div className="max-w-5xl mx-auto px-4 md:px-8 py-8 md:py-14 grid gap-6 md:gap-x-10 md:gap-y-6 md:grid-cols-[1.1fr_1fr] md:grid-rows-[auto_1fr] md:items-start">
           {/* the pitch — headline first; on the phone the offer comes right after it, before the benefits */}
@@ -166,20 +167,15 @@ export function SubscriptionScreen({ open, reason = 'menu', couponFirst = false,
 
           {/* the offer */}
           <div className="space-y-4 order-2 md:order-none md:col-start-2 md:row-start-1 md:row-span-2">
-            {hasCoach ? (
-              <section className="rounded-3xl bg-white p-6 shadow-lg text-center space-y-2">
-                <ShieldCheck size={34} className="mx-auto" style={{ color: '#009081' }} />
-                <h3 className="text-2xl font-bold" style={{ color: INK }}>המאמן האישי שלך פעיל</h3>
-                <p className="text-base" style={{ color: SOFT }}>אפשר לכתוב, לחזור ולפתוח תהליכים חדשים — בלי הגבלה.</p>
-              </section>
-            ) : coach && (
+            {coach && (
               <section className="rounded-3xl p-[2px] shadow-xl" style={{ background: `linear-gradient(135deg, ${PURPLE}, #03ffe6)` }}>
                 <div className="rounded-[22px] bg-white p-6 md:p-7">
                   <p className="text-base font-semibold" style={{ color: PURPLE }}>{coach.name_he}</p>
                   <p className="mt-2 flex items-baseline gap-2" style={{ color: INK }}>
                     <span className="text-[52px] leading-none font-bold">{coach.price} ₪</span>
                   </p>
-                  <p className="mt-1 text-base font-medium" style={{ color: SOFT }}>תשלום חד פעמי · בלי מנוי</p>
+                  <p className="mt-1 text-lg font-semibold" style={{ color: INK }}>1,000 הודעות · כ-10 תהליכי אימון מלאים</p>
+                  <p className="mt-0.5 text-base font-medium" style={{ color: SOFT }}>תשלום חד פעמי · בלי מנוי</p>
                   <button type="button" onClick={() => setCheckoutPlan(coach)}
                     className="mt-6 w-full h-[58px] rounded-2xl text-white text-lg font-bold transition-transform active:scale-[0.98] shadow-[0_12px_24px_-10px_rgba(151,71,255,0.7)]"
                     style={{ background: `linear-gradient(135deg, ${PURPLE} 0%, #6b2fd6 100%)` }}>
@@ -256,53 +252,86 @@ export function SubscriptionScreen({ open, reason = 'menu', couponFirst = false,
   );
 }
 
-// The paid plan is on: the thank-you right after paying, or a calm "active since" for whoever opens the screen later.
-function ActiveCoach({ overview, justPaid, benefits, onBack }: {
+// The paid plan is on: the thank-you right after paying, a calm "active since" with the messages left, and — any
+// time, and first of all when they ran out — "להוסיף עוד 1,000 הודעות". Coupon accounts without a cap see no count.
+function ActiveCoach({ overview, justPaid, gender, benefits, price, onBuyMore, onBack }: {
   overview: Overview;
   justPaid: boolean;
   gender?: string | null;
   benefits: { icon: typeof Heart; title: string; text: string }[];
+  price?: number;
+  onBuyMore?: () => void;
   onBack: () => void;
 }) {
+  const g = (m: string, f: string) => (gender === 'female' ? f : m);
   const since = overview.subscription?.current_period_start || overview.subscription?.created_at;
   const sinceText = since ? new Date(since.endsWith('Z') || since.includes('+') ? since : `${since}Z`).toLocaleDateString('he-IL') : null;
   const limit = overview.usage.messages_limit;
+  const capped = limit !== -1;
+  const left = capped ? Math.max(0, limit - overview.usage.messages_used) : Infinity;
+  const empty = capped && left === 0;
+  const buy = capped && onBuyMore && (
+    <button type="button" onClick={onBuyMore}
+      className={empty
+        ? 'w-full h-[58px] rounded-2xl text-white text-lg font-bold shadow-[0_12px_24px_-10px_rgba(151,71,255,0.7)] transition-transform active:scale-[0.98]'
+        : 'w-full h-[52px] rounded-2xl border-2 text-base font-semibold hover:bg-[#f3ecff]'}
+      style={empty ? { background: `linear-gradient(135deg, ${PURPLE} 0%, #6b2fd6 100%)` } : { borderColor: PURPLE, color: PURPLE }}>
+      {`להוסיף עוד 1,000 הודעות${price ? ` · ${price} ₪` : ''}`}
+    </button>
+  );
   return (
     <div className="max-w-xl mx-auto px-4 py-10 md:py-16 text-center space-y-6">
       <div className="mx-auto w-20 h-20 rounded-3xl flex items-center justify-center"
-        style={{ background: justPaid ? 'linear-gradient(135deg, #9747ff, #03ffe6)' : 'rgba(0,144,129,0.12)' }}>
-        {justPaid ? <PartyPopper size={38} className="text-white" /> : <ShieldCheck size={38} style={{ color: '#009081' }} />}
+        style={{ background: justPaid ? 'linear-gradient(135deg, #9747ff, #03ffe6)' : empty ? 'rgba(217,119,6,0.12)' : 'rgba(0,144,129,0.12)' }}>
+        {justPaid ? <PartyPopper size={38} className="text-white" />
+          : <ShieldCheck size={38} style={{ color: empty ? '#b45309' : '#009081' }} />}
       </div>
       <div>
         <h2 className="text-[30px] md:text-[40px] leading-tight font-bold" style={{ color: INK }}>
-          {justPaid ? 'תודה! המאמן האישי שלך פעיל' : 'המאמן האישי שלך פעיל'}
+          {justPaid ? 'תודה! המאמן האישי שלך פעיל' : empty ? 'ההודעות שלך נגמרו' : 'המאמן האישי שלך פעיל'}
         </h2>
         <p className="mt-3 text-lg leading-relaxed" style={{ color: SOFT }}>
           {justPaid
-            ? `מעכשיו אפשר לכתוב, לחזור ולפתוח תהליכים חדשים — בלי הגבלה. השיחה שלך מחכה בדיוק איפה שעצרת.`
-            : `${overview.has_active_coupon ? `דרך קופון ${overview.coupon_code ?? ''}`.trim() : 'מאמן אישי, תמיד איתך'}${sinceText ? ` · פעיל מאז ${sinceText}` : ''}`}
+            ? `נוספו לך 1,000 הודעות — כ-10 תהליכי אימון מלאים. השיחה שלך מחכה בדיוק איפה שעצרת.`
+            : empty
+              ? `השיחה שמורה בדיוק איפה שעצרת. ${g('תוסיף', 'תוסיפי')} עוד 1,000 הודעות כדי להמשיך עם המאמן שלך.`
+              : `${overview.has_active_coupon ? `דרך קופון ${overview.coupon_code ?? ''}`.trim() : 'מאמן אישי, תמיד איתך'}${sinceText ? ` · פעיל מאז ${sinceText}` : ''}`}
         </p>
       </div>
-      <ul className="space-y-4 text-right rounded-3xl bg-white p-6 shadow-sm">
-        {benefits.map(({ icon: Icon, title, text }) => (
-          <li key={title} className="flex gap-4 items-start">
-            <span className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0" style={{ background: 'rgba(151,71,255,0.12)' }}>
-              <Icon size={22} style={{ color: PURPLE }} />
-            </span>
-            <span>
-              <span className="block text-lg font-semibold" style={{ color: INK }}>{title}</span>
-              <span className="block text-base" style={{ color: SOFT }}>{text}</span>
-            </span>
-          </li>
-        ))}
-      </ul>
-      {limit !== -1 && (
-        <p className="text-base" style={{ color: SOFT }}>{`נשארו ${Math.max(0, limit - overview.usage.messages_used)} מתוך ${limit} הודעות בקופון`}</p>
+      {capped && !empty && (
+        <div className="rounded-2xl bg-white px-5 py-4 shadow-sm">
+          <p className="text-[34px] leading-none font-bold" style={{ color: INK }}>{left.toLocaleString('he-IL')}</p>
+          <p className="mt-1 text-base" style={{ color: SOFT }}>הודעות שנשארו לך</p>
+        </div>
       )}
-      <button type="button" onClick={onBack}
-        className="w-full h-[56px] rounded-2xl text-white text-lg font-semibold" style={{ background: `linear-gradient(135deg, ${PURPLE} 0%, #6b2fd6 100%)` }}>
-        חזרה לשיחה
-      </button>
+      {empty && buy}
+      {!empty && (
+        <ul className="space-y-4 text-right rounded-3xl bg-white p-6 shadow-sm">
+          {benefits.map(({ icon: Icon, title, text }) => (
+            <li key={title} className="flex gap-4 items-start">
+              <span className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0" style={{ background: 'rgba(151,71,255,0.12)' }}>
+                <Icon size={22} style={{ color: PURPLE }} />
+              </span>
+              <span>
+                <span className="block text-lg font-semibold" style={{ color: INK }}>{title}</span>
+                <span className="block text-base" style={{ color: SOFT }}>{text}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {!empty && (
+        <button type="button" onClick={onBack}
+          className="w-full h-[56px] rounded-2xl text-white text-lg font-semibold" style={{ background: `linear-gradient(135deg, ${PURPLE} 0%, #6b2fd6 100%)` }}>
+          חזרה לשיחה
+        </button>
+      )}
+      {!empty && buy}
+      {empty && (
+        <button type="button" onClick={onBack} className="text-base underline-offset-2 hover:underline" style={{ color: SOFT }}>
+          אחר כך
+        </button>
+      )}
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { Sparkles, Ticket } from 'lucide-react';
 
 // The window when the messages run out (Nov 8), in the style of "המנוי שלי". The old one (dark and gold, kept for
 // V2) spoke in the masculine and promised "יומן אישי ותובנות עומק"; this one says the conversation is kept and
-// offers the two ways on: the personal coach (one payment) or a coupon — both open the subscription screen.
+// offers the two ways on: the personal coach (one payment, 1,000 more messages) or a coupon — both open the subscription screen.
 
 interface Props {
   open: boolean;
@@ -31,7 +31,7 @@ export function LimitReachedModal({ open, onFullAccess, onCoupon, onClose }: Pro
           </div>
           <h2 id="limit-title" className="mt-4 text-2xl font-bold" style={{ color: INK }}>ההודעות שלך נגמרו</h2>
           <p className="mt-2 text-base leading-relaxed" style={{ color: INK }}>
-            השיחה שמורה בדיוק איפה שעצרת. אפשר להמשיך מיד — עם מאמן אישי ללא הגבלה, בתשלום חד פעמי ובלי מנוי, או עם קוד קופון.
+            השיחה שמורה בדיוק איפה שעצרת. אפשר להמשיך מיד — עם עוד 1,000 הודעות (כ-10 תהליכי אימון מלאים) בתשלום חד פעמי ובלי מנוי, או עם קוד קופון.
           </p>
 
           <button type="button" onClick={onFullAccess}

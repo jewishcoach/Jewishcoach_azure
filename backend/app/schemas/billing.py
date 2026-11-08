@@ -41,12 +41,14 @@ PLAN_LIMITS = {
         }
     },
     "premium": {
-        # one-time payment, unlimited from then on (no monthly charge) — the user renamed it on Nov 8
+        # one-time payment of 89 ₪ for 1,000 more messages ("כ-10 תהליכי אימון מלאים"), can be bought again —
+        # the user's decision Nov 8 (it was unlimited before). The paid allowance lives on the user
+        # (preferences["paid_messages_limit"]); the -1 below stays for coupon-granted Premium (BSD100 etc.).
         "name_he": "מאמן אישי, תמיד איתך",
         "name_en": "Your personal coach, always with you",
         "price": 89,
         "currency": "ILS",
-        "messages_per_month": -1,  # Unlimited messages on Premium (catalog tier)
+        "messages_per_month": -1,  # coupon-granted Premium stays unlimited; a payment adds PAID_PACK_MESSAGES
         "speech_minutes_per_month": -1,
         "features": {
             "coaching_phases": "all",  # All 9 phases
@@ -72,6 +74,9 @@ PLAN_LIMITS = {
         }
     }
 }
+
+# Messages one PayMe payment adds, counted from the moment of payment (what was left is kept).
+PAID_PACK_MESSAGES = 1000
 
 # Shown in billing catalog / PayMe upgrade UI only. "pro" stays in PLAN_LIMITS for legacy subscribers & coupons.
 BILLING_PLANS_IN_CATALOG: tuple[str, ...] = ("basic", "premium")
@@ -109,10 +114,15 @@ def effective_messages_per_month(
     clerk_id: Optional[str] = None,
     coupon_messages_limit: Optional[int] = None,
     is_admin: bool = False,
+    paid_messages_limit: Optional[int] = None,
 ) -> int:
     """Resolved total message quota (all-time user messages). Name kept for API/helpers compatibility."""
     if is_admin:  # the admin row may hold a Clerk placeholder email, so the email override missed it (Nov 8)
         return -1
+    if paid_messages_limit is not None:  # bought 1,000-message packs; a bigger coupon cap still wins
+        if coupon_messages_limit == -1:
+            return -1
+        return max(paid_messages_limit, coupon_messages_limit or 0)
     if coupon_messages_limit is not None:
         return coupon_messages_limit
     plan_limits = PLAN_LIMITS.get(plan_key, PLAN_LIMITS["basic"])
