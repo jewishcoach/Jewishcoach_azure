@@ -3,7 +3,7 @@ import { Heart, Menu, X, LogOut, MessageSquare, User, PlusCircle, Pause, Trash2,
 import { useV3Auth, useV3User } from './hooks/useV3Auth';
 import { MACRO_STAGES } from './types';
 import { useStageFlowV3 } from './hooks/useStageFlowV3';
-import { listConversations, fetchUserGender, deleteConversation, fetchIsAdmin } from './services/api';
+import { listConversations, fetchUserGender, deleteConversation, fetchIsAdmin, fetchCurrentPlan } from './services/api';
 import type { ConversationListItem } from './services/api';
 
 // Reuse V2 components that don't change
@@ -52,6 +52,7 @@ export function V3App({ language = 'he' }: V3AppProps) {
   // "המנוי שלי": from the menu, or from the limit window (V3 had no subscription screen — the button reloaded the app)
   const [subscriptionOpen, setSubscriptionOpen] = useState<null | 'menu' | 'quota'>(null);
   const [subscriptionCoupon, setSubscriptionCoupon] = useState(false);
+  const [currentPlan, setCurrentPlan] = useState<string | null>(null);
   // deleting a conversation from "השיחות שלי" (privacy: there was no way to remove one in V3)
   const [toDelete, setToDelete] = useState<ConversationListItem | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -61,6 +62,7 @@ export function V3App({ language = 'he' }: V3AppProps) {
     if (isSignedIn) {
       fetchUserGender(getToken).then(setUserGender);
       fetchIsAdmin(getToken).then(setIsAdmin);
+      fetchCurrentPlan(getToken).then(setCurrentPlan);
     }
   }, [isSignedIn, getToken]);
 
@@ -288,6 +290,11 @@ export function V3App({ language = 'he' }: V3AppProps) {
                 <span className="text-sm text-white" style={{ fontFamily: "'Heebo', sans-serif" }}>
                   {isHe ? 'המנוי שלי' : 'My subscription'}
                 </span>
+                {currentPlan === 'premium' && (
+                  <span className="mr-auto text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#03ffe6] text-[#2d4658]">
+                    {isHe ? 'פעיל ✓' : 'Active ✓'}
+                  </span>
+                )}
               </button>
             </div>
             {isAdmin && (
@@ -414,7 +421,7 @@ export function V3App({ language = 'he' }: V3AppProps) {
         couponFirst={subscriptionCoupon}
         gender={userGender}
         getToken={getToken}
-        onClose={() => setSubscriptionOpen(null)}
+        onClose={() => { setSubscriptionOpen(null); fetchCurrentPlan(getToken).then(setCurrentPlan); }}
       />
       {isAdmin && <AdminDashboard open={adminOpen} onClose={() => setAdminOpen(false)} getToken={getToken} />}
       {legalOpen && (

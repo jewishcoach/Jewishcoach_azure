@@ -83,6 +83,16 @@ export async function sendMessageV3(
 // Stage transitions — same endpoints, V3 header
 // ---------------------------------------------------------------------------
 
+/** The client's plan, for the "פעיל ✓" mark next to "המנוי שלי" in the menu. */
+export async function fetchCurrentPlan(getToken: (opts?: { skipCache?: boolean }) => Promise<string | null>): Promise<string | null> {
+  try {
+    const res = await fetchWithAuthRetry(`${getApiBase()}/billing/overview`, getToken);
+    return res.ok ? ((await res.json()).current_plan ?? null) : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Admin account? (/users/me) — the V3 menu shows "ניהול" only to admins. */
 export async function fetchIsAdmin(getToken: (opts?: { skipCache?: boolean }) => Promise<string | null>): Promise<boolean> {
   try {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { X, Ticket, Loader2, Lock, Heart, Footprints, Clock, ChevronDown, ShieldCheck } from 'lucide-react';
+import { X, Ticket, Loader2, Lock, Heart, Footprints, Clock, ChevronDown, ShieldCheck, PartyPopper } from 'lucide-react';
 import { fetchWithAuthRetry } from '../services/api';
 import { getApiBase } from '../../config';
 import { PayMeCheckoutModal } from '../../components/PayMeCheckoutModal';
@@ -18,6 +18,7 @@ interface Overview {
   has_active_coupon: boolean;
   coupon_code?: string | null;
   payme_checkout?: { merchant_public_key: string; test_mode: boolean; checkout_js_url?: string } | null;
+  subscription?: { current_period_start?: string | null; created_at?: string | null } | null;
 }
 
 interface Props {
@@ -45,6 +46,8 @@ export function SubscriptionScreen({ open, reason = 'menu', couponFirst = false,
   const [couponBusy, setCouponBusy] = useState(false);
   const [couponMsg, setCouponMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [checkoutPlan, setCheckoutPlan] = useState<Plan | null>(null);
+  // after a successful payment the PayMe window just closed — say thank you and that the coach is open now
+  const [justPaid, setJustPaid] = useState(false);
 
   const load = useCallback(async () => {
     setLoadFailed(false);
@@ -119,6 +122,9 @@ export function SubscriptionScreen({ open, reason = 'menu', couponFirst = false,
             ? <button type="button" onClick={() => void load()} className="underline">הטעינה נכשלה — לנסות שוב</button>
             : <Loader2 className="inline animate-spin" size={24} />}
         </div>
+      ) : hasCoach ? (
+        <ActiveCoach overview={overview} justPaid={justPaid} gender={gender} benefits={benefits}
+          onBack={() => onClose(true)} />
       ) : (
         <div className="max-w-5xl mx-auto px-4 md:px-8 py-8 md:py-14 grid gap-6 md:gap-x-10 md:gap-y-6 md:grid-cols-[1.1fr_1fr] md:grid-rows-[auto_1fr] md:items-start">
           {/* the pitch — headline first; on the phone the offer comes right after it, before the benefits */}
@@ -243,9 +249,60 @@ export function SubscriptionScreen({ open, reason = 'menu', couponFirst = false,
           payMeCheckoutFromOverview={overview?.payme_checkout ?? null}
           getToken={getToken}
           onClose={() => setCheckoutPlan(null)}
-          onCompleted={() => { setCheckoutPlan(null); void load(); }}
+          onCompleted={() => { setCheckoutPlan(null); setJustPaid(true); void load(); }}
         />
       )}
+    </div>
+  );
+}
+
+// The paid plan is on: the thank-you right after paying, or a calm "active since" for whoever opens the screen later.
+function ActiveCoach({ overview, justPaid, benefits, onBack }: {
+  overview: Overview;
+  justPaid: boolean;
+  gender?: string | null;
+  benefits: { icon: typeof Heart; title: string; text: string }[];
+  onBack: () => void;
+}) {
+  const since = overview.subscription?.current_period_start || overview.subscription?.created_at;
+  const sinceText = since ? new Date(since.endsWith('Z') || since.includes('+') ? since : `${since}Z`).toLocaleDateString('he-IL') : null;
+  const limit = overview.usage.messages_limit;
+  return (
+    <div className="max-w-xl mx-auto px-4 py-10 md:py-16 text-center space-y-6">
+      <div className="mx-auto w-20 h-20 rounded-3xl flex items-center justify-center"
+        style={{ background: justPaid ? 'linear-gradient(135deg, #9747ff, #03ffe6)' : 'rgba(0,144,129,0.12)' }}>
+        {justPaid ? <PartyPopper size={38} className="text-white" /> : <ShieldCheck size={38} style={{ color: '#009081' }} />}
+      </div>
+      <div>
+        <h2 className="text-[30px] md:text-[40px] leading-tight font-bold" style={{ color: INK }}>
+          {justPaid ? 'תודה! המאמן האישי שלך פעיל' : 'המאמן האישי שלך פעיל'}
+        </h2>
+        <p className="mt-3 text-lg leading-relaxed" style={{ color: SOFT }}>
+          {justPaid
+            ? `מעכשיו אפשר לכתוב, לחזור ולפתוח תהליכים חדשים — בלי הגבלה. השיחה שלך מחכה בדיוק איפה שעצרת.`
+            : `${overview.has_active_coupon ? `דרך קופון ${overview.coupon_code ?? ''}`.trim() : 'מאמן אישי, תמיד איתך'}${sinceText ? ` · פעיל מאז ${sinceText}` : ''}`}
+        </p>
+      </div>
+      <ul className="space-y-4 text-right rounded-3xl bg-white p-6 shadow-sm">
+        {benefits.map(({ icon: Icon, title, text }) => (
+          <li key={title} className="flex gap-4 items-start">
+            <span className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0" style={{ background: 'rgba(151,71,255,0.12)' }}>
+              <Icon size={22} style={{ color: PURPLE }} />
+            </span>
+            <span>
+              <span className="block text-lg font-semibold" style={{ color: INK }}>{title}</span>
+              <span className="block text-base" style={{ color: SOFT }}>{text}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+      {limit !== -1 && (
+        <p className="text-base" style={{ color: SOFT }}>{`נשארו ${Math.max(0, limit - overview.usage.messages_used)} מתוך ${limit} הודעות בקופון`}</p>
+      )}
+      <button type="button" onClick={onBack}
+        className="w-full h-[56px] rounded-2xl text-white text-lg font-semibold" style={{ background: `linear-gradient(135deg, ${PURPLE} 0%, #6b2fd6 100%)` }}>
+        חזרה לשיחה
+      </button>
     </div>
   );
 }
