@@ -23,7 +23,7 @@ const _uxV3Param = typeof window !== 'undefined' && new URLSearchParams(window.l
 if (_uxV3Param) localStorage.setItem('ux_v3', 'true');
 const _uxV2Reset = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('v2');
 if (_uxV2Reset) localStorage.removeItem('ux_v3');
-export const UX_V3_ENABLED = (localStorage.getItem('ux_v3') || 'false') === 'true';
+export const UX_V3_ENABLED = (localStorage.getItem('ux_v3') || 'true') === 'true';
 
 /** Free (basic) plan total message quota — keep in sync with backend PLAN_LIMITS["basic"].messages_per_month */
 export const BASIC_PLAN_MESSAGES_PER_MONTH = 150;
