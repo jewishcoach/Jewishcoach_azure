@@ -193,7 +193,8 @@ def compute_journey(db: Session, days: int = 30, now: Optional[datetime] = None)
     user_rows = []
     for u in users:
         limit = effective_messages_per_month(email=u.email, plan_key=u.current_plan, clerk_id=u.clerk_id,
-                                             coupon_messages_limit=active_coupon_messages_limit(db, u))
+                                             coupon_messages_limit=active_coupon_messages_limit(db, u),
+                                             is_admin=bool(u.is_admin))
         latest = latest_by_user.get(u.id)
         la = last_active_by_user.get(u.id)
         user_rows.append({

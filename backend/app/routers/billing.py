@@ -116,6 +116,7 @@ def check_usage_limit(db: Session, user: User, usage_type: str = "message") -> b
             plan_key=user.current_plan,
             clerk_id=user.clerk_id,
             coupon_messages_limit=active_coupon_messages_limit(db, user),
+            is_admin=bool(user.is_admin),
         )
         if limit == -1:  # Unlimited
             return True
@@ -408,6 +409,7 @@ def get_billing_overview(
             plan_key=user.current_plan,
             clerk_id=user.clerk_id,
             coupon_messages_limit=coupon_msg_cap,
+            is_admin=bool(user.is_admin),
         ),
         speech_minutes_used=usage_record.speech_minutes_used,
         speech_minutes_limit=plan_limits["speech_minutes_per_month"],
@@ -548,6 +550,7 @@ def get_current_usage(
             plan_key=user.current_plan,
             clerk_id=user.clerk_id,
             coupon_messages_limit=active_coupon_messages_limit(db, user),
+            is_admin=bool(user.is_admin),
         ),
         speech_minutes_used=usage_record.speech_minutes_used,
         speech_minutes_limit=plan_limits["speech_minutes_per_month"],

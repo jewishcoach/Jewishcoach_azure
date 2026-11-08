@@ -41,8 +41,9 @@ PLAN_LIMITS = {
         }
     },
     "premium": {
-        "name_he": "פרמיום",
-        "name_en": "Premium",
+        # one-time payment, unlimited from then on (no monthly charge) — the user renamed it on Nov 8
+        "name_he": "גישה מלאה",
+        "name_en": "Full access",
         "price": 89,
         "currency": "ILS",
         "messages_per_month": -1,  # Unlimited messages on Premium (catalog tier)
@@ -107,8 +108,11 @@ def effective_messages_per_month(
     plan_key: str,
     clerk_id: Optional[str] = None,
     coupon_messages_limit: Optional[int] = None,
+    is_admin: bool = False,
 ) -> int:
     """Resolved total message quota (all-time user messages). Name kept for API/helpers compatibility."""
+    if is_admin:  # the admin row may hold a Clerk placeholder email, so the email override missed it (Nov 8)
+        return -1
     if coupon_messages_limit is not None:
         return coupon_messages_limit
     plan_limits = PLAN_LIMITS.get(plan_key, PLAN_LIMITS["basic"])

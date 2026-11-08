@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { X, Check, Sparkles, Ticket, Loader2 } from 'lucide-react';
+import { X, Check, Sparkles, Ticket, Loader2, Lock, Infinity as InfinityIcon, RotateCcw, ChevronDown } from 'lucide-react';
 import { fetchWithAuthRetry } from '../services/api';
 import { getApiBase } from '../../config';
 import { PayMeCheckoutModal } from '../../components/PayMeCheckoutModal';
@@ -7,8 +7,8 @@ import { formatCouponRedeemError } from '../../lib/couponRedeemError';
 import { useTranslation } from 'react-i18next';
 
 // "המנוי שלי" (Nov 8): V3 had no subscription screen — the limit window's upgrade button sent to /billing, which V3
-// doesn't route, so the app just reloaded. Usage, the two plans, a coupon and the PayMe checkout, in V3's style.
-// Opened from the menu, or by the limit window (reason "quota": the conversation is kept, continue after).
+// doesn't route, so the app just reloaded. Usage, "גישה מלאה" (one payment, unlimited from then on — no monthly
+// charge), Basic, a coupon and the PayMe checkout. Opened from the menu, or by the limit window (reason "quota").
 
 interface Plan { id: string; name_he: string; name_en: string; price: number; currency: string; messages_per_month: number }
 interface Overview {
@@ -30,15 +30,16 @@ interface Props {
 
 const HEEBO = { fontFamily: "'Heebo', sans-serif" };
 const INK = '#2d4658';
-const MUTED = 'rgba(45,70,88,0.6)';
+const MUTED = 'rgba(45,70,88,0.62)';
+const PURPLE = '#9747ff';
 
 export function SubscriptionScreen({ open, reason = 'menu', gender, getToken, onClose }: Props) {
   const { t } = useTranslation();
-  const fem = gender === 'female';
-  const g = (m: string, f: string) => (fem ? f : m);
+  const g = (m: string, f: string) => (gender === 'female' ? f : m);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [code, setCode] = useState('');
+  const [couponOpen, setCouponOpen] = useState(false);
   const [couponBusy, setCouponBusy] = useState(false);
   const [couponMsg, setCouponMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [checkoutPlan, setCheckoutPlan] = useState<Plan | null>(null);
@@ -64,9 +65,9 @@ export function SubscriptionScreen({ open, reason = 'menu', gender, getToken, on
   const left = unlimited ? Infinity : Math.max(0, limit - used);
   const pct = unlimited || !limit ? 0 : Math.min(100, Math.round((100 * used) / limit));
   const outOfMessages = !unlimited && limit > 0 && left === 0;
-  const premium = overview?.available_plans.find((p) => p.id === 'premium');
+  const full = overview?.available_plans.find((p) => p.id === 'premium');
   const basic = overview?.available_plans.find((p) => p.id === 'basic');
-  const onPremium = overview?.current_plan === 'premium';
+  const hasFull = overview?.current_plan === 'premium';
 
   const redeem = async () => {
     if (!code.trim() || couponBusy) return;
@@ -91,112 +92,135 @@ export function SubscriptionScreen({ open, reason = 'menu', gender, getToken, on
     }
   };
 
+  const heroTitle = reason === 'quota' && outOfMessages ? 'ההודעות שלך נגמרו'
+    : hasFull || unlimited ? 'יש לך גישה מלאה' : 'המסע שלך, בקצב שלך';
+  const heroText = reason === 'quota' && outOfMessages
+    ? `השיחה שמורה בדיוק איפה שעצרת. כדי להמשיך — ${g('פתח', 'פתחי')} גישה מלאה או ${g('ממש', 'ממשי')} קוד קופון.`
+    : hasFull || unlimited ? 'אפשר לכתוב, לחזור ולפתוח תהליכים חדשים — בלי הגבלה.'
+    : 'כל הודעה שלך וכל כרטיס שממולא נספרים. כך זה נראה אצלך:';
+
   return (
     <div className="fixed inset-0 z-[75] bg-[#f6f4f0] overflow-y-auto" dir="rtl" style={HEEBO}>
-      <header className="sticky top-0 z-10 bg-[#2d4658] text-white px-4 h-[64px] flex items-center gap-3">
-        <h1 className="text-lg font-semibold flex-1">המנוי שלי</h1>
-        <button type="button" onClick={() => onClose(!outOfMessages)} className="p-2 rounded-lg hover:bg-white/10" aria-label="סגירה">
-          <X size={20} />
-        </button>
-      </header>
-
-      <div className="max-w-lg mx-auto p-4 space-y-4 pb-16">
-        {reason === 'quota' && outOfMessages && (
-          <div className="rounded-2xl p-4 text-white" style={{ background: 'linear-gradient(135deg, #9747ff 0%, #6b2fd6 100%)' }}>
-            <p className="text-base font-semibold">ההודעות שלך נגמרו</p>
-            <p className="text-sm mt-1 leading-relaxed opacity-90">
-              השיחה שלך שמורה בדיוק איפה שעצרת. כדי להמשיך — {g('הצטרף', 'הצטרפי')} לפרמיום או {g('ממש', 'ממשי')} קוד קופון.
-            </p>
+      {/* the header colour flows into a soft band with the headline and the usage meter */}
+      <div className="bg-gradient-to-b from-[#2d4658] to-[#3a4f7a] text-white pb-16">
+        <header className="max-w-xl mx-auto px-4 h-[64px] flex items-center">
+          <h1 className="text-base font-medium flex-1 opacity-90">המנוי שלי</h1>
+          <button type="button" onClick={() => onClose(!outOfMessages)} className="p-2 rounded-lg hover:bg-white/10" aria-label="סגירה">
+            <X size={20} />
+          </button>
+        </header>
+        <div className="max-w-xl mx-auto px-5 pt-2 space-y-4">
+          <div>
+            <h2 className="text-[30px] leading-tight" style={{ fontFamily: "'Karantina', 'Heebo', sans-serif" }}>{heroTitle}</h2>
+            <p className="text-sm mt-1 opacity-85 leading-relaxed">{heroText}</p>
           </div>
-        )}
+          {overview && !unlimited && (
+            <div className="rounded-2xl bg-white/10 px-4 py-3">
+              <div className="flex items-baseline justify-between text-sm">
+                <span><span className="text-2xl font-semibold">{used}</span><span className="opacity-75"> / {limit} הודעות</span></span>
+                <span className={outOfMessages ? 'text-amber-300 font-medium' : 'opacity-80'}>{outOfMessages ? 'לא נשארו הודעות' : `נשארו ${left}`}</span>
+              </div>
+              <div className="mt-2 h-2 rounded-full bg-white/20 overflow-hidden" role="progressbar" aria-valuenow={used} aria-valuemin={0} aria-valuemax={limit}>
+                <div className="h-full rounded-full" style={{ width: `${pct}%`, background: pct >= 90 ? '#fbbf24' : '#03ffe6' }} />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
+      <div className="max-w-xl mx-auto px-4 -mt-10 space-y-4 pb-16">
         {!overview ? (
-          <div className="bg-white rounded-2xl p-8 text-center text-sm" style={{ color: MUTED }}>
+          <div className="bg-white rounded-3xl p-10 text-center text-sm shadow-md" style={{ color: MUTED }}>
             {loadFailed
               ? <button type="button" onClick={() => void load()} className="underline">הטעינה נכשלה — לנסות שוב</button>
-              : <Loader2 className="inline animate-spin" size={20} />}
+              : <Loader2 className="inline animate-spin" size={22} />}
           </div>
         ) : (
           <>
-            {/* usage */}
-            <section className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
-              <div className="flex items-baseline justify-between">
-                <h2 className="text-sm font-semibold" style={{ color: INK }}>השימוש שלך</h2>
-                <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(3,255,230,0.18)', color: INK }}>
-                  {onPremium ? 'פרמיום' : overview.has_active_coupon ? `קופון ${overview.coupon_code ?? ''}`.trim() : 'בסיסי'}
-                </span>
-              </div>
-              {unlimited ? (
-                <p className="text-2xl font-semibold" style={{ color: INK }}>הודעות ללא הגבלה</p>
-              ) : (
-                <>
-                  <p className="text-sm" style={{ color: INK }}>
-                    <span className="text-3xl font-semibold">{used}</span>
-                    <span style={{ color: MUTED }}> מתוך {limit} הודעות</span>
-                  </p>
-                  <div className="h-2.5 rounded-full bg-[#efece7] overflow-hidden" role="progressbar" aria-valuenow={used} aria-valuemin={0} aria-valuemax={limit}>
-                    <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: pct >= 90 ? '#d97706' : '#9747ff' }} />
+            {!hasFull && full && (
+              <section className="rounded-3xl p-[2px] shadow-lg" style={{ background: `linear-gradient(135deg, ${PURPLE}, #03ffe6)` }}>
+                <div className="rounded-[22px] bg-white p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: PURPLE }}>
+                        <Sparkles size={14} /> המומלץ
+                      </p>
+                      <h3 className="text-2xl font-semibold mt-1" style={{ color: INK }}>{full.name_he}</h3>
+                    </div>
+                    <div className="text-left shrink-0">
+                      <p className="text-[34px] leading-none font-semibold" style={{ color: INK }}>{full.price}<span className="text-xl"> ₪</span></p>
+                      <p className="text-xs mt-1.5 font-medium px-2 py-0.5 rounded-full inline-block" style={{ background: 'rgba(3,255,230,0.2)', color: INK }}>
+                        תשלום חד פעמי
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-xs" style={{ color: outOfMessages ? '#b45309' : MUTED }}>
-                    {outOfMessages ? 'לא נשארו הודעות' : `נשארו ${left} הודעות`} · כל הודעה שלך וכל כרטיס שממולא נספרים
-                  </p>
-                </>
-              )}
-            </section>
 
-            {/* plans */}
-            {!onPremium && premium && (
-              <section className="space-y-3">
-                <div className="bg-white rounded-2xl p-4 shadow-sm border-2 border-[#9747ff] relative">
-                  <span className="absolute -top-3 right-4 text-[11px] font-semibold text-white bg-[#9747ff] px-2 py-0.5 rounded-full">מומלץ</span>
-                  <div className="flex items-baseline justify-between">
-                    <h3 className="text-lg font-semibold flex items-center gap-1.5" style={{ color: INK }}>
-                      <Sparkles size={18} className="text-[#9747ff]" /> פרמיום
-                    </h3>
-                    <p style={{ color: INK }}><span className="text-2xl font-semibold">{premium.price} ₪</span><span className="text-xs" style={{ color: MUTED }}> לחודש</span></p>
-                  </div>
-                  <ul className="mt-3 space-y-1.5 text-sm" style={{ color: INK }}>
-                    {['הודעות ללא הגבלה — תהליכים שלמים, בלי לעצור באמצע', 'אפשר לפתוח תהליך חדש בכל זמן'].map((f) => (
-                      <li key={f} className="flex gap-2"><Check size={16} className="text-[#009081] shrink-0 mt-0.5" />{f}</li>
+                  <ul className="mt-5 space-y-3">
+                    {[
+                      { icon: InfinityIcon, title: 'הודעות ללא הגבלה', text: 'תהליכים שלמים, בלי לעצור באמצע' },
+                      { icon: RotateCcw, title: 'תהליכים חדשים בכל זמן', text: 'לחזור, להעמיק, לעבוד על אירוע נוסף' },
+                      { icon: Check, title: 'בלי מנוי חודשי', text: 'משלמים פעם אחת — בלי חיוב חוזר' },
+                    ].map(({ icon: Icon, title, text }) => (
+                      <li key={title} className="flex gap-3">
+                        <span className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(151,71,255,0.10)' }}>
+                          <Icon size={18} style={{ color: PURPLE }} />
+                        </span>
+                        <span>
+                          <span className="block text-sm font-semibold" style={{ color: INK }}>{title}</span>
+                          <span className="block text-xs" style={{ color: MUTED }}>{text}</span>
+                        </span>
+                      </li>
                     ))}
                   </ul>
-                  <button type="button" onClick={() => setCheckoutPlan(premium)}
-                    className="mt-4 w-full h-[50px] rounded-xl bg-[#9747ff] hover:bg-[#8035e6] text-white text-base font-medium transition-colors drop-shadow-[0px_6px_2px_rgba(0,0,0,0.10)]">
-                    {g('הצטרף לפרמיום', 'הצטרפי לפרמיום')}
-                  </button>
-                  <p className="text-[11px] text-center mt-2" style={{ color: MUTED }}>תשלום מאובטח בכרטיס אשראי דרך PayMe</p>
-                </div>
 
-                {basic && (
-                  <div className="bg-white/70 rounded-2xl p-4 border border-[#e0ddd8] flex items-center justify-between">
-                    <div>
-                      <h3 className="text-sm font-semibold" style={{ color: INK }}>בסיסי <span className="text-xs font-normal" style={{ color: MUTED }}>· המסלול שלך</span></h3>
-                      <p className="text-xs mt-0.5" style={{ color: MUTED }}>{basic.messages_per_month} הודעות בסך הכול</p>
-                    </div>
-                    <span className="text-sm font-semibold" style={{ color: INK }}>חינם</span>
-                  </div>
-                )}
+                  <button type="button" onClick={() => setCheckoutPlan(full)}
+                    className="mt-6 w-full h-[54px] rounded-2xl text-white text-base font-semibold transition-transform active:scale-[0.98] shadow-[0_10px_20px_-8px_rgba(151,71,255,0.6)]"
+                    style={{ background: `linear-gradient(135deg, ${PURPLE} 0%, #6b2fd6 100%)` }}>
+                    {g('פתח גישה מלאה', 'פתחי גישה מלאה')} · {full.price} ₪
+                  </button>
+                  <p className="text-[11px] text-center mt-2 flex items-center justify-center gap-1" style={{ color: MUTED }}>
+                    <Lock size={11} /> תשלום מאובטח בכרטיס אשראי דרך PayMe
+                  </p>
+                </div>
               </section>
             )}
 
-            {/* coupon */}
-            <section className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
-              <h2 className="text-sm font-semibold flex items-center gap-1.5" style={{ color: INK }}><Ticket size={16} className="text-[#9747ff]" /> יש לך קוד קופון?</h2>
-              <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); void redeem(); }}>
-                <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="קוד הקופון" dir="ltr"
-                  className="flex-1 min-w-0 h-[44px] px-3 rounded-xl border border-[#e0ddd8] text-sm text-center tracking-wider uppercase focus:outline-none focus:border-[#9747ff]" />
-                <button type="submit" disabled={couponBusy || !code.trim()}
-                  className="h-[44px] px-5 rounded-xl border border-[#9747ff] text-[#9747ff] text-sm font-medium hover:bg-[#9747ff]/5 disabled:opacity-50">
-                  {couponBusy ? '...' : 'מימוש'}
-                </button>
-              </form>
-              {couponMsg && <p className={`text-sm ${couponMsg.ok ? 'text-[#009081]' : 'text-red-600'}`}>{couponMsg.text}</p>}
+            {!hasFull && basic && (
+              <div className="rounded-2xl px-4 py-3 border border-[#e0ddd8] bg-white/60 flex items-center justify-between">
+                <p className="text-sm" style={{ color: INK }}>
+                  <span className="font-semibold">{basic.name_he}</span>
+                  <span style={{ color: MUTED }}> · {basic.messages_per_month} הודעות · המסלול שלך עכשיו</span>
+                </p>
+                <span className="text-sm font-medium" style={{ color: MUTED }}>חינם</span>
+              </div>
+            )}
+
+            <section className="rounded-2xl bg-white shadow-sm">
+              <button type="button" onClick={() => setCouponOpen((v) => !v)}
+                className="w-full flex items-center gap-2 px-4 py-3.5 text-sm font-medium" style={{ color: INK }} aria-expanded={couponOpen}>
+                <Ticket size={16} style={{ color: PURPLE }} />
+                <span className="flex-1 text-right">יש לך קוד קופון?</span>
+                <ChevronDown size={16} className={`transition-transform ${couponOpen ? 'rotate-180' : ''}`} style={{ color: MUTED }} />
+              </button>
+              {couponOpen && (
+                <div className="px-4 pb-4 space-y-2">
+                  <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); void redeem(); }}>
+                    <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="קוד הקופון" dir="ltr" autoFocus
+                      className="flex-1 min-w-0 h-[46px] px-3 rounded-xl border border-[#e0ddd8] text-sm text-center tracking-widest uppercase focus:outline-none focus:border-[#9747ff]" />
+                    <button type="submit" disabled={couponBusy || !code.trim()}
+                      className="h-[46px] px-5 rounded-xl text-white text-sm font-medium disabled:opacity-40" style={{ background: INK }}>
+                      {couponBusy ? '...' : 'מימוש'}
+                    </button>
+                  </form>
+                  {couponMsg && <p className={`text-sm ${couponMsg.ok ? 'text-[#009081]' : 'text-red-600'}`}>{couponMsg.text}</p>}
+                </div>
+              )}
             </section>
 
             {reason === 'quota' && !outOfMessages && (
               <button type="button" onClick={() => onClose(true)}
-                className="w-full h-[50px] rounded-xl bg-[#2d4658] text-white text-base font-medium">
-                {g('חזור לשיחה', 'חזרי לשיחה')} ←
+                className="w-full h-[52px] rounded-2xl text-white text-base font-medium" style={{ background: INK }}>
+                {g('חזור לשיחה', 'חזרי לשיחה')}
               </button>
             )}
           </>
