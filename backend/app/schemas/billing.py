@@ -30,7 +30,7 @@ PLAN_LIMITS = {
         "price": 0,
         "currency": "ILS",
         # Total user-message quota (all-time); JSON key kept as messages_per_month for compatibility.
-        "messages_per_month": 100,  # user's decision Nov 2 (was 1000) — about two full processes
+        "messages_per_month": 200,  # user's decision Nov 8 (100 on Nov 2; a real client used all 100 to reach S12)
         # תמלול קולי: ללא הגבלה זמנית לכל התוכניות (עד להודעה חדשה)
         "speech_minutes_per_month": -1,
         "features": {
