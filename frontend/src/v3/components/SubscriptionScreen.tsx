@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
-import { X, Check, Sparkles, Ticket, Loader2, Lock, Infinity as InfinityIcon, RotateCcw, ChevronDown } from 'lucide-react';
+import { X, Ticket, Loader2, Lock, Heart, Footprints, Clock, ChevronDown, ShieldCheck } from 'lucide-react';
 import { fetchWithAuthRetry } from '../services/api';
 import { getApiBase } from '../../config';
 import { PayMeCheckoutModal } from '../../components/PayMeCheckoutModal';
 import { formatCouponRedeemError } from '../../lib/couponRedeemError';
 import { useTranslation } from 'react-i18next';
 
-// "המנוי שלי" (Nov 8): V3 had no subscription screen — the limit window's upgrade button sent to /billing, which V3
-// doesn't route, so the app just reloaded. Usage, "גישה מלאה" (one payment, unlimited from then on — no monthly
-// charge), Basic, a coupon and the PayMe checkout. Opened from the menu, or by the limit window (reason "quota").
+// "המנוי שלי" (Nov 8). The paid plan is one payment that unlocks the coach without a limit — sold as "מאמן אישי,
+// תמיד איתך" (the user's name for it). A marketing page: the value to the client first, the price and one button,
+// then Basic and a coupon. Large type, two columns on a computer. Opened from the menu or by the limit window.
 
 interface Plan { id: string; name_he: string; name_en: string; price: number; currency: string; messages_per_month: number }
 interface Overview {
@@ -31,8 +31,8 @@ interface Props {
 }
 
 const HEEBO = { fontFamily: "'Heebo', sans-serif" };
-const INK = '#2d4658';
-const MUTED = 'rgba(45,70,88,0.62)';
+const INK = '#1f3444';
+const SOFT = '#4a6070';
 const PURPLE = '#9747ff';
 
 export function SubscriptionScreen({ open, reason = 'menu', couponFirst = false, gender, getToken, onClose }: Props) {
@@ -68,9 +68,10 @@ export function SubscriptionScreen({ open, reason = 'menu', couponFirst = false,
   const left = unlimited ? Infinity : Math.max(0, limit - used);
   const pct = unlimited || !limit ? 0 : Math.min(100, Math.round((100 * used) / limit));
   const outOfMessages = !unlimited && limit > 0 && left === 0;
-  const full = overview?.available_plans.find((p) => p.id === 'premium');
+  const coach = overview?.available_plans.find((p) => p.id === 'premium');
   const basic = overview?.available_plans.find((p) => p.id === 'basic');
-  const hasFull = overview?.current_plan === 'premium';
+  const hasCoach = overview?.current_plan === 'premium';
+  const quota = reason === 'quota' && outOfMessages;
 
   const redeem = async () => {
     if (!code.trim() || couponBusy) return;
@@ -95,140 +96,145 @@ export function SubscriptionScreen({ open, reason = 'menu', couponFirst = false,
     }
   };
 
-  const heroTitle = reason === 'quota' && outOfMessages ? 'ההודעות שלך נגמרו'
-    : hasFull || unlimited ? 'יש לך גישה מלאה' : 'המסע שלך, בקצב שלך';
-  const heroText = reason === 'quota' && outOfMessages
-    ? `השיחה שמורה בדיוק איפה שעצרת. כדי להמשיך — ${g('פתח', 'פתחי')} גישה מלאה או ${g('ממש', 'ממשי')} קוד קופון.`
-    : hasFull || unlimited ? 'אפשר לכתוב, לחזור ולפתוח תהליכים חדשים — בלי הגבלה.'
-    : 'כל הודעה שלך וכל כרטיס שממולא נספרים. כך זה נראה אצלך:';
+  const benefits = [
+    { icon: Footprints, title: 'תהליך שלם, עד הבחירה החדשה', text: 'בלי מגבלת הודעות שעוצרת אותך באמצע הדרך' },
+    { icon: Clock, title: `${g('חוזר', 'חוזרת')} מתי שנוח לך`, text: 'אירוע חדש, יום קשה, הצעד הבא — המאמן כאן, בכל שעה' },
+    { icon: Heart, title: 'תשלום אחד וזהו', text: 'בלי מנוי ובלי חיוב חוזר' },
+  ];
 
   return (
     <div className="fixed inset-0 z-[75] bg-[#f6f4f0] overflow-y-auto" dir="rtl" style={HEEBO}>
-      {/* the header colour flows into a soft band with the headline and the usage meter */}
-      <div className="bg-gradient-to-b from-[#2d4658] to-[#3a4f7a] text-white pb-16">
-        <header className="max-w-xl mx-auto px-4 h-[64px] flex items-center">
-          <h1 className="text-base font-medium flex-1 opacity-90">המנוי שלי</h1>
+      <header className="sticky top-0 z-10 bg-[#2d4658] text-white">
+        <div className="max-w-5xl mx-auto px-4 md:px-8 h-[64px] flex items-center">
+          <h1 className="text-lg font-medium flex-1">המנוי שלי</h1>
           <button type="button" onClick={() => onClose(!outOfMessages)} className="p-2 rounded-lg hover:bg-white/10" aria-label="סגירה">
-            <X size={20} />
+            <X size={22} />
           </button>
-        </header>
-        <div className="max-w-xl mx-auto px-5 pt-2 space-y-4">
-          <div>
-            <h2 className="text-[30px] leading-tight" style={{ fontFamily: "'Karantina', 'Heebo', sans-serif" }}>{heroTitle}</h2>
-            <p className="text-sm mt-1 opacity-85 leading-relaxed">{heroText}</p>
-          </div>
-          {overview && !unlimited && (
-            <div className="rounded-2xl bg-white/10 px-4 py-3">
-              <div className="flex items-baseline justify-between text-sm">
-                <span><span className="text-2xl font-semibold">{used}</span><span className="opacity-75"> / {limit} הודעות</span></span>
-                <span className={outOfMessages ? 'text-amber-300 font-medium' : 'opacity-80'}>{outOfMessages ? 'לא נשארו הודעות' : `נשארו ${left}`}</span>
-              </div>
-              <div className="mt-2 h-2 rounded-full bg-white/20 overflow-hidden" role="progressbar" aria-valuenow={used} aria-valuemin={0} aria-valuemax={limit}>
-                <div className="h-full rounded-full" style={{ width: `${pct}%`, background: pct >= 90 ? '#fbbf24' : '#03ffe6' }} />
-              </div>
-            </div>
-          )}
         </div>
-      </div>
+      </header>
 
-      <div className="max-w-xl mx-auto px-4 -mt-10 space-y-4 pb-16">
-        {!overview ? (
-          <div className="bg-white rounded-3xl p-10 text-center text-sm shadow-md" style={{ color: MUTED }}>
-            {loadFailed
-              ? <button type="button" onClick={() => void load()} className="underline">הטעינה נכשלה — לנסות שוב</button>
-              : <Loader2 className="inline animate-spin" size={22} />}
+      {!overview ? (
+        <div className="max-w-md mx-auto mt-16 bg-white rounded-3xl p-10 text-center text-base shadow-md" style={{ color: SOFT }}>
+          {loadFailed
+            ? <button type="button" onClick={() => void load()} className="underline">הטעינה נכשלה — לנסות שוב</button>
+            : <Loader2 className="inline animate-spin" size={24} />}
+        </div>
+      ) : (
+        <div className="max-w-5xl mx-auto px-4 md:px-8 py-8 md:py-14 grid gap-6 md:gap-x-10 md:gap-y-6 md:grid-cols-[1.1fr_1fr] md:grid-rows-[auto_1fr] md:items-start">
+          {/* the pitch — headline first; on the phone the offer comes right after it, before the benefits */}
+          <div className="space-y-6 order-1 md:order-none md:col-start-1 md:row-start-1">
+            {quota && (
+              <p className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold"
+                style={{ background: 'rgba(217,119,6,0.12)', color: '#92400e' }}>
+                ההודעות שלך נגמרו — השיחה שמורה בדיוק איפה שעצרת
+              </p>
+            )}
+            {unlimited && !hasCoach && (
+              <p className="inline-flex rounded-full px-4 py-1.5 text-sm" style={{ background: 'rgba(3,255,230,0.18)', color: INK }}>
+                לחשבון שלך אין מגבלת הודעות — כך המסך נראה למשתמשים
+              </p>
+            )}
+            <div>
+              <h2 className="text-[34px] md:text-[46px] leading-[1.15] font-bold" style={{ color: INK }}>
+                מאמן אישי,<br /><span style={{ color: PURPLE }}>תמיד איתך</span>
+              </h2>
+              <p className="mt-4 text-lg md:text-xl leading-relaxed" style={{ color: SOFT }}>
+                בני ממשיך ללוות אותך בכל תהליך — מהרגע שקרה ועד הבחירה החדשה שלך. בלי לעצור באמצע, בלי לחכות לפגישה.
+              </p>
+            </div>
           </div>
-        ) : (
-          <>
-            {!hasFull && full && (
-              <section className="rounded-3xl p-[2px] shadow-lg" style={{ background: `linear-gradient(135deg, ${PURPLE}, #03ffe6)` }}>
-                <div className="rounded-[22px] bg-white p-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: PURPLE }}>
-                        <Sparkles size={14} /> המומלץ
-                      </p>
-                      <h3 className="text-2xl font-semibold mt-1" style={{ color: INK }}>{full.name_he}</h3>
-                    </div>
-                    <div className="text-left shrink-0">
-                      <p className="text-[34px] leading-none font-semibold" style={{ color: INK }}>{full.price}<span className="text-xl"> ₪</span></p>
-                      <p className="text-xs mt-1.5 font-medium px-2 py-0.5 rounded-full inline-block" style={{ background: 'rgba(3,255,230,0.2)', color: INK }}>
-                        תשלום חד פעמי
-                      </p>
-                    </div>
-                  </div>
 
-                  <ul className="mt-5 space-y-3">
-                    {[
-                      { icon: InfinityIcon, title: 'הודעות ללא הגבלה', text: 'תהליכים שלמים, בלי לעצור באמצע' },
-                      { icon: RotateCcw, title: 'תהליכים חדשים בכל זמן', text: 'לחזור, להעמיק, לעבוד על אירוע נוסף' },
-                      { icon: Check, title: 'בלי מנוי חודשי', text: 'משלמים פעם אחת — בלי חיוב חוזר' },
-                    ].map(({ icon: Icon, title, text }) => (
-                      <li key={title} className="flex gap-3">
-                        <span className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(151,71,255,0.10)' }}>
-                          <Icon size={18} style={{ color: PURPLE }} />
-                        </span>
-                        <span>
-                          <span className="block text-sm font-semibold" style={{ color: INK }}>{title}</span>
-                          <span className="block text-xs" style={{ color: MUTED }}>{text}</span>
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+          <ul className="space-y-4 order-3 md:order-none md:col-start-1 md:row-start-2">
+              {benefits.map(({ icon: Icon, title, text }) => (
+                <li key={title} className="flex gap-4 items-start">
+                  <span className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0" style={{ background: 'rgba(151,71,255,0.12)' }}>
+                    <Icon size={22} style={{ color: PURPLE }} />
+                  </span>
+                  <span>
+                    <span className="block text-lg font-semibold" style={{ color: INK }}>{title}</span>
+                    <span className="block text-base" style={{ color: SOFT }}>{text}</span>
+                  </span>
+                </li>
+              ))}
+          </ul>
 
-                  <button type="button" onClick={() => setCheckoutPlan(full)}
-                    className="mt-6 w-full h-[54px] rounded-2xl text-white text-base font-semibold transition-transform active:scale-[0.98] shadow-[0_10px_20px_-8px_rgba(151,71,255,0.6)]"
+          {/* the offer */}
+          <div className="space-y-4 order-2 md:order-none md:col-start-2 md:row-start-1 md:row-span-2">
+            {hasCoach ? (
+              <section className="rounded-3xl bg-white p-6 shadow-lg text-center space-y-2">
+                <ShieldCheck size={34} className="mx-auto" style={{ color: '#009081' }} />
+                <h3 className="text-2xl font-bold" style={{ color: INK }}>המאמן האישי שלך פעיל</h3>
+                <p className="text-base" style={{ color: SOFT }}>אפשר לכתוב, לחזור ולפתוח תהליכים חדשים — בלי הגבלה.</p>
+              </section>
+            ) : coach && (
+              <section className="rounded-3xl p-[2px] shadow-xl" style={{ background: `linear-gradient(135deg, ${PURPLE}, #03ffe6)` }}>
+                <div className="rounded-[22px] bg-white p-6 md:p-7">
+                  <p className="text-base font-semibold" style={{ color: PURPLE }}>{coach.name_he}</p>
+                  <p className="mt-2 flex items-baseline gap-2" style={{ color: INK }}>
+                    <span className="text-[52px] leading-none font-bold">{coach.price} ₪</span>
+                  </p>
+                  <p className="mt-1 text-base font-medium" style={{ color: SOFT }}>תשלום חד פעמי · בלי מנוי</p>
+                  <button type="button" onClick={() => setCheckoutPlan(coach)}
+                    className="mt-6 w-full h-[58px] rounded-2xl text-white text-lg font-bold transition-transform active:scale-[0.98] shadow-[0_12px_24px_-10px_rgba(151,71,255,0.7)]"
                     style={{ background: `linear-gradient(135deg, ${PURPLE} 0%, #6b2fd6 100%)` }}>
-                    {g('פתח גישה מלאה', 'פתחי גישה מלאה')} · {full.price} ₪
+                    {quota ? 'להמשיך עם המאמן שלי' : 'אני רוצה מאמן אישי'}
                   </button>
-                  <p className="text-[11px] text-center mt-2 flex items-center justify-center gap-1" style={{ color: MUTED }}>
-                    <Lock size={11} /> תשלום מאובטח בכרטיס אשראי דרך PayMe
+                  <p className="mt-3 text-sm flex items-center justify-center gap-1.5" style={{ color: SOFT }}>
+                    <Lock size={14} /> תשלום מאובטח בכרטיס אשראי דרך PayMe
+                  </p>
+                  <p className="mt-1 text-sm flex items-center justify-center gap-1.5" style={{ color: SOFT }}>
+                    <ShieldCheck size={14} /> השיחות שלך נשארות פרטיות
                   </p>
                 </div>
               </section>
             )}
 
-            {!hasFull && basic && (
-              <div className="rounded-2xl px-4 py-3 border border-[#e0ddd8] bg-white/60 flex items-center justify-between">
-                <p className="text-sm" style={{ color: INK }}>
-                  <span className="font-semibold">{basic.name_he}</span>
-                  <span style={{ color: MUTED }}> · {basic.messages_per_month} הודעות · המסלול שלך עכשיו</span>
-                </p>
-                <span className="text-sm font-medium" style={{ color: MUTED }}>חינם</span>
+            {!hasCoach && basic && !unlimited && (
+              <div className="rounded-2xl bg-white px-5 py-4 shadow-sm">
+                <div className="flex items-baseline justify-between">
+                  <p className="text-base font-semibold" style={{ color: INK }}>המסלול החינמי שלך</p>
+                  <p className="text-base" style={{ color: outOfMessages ? '#b45309' : SOFT }}>
+                    {outOfMessages ? 'לא נשארו הודעות' : `נשארו ${left} מתוך ${limit}`}
+                  </p>
+                </div>
+                <div className="mt-3 h-2.5 rounded-full bg-[#ece8e2] overflow-hidden" role="progressbar" aria-valuenow={used} aria-valuemin={0} aria-valuemax={limit}>
+                  <div className="h-full rounded-full" style={{ width: `${pct}%`, background: pct >= 90 ? '#d97706' : PURPLE }} />
+                </div>
+                <p className="mt-2 text-sm" style={{ color: SOFT }}>כל הודעה שלך וכל כרטיס שממולא נספרים</p>
               </div>
             )}
 
             <section className="rounded-2xl bg-white shadow-sm">
               <button type="button" onClick={() => setCouponOpen((v) => !v)}
-                className="w-full flex items-center gap-2 px-4 py-3.5 text-sm font-medium" style={{ color: INK }} aria-expanded={couponOpen}>
-                <Ticket size={16} style={{ color: PURPLE }} />
+                className="w-full flex items-center gap-2 px-5 py-4 text-base font-medium" style={{ color: INK }} aria-expanded={couponOpen}>
+                <Ticket size={18} style={{ color: PURPLE }} />
                 <span className="flex-1 text-right">יש לך קוד קופון?</span>
-                <ChevronDown size={16} className={`transition-transform ${couponOpen ? 'rotate-180' : ''}`} style={{ color: MUTED }} />
+                <ChevronDown size={18} className={`transition-transform ${couponOpen ? 'rotate-180' : ''}`} style={{ color: SOFT }} />
               </button>
               {couponOpen && (
-                <div className="px-4 pb-4 space-y-2">
+                <div className="px-5 pb-5 space-y-2">
                   <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); void redeem(); }}>
                     <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="קוד הקופון" dir="ltr" autoFocus
-                      className="flex-1 min-w-0 h-[46px] px-3 rounded-xl border border-[#e0ddd8] text-sm text-center tracking-widest uppercase focus:outline-none focus:border-[#9747ff]" />
+                      className="flex-1 min-w-0 h-[50px] px-3 rounded-xl border border-[#d8d3cc] text-base text-center tracking-widest uppercase focus:outline-none focus:border-[#9747ff]" />
                     <button type="submit" disabled={couponBusy || !code.trim()}
-                      className="h-[46px] px-5 rounded-xl text-white text-sm font-medium disabled:opacity-40" style={{ background: INK }}>
+                      className="h-[50px] px-6 rounded-xl text-white text-base font-semibold disabled:opacity-40" style={{ background: '#2d4658' }}>
                       {couponBusy ? '...' : 'מימוש'}
                     </button>
                   </form>
-                  {couponMsg && <p className={`text-sm ${couponMsg.ok ? 'text-[#009081]' : 'text-red-600'}`}>{couponMsg.text}</p>}
+                  {couponMsg && <p className={`text-base ${couponMsg.ok ? 'text-[#009081]' : 'text-red-600'}`}>{couponMsg.text}</p>}
                 </div>
               )}
             </section>
 
             {reason === 'quota' && !outOfMessages && (
               <button type="button" onClick={() => onClose(true)}
-                className="w-full h-[52px] rounded-2xl text-white text-base font-medium" style={{ background: INK }}>
+                className="w-full h-[54px] rounded-2xl text-white text-lg font-semibold" style={{ background: '#2d4658' }}>
                 {g('חזור לשיחה', 'חזרי לשיחה')}
               </button>
             )}
-          </>
-        )}
-      </div>
+          </div>
+        </div>
+      )}
 
       {checkoutPlan && (
         <PayMeCheckoutModal

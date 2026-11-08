@@ -42,8 +42,8 @@ PLAN_LIMITS = {
     },
     "premium": {
         # one-time payment, unlimited from then on (no monthly charge) — the user renamed it on Nov 8
-        "name_he": "גישה מלאה",
-        "name_en": "Full access",
+        "name_he": "מאמן אישי, תמיד איתך",
+        "name_en": "Your personal coach, always with you",
         "price": 89,
         "currency": "ILS",
         "messages_per_month": -1,  # Unlimited messages on Premium (catalog tier)
