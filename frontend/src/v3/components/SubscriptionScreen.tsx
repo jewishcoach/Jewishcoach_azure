@@ -23,6 +23,8 @@ interface Overview {
 interface Props {
   open: boolean;
   reason?: 'menu' | 'quota';
+  /** open with the coupon field unfolded ("יש לי קוד קופון" in the limit window) */
+  couponFirst?: boolean;
   gender?: string | null;
   getToken: (opts?: { skipCache?: boolean }) => Promise<string | null>;
   onClose: (canContinue: boolean) => void;
@@ -33,13 +35,13 @@ const INK = '#2d4658';
 const MUTED = 'rgba(45,70,88,0.62)';
 const PURPLE = '#9747ff';
 
-export function SubscriptionScreen({ open, reason = 'menu', gender, getToken, onClose }: Props) {
+export function SubscriptionScreen({ open, reason = 'menu', couponFirst = false, gender, getToken, onClose }: Props) {
   const { t } = useTranslation();
   const g = (m: string, f: string) => (gender === 'female' ? f : m);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [code, setCode] = useState('');
-  const [couponOpen, setCouponOpen] = useState(false);
+  const [couponOpen, setCouponOpen] = useState(couponFirst);
   const [couponBusy, setCouponBusy] = useState(false);
   const [couponMsg, setCouponMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [checkoutPlan, setCheckoutPlan] = useState<Plan | null>(null);
@@ -56,6 +58,7 @@ export function SubscriptionScreen({ open, reason = 'menu', gender, getToken, on
   }, [getToken]);
 
   useEffect(() => { if (open) void load(); }, [open, load]);
+  useEffect(() => { if (open && couponFirst) setCouponOpen(true); }, [open, couponFirst]);
 
   if (!open) return null;
 

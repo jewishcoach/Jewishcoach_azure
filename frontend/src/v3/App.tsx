@@ -13,7 +13,6 @@ import { StageCompleteScreen } from '../v2/screens/StageCompleteScreen';
 import { StageIntroScreen } from '../v2/screens/StageIntroScreen';
 import { WelcomeBackScreen } from '../v2/screens/WelcomeBackScreen';
 import { LoginScreen } from '../v2/screens/LoginScreen';
-import { QuotaExceededModal } from '../components/QuotaExceededModal';
 import { PrivacyPolicyPage } from '../components/PrivacyPolicyPage';
 import { TermsOfUsePage } from '../components/TermsOfUsePage';
 
@@ -23,6 +22,7 @@ import { OnboardingScreen } from './screens/OnboardingScreen';
 import { AccountModal } from './components/AccountModal';
 import { AdminDashboard } from './components/AdminDashboard';
 import { SubscriptionScreen } from './components/SubscriptionScreen';
+import { LimitReachedModal } from './components/LimitReachedModal';
 
 // Couple process (shared event, each partner in a private conversation, two shared screens)
 import './couple/pendingInvite';
@@ -51,6 +51,7 @@ export function V3App({ language = 'he' }: V3AppProps) {
   const [adminOpen, setAdminOpen] = useState(false);
   // "המנוי שלי": from the menu, or from the limit window (V3 had no subscription screen — the button reloaded the app)
   const [subscriptionOpen, setSubscriptionOpen] = useState<null | 'menu' | 'quota'>(null);
+  const [subscriptionCoupon, setSubscriptionCoupon] = useState(false);
   // deleting a conversation from "השיחות שלי" (privacy: there was no way to remove one in V3)
   const [toDelete, setToDelete] = useState<ConversationListItem | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -280,7 +281,7 @@ export function V3App({ language = 'he' }: V3AppProps) {
             <div className="px-3">
               <button
                 type="button"
-                onClick={() => { setSubscriptionOpen('menu'); setMenuOpen(false); }}
+                onClick={() => { setSubscriptionCoupon(false); setSubscriptionOpen('menu'); setMenuOpen(false); }}
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-colors text-right"
               >
                 <CreditCard size={18} className="text-[#03ffe6] flex-shrink-0" />
@@ -410,6 +411,7 @@ export function V3App({ language = 'he' }: V3AppProps) {
       <SubscriptionScreen
         open={subscriptionOpen !== null}
         reason={subscriptionOpen ?? 'menu'}
+        couponFirst={subscriptionCoupon}
         gender={userGender}
         getToken={getToken}
         onClose={() => setSubscriptionOpen(null)}
@@ -468,10 +470,12 @@ export function V3App({ language = 'he' }: V3AppProps) {
         onGoHome={() => { setShowPauseModal(false); startNewConversation(); }}
         gender={userGender}
       />
-      <QuotaExceededModal
-        isOpen={quotaExceeded}
+      <LimitReachedModal
+        open={quotaExceeded}
+        gender={userGender}
+        onFullAccess={() => { dismissQuotaExceeded(); setSubscriptionCoupon(false); setSubscriptionOpen('quota'); }}
+        onCoupon={() => { dismissQuotaExceeded(); setSubscriptionCoupon(true); setSubscriptionOpen('quota'); }}
         onClose={dismissQuotaExceeded}
-        onGoToSubscription={() => setSubscriptionOpen('quota')}
       />
 
       {/* Main content */}
