@@ -571,7 +571,7 @@ def _generate_tool_summary(tool_type: str, data: Dict[str, Any]) -> str:
 
     elif tool_type == "vision_board_input":
         vision = data.get("vision", "")
-        summary = f"🔮 **החזון שלי:**\n\n{vision}"
+        summary = f"🔮 **תמונת העתיד שלי:**\n\n{vision}"
         return summary.strip()
 
     # V3 structured tools

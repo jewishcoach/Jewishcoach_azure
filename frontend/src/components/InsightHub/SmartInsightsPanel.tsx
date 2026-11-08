@@ -160,7 +160,7 @@ export const SmartInsightsPanel = ({ conversationId, currentPhase }: SmartInsigh
     'S11': { he: 'טבלת רווח והפסד', en: 'Profit & loss table' },
     'S12': { he: 'כמ"ז - כוחות', en: 'KaMaZ - Forces' },
     'S13': { he: 'בחירה', en: 'Choice' },
-    'S14': { he: 'חזון', en: 'Vision' },
+    'S14': { he: 'תמונת עתיד', en: 'Future picture' },
     'S15': { he: 'מחויבות', en: 'Commitment' }
   };
 

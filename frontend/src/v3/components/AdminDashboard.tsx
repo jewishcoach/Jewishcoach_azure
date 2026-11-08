@@ -9,7 +9,7 @@ import type { JourneyData, JourneyWhere } from '../services/api';
 
 const STEP_NAMES: Record<string, string> = {
   S0: 'הודעה ראשונה', S1: 'פתיחה', S2: 'אירוע', S3: 'רגש', S4: 'מחשבה', S5: 'מעשה', S6: 'רצוי', S7: 'פער', S8: 'דפוס',
-  S9: 'פרדיגמה', S10: 'עמדה', S11: 'מאזן', S12: 'כמ"ז', S13: 'בחירה', S14: 'חזון', S15: 'בקשה לאימון',
+  S9: 'פרדיגמה', S10: 'עמדה', S11: 'מאזן', S12: 'כמ"ז', S13: 'בחירה', S14: 'תמונת עתיד', S15: 'בקשה לאימון',
 };
 const CARD_NAMES: Record<string, string> = {
   event_form: 'אירוע', emotion_selector: 'רגשות', action_field: 'מעשה', matzui_summary: 'סיכום המצוי',

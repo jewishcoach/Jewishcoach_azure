@@ -41,7 +41,7 @@ export const STAGE_VIDEOS: Record<string, { videoId: string; titleHe: string; ti
     { videoId: 'dQw4w9WgXcQ', titleHe: 'התחדשות ובחירה', titleEn: 'Renewal and choice' },
   ],
   S12: [
-    { videoId: 'dQw4w9WgXcQ', titleHe: 'חזון', titleEn: 'Vision' },
+    { videoId: 'dQw4w9WgXcQ', titleHe: 'תמונת עתיד', titleEn: 'Vision' },
   ],
   S13: [
     { videoId: 'dQw4w9WgXcQ', titleHe: 'מחויבות', titleEn: 'Commitment' },

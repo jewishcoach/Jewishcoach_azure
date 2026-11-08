@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 # ─── Pydantic output schema ────────────────────────────────────────────────────
 
 class JourneyMilestone(BaseModel):
-    stage_name: str = Field(description="שם השלב: זיהוי, גילוי, כמ״ז, בחירה, חזון")
+    stage_name: str = Field(description="שם השלב: זיהוי, גילוי, כמ״ז, בחירה, תמונת עתיד")
     what_emerged: str = Field(description="מה עלה בשלב הזה — משפט אחד בשפת בני")
     user_quote: str = Field(default="", description="ציטוט ישיר מהמשתמש בשלב הזה")
 
@@ -84,7 +84,7 @@ ANALYSIS_HUMAN_TEMPLATE = """{scope}
 
   "journey_milestones": [
     {{
-      "stage_name": "<שם השלב: זיהוי / גילוי / כמ״ז / בחירה / חזון>",
+      "stage_name": "<שם השלב: זיהוי / גילוי / כמ״ז / בחירה / תמונת עתיד>",
       "what_emerged": "<מה עלה — משפט אחד בשפה של בני, לא תיאור טכני>",
       "user_quote": "<ציטוט ישיר מהמשתמש בשלב הזה, אם יש>"
     }}

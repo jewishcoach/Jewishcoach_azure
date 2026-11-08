@@ -58,7 +58,7 @@ STAGE_COLLECTED_DATA_HE: Dict[str, str] = {
     "S11": "`collected_data`: ב־`stance` מלא `gains` ו-`losses` (טבלת רווח והפסד).",
     "S12": "`collected_data`: מלא `forces` — `source` (מקור) ו-`nature` (טבע); יעד 6+6, ראשון = מובילה. `offer_trait_picker`: true רק כשיש ריכוז ברור לשני הצדדים.",
     "S13": "`collected_data`: מלא `renewal` — בחירה/עמדה חדשה. תמהיל כמ\"ז באחוזים.",
-    "S14": "`collected_data`: מלא `vision` — חזון / תמונת עתיד.",
+    "S14": "`collected_data`: מלא `vision` — תמונת עתיד.",
     "S15": "`collected_data`: מלא `commitment` — צעד מחויבות קונקרטי.",
 }
 STAGE_COLLECTED_DATA_EN: Dict[str, str] = {
@@ -96,7 +96,7 @@ STAGE_GATES_HE: Dict[str, str] = {
     "S11": "**Gate (S11→S12):** 2+ רווחים + 2+ הפסדים של האמונה (לא של ההתנהגות) + הבנת המתח.",
     "S12": "**Gate (S12→S13):** חקר מקור (מאקרו) ואז טבע (מאקרו) — בלי עיגון לאירוע האימון; ב־`forces` **6+6** + **מובילה ראשונה** בכל רשימה; או **הסכמה מפורשת** לקיצור (ב־`reflection`). המערכת חוסמת מעבר בלי זה.",
     "S13": "**Gate (S13→S14):** `renewal` מלא (עמדה חדשה) + המתאמן תיאר לפחות פרדיגמה או דפוס חדשים. תמהיל כמ\"ז רצוי אך לא חוסם.",
-    "S14": "**Gate (S14→S15):** חזון ברור.",
+    "S14": "**Gate (S14→S15):** תמונת עתיד ברורה.",
     "S15": "**Gate (S15→סיום):** מחויבות קונקרטית.",
 }
 STAGE_GATES_EN: Dict[str, str] = {

@@ -830,7 +830,7 @@ const resources = {
       "ladder.p8.tooltip": "כוח, מקור, זהות – כוחות מקור (ערכים), כוחות טבע (יכולות), חיבור לכוח הפנימי.",
       "ladder.p9": "בחירה",
       "ladder.p9.tooltip": "התחדשות ובחירה חדשה – עמדה, פרדיגמה ודפוס חדשים.",
-      "ladder.p10": "חזון",
+      "ladder.p10": "תמונת עתיד",
       "ladder.p10.tooltip": "חפץ הלב, שליחות, ומחויבות קונקרטית.",
       "ladder.scrollHint": "גלילה לחלק זה בשיחה",
       "ladder.journeyTitle": "שלבי האימון שלך",
@@ -978,7 +978,7 @@ const resources = {
       "phase.S11": "טבלת רווח והפסד",
       "phase.S12": "כוחות",
       "phase.S13": "בחירה",
-      "phase.S14": "חזון",
+      "phase.S14": "תמונת עתיד",
       "phase.S15": "מחויבות",
       "phase.Situation": "המצוי",
       "phase.Gap": "הפער",
@@ -987,7 +987,7 @@ const resources = {
       "phase.Stance": "עמדה",
       "phase.KMZ": "כמ\"ז",
       "phase.New_Choice": "בחירה חדשה",
-      "phase.Vision": "חזון",
+      "phase.Vision": "תמונת עתיד",
       "phase.PPD": "תכנית"
     }
   }

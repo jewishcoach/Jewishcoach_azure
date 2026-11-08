@@ -131,7 +131,7 @@ def station_title_for_step(step: str, language: str) -> str:
         "S11": "רווח והפסד",
         "S12": "כמ״ז",
         "S13": "התחדשות ובחירה",
-        "S14": "חזון",
+        "S14": "תמונת עתיד",
         "S15": "מחויבות",
     }
     return names.get(step, "תחנה")

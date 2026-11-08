@@ -79,12 +79,12 @@ class CollectedDataSchema(BaseModel):
     S11: stance (gains/losses from the pattern — רווחים והפסדים)
     S12: forces (כוחות מקור וטבע לפי כרטיס כמ״ז — 6+6 ומובילה ראשונה בכל רשימה); offer_trait_picker כשמפעילים את מסך הכוחות
     S13: renewal (new choice / new stance — בחירה חדשה / עמדה חדשה)
-    S14: vision (future picture — חזון)
+    S14: vision (future picture — תמונת עתיד)
     S15: commitment (concrete first step — מחויבות / צעד קונקרטי)
 
     IMPORTANT — stage numbers match the prompt file headers exactly:
       S5=מצוי, S6=רצוי, S7=פער, S8=דפוס, S9=פרדיגמה, S10=עמדה+טריגר,
-      S11=רווחים, S12=כוחות, S13=בחירה, S14=חזון, S15=מחויבות
+      S11=רווחים, S12=כוחות, S13=בחירה, S14=תמונת עתיד, S15=מחויבות
     """
     topic: Union[str, None] = Field(
         default=None,
@@ -128,7 +128,7 @@ class CollectedDataSchema(BaseModel):
         ),
     )
     renewal: Union[str, None] = Field(default=None, description="עמדה חדשה / בחירה מודעת שהמשתמש ניסח (S13 — בחירה). מלא רק בשלב S13!")
-    vision: Union[str, None] = Field(default=None, description="חזון / תמונת עתיד (S14 — חזון). מלא רק בשלב S14!")
+    vision: Union[str, None] = Field(default=None, description="תמונת עתיד (S14). מלא רק בשלב S14!")
     commitment: Union[str, None] = Field(default=None, description="מחויבות קונקרטית / צעד ראשון (S15 — מחויבות). מלא רק בשלב S15!")
     entities: Union[EntitySchema, None] = Field(
         default=None,

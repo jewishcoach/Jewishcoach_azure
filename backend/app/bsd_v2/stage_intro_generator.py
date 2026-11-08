@@ -266,7 +266,7 @@ def _extract_insights(
     elif macro_id == "vision":
         if collected.get("vision"):
             insights.append(
-                f"החזון: \"{collected['vision']}\"" if is_he
+                f"תמונת העתיד: \"{collected['vision']}\"" if is_he
                 else f"Vision: \"{collected['vision']}\""
             )
         if collected.get("commitment"):
@@ -330,7 +330,7 @@ MACRO_STAGE_PROMPTS = {
     "vision": {
         # the vision itself ("כאן מותר לחלום…") is S14's open question and the step is the request card — intro questions
         # that asked them made the coach treat a picked option as the vision and skip S14
-        "he": ("השלב הבא: חזון — 'הרשות לחלום'. שאלות פתיחה קלות שמכינות לחלום: מה חשוב לו, מה מרגש אותו, מה נותן לו כוח. "
+        "he": ("השלב הבא: תמונת עתיד — 'הרשות לחלום'. שאלות פתיחה קלות שמכינות לחלום: מה חשוב לו, מה מרגש אותו, מה נותן לו כוח. "
                "**אל תשאל** איך ייראו החיים או העתיד, ואל תשאל על צעד, התחייבות או תוצאה — את אלה שואלים אחר כך בשיחה ובכרטיס."),
         "en": "Next stage: Vision — choosing the life I truly want to live. Future picture and commitment to a concrete first step.",
     },

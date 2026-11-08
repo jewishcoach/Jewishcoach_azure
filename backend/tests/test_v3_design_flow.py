@@ -459,20 +459,20 @@ def test_s14_one_domain_vision_gets_one_widening_question():
     from app.bsd_v2.single_agent_coach import build_conversation_context
     state = _v3_state("S14")
     state["messages"] = [_coach("איך ייראו החיים שלך כשאתה חי מתוך הבחירה הזו?", "S14")]
-    assert "הרחבת החזון" in build_conversation_context(state, "פחות ריבים בבית ויותר קרבה עם אשתי", "he")
-    assert "החזון עוד לא נוצר" in build_conversation_context(state, "לא משהו מיוחד", "he")
+    assert "הרחבת תמונת העתיד" in build_conversation_context(state, "פחות ריבים בבית ויותר קרבה עם אשתי", "he")
+    assert "תמונת העתיד עוד לא נוצרה" in build_conversation_context(state, "לא משהו מיוחד", "he")
     wide = "בבית יותר קרבה, בעבודה אני מדבר בביטחון, ועם החברים אני פתוח"
-    assert "הרחבת החזון" not in build_conversation_context(state, wide, "he")
+    assert "הרחבת תמונת העתיד" not in build_conversation_context(state, wide, "he")
     state["messages"] += [{"sender": "user", "content": "פחות ריבים בבית"},
                           _coach("זו תמונה חשובה. ואם תרים את המבט — לבית, לקשרים, לעבודה — איך נראים החיים?", "S14")]
-    assert "הרחבת החזון" not in build_conversation_context(state, "עדיין בעיקר הבית", "he")
+    assert "הרחבת תמונת העתיד" not in build_conversation_context(state, "עדיין בעיקר הבית", "he")
 
 
 def test_s14_widening_waits_for_the_vision_question():
     from app.bsd_v2.single_agent_coach import build_conversation_context
     state = _v3_state("S14")
     state["messages"] = [_coach("הכרזת שאתה בוחר לדבר. זה מרגש.", "S13")]
-    assert "הרחבת החזון" not in build_conversation_context(state, "כן, מרגיש נכון", "he")
+    assert "הרחבת תמונת העתיד" not in build_conversation_context(state, "כן, מרגיש נכון", "he")
 
 
 def test_pruned_messages_keep_their_step_tag():
@@ -518,7 +518,8 @@ def test_s13_holds_completion_until_stance_question_for_action_choice():
 def test_s14_is_overlay_only():
     from app.bsd_v2.prompts.prompt_manager import assemble_system_prompt
     p = assemble_system_prompt("S14", "he", "male", ux_version=3, collected_data={"renewal": "x"})
-    assert "תמהיל כמ״ז" not in p and "חזון" in p
+    # the stage is called "תמונת עתיד" (user, Nov 8) — the coach must not be told "חזון"
+    assert "תמהיל כמ״ז" not in p and "תמונת עתיד" in p and "חזון" not in p
 
 
 def test_arabic_lookalikes_and_feminine_note_phrases_are_fixed():
@@ -1151,3 +1152,13 @@ def test_tzodek_to_a_woman_only_where_it_addresses_her():
     assert _fix_addressee("צודק, זה באמת יצא קצת חפרני.", "female", "he").startswith("צודקת,")
     assert _fix_addressee("אולי הוא צודק בזה.", "female", "he") == "אולי הוא צודק בזה."
     assert _fix_addressee("צודק, זה יצא ארוך.", "male", "he") == "צודק, זה יצא ארוך."
+
+
+def test_no_stage_is_called_hazon_any_more():
+    """User, Nov 8: the stage "חזון" is renamed "תמונת עתיד" everywhere the client or the coach sees it."""
+    from app.bsd_v2.prompts.prompt_manager import assemble_system_prompt
+    from app.bsd_v2.stage_intro_schema import MACRO_STAGES
+    assert next(m for m in MACRO_STAGES if m["id"] == "vision")["title_he"] == "תמונת עתיד"
+    for step in ("S13", "S14", "S15"):
+        for g in ("male", "female"):
+            assert "חזון" not in assemble_system_prompt(step, "he", g, ux_version=3, collected_data={"renewal": "x"}), step

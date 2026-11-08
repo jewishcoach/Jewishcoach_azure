@@ -150,7 +150,7 @@ _FIELD_VISIBLE_FROM_STAGE: Dict[str, int] = {
     "stance":         11,   # S11 (טבלת רווח/הפסד) — gains/losses; S10 strings use stage index ≥10 in mapper
     "forces":         12,   # S12 (כוחות כמ"ז) → visible as soon as collected
     "renewal":        13,   # S13 (בחירה) → visible as soon as collected
-    "vision":         14,   # S14 (חזון) → visible as soon as collected
+    "vision":         14,   # S14 (תמונת עתיד) → visible as soon as collected
     "commitment":     15,   # S15 (מחויבות) → visible as soon as collected
 }
 

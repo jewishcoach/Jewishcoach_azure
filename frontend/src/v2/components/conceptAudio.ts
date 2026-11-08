@@ -36,7 +36,7 @@ const CONCEPT_AUDIO_MAP: Record<string, ConceptAudio[]> = {
     { file: '/voice/12_bhira.mp3', label: 'בחירה חדשה' },
   ],
   S14: [
-    { file: '/voice/14_hazon.mp3', label: 'חזון' },
+    { file: '/voice/14_hazon.mp3', label: 'תמונת עתיד' },
   ],
   S15: [
     { file: '/voice/13_bakasha.mp3', label: 'נוסחת המחויבות' },

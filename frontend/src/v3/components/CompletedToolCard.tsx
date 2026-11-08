@@ -42,7 +42,7 @@ const FIELD_LABELS: Record<string, string> = {
   answers: 'תשובות',
   renewal: 'העמדה החדשה',
   commitment: 'מחויבות',
-  vision: 'חזון',
+  vision: 'תמונת עתיד',
   floor: 'קומה',
   situation: 'הקושי',
   old: 'הישן',

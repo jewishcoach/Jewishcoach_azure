@@ -66,7 +66,7 @@ export const MACRO_STAGES: MacroStage[] = [
   },
   {
     id: 'vision',
-    title_he: 'חזון',
+    title_he: 'תמונת עתיד',
     title_en: 'Vision',
     description_he: 'בוחר את החיים שאני באמת רוצה לחיות',
     description_en: 'Choosing the life I truly want to live',

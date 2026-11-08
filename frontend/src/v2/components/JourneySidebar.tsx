@@ -185,8 +185,8 @@ const INSIGHT_DISPLAY_ORDER: { key: string; label: string; group: string }[] = [
   // Choice (S13)
   { key: 'renewal', label: 'הבחירה החדשה', group: 'בחירה' },
   // Vision (S14-S15)
-  { key: 'vision', label: 'החזון', group: 'חזון' },
-  { key: 'commitment', label: 'המחויבות', group: 'חזון' },
+  { key: 'vision', label: 'תמונת העתיד', group: 'תמונת עתיד' },
+  { key: 'commitment', label: 'המחויבות', group: 'תמונת עתיד' },
 ];
 
 function getNestedValue(data: Record<string, unknown>, path: string): unknown {

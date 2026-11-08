@@ -50,7 +50,7 @@ MACRO_STAGES = [
     },
     {
         "id": "vision",
-        "title_he": "חזון",
+        "title_he": "תמונת עתיד",
         "title_en": "Vision",
         "s_start": "S14",
         "s_end": "S15",

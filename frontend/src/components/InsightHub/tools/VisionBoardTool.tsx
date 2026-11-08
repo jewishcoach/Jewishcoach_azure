@@ -14,11 +14,11 @@ export const VisionBoardTool = ({ onSubmit, language }: VisionBoardToolProps) =>
     <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200 text-center">
       <div className="text-4xl mb-4">🔮</div>
       <h3 className="text-lg font-semibold text-primary mb-2">
-        {isRTL ? 'לוח החזון שלי' : 'My Vision Board'}
+        {isRTL ? 'תמונת העתיד שלי' : 'My Vision Board'}
       </h3>
       <p className="text-sm text-gray-600 mb-4">
         {isRTL
-          ? 'כלי זה יאפשר לך לתאר את החזון שלך בפירוט'
+          ? 'כלי זה יאפשר לך לתאר את תמונת העתיד שלך בפירוט'
           : 'This tool will help you describe your vision in detail'}
       </p>
       <div className="text-xs text-gray-400">
