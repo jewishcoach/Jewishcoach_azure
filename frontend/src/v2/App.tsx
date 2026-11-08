@@ -308,6 +308,7 @@ export function V2App({ language = 'he' }: V2AppProps) {
                 lastActiveDate={undefined}
                 onContinue={() => resumeConversation(conversationId)}
                 onGoHome={startNewConversation}
+                gender={userGender}
               />
             </div>
           )}

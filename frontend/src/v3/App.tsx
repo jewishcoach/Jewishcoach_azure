@@ -469,6 +469,7 @@ export function V3App({ language = 'he' }: V3AppProps) {
                 lastActiveDate={undefined}
                 onContinue={() => resumeConversation(conversationId)}
                 onGoHome={startNewConversation}
+                gender={userGender}
               />
             </div>
           )}
@@ -507,6 +508,7 @@ export function V3App({ language = 'he' }: V3AppProps) {
                 onSubmitTool={submitTool}
                 onDismissTool={dismissTool}
                 onShowSummary={flowState.pendingSummary ? showStageSummary : undefined}
+                userGender={userGender}
               />
             </div>
           )}

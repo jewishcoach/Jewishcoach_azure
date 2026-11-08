@@ -161,7 +161,7 @@ class Driver:
         if self.visible(card):
             title = norm(card.locator("h3").first.inner_text())
             return f"card:{CARD_TITLES.get(title, title)}"
-        box = pg.get_by_placeholder("כתוב את תשובתך כאן...")
+        box = pg.get_by_placeholder(re.compile(r"^כתבי? את תשובתך כאן"))
         if self.visible(box) and box.is_enabled():
             return "chat"
         return "busy"
@@ -223,7 +223,7 @@ class Driver:
         if self.safety and not self.safety_said and self.chat_turns == 1 and not text:
             msg = f"{msg} {sim.SAFETY_TRIGGER}"
         print(f"     🧑 {msg}")
-        box = self.page.get_by_placeholder("כתוב את תשובתך כאן...")
+        box = self.page.get_by_placeholder(re.compile(r"^כתבי? את תשובתך כאן"))
         box.fill(msg)
         n = len(self.api)
         box.press("Enter")

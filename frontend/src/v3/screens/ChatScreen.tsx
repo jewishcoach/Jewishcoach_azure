@@ -22,6 +22,8 @@ interface ChatScreenProps {
   onDismissTool: () => void;
   /** Set when the stage just ended: show a button to open the stage summary */
   onShowSummary?: () => void;
+  /** the client's gender for the input's placeholder when no card is open */
+  userGender?: string | null;
 }
 
 export function ChatScreen({
@@ -36,6 +38,7 @@ export function ChatScreen({
   onSubmitTool,
   onDismissTool,
   onShowSummary,
+  userGender,
 }: ChatScreenProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputBarRef = useRef<HTMLDivElement>(null);
@@ -45,7 +48,7 @@ export function ChatScreen({
   const [messageAudioMap] = useState(() => new Map<string, { file: string; label: string }>());
 
   const inputDisabled = !!activeTool || isLoading || !!onShowSummary;
-  const fem = (activeTool?.data as { gender?: string | null } | undefined)?.gender === 'female';
+  const fem = ((activeTool?.data as { gender?: string | null } | undefined)?.gender ?? userGender) === 'female';
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // the input keeps the height it grew to while typing; once sent (or a card opens) it returns to one line —
@@ -254,7 +257,7 @@ export function ChatScreen({
                 e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
               }}
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-              placeholder={activeTool ? (fem ? 'מלאי את הכרטיס למעלה...' : 'מלא את הכרטיס למעלה...') : 'כתוב את תשובתך כאן...'}
+              placeholder={activeTool ? (fem ? 'מלאי את הכרטיס למעלה...' : 'מלא את הכרטיס למעלה...') : (fem ? 'כתבי את תשובתך כאן...' : 'כתוב את תשובתך כאן...')}
               disabled={!!activeTool}
               rows={1}
               className={`w-full px-4 py-3 rounded-xl border-[0.8px] bg-white text-base text-[#2d4658]

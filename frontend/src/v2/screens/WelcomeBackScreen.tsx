@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 const MOOD_OPTIONS = ['רגוע מאד', 'שמח אבל כאן', 'צריך כמה דקות', 'מוכן להמשיך'];
+const MOOD_OPTIONS_F = ['רגועה מאד', 'שמחה אבל כאן', 'צריכה כמה דקות', 'מוכנה להמשיך'];
 
 interface WelcomeBackScreenProps {
   stageTitle: string;
@@ -9,6 +10,7 @@ interface WelcomeBackScreenProps {
   lastActiveDate?: string;
   onContinue: () => void;
   onGoHome: () => void;
+  gender?: string | null;  // "איך אתה מגיע היום?" was shown to women too
 }
 
 export function WelcomeBackScreen({
@@ -18,7 +20,9 @@ export function WelcomeBackScreen({
   lastActiveDate,
   onContinue,
   onGoHome,
+  gender,
 }: WelcomeBackScreenProps) {
+  const fem = gender === 'female';
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
 
   const [daysAgo] = useState(() => lastActiveDate
@@ -110,10 +114,10 @@ export function WelcomeBackScreen({
         {/* Mood check */}
         <div className="w-full space-y-3">
           <p className="text-sm font-semibold text-[#2d4658] text-right" style={{ fontFamily: "'Heebo', sans-serif" }}>
-            איך אתה מגיע היום?
+            {fem ? 'איך את מגיעה היום?' : 'איך אתה מגיע היום?'}
           </p>
           <div className="flex flex-wrap gap-2 justify-center">
-            {MOOD_OPTIONS.map((mood) => (
+            {(fem ? MOOD_OPTIONS_F : MOOD_OPTIONS).map((mood) => (
               <button
                 key={mood}
                 type="button"
@@ -150,7 +154,7 @@ export function WelcomeBackScreen({
           className="text-sm text-[#2d4658] underline hover:no-underline"
           style={{ fontFamily: "'Heebo', sans-serif" }}
         >
-          קח אותי למסך הבית
+          {fem ? 'קחי אותי למסך הבית' : 'קח אותי למסך הבית'}
         </button>
       </div>
     </div>
