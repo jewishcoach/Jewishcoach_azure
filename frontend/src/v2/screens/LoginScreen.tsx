@@ -8,6 +8,7 @@ interface LoginScreenProps {
 // Benny's welcome video (Nov 9, replaces the 2:49 benny-intro.mp3): 53 s, Hebrew subtitles burned in, made in
 // landing-video/ (welcome_script.md). Nothing is downloaded until play (preload="none"); the poster is Benny's photo.
 // Before the first play our own button sits over the poster; after it the browser's controls take over.
+// Bump ?v= with every new cut of welcome.mp4 (browsers and the CDN cache it).
 function BennyWelcomeVideo({ size = 'lg' }: { size?: 'sm' | 'lg' }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [started, setStarted] = useState(false);
@@ -31,7 +32,7 @@ function BennyWelcomeVideo({ size = 'lg' }: { size?: 'sm' | 'lg' }) {
          style={size === 'sm' ? { boxShadow: '0px 14px 8px rgba(0,0,0,0.2)' } : undefined}>
       <video
         ref={videoRef}
-        src="/welcome.mp4"
+        src="/welcome.mp4?v=2"
         poster="/welcome-poster.jpg"
         preload="none"
         playsInline
