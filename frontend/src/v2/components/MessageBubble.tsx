@@ -37,10 +37,12 @@ export function MessageBubble({ message, quickReplies, onQuickReply, selectedRep
       <div className="flex items-center gap-2 justify-start">
         <Heart size={16} className="text-[#03ffe6]" />
         <span className="text-sm text-[#2d4658]" style={{ fontFamily: "'Heebo', sans-serif" }}>בני</span>
-        {conceptAudio && (
-          <MiniVoiceNote src={conceptAudio.file} label={conceptAudio.label} />
-        )}
       </div>
+
+      {/* Benny's recorded explanation — its own row above the message, so it is not missed */}
+      {conceptAudio && (
+        <MiniVoiceNote src={conceptAudio.file} label={conceptAudio.label} />
+      )}
 
       {/* Message bubble — full width */}
       <div className="w-full bg-white rounded-xl py-4 px-4 shadow-[0px_0px_3.35px_rgba(0,0,0,0.08)]">

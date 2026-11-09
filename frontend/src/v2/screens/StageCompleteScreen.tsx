@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Lightbulb, Share2, Download, Heart, Gift } from 'lucide-react';
+import { Lightbulb, Share2, Download, Heart, Gift, Copy, Check } from 'lucide-react';
 import { useAuth } from '@clerk/clerk-react';
 import { MACRO_STAGES, type StageSummaryPayload } from '../types';
 import { fetchDeepAnalysis, type DeepViewLetter } from '../services/api';
@@ -33,6 +33,7 @@ export function StageCompleteScreen({
   const [deepView, setDeepView] = useState<DeepViewLetter | null>(null);
   const [loadingGift, setLoadingGift] = useState(false);
   const [giftError, setGiftError] = useState(false);
+  const [letterCopied, setLetterCopied] = useState<'ok' | 'fail' | null>(null);
   const isLastStage = !summary.next_stage_id;
   // the stage that was just completed — its number of the 5 and its line (was fixed to stage 1 on every screen)
   const stageIdx = Math.max(0, MACRO_STAGES.findIndex((m) => m.id === summary.stage_id));
@@ -43,6 +44,38 @@ export function StageCompleteScreen({
     : ['What I discovered', 'What drives me now', 'What I choose', 'A sentence to carry'];
 
   const treeImage = TREE_IMAGES[summary.stage_id] || TREE_IMAGES.identification;
+
+  // the personality letter as plain text, for copying (user, Nov 9: "לאפשר העתקה של ניתוח האישיות")
+  const letterText = (d: DeepViewLetter) => [
+    isHe ? 'המבט שלי עליך — בני' : 'How I See You — Beni',
+    '',
+    d.letter.trim(),
+    ...(d.journey_milestones.length ? ['', isHe ? 'מה גילית על עצמך:' : 'What you discovered about yourself:'] : []),
+    ...d.journey_milestones.map((m) => `• ${m.stage_name}: ${m.what_emerged}${m.user_quote ? ` ("${m.user_quote}")` : ''}`),
+    ...(d.closing_word ? ['', d.closing_word.trim()] : []),
+  ].join('\n');
+
+  const copyLetter = async (d: DeepViewLetter) => {
+    const text = letterText(d);
+    let ok = false;
+    try {
+      await navigator.clipboard.writeText(text);
+      ok = true;
+    } catch {
+      // older phones / no clipboard permission: the select-and-copy fallback
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { ok = document.execCommand('copy'); } catch { ok = false; }
+      document.body.removeChild(ta);
+    }
+    setLetterCopied(ok ? 'ok' : 'fail');
+    window.setTimeout(() => setLetterCopied(null), 2500);
+  };
 
   return (
     <div className="flex-1 overflow-y-auto pb-14 lg:pb-0" dir="rtl">
@@ -201,8 +234,8 @@ export function StageCompleteScreen({
               </span>
               <Gift size={20} className="text-[#03ffe6]" />
             </div>
-            <div className="bg-white p-6 space-y-5">
-              <p className="text-sm text-[#2d4658] leading-relaxed whitespace-pre-line text-right" style={{ fontFamily: "'Heebo', sans-serif" }}>
+            <div className="bg-white p-6 space-y-5 select-text">
+              <p className="text-[15px] text-[#2d4658] leading-relaxed whitespace-pre-line text-right" style={{ fontFamily: "'Heebo', sans-serif" }}>
                 {deepView.letter}
               </p>
               {deepView.journey_milestones.length > 0 && (
@@ -228,6 +261,33 @@ export function StageCompleteScreen({
                   {deepView.closing_word}
                 </p>
               </div>
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => void copyLetter(deepView)}
+                  className="flex items-center gap-2 h-[46px] px-6 rounded-xl bg-[#9747ff] text-white text-base font-medium hover:bg-[#8035e6] transition-colors"
+                  style={{ fontFamily: "'Heebo', sans-serif" }}
+                >
+                  {letterCopied === 'ok' ? <Check size={18} /> : <Copy size={18} />}
+                  <span>{letterCopied === 'ok' ? (isHe ? 'הועתק ✓' : 'Copied ✓') : (isHe ? 'העתקת המכתב' : 'Copy the letter')}</span>
+                </button>
+                {typeof navigator !== 'undefined' && 'share' in navigator && (
+                  <button
+                    type="button"
+                    onClick={() => { navigator.share({ title: isHe ? 'המבט של בני עליי' : "Beni's view of me", text: letterText(deepView) }).catch(() => {}); }}
+                    className="flex items-center gap-2 h-[46px] px-5 rounded-xl border border-[#03ffe6] text-base text-[#2d4658] hover:bg-[rgba(3,255,230,0.05)] transition-colors"
+                    style={{ fontFamily: "'Heebo', sans-serif" }}
+                  >
+                    <Share2 size={18} className="text-[#03ffe6]" />
+                    <span>{isHe ? 'שיתוף' : 'Share'}</span>
+                  </button>
+                )}
+              </div>
+              {letterCopied === 'fail' && (
+                <p className="text-sm text-center text-[#b45309]" style={{ fontFamily: "'Heebo', sans-serif" }}>
+                  {isHe ? 'לא הצלחתי להעתיק. אפשר לסמן את הטקסט באצבע ולהעתיק.' : 'Could not copy — select the text and copy it.'}
+                </p>
+              )}
             </div>
           </div>
         ) : isLastStage ? (
