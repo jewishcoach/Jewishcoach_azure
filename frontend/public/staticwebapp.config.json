@@ -1,6 +1,13 @@
 {
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": ["/assets/*", "/.well-known/*", "/*.{css,js,png,jpg,jpeg,gif,svg,ico,webp,woff,woff2,mp3,mp4,txt}"]
+    "exclude": [
+      "/assets/*",
+      "/.well-known/*",
+      "/*.{css,js,png,jpg,jpeg,gif,svg,ico,webp,woff,woff2,mp3,mp4,txt}"
+    ]
+  },
+  "mimeTypes": {
+    ".mp4": "video/mp4"
   }
 }
