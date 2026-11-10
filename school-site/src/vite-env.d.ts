@@ -5,6 +5,7 @@ interface ImportMetaEnv {
   readonly VITE_LEGACY_URL?: string
   readonly VITE_CONTACT_EMAIL?: string
   readonly VITE_CONTACT_PHONE?: string
+  readonly VITE_CONTACT_API_URL?: string
 }
 
 interface ImportMeta {

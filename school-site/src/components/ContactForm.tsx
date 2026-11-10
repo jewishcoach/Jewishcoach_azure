@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { CONTACT_EMAIL } from '../config'
+import { CONTACT_API_URL, CONTACT_EMAIL } from '../config'
 
 export type ContactSubject =
   | 'personal-coach'
@@ -28,10 +28,15 @@ export function ContactForm({
   showCertificationField = false,
 }: ContactFormProps) {
   const [sent, setSent] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [failed, setFailed] = useState(false)
   const [subject, setSubject] = useState<ContactSubject>(defaultSubject)
 
-  function onSubmit(e: FormEvent<HTMLFormElement>) {
+  // Sent by the server to the office (Nov 10). It used to open the visitor's mail app (mailto:), so nothing arrived
+  // unless they pressed "send" there — and without a mail app nothing happened at all, while the site said "תודה!".
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (sending) return
     const fd = new FormData(e.currentTarget)
     const name = String(fd.get('name') ?? '')
     const phone = String(fd.get('phone') ?? '')
@@ -40,25 +45,31 @@ export function ContactForm({
     const certification = String(fd.get('certification') ?? '')
     const topic = subjectLabels[subject]
 
-    const body = [
-      `שם: ${name}`,
-      `טלפון: ${phone}`,
-      `אימייל: ${email}`,
-      `נושא: ${topic}`,
-      ...(certification ? [`מוסד הכשרה קודם / תעודה: ${certification}`] : []),
-      '',
-      message,
-    ].join('\n')
-
-    const mailto = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(`פנייה מהאתר — ${topic}`)}&body=${encodeURIComponent(body)}`
-    window.location.href = mailto
-    setSent(true)
+    setSending(true)
+    setFailed(false)
+    try {
+      const res = await fetch(CONTACT_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name, phone, email, message, certification, topic,
+          page: window.location.pathname,
+          website: String(fd.get('website') ?? ''),
+        }),
+      })
+      if (!res.ok) throw new Error(String(res.status))
+      setSent(true)
+    } catch {
+      setFailed(true)
+    } finally {
+      setSending(false)
+    }
   }
 
   if (sent) {
     return (
       <p className="rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 text-sm">
-        תודה! נפתחה הודעת דוא״ל — שלחו אותה כדי שנקבל את הפנייה.
+        תודה! הפנייה התקבלה, ונחזור אליכם בהקדם.
       </p>
     )
   }
@@ -133,11 +144,22 @@ export function ContactForm({
           }
         />
       </label>
+      {/* hidden from people; simple bots fill it and the server drops the message */}
+      <input name="website" tabIndex={-1} autoComplete="off" aria-hidden="true"
+        className="sr-only" />
+      {failed ? (
+        <p className="rounded-xl bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 text-sm">
+          השליחה לא הצליחה. אפשר לנסות שוב, או לכתוב ישירות אל{' '}
+          <a href={`mailto:${CONTACT_EMAIL}`} className="underline font-semibold">{CONTACT_EMAIL}</a>
+          {' '}או בוואטסאפ <a href="https://wa.me/972523288607" className="underline font-semibold" dir="ltr">052-3288607</a>.
+        </p>
+      ) : null}
       <button
         type="submit"
-        className="w-full sm:w-auto rounded-full bg-cyan text-navy font-semibold px-8 py-3 text-sm hover:brightness-90 transition"
+        disabled={sending}
+        className="w-full sm:w-auto rounded-full bg-cyan text-navy font-semibold px-8 py-3 text-sm hover:brightness-90 transition disabled:opacity-60"
       >
-        {submitLabel}
+        {sending ? 'שולח…' : submitLabel}
       </button>
     </form>
   )

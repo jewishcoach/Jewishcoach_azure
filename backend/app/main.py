@@ -23,6 +23,7 @@ from .routers import (
 )
 from .routers.support_email_inbound import router as support_email_inbound_router
 from .routers.support_user_contact import router as support_user_contact_router
+from .routers.site_contact import router as site_contact_router
 from .api import chat_v2, debug_health, version, debug_logs  # BSD V2 + Debug + Version + Logs
 import os
 from dotenv import load_dotenv
@@ -135,6 +136,8 @@ for azure_origin in (
     "https://www.jewishcoacher.com",
     "https://bsdcoach.com",
     "https://www.bsdcoach.com",
+    "https://bsdcoaching.co.il",  # the school site: its contact form posts to /api/public/site-contact
+    "https://www.bsdcoaching.co.il",
 ):
     if azure_origin not in origins_list:
         origins_list.append(azure_origin)
@@ -188,6 +191,7 @@ app.include_router(admin.router)
 app.include_router(onboarding_email_cron.router)
 app.include_router(support_email_inbound_router)
 app.include_router(support_user_contact_router)
+app.include_router(site_contact_router)  # bsdcoaching.co.il contact form → office@bsdcoach.com
 app.include_router(billing.router)
 app.include_router(profile.router)
 app.include_router(calendar.router)
