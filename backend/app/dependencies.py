@@ -215,6 +215,9 @@ def _pick_email_from_clerk_user_body(body: dict[str, Any]) -> str | None:
     return chosen
 
 
+CLERK_API_USER_AGENT = "jewishcoach-api/1.0 (+https://www.jewishcoacher.com)"
+
+
 def _fetch_clerk_primary_email(clerk_id: str) -> str | None:
     """Backend API: needs CLERK_SECRET_KEY (sk_live_ / sk_test_). Cached per process."""
     if clerk_id in _CLERK_PRIMARY_EMAIL_CACHE:
@@ -227,7 +230,9 @@ def _fetch_clerk_primary_email(clerk_id: str) -> str | None:
     safe_id = urllib.parse.quote(clerk_id, safe="")
     url = f"https://api.clerk.com/v1/users/{safe_id}"
     try:
-        req = urllib.request.Request(url, headers={"Authorization": f"Bearer {secret}"})
+        # Clerk's API is behind Cloudflare, which refuses the default "Python-urllib" user agent (403, error 1010) —
+        # every lookup failed until Nov 10, so no user with a placeholder email could ever be emailed.
+        req = urllib.request.Request(url, headers={"Authorization": f"Bearer {secret}", "User-Agent": CLERK_API_USER_AGENT})
         with urllib.request.urlopen(req, timeout=12) as resp:
             body = json.loads(resp.read().decode())
     except urllib.error.HTTPError as e:

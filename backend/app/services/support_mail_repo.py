@@ -10,6 +10,9 @@ import urllib.parse
 import urllib.request
 from typing import Any, Optional
 
+# Clerk is behind Cloudflare, which refuses the default "Python-urllib" user agent (403, error 1010).
+CLERK_API_USER_AGENT = "jewishcoach-api/1.0 (+https://www.jewishcoacher.com)"
+
 from sqlalchemy import func, not_, or_
 from sqlalchemy.orm import Session
 
@@ -127,7 +130,7 @@ def _clerk_user_ids_for_email(email: str) -> list[str]:
 
     for url in attempts:
         try:
-            req = urllib.request.Request(url, headers={"Authorization": f"Bearer {secret}"})
+            req = urllib.request.Request(url, headers={"Authorization": f"Bearer {secret}", "User-Agent": CLERK_API_USER_AGENT})
             with urllib.request.urlopen(req, timeout=12) as resp:
                 body = json.loads(resp.read().decode())
             ids = _parse_ids(body)
