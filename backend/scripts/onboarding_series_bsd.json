@@ -1,0 +1,27 @@
+{
+  "_note": "The onboarding series (Nov 10, user: signed 'צוות BSD אימון יהודי'; Benny Gal has passed away, so the emails don't speak as him). The 4 emails go to every new user by time, whatever their progress, so each one fits both someone who stopped and someone who finished. Plural, gender-neutral. The footer (team, link, unsubscribe) is added by onboarding_email_runtime.build_final_html.",
+  "name": "ברוכים הבאים — BSD",
+  "description": "4 מיילים: ברוכים הבאים, תזכורת, השיטה, ההפתעה בסוף",
+  "steps": [
+    {
+      "delay_after_previous_minutes": 5,
+      "subject": "ברוכים הבאים לאימון",
+      "body_html": "<p>שלום {{display_name}},</p><p>איזה יופי שהגעתם.</p><p>האימון כאן בנוי על השיטה של בני גל ז״ל, מייסד האימון היהודי BSD. השיטה מתחילה מרגע אחד אמיתי מהחיים שלכם. לא צריך להגיע עם תשובות, ומספיק לעצור לרגע.</p><p>אפשר להתחיל ולעצור מתי שרוצים. השיחה נשמרת בדיוק איפה שעצרתם.</p><p style=\"margin:24px 0\"><a href=\"{{app_url}}\" style=\"background:#9747ff;color:#fff;text-decoration:none;padding:12px 28px;border-radius:12px;font-weight:bold;display:inline-block\">להתחיל את האימון</a></p><p>בהצלחה,<br/>צוות BSD אימון יהודי</p>"
+    },
+    {
+      "delay_after_previous_minutes": 2880,
+      "subject": "המקום שבו עצרתם מחכה לכם",
+      "body_html": "<p>שלום {{display_name}},</p><p>רצינו רק להזכיר: השיחה שלכם שמורה, בדיוק איפה שעצרתם.</p><p>הרבה אנשים חושבים שצריך שעה פנויה. בפועל, גם 10 דקות מספיקות כדי להתקדם שלב אחד. ולאורך הדרך יש הקלטות קצרות שמסבירות כל שלב, כך שתמיד תדעו איפה אתם ולמה.</p><p style=\"margin:24px 0\"><a href=\"{{app_url}}\" style=\"background:#9747ff;color:#fff;text-decoration:none;padding:12px 28px;border-radius:12px;font-weight:bold;display:inline-block\">לחזור לאימון</a></p><p>צוות BSD אימון יהודי</p>"
+    },
+    {
+      "delay_after_previous_minutes": 4320,
+      "subject": "למה דווקא הרגע הקטן?",
+      "body_html": "<p>שלום {{display_name}},</p><p>שואלים אותנו לא פעם למה האימון מתחיל מאירוע אחד, ולפעמים אפילו קטן.</p><p>כי באירוע אחד יש הכול: מה הרגשתם, מה עשיתם, ומה רציתם לעשות אחרת. כשמסתכלים עליו מקרוב, מגלים את הדפוס שחוזר שוב ושוב, ואת מה שנמצא מתחתיו.</p><p>ומשם, אולי בפעם הראשונה, אפשר לבחור אחרת.</p><p style=\"margin:24px 0\"><a href=\"{{app_url}}\" style=\"background:#9747ff;color:#fff;text-decoration:none;padding:12px 28px;border-radius:12px;font-weight:bold;display:inline-block\">להמשיך במסע</a></p><p>צוות BSD אימון יהודי</p>"
+    },
+    {
+      "delay_after_previous_minutes": 7200,
+      "subject": "משהו מחכה לכם בסוף הדרך",
+      "body_html": "<p>שלום {{display_name}},</p><p>מי שמגיע לסוף האימון מקבל הפתעה: מכתב אישי, עם מבט על מי שאתם ועל הכוחות שכבר נמצאים בתוככם.</p><p>אם עדיין לא הגעתם לשם, הדרך מחכה לכם. ואם כבר הגעתם, אפשר תמיד לפתוח תהליך חדש על אירוע אחר.</p><p style=\"margin:24px 0\"><a href=\"{{app_url}}\" style=\"background:#9747ff;color:#fff;text-decoration:none;padding:12px 28px;border-radius:12px;font-weight:bold;display:inline-block\">לאימון שלי</a></p><p>צוות BSD אימון יהודי</p>"
+    }
+  ]
+}

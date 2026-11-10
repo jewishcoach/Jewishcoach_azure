@@ -2,10 +2,15 @@
 Enqueue new users onto the default onboarding drip + process due sends.
 
 Placeholders in subject/body: {{display_name}}, {{email}}, {{app_url}}
+
+Every email carries an unsubscribe link (Nov 10 — required for a mail series; there was none): a signed per-user
+link to /api/public/email-unsubscribe that stops the series and marks preferences["onboarding_emails_off"].
 """
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import html
 import os
 import re
@@ -46,13 +51,39 @@ def public_app_url() -> str:
     )
 
 
+def public_api_url() -> str:
+    return (os.getenv("PUBLIC_API_URL") or "https://jewishcoach-api.azurewebsites.net").strip().rstrip("/")
+
+
+def _unsubscribe_key() -> bytes:
+    return (os.getenv("EMAIL_UNSUBSCRIBE_SECRET") or os.getenv("ONBOARDING_EMAIL_CRON_SECRET") or "").encode()
+
+
+def unsubscribe_token(user_id: int) -> str:
+    return hmac.new(_unsubscribe_key(), f"unsub:{user_id}".encode(), hashlib.sha256).hexdigest()[:32]
+
+
+def unsubscribe_token_ok(user_id: int, token: str) -> bool:
+    return bool(_unsubscribe_key()) and hmac.compare_digest(unsubscribe_token(user_id), (token or "").strip())
+
+
+def unsubscribe_url(user: User) -> str:
+    return f"{public_api_url()}/api/public/email-unsubscribe?u={user.id}&t={unsubscribe_token(user.id)}"
+
+
+def emails_turned_off(user: User) -> bool:
+    return bool((user.preferences or {}).get("onboarding_emails_off"))
+
+
 def render_onboarding_template(raw: str, user: User) -> str:
     if not raw:
         return ""
     vis = resolve_onboarding_send_email(user) or ""
-    name = (user.display_name or "").strip() or "שם"
+    name = (user.display_name or "").strip()
     email_s = vis or ""
     app = public_app_url()
+    if not name:  # no name: "שלום," — not "שלום שם," (the old fallback)
+        raw = raw.replace(" {{display_name}}", "").replace("{{display_name}}", "")
     out = raw.replace("{{display_name}}", html.escape(name))
     out = out.replace("{{email}}", html.escape(email_s))
     out = out.replace("{{app_url}}", html.escape(app))
@@ -82,11 +113,13 @@ def build_final_html(step: OnboardingEmailStep, user: User) -> tuple[str, str, s
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
 <body style="font-family:Heebo,Arial,sans-serif;line-height:1.6;color:#2E3A56;max-width:560px;margin:0 auto;padding:24px;">
 {body}
-<p style="color:#64748b;font-size:12px;margin-top:28px;">Jewish Coach<br/><a href="{html.escape(public_app_url(), quote=True)}">{html.escape(public_app_url())}</a></p>
+<p style="color:#64748b;font-size:12px;margin-top:28px;border-top:1px solid #e2e8f0;padding-top:12px;">צוות BSD אימון יהודי · <a href="{html.escape(public_app_url(), quote=True)}" style="color:#64748b">{html.escape(public_app_url().replace("https://", ""))}</a><br/>
+קיבלתם את המייל כי נרשמתם לאפליקציה. לא רוצים לקבל מאיתנו מיילים? <a href="{html.escape(unsubscribe_url(user), quote=True)}" style="color:#64748b">להסרה מרשימת התפוצה</a></p>
 </body></html>"""
     plain_base = step.body_plain or re.sub(r"<[^>]+>", " ", body)
     plain_base = re.sub(r"\s+", " ", plain_base).strip()
     plain = render_onboarding_template(plain_base, user)
+    plain += f"\n\n— צוות BSD אימון יהודי\nלהסרה מרשימת התפוצה: {unsubscribe_url(user)}"
     return subject, wrapped, plain
 
 
@@ -242,7 +275,7 @@ def process_due_onboarding_emails(db: Session, *, limit: int = 50) -> dict[str, 
     for st in states:
         seq = db.query(OnboardingEmailSequence).filter(OnboardingEmailSequence.id == st.sequence_id).first()
         user = db.query(User).filter(User.id == st.user_id).first()
-        if not seq or not user or not seq.is_active:
+        if not seq or not user or not seq.is_active or emails_turned_off(user):
             st.completed = True
             st.next_send_at = None
             continue
@@ -290,3 +323,14 @@ def process_due_onboarding_emails(db: Session, *, limit: int = 50) -> dict[str, 
 
     db.commit()
     return {"processed_states": len(states), "sent": sent, "skipped": skipped, "notes": errors[:20]}
+
+
+def unsubscribe_user(db: Session, user: User) -> None:
+    """Stop the series for this user and remember the choice."""
+    prefs = dict(user.preferences or {})
+    prefs["onboarding_emails_off"] = True
+    user.preferences = prefs
+    for st in db.query(UserOnboardingEmailState).filter(UserOnboardingEmailState.user_id == user.id).all():
+        st.completed = True
+        st.next_send_at = None
+    db.commit()

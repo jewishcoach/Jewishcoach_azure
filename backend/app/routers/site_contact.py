@@ -13,13 +13,19 @@ import logging
 import os
 import re
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
+
+from ..database import get_db
+from ..models import User
+from ..services.onboarding_email_runtime import unsubscribe_token_ok, unsubscribe_user
 
 from ..limiter import limiter
 from ..services.email_service import send_html_email_detailed
 
-router = APIRouter(prefix="/api/public", tags=["public"])
+router = APIRouter(prefix="/api/public", tags=["public"])  # also: the email unsubscribe link
 _log = logging.getLogger("app.site_contact")
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -79,3 +85,24 @@ def site_contact(request: Request, body: SiteContactRequest):
         raise HTTPException(status_code=502, detail="send failed")
     _log.info("site contact: sent (topic=%s)", topic)
     return {"ok": True}
+
+
+_UNSUB_PAGE = """<!DOCTYPE html><html dir="rtl" lang="he"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>הסרה מרשימת התפוצה</title></head>
+<body style="font-family:Heebo,Arial,sans-serif;background:#f6f4f0;color:#1f3444;display:flex;min-height:100vh;
+align-items:center;justify-content:center;margin:0;padding:24px"><div style="background:#fff;border-radius:20px;
+padding:32px;max-width:420px;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.08)"><h1 style="font-size:22px">{title}</h1>
+<p style="font-size:16px;line-height:1.6">{text}</p><p style="color:#64748b;font-size:13px">צוות BSD אימון יהודי</p></div></body></html>"""
+
+
+@router.get("/email-unsubscribe", response_class=HTMLResponse)
+@limiter.limit("20/minute")
+def email_unsubscribe(request: Request, u: int, t: str, db: Session = Depends(get_db)):
+    """The link at the bottom of every series email: stops the series for this user (Nov 10)."""
+    user = db.get(User, u) if unsubscribe_token_ok(u, t) else None
+    if not user:
+        return HTMLResponse(_UNSUB_PAGE.format(title="הקישור לא תקין",
+                                               text="אפשר לכתוב לנו ונסיר אתכם ידנית: support@jewishcoacher.com"), status_code=400)
+    unsubscribe_user(db, user)
+    return HTMLResponse(_UNSUB_PAGE.format(title="הוסרתם מרשימת התפוצה",
+                                           text="לא נשלח אליכם יותר מיילים מהסדרה. האימון והשיחות שלכם נשארים כמו שהם."))
