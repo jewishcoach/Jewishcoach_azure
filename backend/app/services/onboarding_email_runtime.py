@@ -111,10 +111,15 @@ def build_final_html(step: OnboardingEmailStep, user: User) -> tuple[str, str, s
     wrapped = f"""<!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
-<body style="font-family:Heebo,Arial,sans-serif;line-height:1.6;color:#2E3A56;max-width:560px;margin:0 auto;padding:24px;">
+<body style="margin:0;padding:0;">
+<!-- Gmail drops dir/style on <html>/<body> (Nov 10: the email showed left-aligned, "BSD." out of place), so the
+     direction lives on a full-width div; the 560px column inside an RTL block sits on the right. -->
+<div dir="rtl" style="direction:rtl;text-align:right;width:100%;">
+<div dir="rtl" style="direction:rtl;text-align:right;font-family:Heebo,Arial,sans-serif;line-height:1.6;color:#2E3A56;max-width:560px;padding:24px;font-size:15px;">
 {body}
 <p style="color:#64748b;font-size:12px;margin-top:28px;border-top:1px solid #e2e8f0;padding-top:12px;">צוות BSD אימון יהודי · <a href="{html.escape(public_app_url(), quote=True)}" style="color:#64748b">{html.escape(public_app_url().replace("https://", ""))}</a><br/>
 קיבלתם את המייל כי נרשמתם לאפליקציה. לא רוצים לקבל מאיתנו מיילים? <a href="{html.escape(unsubscribe_url(user), quote=True)}" style="color:#64748b">להסרה מרשימת התפוצה</a></p>
+</div></div>
 </body></html>"""
     plain_base = step.body_plain or re.sub(r"<[^>]+>", " ", body)
     plain_base = re.sub(r"\s+", " ", plain_base).strip()
