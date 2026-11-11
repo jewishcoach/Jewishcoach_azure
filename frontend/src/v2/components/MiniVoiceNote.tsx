@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Headphones } from 'lucide-react';
 
 interface MiniVoiceNoteProps {
@@ -15,6 +15,24 @@ export function MiniVoiceNote({ src, label }: MiniVoiceNoteProps) {
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState<number | null>(null);
   const [played, setPlayed] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+
+  // The bar used to follow "timeupdate" (~4 times a second) with a 200 ms CSS transition, so it moved in jumps
+  // (user, Nov 11). While playing it now follows the audio clock every frame, with no transition.
+  useEffect(() => {
+    if (!playing) return;
+    let raf = 0;
+    const tick = () => {
+      const el = audioRef.current;
+      if (el && el.duration) {
+        setProgress((el.currentTime / el.duration) * 100);
+        setElapsed(el.currentTime);
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [playing]);
 
   const toggle = async () => {
     const el = audioRef.current;
@@ -49,11 +67,8 @@ export function MiniVoiceNote({ src, label }: MiniVoiceNoteProps) {
         src={src}
         preload="metadata"
         onLoadedMetadata={() => { const el = audioRef.current; if (el && Number.isFinite(el.duration)) setDuration(el.duration); }}
-        onTimeUpdate={() => {
-          const el = audioRef.current;
-          if (el && el.duration) setProgress((el.currentTime / el.duration) * 100);
-        }}
-        onEnded={() => { setPlaying(false); setProgress(0); }}
+        onPause={() => setPlaying(false)}
+        onEnded={() => { setPlaying(false); setProgress(0); setElapsed(0); }}
       />
       <span className={`relative w-11 h-11 shrink-0 rounded-full bg-[#2A9D8F] flex items-center justify-center shadow-md
                         group-hover:bg-[#23877b] transition-colors`}>
@@ -76,10 +91,10 @@ export function MiniVoiceNote({ src, label }: MiniVoiceNoteProps) {
         <span className="block text-[15px] font-semibold text-[#1f3444] truncate">בני מסביר: {label}</span>
         <span className="mt-1.5 flex items-center gap-2">
           <span className="flex-1 h-1.5 rounded-full bg-[rgba(42,157,143,0.2)] overflow-hidden">
-            <span className="block h-full bg-[#2A9D8F] rounded-full transition-all duration-200" style={{ width: `${progress}%` }} />
+            <span className="block h-full bg-[#2A9D8F] rounded-full" style={{ width: `${progress}%` }} />
           </span>
           {duration != null && (
-            <span className="text-[12px] text-[#4a6070] tabular-nums" dir="ltr">{fmt(duration)}</span>
+            <span className="text-[12px] text-[#4a6070] tabular-nums" dir="ltr">{playing || elapsed > 0 ? `${fmt(elapsed)} / ${fmt(duration)}` : fmt(duration)}</span>
           )}
         </span>
       </span>
