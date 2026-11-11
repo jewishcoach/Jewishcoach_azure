@@ -57,3 +57,27 @@ def test_cors_allows_the_school_site():
         "Origin": "https://www.bsdcoaching.co.il", "Access-Control-Request-Method": "POST",
         "Access-Control-Request-Headers": "content-type"})
     assert r.headers.get("access-control-allow-origin") == "https://www.bsdcoaching.co.il"
+
+
+def test_hostinger_smtp_is_used_when_configured(monkeypatch):
+    """Nov 11: Hostinger refuses the app's sender domain, so the office mailbox sends the form to itself."""
+    monkeypatch.setenv("SITE_CONTACT_SMTP_USER", "office@bsdcoach.com")
+    monkeypatch.setenv("SITE_CONTACT_SMTP_PASSWORD", "pw")
+    acs = _capture(monkeypatch)
+    sent = {}
+
+    class FakeSMTP:
+        def __init__(self, host, port, timeout=0, context=None): sent["host"] = host
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def login(self, u, p): sent["user"] = u
+        def send_message(self, m): sent["msg"] = m
+
+    import smtplib
+    monkeypatch.setattr(smtplib, "SMTP_SSL", FakeSMTP)
+    r = TestClient(app).post("/api/public/site-contact", json=FORM, headers={"X-Forwarded-For": "10.9.0.5"})
+    assert r.status_code == 200, r.text
+    m = sent["msg"]
+    assert sent["host"] == "smtp.hostinger.com" and sent["user"] == "office@bsdcoach.com"
+    assert m["To"] == "office@bsdcoach.com" and m["Reply-To"] == "dana@example.com" and "office@bsdcoach.com" in m["From"]
+    assert acs == []  # the app's email service was not needed

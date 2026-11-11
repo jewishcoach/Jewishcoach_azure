@@ -3,7 +3,8 @@ The contact form of the school site (bsdcoaching.co.il) — sent to the office b
 
 The form used to open the visitor's mail app (mailto:). Nothing reached office@bsdcoach.com unless they pressed
 "send" there, and visitors without a mail app got nothing although the site said "תודה!". Now the site posts
-here and the server sends through the app's email service (ACS / SendGrid).
+here and the server sends it — through the office mailbox's own Hostinger SMTP when configured (Nov 11), else
+through the app's email service (ACS / SendGrid).
 
 Not an open relay: the recipient is fixed (SITE_CONTACT_TO, default office@bsdcoach.com) and the visitor's address
 is only the Reply-To. Rate-limited per IP; a hidden "website" field catches simple bots.
@@ -33,6 +34,39 @@ _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 def _to_address() -> str:
     return os.getenv("SITE_CONTACT_TO", "office@bsdcoach.com").strip()
+
+
+# Nov 11: Hostinger (office@bsdcoach.com) refuses mail from the app's sender domain jewishcoacher.com — it has no MX
+# ("450 4.1.8 Sender address rejected: Domain not found"), so ACS retried 12 h and gave up. The form is sent by the
+# office mailbox itself through Hostinger's SMTP (bsdcoach.com → bsdcoach.com), login kept in App Service settings.
+def _smtp_configured() -> bool:
+    return bool(os.getenv("SITE_CONTACT_SMTP_USER", "").strip() and os.getenv("SITE_CONTACT_SMTP_PASSWORD", ""))
+
+
+def _send_via_hostinger_smtp(subject: str, html_body: str, plain: str, *, reply_to: str) -> tuple[bool, str | None]:
+    import smtplib
+    import ssl
+    from email.message import EmailMessage
+    from email.utils import formataddr, make_msgid
+
+    user = os.getenv("SITE_CONTACT_SMTP_USER", "").strip()
+    host = os.getenv("SITE_CONTACT_SMTP_HOST", "smtp.hostinger.com").strip()
+    port = int(os.getenv("SITE_CONTACT_SMTP_PORT", "465"))
+    m = EmailMessage()
+    m["Subject"] = subject
+    m["From"] = formataddr(("טופס האתר bsdcoaching.co.il", user))
+    m["To"] = _to_address()
+    m["Reply-To"] = reply_to
+    m["Message-ID"] = make_msgid(domain=user.split("@")[-1])
+    m.set_content(plain)
+    m.add_alternative(html_body, subtype="html")
+    try:
+        with smtplib.SMTP_SSL(host, port, timeout=20, context=ssl.create_default_context()) as s:
+            s.login(user, os.getenv("SITE_CONTACT_SMTP_PASSWORD", ""))
+            s.send_message(m)
+        return True, None
+    except Exception as e:  # never log the login or the message
+        return False, type(e).__name__
 
 
 class SiteContactRequest(BaseModel):
@@ -79,7 +113,11 @@ def site_contact(request: Request, body: SiteContactRequest):
         "</div>"
     )
     subject = f"פנייה מהאתר — {topic} — {body.name.strip()}"[:200]
-    ok, err = send_html_email_detailed(_to_address(), subject, html_body, plain, reply_to=email)
+    ok, err = (False, None)
+    if _smtp_configured():
+        ok, err = _send_via_hostinger_smtp(subject, html_body, plain, reply_to=email)
+    if not ok:  # no Hostinger login, or it failed: the app's email service (may be refused by Hostinger, see above)
+        ok, err = send_html_email_detailed(_to_address(), subject, html_body, plain, reply_to=email)
     if not ok:
         _log.error("site contact: email send failed (%s)", (err or "")[:80].split(":")[0])
         raise HTTPException(status_code=502, detail="send failed")
