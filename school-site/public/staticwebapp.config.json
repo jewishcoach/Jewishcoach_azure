@@ -147,10 +147,12 @@
     {"route": "/webinar-rec", "redirect": "/media", "statusCode": 301},
     {"route": "/143678/סרטון-עקרונות-האימון-היהודי", "redirect": "/media", "statusCode": 301},
     {"route": "/סודות-הקאוצ-ינג.html", "redirect": "/media", "statusCode": 301},
-    {"route": "/track/*", "redirect": "/media", "statusCode": 301}
+    {"route": "/track/*", "redirect": "/media", "statusCode": 301},
+    {"route": "/content-boxes/*", "redirect": "/", "statusCode": 301},
+    {"route": "/content-boxes", "redirect": "/", "statusCode": 301}
   ],
   "navigationFallback": {
-    "rewrite": "/index.html",
+    "rewrite": "/spa.html",
     "exclude": [
       "/assets/*",
       "/*.{png,ico,svg,jpg,jpeg,webp,css,js,mp4,vtt}",

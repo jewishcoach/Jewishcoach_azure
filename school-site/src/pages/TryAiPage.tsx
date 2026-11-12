@@ -3,6 +3,9 @@ import { APP_URL } from '../config'
 import { Seo } from '../components/Seo'
 
 const FAQ_ITEMS = [
+  // The words people use for it ("אימון אישי עם בינה מלאכותית"), and the couple process (open to everyone in the app since 1.11.2026)
+  { q: 'מהו אימון אישי עם בינה מלאכותית?', a: 'מלווה דיגיטלי שמוביל אותך בתהליך האימון היהודי בשיטת BSD, שלב אחר שלב: שאלות עומק מתוך השיטה, זיהוי הדפוסים שמעכבים אותך ובניית חזון אישי. כל תובנה וכל התקדמות נשמרות. זה לא צ׳אט פתוח, אלא תהליך מובנה.' },
+  { q: 'אפשר לעבור את התהליך גם כזוג?', a: 'כן. אחד מבני הזוג מזמין את השני, כל אחד עובר את תהליך האימון לבד ובפרטיות, ובסוף רואים יחד רק את מה שכל אחד בחר לשתף.' },
   { q: 'האם זה מחליף אימון אישי?', a: 'התהליך מבוסס על אותה שיטה בדיוק, אך הוא מונגש דרך AI. הוא יכול לשמש כתהליך עצמאי או כהכנה לאימון אישי עם מאמן.' },
   { q: 'כמה זמן נמשך כל שלב?', a: 'כל שלב נמשך בדרך כלל בין 20 ל-40 דקות, אבל אפשר לעצור ולהמשיך בכל רגע.' },
   { q: 'אפשר לעצור באמצע?', a: 'כמובן. כל ההתקדמות נשמרת, ואפשר להמשיך בדיוק מהמקום שבו עצרת.' },
@@ -82,7 +85,18 @@ function IntroVideo() {
 export function TryAiPage() {
   return (
     <>
-      <Seo title="אימון יהודי AI: אותה שיטה, בקצב שלך" description="מלווה דיגיטלי בשיטת האימון היהודי BSD: אותה שיטה, אותם העקרונות, בקצב שלך ובכל מקום." path="/bsd-ai" />
+      <Seo title="אימון יהודי AI: אימון אישי עם בינה מלאכותית" description="אימון אישי עם בינה מלאכותית בשיטת האימון היהודי BSD של בני גל ז״ל: אותה שיטה ואותם עקרונות, בקצב שלך ובכל מקום, גם כזוג." path="/bsd-ai" />
+      {/* FAQ markup for Google and AI assistants: the same questions and answers as the FAQ section below */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'FAQPage',
+            mainEntity: FAQ_ITEMS.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
+          }),
+        }}
+      />
       {/* ── Hero — side-by-side: tree left, text right ── */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0">

@@ -137,7 +137,7 @@ export function SiteLayout() {
             </Link>
           </div>
         </div>
-        <div className="border-t border-white/10 text-center py-4 text-xs text-cyan/60">
+        <div className="border-t border-white/10 text-center py-4 text-xs text-cyan/60" suppressHydrationWarning>
           © {new Date().getFullYear()} אימון יהודי | שיטת BSD של בני גל. כל הזכויות שמורות.
         </div>
       </footer>
