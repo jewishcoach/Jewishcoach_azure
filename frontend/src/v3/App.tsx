@@ -58,6 +58,20 @@ export function V3App({ language = 'he' }: V3AppProps) {
   const [deleting, setDeleting] = useState(false);
   const [deleteFailed, setDeleteFailed] = useState(false);
 
+  // The page itself must say what language it is in. i18n stamps <html lang> with the browser's language,
+  // so an English browser declared this Hebrew screen "en" — Chrome then auto-"translated" the Hebrew into
+  // Hebrew and mangled it (פער → פאר, נגדיר → נגד), including the user's own messages.
+  useEffect(() => {
+    const html = document.documentElement;
+    const prev = { lang: html.lang, dir: html.dir };
+    html.lang = language;
+    html.dir = language.startsWith('he') ? 'rtl' : 'ltr';
+    return () => {
+      html.lang = prev.lang;
+      html.dir = prev.dir;
+    };
+  }, [language]);
+
   useEffect(() => {
     if (isSignedIn) {
       fetchUserGender(getToken).then(setUserGender);
