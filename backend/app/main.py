@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.requests import Request
+from starlette.responses import RedirectResponse
 from contextlib import asynccontextmanager
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -115,6 +116,24 @@ async def security_headers_middleware(request: Request, call_next):
         "accelerometer=(), camera=(), geolocation=(), microphone=(self), payment=(self)",
     )
     return response
+
+
+# The bare domain jewishcoacher.com can't point at the Static Web App (Hostinger has no ALIAS and the SWA
+# has no fixed IP), so its A record points here and we send it on to www — where the app is. Email links
+# sent before Nov 15 went to the bare domain and led nowhere.
+_BARE_APP_HOST = "jewishcoacher.com"
+_APP_HOST = "www.jewishcoacher.com"
+
+
+@app.middleware("http")
+async def bare_domain_redirect_middleware(request: Request, call_next):
+    host = (request.headers.get("host") or "").split(":")[0].strip().lower()
+    if host == _BARE_APP_HOST:
+        target = f"https://{_APP_HOST}{request.url.path}"
+        if request.url.query:
+            target += f"?{request.url.query}"
+        return RedirectResponse(target, status_code=301)
+    return await call_next(request)
 
 # CORS Configuration
 # Support for local development AND Ngrok tunneling.
