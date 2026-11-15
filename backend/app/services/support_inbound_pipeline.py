@@ -420,7 +420,7 @@ def plain_to_reply_html(body_plain: str, *, rtl: bool = True) -> str:
         wrap_close = "</div>"
         footer = """  <p dir="rtl" style="color: #64748b; font-size: 12px; margin-top: 24px; direction: rtl; text-align: start;">
     Jewish Coach · תמיכה<br/>
-    <a href="https://jewishcoacher.com" style="color: #B38728;">jewishcoacher.com</a>
+    <a href="https://www.jewishcoacher.com" style="color: #B38728;">jewishcoacher.com</a>
   </p>"""
     else:
         html_open = '<html lang="en" dir="ltr">'
@@ -432,7 +432,7 @@ def plain_to_reply_html(body_plain: str, *, rtl: bool = True) -> str:
         wrap_close = "</div>"
         footer = """  <p dir="ltr" style="color: #64748b; font-size: 12px; margin-top: 24px; direction: ltr; text-align: start;">
     Jewish Coach · Support<br/>
-    <a href="https://jewishcoacher.com" style="color: #B38728;">jewishcoacher.com</a>
+    <a href="https://www.jewishcoacher.com" style="color: #B38728;">jewishcoacher.com</a>
   </p>"""
 
     return f"""<!DOCTYPE html>

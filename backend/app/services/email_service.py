@@ -95,7 +95,7 @@ def _build_reminder_content(
     body_plain += """
 ---
 Jewish Coach - אימון יהודי
-https://jewishcoacher.com
+https://www.jewishcoacher.com
 """
 
     body_html = f"""
@@ -114,7 +114,7 @@ https://jewishcoacher.com
   </div>
   <p style="color: #64748b; font-size: 12px; margin-top: 24px;">
     Jewish Coach - אימון יהודי<br>
-    <a href="https://jewishcoacher.com" style="color: #B38728;">jewishcoacher.com</a>
+    <a href="https://www.jewishcoacher.com" style="color: #B38728;">jewishcoacher.com</a>
   </p>
 </body>
 </html>

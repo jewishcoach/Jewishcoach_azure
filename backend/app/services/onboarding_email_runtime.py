@@ -46,7 +46,7 @@ def resolve_onboarding_send_email(user: User) -> Optional[str]:
 
 
 def public_app_url() -> str:
-    return (os.getenv("PUBLIC_APP_URL") or os.getenv("VITE_APP_URL") or "https://jewishcoacher.com").strip().rstrip(
+    return (os.getenv("PUBLIC_APP_URL") or os.getenv("VITE_APP_URL") or "https://www.jewishcoacher.com").strip().rstrip(
         "/"
     )
 
