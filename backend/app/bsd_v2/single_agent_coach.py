@@ -921,6 +921,7 @@ def _s10_control_answered(msgs: list) -> bool:
 # expert ruling (Oct 22 2026): the new stance is a new perception, "אני מאמין ש…" — no "איך תעמוד מול אנשים" question;
 # one question only when the card holds just an action (the new pattern)
 _S13_BELIEF_Q = "ומה אתה מאמין מעכשיו"
+_S3_THOUGHT_Q = ("האמירה הפנימית", "עבר לך", "בראש", "המשפט הפנימי", "אמרת לעצמך")  # the S4 question asked from S3
 _S13_MAX_TURNS = 4
 _STANCE_VERBS = ("להיות", "לעמוד", "להרגיש", "לראות", "להאמין", "לבחור", "להתייחס")
 _STANCE_MARKERS = ("להיות", "לעמוד", "מקום", "שווה", "ראוי", "בגובה", "נוכח", "חלק מ", "מול ", "עם עצמי")
@@ -1002,6 +1003,15 @@ def _vision_domains(text: str) -> int:
 
 _OPEN_REQUEST = re.compile(r"(?<![א-ת])(?:ספר|ספרי|תספר|תספרי|תאר|תארי|תתאר|תתארי|שתף|שתפי|תשתף|תשתפי|כתוב|כתבי|תכתוב|תכתבי|"
                            r"נסה|נסי|תנסה|תנסי|תן|תני)\s+(?:לי|לנו|במילים|עוד)")
+
+
+_OTHER_CHANGES = re.compile(r"(?:^|[\s,.])ש(?:היא|הוא|הם|הן|אשתי|בעלי|הבוס|המנהל|המנהלת|אמא|אבא|הילדים|בת הזוג|בן הזוג)\s+"
+                            r"(?:ת|י|י?)?[א-ת]*")
+
+
+def _choice_needs_other(text: str) -> bool:
+    """The 'new choice' is that someone else changes ("שאשתי תשתנה", "שהבוס יעריך אותי") — not his own choice."""
+    return bool(_OTHER_CHANGES.search((text or "").strip()))
 
 
 def _open_request(text: str) -> bool:
@@ -1228,6 +1238,14 @@ def _check_gate_met_v3(state: Dict[str, Any]) -> str | None:
                 and (stance.get("reality_belief") or _turns_in("S10") >= 3)):
             return "S11"
         return "S11" if _turns_in("S10") >= 7 else None
+    # S3: the emotions card filled `emotions`, so the V2 gate below always moved on — also when the coach stopped to
+    # clarify that a pick was a thought ("שהיא לא מבינה אותי"; Nov 16 probe). Hold while the coach asks about the
+    # emotions instead of the thought question (anti-loop: 3 turns).
+    if step == "S3" and cd.get("emotions"):
+        msgs3 = state.get("messages") or []
+        last3 = next((m.get("content") or "" for m in reversed(msgs3) if m.get("sender") == "coach"), "")
+        if _open_request(last3) and not any(m in last3 for m in _S3_THOUGHT_Q) and _turns_in("S3") < 3:
+            return None
     return _check_gate_met(step, cd)
 
 
@@ -3369,6 +3387,10 @@ def build_conversation_context(
         feels_no = "מרגיש לי נכון: עדיין לא" in (user_message or "")
         if feels_no:
             q = "\"מה צריך להשתנות בניסוח כדי שזה ירגיש שלך?\""
+        elif _choice_needs_other(renewal):
+            # Nov 16 probe: "שאשתי תשתנה ותפסיק להעיר לי" got "זה מה שתעשה" — a wish for someone else is no choice of his
+            q = ("\"זה מה שהיית רוצה שיקרה אצל [האדם, במילים שלו]. הבחירה כאן היא שלך — מה **אתה** בוחר מעכשיו: "
+                 "איך היית מנסח את העמדה החדשה שלך: 'אני מאמין ש…'?\"")
         else:
             q = f"\"זה מה שתעשה. {_S13_BELIEF_Q} — איך היית מנסח את העמדה החדשה: 'אני מאמין ש…'?\""
         context_parts.append(

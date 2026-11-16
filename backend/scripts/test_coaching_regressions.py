@@ -308,6 +308,52 @@ async def test_s8_objection_not_pattern():
     return coach, issues
 
 
+# ── Nov 16 bad-input probe (scripts/probe_bad_inputs.py): cards must not swallow wrong input ───────────────────
+
+def _card_state(step: str, tool: str, cd: dict) -> dict:
+    state = _make_state(step, {"event_description": "אתמול בערב — עם אשתי — היא אמרה מול הילדים שאני אף פעם לא עוזר",
+                               "emotions": ["כעס", "עלבון"], "thought": "היא לא רואה כמה אני עושה",
+                               "action_actual": "שתקתי ויצאתי מהחדר", "emotion_desired": "שקט",
+                               "thought_desired": "היא עייפה, זה לא עליי", "action_desired": "לומר לה בשקט מה אני מרגיש",
+                               **cd})
+    state["_tool_just_submitted"] = tool
+    return state
+
+
+@regression("s2_alone_not_event", "S2 card: 'sat alone and thought' has no other person — not an event")
+async def test_s2_alone_not_event():
+    state = _make_state("S2", {"event_description": "אתמול בלילה — עם לבד — ישבתי לבד וחשבתי על החיים שלי"})
+    state["_tool_just_submitted"] = "event_form"
+    coach, state = await handle_conversation("סיפרתי על אירוע: אתמול בלילה עם לבד — ישבתי לבד וחשבתי על החיים שלי", state, "he")
+    return coach, ([] if state.get("current_step") == "S2" else [f"ACCEPTED_ALONE: moved to {state.get('current_step')}"])
+
+
+@regression("s3_thought_not_emotion", "S3 card: 'שהיא לא מבינה אותי' is a thought — clarify, don't call it an emotion")
+async def test_s3_thought_not_emotion():
+    state = _card_state("S3", "emotion_selector", {"emotions": ["שהיא לא מבינה אותי", "שאני צודק"]})
+    for k in ("thought", "action_actual", "emotion_desired", "thought_desired", "action_desired"):
+        state["collected_data"].pop(k, None)
+    coach, state = await handle_conversation("הרגשות שזיהיתי: שהיא לא מבינה אותי, שאני צודק", state, "he")
+    issues = []
+    if state.get("current_step") != "S3":
+        issues.append(f"ACCEPTED_THOUGHTS: moved to {state.get('current_step')}")
+    if "רגשות משמעותיים" in coach or "אלה רגשות" in coach:
+        issues.append("CALLED_THEM_EMOTIONS")
+    return coach, issues
+
+
+@regression("s7_blaming_gap_name", "S7 card: 'אשה מעצבנת' describes her — ask for his gap's name before the belief question")
+async def test_s7_blaming_gap_name():
+    state = _card_state("S7", "gap_card", {"gap_name": "אשה מעצבנת", "gap_score": "7", "gap_booklet_moves": []})
+    coach, state = await handle_conversation("הפער: אשה מעצבנת (ציון 7/10)", state, "he")
+    issues = []
+    if "משהו טוב" in coach:
+        issues.append("ACCEPTED_NAME: went on to the belief question")
+    if state.get("current_step") != "S7":
+        issues.append(f"LEFT_S7: {state.get('current_step')}")
+    return coach, issues
+
+
 # ── S9: pattern written in paradigm field → should correct ───────────────────
 
 @regression("s9_pattern_in_paradigm", "S9: User writes pattern in paradigm field — coach should correct to paradigm level")

@@ -1224,3 +1224,29 @@ def test_s7_anti_loop_waits_for_the_opportunity_answer():
     assert _check_gate_met_v3(state) is None  # 4th turn, but the opportunity question is open now
     state["messages"] += [{"sender": "user", "content": "ללמוד להקשיב"}, _coach("ללמוד להקשיב. ", "S7")]
     assert _check_gate_met_v3(state) == "S8"  # answered → both booklet moves done
+
+
+# --- Nov 16 bad-input probe: the coach must not swallow wrong card input -------------------------------------------
+
+def test_s3_holds_while_the_coach_clarifies_a_thought_picked_as_emotion():
+    state = _v3_state("S3")
+    state["collected_data"]["emotions"] = ["שהיא לא מבינה אותי", "שאני צודק"]
+    state["messages"] = [{"sender": "user", "content": "הרגשות שזיהיתי: שהיא לא מבינה אותי, שאני צודק"},
+                         _coach("אלה מחשבות, לא רגשות. איזה רגש עלה בך שם — כעס, עלבון, עצב?", "S3")]
+    assert _check_gate_met_v3(state) is None
+    state["messages"].append(_coach("כעס ועלבון. ומה עבר לך בראש — מה האמירה הפנימית שאמרת לעצמך?", "S3"))
+    assert _check_gate_met_v3(state) == "S4"  # the thought question = the card was fine
+
+
+def test_s13_choice_that_someone_else_changes_is_detected():
+    from app.bsd_v2.single_agent_coach import _choice_needs_other
+    assert _choice_needs_other("שאשתי תשתנה ותפסיק להעיר לי")
+    assert _choice_needs_other("שהבוס יעריך אותי")
+    assert not _choice_needs_other("לומר לה בשקט מה אני מרגיש")
+    assert not _choice_needs_other("אני מאמין שמותר לי לבקש")
+
+
+def test_s7_card_aware_prompt_checks_the_gap_name_first():
+    from pathlib import Path
+    text = (Path(__file__).parent.parent / "app/bsd_v2/prompts/stages/v2_card_aware/s7_gap.md").read_text()
+    assert text.index("קודם בדוק את שם הפער") < text.index("תור 1")

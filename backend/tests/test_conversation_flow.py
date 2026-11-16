@@ -235,6 +235,8 @@ async def test_handle_conversation_basic_flow():
     """handle_conversation should return coach message and update state."""
     state = _make_state_at("S3")
 
+    # Nov 16: the gate follows the coach — the thought question moves on; asking about the emotions again holds S3
+    # (test_s3_holds_while_the_coach_clarifies_a_thought_picked_as_emotion)
     mock_response = make_mock_response(
         coach_message="מה הרגשת באותו רגע?",
         current_step="S3",
@@ -251,8 +253,10 @@ async def test_handle_conversation_basic_flow():
 
     assert coach_msg is not None
     assert len(coach_msg) > 0
-    # Gate auto-advance: LLM returned S3 with emotions → backend advances to S4
-    assert updated_state["current_step"] == "S4"
+    # The coach is still asking about the emotions → the gate holds S3 (Nov 16: it used to move on regardless).
+    # Moving on after the thought question is covered by test_v3_design_flow (the mocked path double-hops with the
+    # stage safety net on, which is off in production — pre-existing, not part of this test).
+    assert updated_state["current_step"] == "S3"
     # User message should be in state
     user_msgs = [m for m in updated_state["messages"] if m["sender"] == "user"]
     assert len(user_msgs) == 1
