@@ -91,6 +91,14 @@ CASES = [
      "asks the coach to answer for him"),
     ("S13-other", "S13", "card", ("declaration_card", {"renewal": "שאשתי תשתנה ותפסיק להעיר לי", "next_action": ""}), None,
      "the new choice is that SHE changes"),
+    ("S5-dontknow", "S5", "card", ("action_field", {"action_actual": "לא יודע"}), None, "'I don't know' as the action"),
+    ("S6-dontknow", "S6", "card", ("comparison_card", {"emotion_desired": "לא יודע", "thought_desired": "לא יודע", "action_desired": "לא יודע"}), None,
+     "'I don't know' as the desired"),
+    ("S7-dontknow", "S7", "card", ("gap_card", {"gap_name": "לא יודע", "gap_score": 5}), None, "'I don't know' as the gap name"),
+    ("S9-dontknow", "S9", "card", ("sentence_builder", {"paradigm": "לא יודע"}), None, "'I don't know' as the paradigm"),
+    ("S13-dontknow", "S13", "card", ("declaration_card", {"renewal": "אני לא יודעת מה זה יכול להיות", "next_action": "לא יודע, אותו דבר",
+                                                          "feels_right": False}), None,
+     "'I don't know' as the new choice (Nov 16, a client's conversation)"),
     ("S15-other", "S15", "card", ("commitment_card", dict(_REQ, result="שאשתי תפסיק להעיר לי")), None,
      "the result depends on someone else"),
     ("S15-vague", "S15", "card", ("commitment_card", dict(_REQ, result="להרגיש יותר טוב")), None,
@@ -115,7 +123,9 @@ SUMMARY = {
     "sentence_builder": lambda d: f"ככה זה אצלי: {d['paradigm']}",
     "commitment_card": lambda d: f"הבקשה שלי לאימון: {compose_coaching_request(d)}",
     "declaration_card": lambda d: ". ".join(p for p in (f"העמדה החדשה שאני בוחר: {d['renewal']}",
-                                                       f"מה אעשה אחרת: {d['next_action']}" if d.get("next_action") else "") if p),
+                                                       f"מה אעשה אחרת: {d['next_action']}" if d.get("next_action") else "",
+                                                       (f"מרגיש לי נכון: {'כן' if d['feels_right'] else 'עדיין לא'}"
+                                                        if d.get("feels_right") is not None else "")) if p),
 }
 
 

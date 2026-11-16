@@ -373,6 +373,26 @@ async def test_s15_vague_result():
     return coach, issues
 
 
+@regression("s13_dont_know_choice", "S13 card: 'אני לא יודעת מה זה יכול להיות' is no choice — don't quote it as one (Nov 16)")
+async def test_s13_dont_know_choice():
+    state = _card_state("S13", "declaration_card", {
+        "pattern": "לשתוק ולהתרחק", "paradigm": "ככה זה אצלי — עדיף לשתוק מאשר לריב",
+        "stance": {"reality_belief": "מי שמדבר — מאבד את השקט בבית", "short": "מי שמדבר — מאבד את השקט"},
+        "renewal": "העמדה החדשה שבחרתי: אני לא יודעת מה זה יכול להיות. מה אעשה אחרת: לא יודע, אותו דבר",
+        "renewal_belief": "אני לא יודעת מה זה יכול להיות", "new_action": "לא יודע, אותו דבר"})
+    coach, state = await handle_conversation(
+        "העמדה החדשה שאני בוחר: אני לא יודעת מה זה יכול להיות. מה אעשה אחרת: לא יודע, אותו דבר. מרגיש לי נכון: עדיין לא",
+        state, "he", user_gender="female")
+    issues = []
+    if "מה צריך להשתנות בניסוח" in coach:
+        issues.append("ASKED_WORDING: treated 'I don't know' as a stance to reword")
+    if "הבחירה שלך היא" in coach or "העמדה החדשה שלך היא" in coach:
+        issues.append("QUOTED_AS_CHOICE")
+    if "?" not in coach:
+        issues.append("NO_QUESTION")
+    return coach, issues
+
+
 # ── S9: pattern written in paradigm field → should correct ───────────────────
 
 @regression("s9_pattern_in_paradigm", "S9: User writes pattern in paradigm field — coach should correct to paradigm level")

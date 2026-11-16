@@ -1276,3 +1276,30 @@ def test_stage_completion_is_held_under_an_open_question():
     internal = {"stage_ready_to_complete": True}
     _apply_v3_stage_complete_guards(state, internal)
     assert internal["stage_ready_to_complete"] is True
+
+
+def test_unknown_choice_is_not_a_choice():
+    from app.bsd_v2.single_agent_coach import _is_unknown
+    assert _is_unknown("אני לא יודעת מה זה יכול להיות") and _is_unknown("לא יודע, אותו דבר") and _is_unknown("")
+    assert not _is_unknown("אני מאמין שמותר לי לבקש")
+
+
+def test_s13_unknown_choice_gets_the_old_stance_question_in_her_gender():
+    from app.bsd_v2.single_agent_coach import build_conversation_context
+    state = _v3_state("S13")
+    state["_user_gender"] = "female"
+    state["_tool_just_submitted"] = "declaration_card"
+    state["collected_data"].update({"renewal": "העמדה החדשה שבחרתי: אני לא יודעת מה זה יכול להיות",
+                                    "renewal_belief": "אני לא יודעת מה זה יכול להיות", "new_action": "לא יודע, אותו דבר",
+                                    "stance": {"short": "מי שמדבר — מאבד את השקט"}})
+    ctx = build_conversation_context(state, "העמדה החדשה שאני בוחר: אני לא יודעת מה זה יכול להיות. מרגיש לי נכון: עדיין לא", "he")
+    assert "עוד אין בחירה" in ctx and "היית יכולה" in ctx and "מה צריך להשתנות בניסוח" not in ctx
+
+
+def test_s6_holds_while_the_coach_asks_about_the_desired():
+    state = _v3_state("S6")
+    state["collected_data"].update({"action_desired": "לא יודע", "emotion_desired": "לא יודע", "thought_desired": "לא יודע"})
+    state["messages"] = [_coach("כתבת 'לא יודע' — איזה רגש היית רוצה שיהיה שם?", "S6")]
+    assert _check_gate_met_v3(state) is None
+    state["messages"] = [_coach("להרגיש שקט, ולומר לה בשקט מה אתה מרגיש. עכשיו נראה את הפער.", "S6")]
+    assert _check_gate_met_v3(state) == "S7"

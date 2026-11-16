@@ -965,7 +965,9 @@ def _choice_is_only_action(renewal: str) -> bool:
 def _s13_asked_deepening(text: str) -> bool:
     """The new-perception question (either gender), the joy question or the softened-choice question was asked."""
     return "?" in text and any(m in text for m in ("ומה אתה מאמין מעכשיו", "ומה את מאמינה מעכשיו", "ירגיש שלך",
-                                                    "ירגיש **שלך**", "מה באמת היית רוצה", "מה **באמת** היית רוצה"))
+                                                    "ירגיש **שלך**", "מה באמת היית רוצה", "מה **באמת** היית רוצה",
+                                                    # Nov 16: the "not known yet" and "someone else changes" questions
+                                                    "היית רוצה להאמין", "אתה בוחר מעכשיו", "את בוחרת מעכשיו"))
 
 
 def _s13_stance_question_pending(state: Dict[str, Any]) -> bool:
@@ -1024,11 +1026,22 @@ def _vision_domains(text: str) -> int:
 
 
 _OPEN_REQUEST = re.compile(r"(?<![א-ת])(?:ספר|ספרי|תספר|תספרי|תאר|תארי|תתאר|תתארי|שתף|שתפי|תשתף|תשתפי|כתוב|כתבי|תכתוב|תכתבי|"
-                           r"נסה|נסי|תנסה|תנסי|תן|תני)\s+(?:לי|לנו|במילים|עוד)")
+                           r"נסה|נסי|תנסה|תנסי|תן|תני)\s+(?:לי|לנו|במילים|עוד|ל[א-ת]+\s+שם|שם)")
 
 
 _OTHER_CHANGES = re.compile(r"(?:^|[\s,.])ש(?:היא|הוא|הם|הן|אשתי|בעלי|הבוס|המנהל|המנהלת|אמא|אבא|הילדים|בת הזוג|בן הזוג)\s+"
                             r"(?:ת|י|י?)?[א-ת]*")
+
+
+_UNKNOWN = re.compile(r"לא\s+יודע|לא\s+יודעת|אין\s+לי\s+מושג|לא\s+בטוח|לא\s+בטוחה|לא\s+ברור\s+לי|אין\s+לי\s+תשובה|אותו\s+דבר")
+
+
+def _is_unknown(text: str) -> bool:
+    """'אני לא יודעת מה זה יכול להיות', 'לא יודע, אותו דבר' — no answer yet (short, or only filler)."""
+    t = (text or "").strip()
+    if not t or _is_empty_answer(t):
+        return True
+    return bool(_UNKNOWN.search(t)) and len(re.findall(rf"[{_HE}a-zA-Z]+", t)) <= 10
 
 
 def _choice_needs_other(text: str) -> bool:
@@ -1260,6 +1273,12 @@ def _check_gate_met_v3(state: Dict[str, Any]) -> str | None:
                 and (stance.get("reality_belief") or _turns_in("S10") >= 3)):
             return "S11"
         return "S11" if _turns_in("S10") >= 7 else None
+    # S6: the desired card fills the fields, so the V2 gate below moved on to the gap card also when the coach asked
+    # what "לא יודע" means (Nov 16 probe, 2/2). The normal turn here ends in a statement (the gap card follows).
+    if step == "S6" and cd.get("action_desired"):
+        last6 = next((m.get("content") or "" for m in reversed(state.get("messages") or []) if m.get("sender") == "coach"), "")
+        if _open_request(last6) and _turns_in("S6") < 3:
+            return None
     # S3: the emotions card filled `emotions`, so the V2 gate below always moved on — also when the coach stopped to
     # clarify that a pick was a thought ("שהיא לא מבינה אותי"; Nov 16 probe). Hold while the coach asks about the
     # emotions instead of the thought question (anti-loop: 3 turns).
@@ -3403,23 +3422,43 @@ def build_conversation_context(
             + (f", העמד אותה במשפט אחד מול העמדה הישנה ('{str(old_pos)[:100]}')" if old_pos else "")
             + ", וחבר במשפט אחד לכוח המקור שבחר לאירוע (או המוביל שלו מכרטיס הכוחות) — **בלי להוסיף תוכן משלך**. "
             "סמן `stage_ready_to_complete: true`.")
-    if state.get("current_step") == "S13" and state.get("ux_version", 2) >= 3 and _s13_stance_question_pending(state):
+    if state.get("current_step") == "S13" and state.get("ux_version", 2) >= 3 and (
+            _s13_stance_question_pending(state)
+            or (state.get("_tool_just_submitted") == "declaration_card"
+                and _is_unknown(str((state.get("collected_data") or {}).get("renewal_belief") or "")))):
         cd13 = state.get("collected_data") or {}
         renewal = str(cd13.get("renewal_belief") or "")
         feels_no = "מרגיש לי נכון: עדיין לא" in (user_message or "")
-        if feels_no:
-            q = "\"מה צריך להשתנות בניסוח כדי שזה ירגיש שלך?\""
-        elif _choice_needs_other(renewal):
-            # Nov 16 probe: "שאשתי תשתנה ותפסיק להעיר לי" got "זה מה שתעשה" — a wish for someone else is no choice of his
-            q = ("\"זה מה שהיית רוצה שיקרה אצל [האדם, במילים שלו]. הבחירה כאן היא שלך — מה **אתה** בוחר מעכשיו: "
-                 "איך היית מנסח את העמדה החדשה שלך: 'אני מאמין ש…'?\"")
+        fem = state.get("_user_gender") == "female"
+        g = (lambda m, f: f if fem else m)
+        old13 = str(((cd13.get("stance") or {}).get("short") or (cd13.get("stance") or {}).get("reality_belief")
+                     or cd13.get("paradigm") or "")).strip()
+        if _is_unknown(renewal):
+            # Nov 16 (a client's conversation): "אני לא יודעת מה זה יכול להיות" + "עדיין לא" got "מה צריך להשתנות
+            # בניסוח כדי שזה ירגיש שלך?" — her "I don't know" quoted as her new stance. Not knowing yet is an answer.
+            q = (f"\"זה בסדר שעוד לא ברור. העמדה הישנה {g('שלך', 'שלך')} הייתה '{old13[:120]}'. אם {g('היית יכול', 'היית יכולה')} "
+                 f"לבחור להאמין במשהו אחר במקום — מה {g('היית רוצה', 'היית רוצה')} להאמין?\"")
+            context_parts.append(
+                "\n# שלב 13 — עוד אין בחירה\n"
+                f"מה שכתב{g('', 'ה')} ('{renewal[:120]}') **אינו עמדה חדשה** — {g('הוא', 'היא')} עוד לא {g('יודע', 'יודעת')}. "
+                "**אל תצטט את זה כבחירה, אל תקרא לזה 'העמדה החדשה' ואל תשאל על הניסוח.** אל תציע לו מה לבחור. "
+                f"**התור הזה חייב להסתיים בשאלה הזו:** {q} ואל תסמן `stage_ready_to_complete`.")
         else:
-            q = f"\"זה מה שתעשה. {_S13_BELIEF_Q} — איך היית מנסח את העמדה החדשה: 'אני מאמין ש…'?\""
-        context_parts.append(
-            "\n# שלב 13 — שאלת העמקה אחת לפני הסיום\n"
-            f"**התור הזה חייב להסתיים בשאלה הזו:** {q} לפניה — משפט אחד שמצטט את מה שבחר ('{renewal[:120]}')"
-            + (" — וזו פעולה, כלומר מה שיעשה; עוד לא העמדה" if _choice_is_only_action(renewal) else "")
-            + ". **אל תחגוג, אל תוסיף תוכן**, ואל תסמן `stage_ready_to_complete`.")
+            if feels_no:
+                q = "\"מה צריך להשתנות בניסוח כדי שזה ירגיש שלך?\""
+            elif _choice_needs_other(renewal):
+                # Nov 16 probe: "שאשתי תשתנה ותפסיק להעיר לי" got "זה מה שתעשה" — a wish for someone else is no choice
+                q = (f"\"זה מה שהיית רוצה שיקרה אצל [האדם, במילים {g('שלו', 'שלה')}]. הבחירה כאן היא שלך — מה "
+                     f"{g('אתה בוחר', 'את בוחרת')} מעכשיו: איך {g('היית מנסח', 'היית מנסחת')} את העמדה החדשה שלך: "
+                     f"'{g('אני מאמין', 'אני מאמינה')} ש…'?\"")
+            else:
+                q = (f"\"זה מה {g('שתעשה', 'שתעשי')}. {g(_S13_BELIEF_Q, 'ומה את מאמינה מעכשיו')} — איך "
+                     f"{g('היית מנסח', 'היית מנסחת')} את העמדה החדשה: '{g('אני מאמין', 'אני מאמינה')} ש…'?\"")
+            context_parts.append(
+                "\n# שלב 13 — שאלת העמקה אחת לפני הסיום\n"
+                f"**התור הזה חייב להסתיים בשאלה הזו:** {q} לפניה — משפט אחד שמצטט את מה שבחר ('{renewal[:120]}')"
+                + (" — וזו פעולה, כלומר מה שיעשה; עוד לא העמדה" if _choice_is_only_action(renewal) else "")
+                + ". **אל תחגוג, אל תוסיף תוכן**, ואל תסמן `stage_ready_to_complete`.")
 
     # S8 (pattern, chat): one move per turn, the client formulates, then close (the model asserted the reaction for
     # him and kept asking "מה עוד נשאר דומה" after he had formulated)
