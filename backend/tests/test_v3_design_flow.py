@@ -1250,3 +1250,29 @@ def test_s7_card_aware_prompt_checks_the_gap_name_first():
     from pathlib import Path
     text = (Path(__file__).parent.parent / "app/bsd_v2/prompts/stages/v2_card_aware/s7_gap.md").read_text()
     assert text.index("קודם בדוק את שם הפער") < text.index("תור 1")
+
+
+def test_s15_result_issue_reads_empty_vague_and_conditions():
+    from app.bsd_v2.single_agent_coach import _result_issue
+    assert _result_issue("כן") == "empty"
+    assert _result_issue("להרגיש יותר טוב") == "vague"
+    assert _result_issue("אנסה להיות רגוע יותר") == "hedge"
+    assert _result_issue("שאשתי תפסיק להעיר לי") == "others"
+    assert _result_issue("אגיד לה מה אני מרגיש כדי שהיא תקשיב לי") == "others"
+    # the other person as the situation, his action as the result — fine
+    assert _result_issue("בשבוע הקרוב, בפעם הבאה שהיא תעיר לי מול הילדים — אגיד לה בשקט מה אני מרגיש") == ""
+    assert _result_issue("כשהבוס יעיר לי, אשאל אותו מה הוא צריך") == ""
+
+
+def test_stage_completion_is_held_under_an_open_question():
+    from app.bsd_v2.single_agent_coach import _apply_v3_stage_complete_guards
+    state = _v3_state("S15")
+    state["collected_data"]["commitment"] = "אני מבקש להתאמן על…"
+    state["messages"] = [_coach("הבקשה שלך ברורה. מה מתוך זה תלוי בך?", "S15")]
+    internal = {"stage_ready_to_complete": True}
+    _apply_v3_stage_complete_guards(state, internal)
+    assert internal["stage_ready_to_complete"] is False
+    state["messages"] = [_coach("הבקשה הזו שלך, והכוחות כבר אצלך.", "S15")]
+    internal = {"stage_ready_to_complete": True}
+    _apply_v3_stage_complete_guards(state, internal)
+    assert internal["stage_ready_to_complete"] is True

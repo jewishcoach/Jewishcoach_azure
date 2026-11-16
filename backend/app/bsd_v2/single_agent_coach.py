@@ -666,6 +666,16 @@ def _apply_v3_stage_complete_guards(state: Dict[str, Any], internal_state: Dict[
     if internal_state.get("stage_ready_to_complete") and step not in MACRO_STAGE_END_STEPS.values():
         logger.info(f"[BSD V3] Ignoring stage_ready_to_complete at {step} — not a macro-stage end step")
         internal_state["stage_ready_to_complete"] = False
+    # Any stage: never open the stage-complete screen under an open question or request (Nov 15: "ספר לי על מה
+    # שעשית שם" under the screen; Nov 16 probe: S15 closed and asked "מה מתוך זה תלוי בך?" in one turn). Cap 6 turns.
+    if internal_state.get("stage_ready_to_complete"):
+        last = next((m.get("content") or "" for m in reversed(state.get("messages") or []) if m.get("sender") == "coach"), "")
+        turns = sum(1 for m in (state.get("messages") or []) if m.get("sender") == "coach"
+                    and (m.get("internal_state") or {}).get("current_step") == step)
+        if _open_request(last) and turns < 6:
+            logger.info(f"[BSD V3] {step}: holding stage completion — the coach's message is still asking")
+            internal_state["stage_ready_to_complete"] = False
+            return
     required = _V3_STAGE_COMPLETE_REQUIRES.get(step)
     if internal_state.get("stage_ready_to_complete") and required:
         value: Any = cd
@@ -704,17 +714,26 @@ _SELF_ACT = re.compile(rf"(?<![{_HE}])(?:אני|בעצמי|אסיים|אגיד|�
 _RECEIVE_FROM_OTHERS = re.compile(rf"(?<![{_HE}])[וש]?(?:אקבל|מקבל|מקבלת|לקבל|יקשיבו)(?![{_HE}])|הקשבה מ|משוב|הערכה מ")
 
 
+_CONDITION_CLAUSE = re.compile(rf"(?:(?<![{_HE}])(?:בפעם הבאה|בכל פעם|כל פעם|גם)\s+ש|(?<![{_HE}])(?:כש|כאשר|אם|אחרי ש|לפני ש))"
+                               rf"[^,—–\-.]*?(?=[,—–\-.]|$)")
+# an empty or vague result (Nov 16 probe: "כן" and "להרגיש יותר טוב" closed the process, 2/2 each)
+_VAGUE_RESULT = re.compile(r"להרגיש|ארגיש|רגוע|יותר טוב|להשתפר|אשתפר|שיהיה טוב|שקט פנימי|להיות שמח|מאושר")
 _HEDGE = re.compile(rf"(?<![{_HE}])[וש]?(?:אנסה|אשתדל|ננסה|נשתדל|אולי|מנסה|לנסות|אשאף)(?![{_HE}])")
 # questions after the request card; their answer updates only the result (marker phrases)
-_S15_RESULT_QUESTIONS = ("תלוי בך", "מה אתה מתחייב", "מה את מתחייבת", "באיזו זירה")
+_S15_RESULT_QUESTIONS = ("תלוי בך", "מה אתה מתחייב", "מה את מתחייבת", "באיזו זירה", "איך תדע")
 
 
 def _result_issue(result: str, names: tuple = ()) -> str:
-    """One booklet requirement the result misses (p.9, 37): in his hands, a committed step, one real arena."""
+    """One booklet requirement the result misses (p.9, 37): in his hands, a committed step, one real arena —
+    and first of all, a result at all, measurable."""
+    if _is_empty_answer(result or "") or len(re.findall(rf"[{_HE}a-zA-Z]+", result or "")) <= 1:
+        return "empty"
     if _result_depends_on_others(result, names):
         return "others"
     if _HEDGE.search(result or ""):
         return "hedge"
+    if _VAGUE_RESULT.search(result or "") and not _SELF_ACT.search(result or ""):
+        return "vague"
     arenas = [a for a, words in _ARENA_WORDS.items() if any(w in (result or "") for w in words)]
     return "two_arenas" if len(arenas) >= 2 else ""
 
@@ -723,6 +742,9 @@ def _result_depends_on_others(result: str, names: tuple = ()) -> bool:
     """`names`: people the client named in the conversation — "ואיתי מגיב בשיחה" is the partner acting, like "שהוא יקשיב"."""
     if not result:
         return False
+    # Nov 16 probe: "בפעם הבאה שהיא תעיר לי מול הילדים — אגיד לה בשקט…" got "מה מתוך זה תלוי בך" (3/3): "שהיא תעיר" is
+    # the situation, his action is the result. Drop condition clauses before looking for the other person acting.
+    result = _CONDITION_CLAUSE.sub(" ", result)
     if _OTHERS_ACT.search(result) or _RECEIVE_FROM_OTHERS.search(result):
         return True
     for name in names:
@@ -3569,6 +3591,9 @@ def build_conversation_context(
         result = ((state.get("collected_data") or {}).get("coaching_request") or {}).get("result") or ""
         issue = _result_issue(result, _people_names(state.get("collected_data") or {}))
         ask = {
+            "empty": ("**אין כאן תוצאה**", "מה התוצאה שתרצה להשיג — איך תדע שהשגת אותה? מה תראה שקרה?"),
+            "vague": ("התוצאה עמומה — רגש או שיפור כללי, שאי אפשר לראות. בקשה לאימון מסתיימת בתוצאה **מדידה** (חוברת עמ' 37)",
+                      "איך תדע שהשגת את זה? מה תראה שקרה?"),
             "others": ("התוצאה תלויה גם בתגובה של אחרים. באימון התוצאה היא **מה שבידיו**",
                        "מה מתוך זה תלוי בך — מה אתה תעשה, או איך תהיה, שאפשר יהיה לראות?"),
             "hedge": ("התוצאה כתובה בלשון היסוס ('אנסה' / 'אשתדל'). בקשה לאימון היא **בחירה ומחויבות** (חוברת עמ' 36)",

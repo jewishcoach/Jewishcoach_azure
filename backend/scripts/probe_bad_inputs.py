@@ -29,6 +29,7 @@ load_dotenv()
 
 from app.bsd_v2.single_agent_coach import handle_conversation, _open_request  # noqa: E402
 from app.bsd_v2.state_schema_v2 import create_initial_state  # noqa: E402
+from app.bsd_v2.coaching_request import compose_coaching_request  # noqa: E402
 
 BASE = {
     "topic": "אני מרגיש תקוע. בתחום: זוגיות",
@@ -46,12 +47,15 @@ ORDER = ["topic", "event_description", "emotions", "thought", "action_actual", "
          "action_desired", "gap_name", "gap_score", "gap_booklet_moves", "pattern", "paradigm"]
 HAVE = {"S2": 1, "S3": 2, "S4": 3, "S5": 4, "S6": 5, "S7": 8, "S8": 11, "S9": 12, "S10": 13, "S11": 13,
         "S13": 13, "S14": 13, "S15": 13}
+# late stages also carry the stance, the forces and the choice (set in _state)
 
 
 def _coach(text, step):
     return {"sender": "coach", "content": text, "internal_state": {"current_step": step}}
 
 
+_REQ = {"floor": "stance", "situation": "הערות של אשתי מול הילדים", "old": "עדיף לשתוק מאשר לריב",
+        "source": ["אמת"], "nature": ["רגישות"], "new": "מותר לי לומר מה אני מרגיש", "gender": "male"}
 # (id, step, kind, payload, prior coach question for chat, what's wrong)
 CASES = [
     ("S2-always", "S2", "card", ("event_form", {"when": "תמיד", "with_whom": "אשתי", "what_happened": "היא תמיד מעירה לי על הכל"}), None,
@@ -87,6 +91,14 @@ CASES = [
      "asks the coach to answer for him"),
     ("S13-other", "S13", "card", ("declaration_card", {"renewal": "שאשתי תשתנה ותפסיק להעיר לי", "next_action": ""}), None,
      "the new choice is that SHE changes"),
+    ("S15-other", "S15", "card", ("commitment_card", dict(_REQ, result="שאשתי תפסיק להעיר לי")), None,
+     "the result depends on someone else"),
+    ("S15-vague", "S15", "card", ("commitment_card", dict(_REQ, result="להרגיש יותר טוב")), None,
+     "a vague result"),
+    ("S15-try", "S15", "card", ("commitment_card", dict(_REQ, result="אנסה להיות רגוע יותר")), None,
+     "'אנסה' — no commitment"),
+    ("S15-nonsense", "S15", "card", ("commitment_card", dict(_REQ, result="כן")), None,
+     "no result at all"),
     ("S14-vague", "S14", "chat", "שיהיה טוב", "איך תיראה המציאות שלך בעוד שנה, כשאתה פועל מתוך הבחירה החדשה?",
      "a vague future picture"),
 ]
@@ -101,6 +113,7 @@ SUMMARY = {
                     f"הייתי רוצה לעשות: {d['action_desired']}" if d['action_desired'] else "") if p),
     "gap_card": lambda d: f"הפער: {d['gap_name']} (ציון {d['gap_score']}/10)",
     "sentence_builder": lambda d: f"ככה זה אצלי: {d['paradigm']}",
+    "commitment_card": lambda d: f"הבקשה שלי לאימון: {compose_coaching_request(d)}",
     "declaration_card": lambda d: ". ".join(p for p in (f"העמדה החדשה שאני בוחר: {d['renewal']}",
                                                        f"מה אעשה אחרת: {d['next_action']}" if d.get("next_action") else "") if p),
 }
@@ -121,6 +134,9 @@ def _apply_card(cd, tool, d):
         cd["gap_booklet_moves"] = []
     elif tool == "sentence_builder":
         cd["paradigm"] = d["paradigm"]
+    elif tool == "commitment_card":
+        cd["commitment"] = compose_coaching_request(d)
+        cd["coaching_request"] = {k: d.get(k) for k in ("floor", "situation", "old", "source", "nature", "new", "result", "gender")}
     elif tool == "declaration_card":
         cd["renewal"] = f"העמדה החדשה שבחרתי: {d['renewal']}"
         cd["renewal_belief"], cd["new_action"] = d["renewal"], d.get("next_action", "")
@@ -131,6 +147,13 @@ def _state(step):
     st["current_step"], st["ux_version"] = step, 3
     keep = ORDER[:HAVE[step]]
     st["collected_data"].update({k: copy.deepcopy(v) for k, v in BASE.items() if k in keep})
+    if step in ("S14", "S15"):
+        st["collected_data"].update({
+            "stance": {"reality_belief": "מי שמדבר — מאבד את השקט בבית", "activation_trigger": "כשמעירים לי מול אחרים",
+                       "gains": ["שקט"], "losses": ["קרבה"]},
+            "forces": {"source": ["אמת", "אהבה"], "nature": ["רגישות", "התמדה"]},
+            "renewal": "העמדה החדשה שבחרתי: מותר לי לומר מה אני מרגיש", "renewal_belief": "מותר לי לומר מה אני מרגיש",
+            "new_action": "לומר לה בשקט מה אני מרגיש"})
     return st
 
 

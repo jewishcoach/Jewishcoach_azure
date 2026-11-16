@@ -455,9 +455,32 @@ def create_conversation(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Create a new conversation for authenticated user"""
+    """Create a new conversation for authenticated user — or hand back his fresh empty one.
+
+    The V3 onboarding opens a conversation ahead of time (saves a round trip on "start"). Every reload / remount of that
+    screen opened another, and leaving without starting left it empty: the admin had 7 empty conversations on Nov 15,
+    five within 4 seconds. An empty conversation from the last 24 h (no messages, no cards, not a couple
+    one) is reused. The user row is locked so concurrent requests reuse it too (no-op on sqlite).
+    """
+    from datetime import timedelta
+    from ..database import utc_now
+    from ..models import CoupleMember, ToolResponse
+
+    db.query(User).filter(User.id == user.id).with_for_update().first()
+    fresh = (
+        db.query(Conversation)
+        .filter(Conversation.user_id == user.id, Conversation.created_at >= utc_now() - timedelta(hours=24))
+        .filter(~db.query(Message.id).filter(Message.conversation_id == Conversation.id).exists())
+        .filter(~db.query(ToolResponse.id).filter(ToolResponse.conversation_id == Conversation.id).exists())
+        .filter(~db.query(CoupleMember.id).filter(CoupleMember.conversation_id == Conversation.id).exists())
+        .order_by(Conversation.created_at.desc())
+        .first()
+    )
+    if fresh:
+        db.commit()  # release the lock
+        return fresh
+
     title = f"New Conversation - {datetime.now().strftime('%b %d')}"
-    
     conversation = Conversation(
         user_id=user.id,
         title=title

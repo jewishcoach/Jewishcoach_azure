@@ -354,6 +354,25 @@ async def test_s7_blaming_gap_name():
     return coach, issues
 
 
+@regression("s15_vague_result", "S15 card: 'להרגיש יותר טוב' is not a measurable result — ask, don't close")
+async def test_s15_vague_result():
+    from app.bsd_v2.coaching_request import compose_coaching_request
+    req = {"floor": "stance", "situation": "הערות של אשתי מול הילדים", "old": "עדיף לשתוק מאשר לריב", "source": ["אמת"],
+           "nature": ["רגישות"], "new": "מותר לי לומר מה אני מרגיש", "result": "להרגיש יותר טוב", "gender": "male"}
+    state = _card_state("S15", "commitment_card", {
+        "pattern": "לשתוק ולהתרחק", "paradigm": "ככה זה אצלי — עדיף לשתוק מאשר לריב",
+        "forces": {"source": ["אמת"], "nature": ["רגישות"]}, "renewal_belief": "מותר לי לומר מה אני מרגיש",
+        "commitment": compose_coaching_request(req), "coaching_request": req})
+    coach, state = await handle_conversation(f"הבקשה שלי לאימון: {compose_coaching_request(req)}", state, "he")
+    ready = ((state.get("messages") or [{}])[-1].get("internal_state") or {}).get("stage_ready_to_complete")
+    issues = []
+    if ready:
+        issues.append("CLOSED_ON_VAGUE_RESULT")
+    if "?" not in coach:
+        issues.append("NO_QUESTION")
+    return coach, issues
+
+
 # ── S9: pattern written in paradigm field → should correct ───────────────────
 
 @regression("s9_pattern_in_paradigm", "S9: User writes pattern in paradigm field — coach should correct to paradigm level")
