@@ -1162,3 +1162,65 @@ def test_no_stage_is_called_hazon_any_more():
     for step in ("S13", "S14", "S15"):
         for g in ("male", "female"):
             assert "חזון" not in assemble_system_prompt(step, "he", g, ux_version=3, collected_data={"renewal": "x"}), step
+
+
+# --- Nov 15 conversation (admin): S8 stored an objection as the pattern and opened the stage-complete screen ----------
+
+def _nov15_s8_state():
+    state = _v3_state("S8")
+    state["collected_data"]["event_description"] = "אתמול בערב — עם בת הזוג — היא מציקה לי כל הזמן אומרת לי מה לעשות"
+    state["messages"] = [
+        _coach("ביקורת בעבודה — ספר לי על פעם אחת כזו בעבודה, מה קרה שם, ומה עשית?", "S8"),
+        {"sender": "user", "content": "אמרו עלי שאני לא מצליח לעשות מה שאני צריך"},
+        _coach("אמרו עליך שאתה לא מצליח לעשות מה שאתה צריך. כשאתה מסתכל על האירוע הזה ועל האירוע עם בת הזוג, האם "
+               "אתה מזהה כאן משהו שחוזר על עצמו בתגובה שלך? אם כן — איך היית מנסח את זה במשפט אחד?", "S8"),
+    ]
+    return state
+
+
+def test_s8_objection_is_not_the_pattern_and_does_not_close():
+    state = _nov15_s8_state()
+    state["messages"] += [{"sender": "user", "content": "אבל לא אמרתי עדיין מה עשיתי בעבודה"},
+                          _coach("אתה מציין שעדיין לא סיפרת מה עשית בעבודה. ספר לי על מה שעשית שם, בפעם ההיא.", "S8")]
+    assert _check_gate_met_v3(state) is None
+    assert not state["collected_data"].get("pattern")
+
+
+def test_s8_note_lets_the_coach_judge_an_objection():
+    from app.bsd_v2.single_agent_coach import build_conversation_context
+    ctx = build_conversation_context(_nov15_s8_state(), "אבל לא אמרתי עדיין מה עשיתי בעבודה", "he")
+    assert "הוא ניסח בעצמו" not in ctx and "זה לא ניסוח" in ctx
+
+
+def test_s8_other_time_without_reaction_asks_what_he_did_once():
+    from app.bsd_v2.single_agent_coach import build_conversation_context
+    state = _nov15_s8_state()
+    state["messages"] = state["messages"][:1]
+    ctx = build_conversation_context(state, "אמרו עלי שאני לא מצליח לעשות מה שאני צריך", "he")
+    assert "ומה עשית אז?" in ctx
+    state["messages"].append(_coach("אמרו עליך את זה. ומה עשית אז?", "S8"))
+    ctx = build_conversation_context(state, "שתקתי והלכתי הביתה", "he")
+    note = ctx[ctx.find("# שלב 8"):].split("\n\n")[0]
+    assert "ומה עשית אז?" not in note and "שאלת הזיהוי והניסוח" in note
+
+
+def test_s8_real_formulation_still_closes():
+    state = _nov15_s8_state()
+    state["messages"] += [{"sender": "user", "content": "אני שותק ומתרחק"},
+                          _coach("הדפוס שלך הוא לשתוק ולהתרחק. עכשיו נגלה מה מפעיל את הדפוס מבפנים.", "S8")]
+    assert _check_gate_met_v3(state) == "S9"
+    assert state["collected_data"]["pattern"]
+
+
+def test_s7_anti_loop_waits_for_the_opportunity_answer():
+    state = _v3_state("S7")
+    state["collected_data"].update({"gap_name": "אשה מעצבנת", "gap_score": 7, "gap_booklet_moves": ["belief"]})
+    state["_s7_turns_since_card"] = 3
+    state["messages"] = [
+        _coach("'כן' — מה הטוב שאתה רואה בפער הזה?", "S7"),
+        {"sender": "user", "content": "להיות עמיד בפני ביקט"},
+        _coach("אתה רואה בפער הזה את היכולת להיות עמיד. האם יש בפער הזה הזדמנות בשבילך? אם כן — מהי?", "S7"),
+    ]
+    assert _check_gate_met_v3(state) is None  # 4th turn, but the opportunity question is open now
+    state["messages"] += [{"sender": "user", "content": "ללמוד להקשיב"}, _coach("ללמוד להקשיב. ", "S7")]
+    assert _check_gate_met_v3(state) == "S8"  # answered → both booklet moves done

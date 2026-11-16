@@ -784,6 +784,7 @@ def _restates_rule(answer: str, paradigm: str) -> bool:
 
 # S8 (chat): where else → what happens to you there → his one-sentence formulation → close. The model kept
 # asserting "אותה תגובה" for the client and re-asking "מה עוד נשאר דומה" after he had formulated (9 turns).
+_S8_ASK_REACTION = "ומה עשית אז"  # S8: the other time told only what happened to him — ask his reaction, once
 _S8_DESCRIBE = "פעם אחת כזו"  # booklet p.14: describe one other time ("לתאר"), not just name a field
 _S8_FORMULATE = ("במשפט אחד", "מה חוזר אצלך", "מה נשאר דומה", "איך היית מנסח", "איך היית מנסחת", "חוזר על עצמו")
 _S8_RETRY = "במילה או שתיים"
@@ -999,6 +1000,15 @@ def _vision_domains(text: str) -> int:
     return sum(any(w in (text or "") for w in ws) for ws in _VISION_DOMAINS.values())
 
 
+_OPEN_REQUEST = re.compile(r"(?<![א-ת])(?:ספר|ספרי|תספר|תספרי|תאר|תארי|תתאר|תתארי|שתף|שתפי|תשתף|תשתפי|כתוב|כתבי|תכתוב|תכתבי|"
+                           r"נסה|נסי|תנסה|תנסי|תן|תני)\s+(?:לי|לנו|במילים|עוד)")
+
+
+def _open_request(text: str) -> bool:
+    """The coach still waits for an answer: a question, or a request without a question mark ("ספר לי על…")."""
+    return "?" in (text or "") or bool(_OPEN_REQUEST.search(text or ""))
+
+
 def _s8_asks_formulation(text: str) -> bool:
     return "?" in text and (any(m in text for m in _S8_FORMULATE) or _S8_RETRY in text)
 
@@ -1065,7 +1075,14 @@ def _check_gate_met_v3(state: Dict[str, Any]) -> str | None:
         # shown again) ended S7 on the card turn itself and skipped the opportunity question
         # (a counter, not a message index — old messages are trimmed from the state)
         state["_s7_turns_since_card"] = s7_turns = state.get("_s7_turns_since_card", 0) + 1
-        return "S8" if s7_turns >= 4 else None
+        # Nov 15: a clarification ("מה הכוונה") used up the 4 turns while the coach was asking the opportunity question;
+        # the answer then reached the S8 prompt, which read it as "the reaction". Hold for an answer (hard cap 6).
+        last7 = next((m.get("content") or "" for m in reversed(msgs) if m.get("sender") == "coach"), "")
+        asking_now = "?" in last7 and (("הזדמנות" in last7 and "opportunity" not in moves)
+                                        or ("משהו טוב" in last7 and "belief" not in moves))
+        if s7_turns >= 6 or (s7_turns >= 4 and not asking_now):
+            return "S8"
+        return None
     # S14 (chat): vision gets 2-3 turns at most, then the commitment card
     if step == "S14":
         s14_turns = sum(
@@ -1116,11 +1133,15 @@ def _check_gate_met_v3(state: Dict[str, Any]) -> str | None:
             return "S5"
     if step == "S8":
         reply8 = (last_user.get("content") or "") if last_user else ""
-        # the client's answer to the formulation question is the pattern — his words, not the coach's
-        if from_chat_reply and _s8_asks_formulation(prev_text) and not _is_empty_answer(reply8):
+        last8 = next((m.get("content") or "" for m in reversed(msgs) if m.get("sender") == "coach"), "")
+        # the client's answer to the formulation question is the pattern — his words, not the coach's — but only when
+        # the coach took it as one this turn (closed, or marked the stage ready). Nov 15: the reply was an objection
+        # ("אבל לא אמרתי עדיין מה עשיתי בעבודה"), the coach rightly asked "ספר לי…", and this net stored the
+        # objection as the pattern and opened the stage-complete screen.
+        coach_took_it = not _open_request(last8)
+        if from_chat_reply and _s8_asks_formulation(prev_text) and not _is_empty_answer(reply8) and coach_took_it:
             cd["pattern"] = _strip_pattern_arenas(_strip_pattern_motive(
                 re.sub(r"^\s*(?:כן|נכון|אכן)[,.]?\s+", "", reply8.strip())))[:300]
-        last8 = next((m.get("content") or "" for m in reversed(msgs) if m.get("sender") == "coach"), "")
         # the coach's closing reflection is his formulation cleaned to the reaction ("הדפוס שלך — להימנע מלהביע…") —
         # store that, not his raw sentence with the motive and the arenas (expert review of Yossi's conversation)
         closing = re.search(r"הדפוס שלך\s*(?:הוא\s*[—–-]?|[—–-])\s*(.+?)(?:\s[—–]\s|[.!?\n]|$)", last8)
@@ -1128,8 +1149,9 @@ def _check_gate_met_v3(state: Dict[str, Any]) -> str | None:
             cd["pattern"] = _strip_pattern_arenas(_strip_pattern_motive(closing.group(1).strip()))[:300]
         if not cd.get("pattern"):
             return None
-        # close only on a closing statement — never show the stage-complete screen under an open question
-        return "S9" if "?" not in last8 else None
+        # close only on a closing statement — never show the stage-complete screen under an open question or an open
+        # request ("ספר לי על מה שעשית שם." has no question mark)
+        return "S9" if not _open_request(last8) else None
     # The answer to the S9 deepening / action-rule question refines the paradigm — also when the coach asked the root
     # question in the same turn and moved to S10 (the refined rule was never stored: the card's pattern-like
     # "כשאני מרגישה לא מוערכת, אני שותקת" stayed the paradigm)
@@ -3374,7 +3396,12 @@ def build_conversation_context(
         nxt8 = ""
         if _s8_asks_formulation(last8):
             if not _is_empty_answer(reply8):
-                nxt8 = f"הוא ניסח בעצמו: \"{reply8[:200]}\" — " + close
+                # not asserted any more (Nov 15: "אבל לא אמרתי עדיין מה עשיתי בעבודה" was announced as "the pattern"):
+                # the model judges whether the reply formulates his reaction or objects / asks / adds
+                nxt8 = (f"תשובתו: \"{reply8[:200]}\". **אם היא מנסחת את התגובה החוזרת שלו** (מה הוא מרגיש / חושב / עושה) — "
+                        "זה הדפוס שלו. " + close + " **אם היא שאלה, התנגדות או השלמה** (למשל 'עוד לא סיפרתי מה עשיתי', "
+                        "'מה הכוונה?') — **זה לא ניסוח**: היענה לה בפשטות, בקש את מה שחסר בשאלה **אחת**, ואל תסמן "
+                        "`stage_ready_to_complete`.")
             elif not retried:
                 nxt8 = (f"התשובה לא נתנה עוד ניסוח — זה בסדר. שאלה **אחת**, פשוטה: \"{_S8_RETRY} שלך — מה אתה עושה בדרך כלל "
                         "כשזה קורה?\"")
@@ -3390,7 +3417,15 @@ def build_conversation_context(
                     "בעדינות: \"את הרגע הזה כבר הכרנו לעומק. ספר לי על רגע ספציפי בזירה אחרת"
                     + (f" — למשל {arena8}" if arena8 else "") + " — מה קרה שם, ומה עשית?\"")
         elif asked_describe or _describes_occurrence(reply8):
-            nxt8 = ("יש פעם נוספת שתוארה" + (" (גם אם בקצרה — אל תבקש שוב)" if asked_describe else "") + ". " + formulate)
+            # the example is his reaction there, not only what happened to him (booklet p.14: "לזהות את אותה התנהלות").
+            # Nov 15: "אמרו עלי שאני לא מצליח…" got "don't ask again" and the formulation question; the client
+            # protested "but I haven't said what I did". One short question for the missing reaction, once.
+            asked_reaction = any(_S8_ASK_REACTION in c for c in coach_s8)
+            nxt8 = ("יש פעם נוספת שתוארה" + (" (גם אם בקצרה)" if asked_describe else "") + ". "
+                    + ("" if asked_reaction else
+                       "**אם תיאר רק מה קרה לו** (מה אמרו לו, מה עשו לו) **ולא את התגובה שלו** — שאלה אחת קצרה בלבד: "
+                       f"\"{_S8_ASK_REACTION}?\" (ואל תשאל עדיין את שאלת הניסוח). **אם תיאר גם מה הוא הרגיש, חשב או עשה** — ")
+                    + formulate)
         elif coach_s8:
             if not any(w in reply8 for w in _S8_PLACES):
                 nxt8 = "הוא לא אמר איפה. שאלה אחת: \"איפה למשל? מול מי?\""

@@ -260,6 +260,54 @@ async def test_s8_to_s9_no_question():
     return coach, issues
 
 
+# ── S8: Nov 15 (admin conversation) — an objection is not the pattern; the other time needs his reaction ───────
+
+def _nov15_s8(extra_msgs: list) -> dict:
+    state = _make_state("S8", {
+        "event_description": "אתמול בערב — עם בת הזוג — היא מציקה לי כל הזמן אומרת לי מה לעשות",
+        "emotions": ["כעס", "תסכול", "חוסר אונים"], "thought": "היא מעצבנת", "action_actual": "קמתי ויצאתי לנשום",
+        "gap_name": "אשה מעצבנת", "gap_score": "7",
+    })
+    coach = lambda t: {"sender": "coach", "content": t, "internal_state": {"current_step": "S8"}}
+    state["messages"] = [
+        coach("התגובה הזו חוזרת אצלך גם במקומות אחרים? איפה עוד אתה מזהה את אותו שילוב של רגש, מחשבה ותגובה?"),
+        {"sender": "user", "content": "ביקורת עלי בעבודה"},
+        coach("ביקורת בעבודה — ספר לי על פעם אחת כזו בעבודה, מה קרה שם, ומה עשית?"),
+    ] + [coach(m["c"]) if m["s"] == "coach" else {"sender": "user", "content": m["c"]} for m in extra_msgs]
+    return state
+
+
+@regression("s8_other_time_asks_reaction", "S8: the other time told only what happened to him → ask what he did, not the formulation")
+async def test_s8_other_time_asks_reaction():
+    state = _nov15_s8([])
+    coach, state = await handle_conversation("אמרו עלי שאני לא מצליח לעשות מה שאני צריך", state, "he")
+    issues = []
+    if _contains_any(coach, ["במשפט אחד", "איך היית מנסח"]):
+        issues.append("FORMULATION_TOO_EARLY: asked to formulate before hearing his reaction at work")
+    if not _contains_any(coach, ["עשית", "הגבת", "הרגשת"]):
+        issues.append("NO_REACTION_QUESTION: didn't ask what he did / felt there")
+    return coach, issues
+
+
+@regression("s8_objection_not_pattern", "S8: 'but I haven't said what I did' is not the pattern — no stage end")
+async def test_s8_objection_not_pattern():
+    state = _nov15_s8([
+        {"s": "user", "c": "אמרו עלי שאני לא מצליח לעשות מה שאני צריך"},
+        {"s": "coach", "c": "אמרו עליך שאתה לא מצליח לעשות מה שאתה צריך. כשאתה מסתכל על האירוע הזה ועל האירוע עם בת "
+                             "הזוג, האם אתה מזהה כאן משהו שחוזר על עצמו בתגובה שלך? אם כן — איך היית מנסח את זה במשפט אחד?"},
+    ])
+    coach, state = await handle_conversation("אבל לא אמרתי עדיין מה עשיתי בעבודה", state, "he")
+    issues = []
+    cd = state.get("collected_data") or {}
+    if state.get("current_step") != "S8":
+        issues.append(f"LEFT_S8: moved to {state.get('current_step')} on an objection")
+    if "לא אמרתי" in str(cd.get("pattern") or ""):
+        issues.append("OBJECTION_STORED_AS_PATTERN")
+    if _contains_any(coach, ["הדפוס שלך"]):
+        issues.append("ASSERTED_PATTERN: declared a pattern from an objection")
+    return coach, issues
+
+
 # ── S9: pattern written in paradigm field → should correct ───────────────────
 
 @regression("s9_pattern_in_paradigm", "S9: User writes pattern in paradigm field — coach should correct to paradigm level")
